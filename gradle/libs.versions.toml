@@ -1,0 +1,97 @@
+[versions]
+dependency-management = "1.1.5"
+spring-boot = "3.4.0"
+spring-cloud = "2024.0.2"
+otel-agent = "2.4.0"
+caffeine   = "3.1.8"
+logback-encoder = "7.4"
+ulid-creator = "5.2.3"
+grpc = "1.64.0"
+grpc-spring = "3.1.0.RELEASE"
+protobuf = "3.25.3"
+protos = "1.0.0-SNAPSHOT"
+redisson = "3.40.0"
+spring-vault = "4.0.2"
+okhttp = "4.12.0"
+kafka = "3.8.0"
+
+wix-embedded-mysql   = "4.6.1"
+embedded-redis   = "1.0.0"
+mongo-java-server = "1.44.0"
+testcontainers  = "1.21.0"
+testcontainers-mysql = "1.19.3"
+archunit = "1.4.2"
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
+dep-mgmt    = { id = "io.spring.dependency-management", version.ref = "dependency-management" }
+java        = { id = "java" }
+
+[libraries]
+spring-boot-starter-actuator = { group = "org.springframework.boot", name = "spring-boot-starter-actuator", version.ref = "spring-boot" }
+spring-boot-gradle-plugin = { group = "org.springframework.boot", name = "spring-boot-gradle-plugin", version.ref = "spring-boot" }
+dependency-management-gradle-plugin = { group = "io.spring.gradle", name = "dependency-management-plugin", version.ref = "dependency-management" }
+spring-boot-starter-aop      = { group = "org.springframework.boot",  name = "spring-boot-starter-aop" }
+spring-boot-starter-validation      = { group = "org.springframework.boot",  name = "spring-boot-starter-validation" }
+spring-boot-starter-web      = { group = "org.springframework.boot",  name = "spring-boot-starter-web" }
+spring-boot-starter-webflux  = { group = "org.springframework.boot", name = "spring-boot-starter-webflux", version.ref = "spring-boot" }
+spring-boot-starter-websocket  = { group = "org.springframework.boot", name = "spring-boot-starter-websocket", version.ref = "spring-boot" }
+spring-boot-starter-data-jpa = { group = "org.springframework.boot", name = "spring-boot-starter-data-jpa" }
+spring-boot-starter-data-redis = { group = "org.springframework.boot", name = "spring-boot-starter-data-redis" }
+redisson-spring-boot-starter = { group = "org.redisson", name = "redisson-spring-boot-starter", version.ref = "redisson" }
+spring-boot-starter-data-mongodb   = { group = "org.springframework.boot",  name = "spring-boot-starter-data-mongodb" }
+spring-boot-starter-security = { group = "org.springframework.boot", name = "spring-boot-starter-security", version.ref = "spring-boot" }
+spring-boot-starter-oauth2-client = { group = "org.springframework.boot", name = "spring-boot-starter-oauth2-client" }
+spring-security-oauth2-jose  = { group = "org.springframework.security", name = "spring-security-oauth2-jose" }
+spring-security-oauth2-authorization-server = { group = "org.springframework.security", name = "spring-security-oauth2-authorization-server" }
+spring-security-oauth2-resource-server    = { group = "org.springframework.security", name = "spring-security-oauth2-resource-server" }
+spring-cloud-dependencies    = { group = "org.springframework.cloud", name = "spring-cloud-dependencies", version.ref = "spring-cloud" }
+spring-cloud-config-client   = { group = "org.springframework.cloud", name = "spring-cloud-config-client" }
+spring-cloud-config-server   = { group = "org.springframework.cloud", name = "spring-cloud-config-server" }
+spring-cloud-eureka-client   = { group = "org.springframework.cloud", name = "spring-cloud-starter-netflix-eureka-client" }
+spring-cloud-eureka-server   = { group = "org.springframework.cloud", name = "spring-cloud-starter-netflix-eureka-server" }
+spring-cloud-gateway         = { group = "org.springframework.cloud", name = "spring-cloud-starter-gateway" }
+spring-cloud-loadbalancer    = { group = "org.springframework.cloud", name = "spring-cloud-starter-loadbalancer" }
+spring-cloud-starter-stream-kafka  = { group = "org.springframework.cloud", name = "spring-cloud-starter-stream-kafka" }
+spring-cloud-stream-binder-kafka   = { group = "org.springframework.cloud", name = "spring-cloud-stream-binder-kafka" }
+spring-cloud-stream-binder-kafka-streams   = { group = "org.springframework.cloud", name = "spring-cloud-stream-binder-kafka-streams" }
+spring-integration-core        = { group = "org.springframework.integration", name = "spring-integration-core" }
+spring-vault-core = { group = "org.springframework.vault", name = "spring-vault-core", version.ref = "spring-vault" }
+
+micrometer-registry-prometheus = { group = "io.micrometer", name = "micrometer-registry-prometheus" }
+otel-javaagent = { module = "io.opentelemetry.javaagent:opentelemetry-javaagent", version.ref = "otel-agent" }
+ulid-creator = { group = "com.github.f4b6a3", name = "ulid-creator", version.ref = "ulid-creator" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+
+grpc-bom        = { group = "io.grpc", name = "grpc-bom", version.ref = "grpc" }
+grpc-netty      = { group = "io.grpc", name = "grpc-netty" }
+grpc-protobuf   = { group = "io.grpc", name = "grpc-protobuf" }
+grpc-stub       = { group = "io.grpc", name = "grpc-stub" }
+grpc-client-spring-boot-starter = { group = "net.devh", name = "grpc-client-spring-boot-starter", version.ref = "grpc-spring" }
+grpc-server-spring-boot-starter = { group = "net.devh", name = "grpc-server-spring-boot-starter", version.ref = "grpc-spring" }
+protobuf-java   = { group = "com.google.protobuf", name = "protobuf-java", version.ref = "protobuf" }
+protobuf-util   = { group = "com.google.protobuf", name = "protobuf-java-util", version.ref = "protobuf" }
+protos = { group = "org.example", name = "protos", version.ref = "protos" }
+
+mysql-connector-j = { group = "com.mysql", name = "mysql-connector-j" }
+lombok = { group = "org.projectlombok", name = "lombok" }
+caffeine = { group = "com.github.ben-manes.caffeine", name = "caffeine", version.ref = "caffeine" }
+logstash-logback-encoder = { group = "net.logstash.logback", name = "logstash-logback-encoder", version.ref = "logback-encoder" }
+
+# Test
+spring-boot-starter-test = { group = "org.springframework.boot", name = "spring-boot-starter-test", version.ref = "spring-boot" }
+spring-security-test     = { group = "org.springframework.security", name = "spring-security-test" }
+reactor-test = { group = "io.projectreactor", name = "reactor-test" }
+kafka-streams-test-utils = { group = "org.apache.kafka", name = "kafka-streams-test-utils", version.ref = "kafka" }
+wix-embedded-mysql           = { group = "com.wix",            name = "wix-embedded-mysql", version.ref = "wix-embedded-mysql" }
+embedded-redis                     = { group = "com.github.codemonstur",   name = "embedded-redis",      version.ref = "embedded-redis" }
+mongo-java-server                  = { group = "de.bwaldvogel",            name = "mongo-java-server",   version.ref = "mongo-java-server" }
+testcontainers                     = { group = "org.testcontainers",       name = "testcontainers",      version.ref = "testcontainers" }
+testcontainers-junit-jupiter       = { group = "org.testcontainers",       name = "junit-jupiter",       version.ref = "testcontainers" }
+testcontainers-mysql               = { group = "org.testcontainers",       name = "mysql",               version.ref = "testcontainers-mysql" }
+testcontainers-mongodb             = { group = "org.testcontainers",       name = "mongodb",             version.ref = "testcontainers" }
+testcontainers-kafka               = { group = "org.testcontainers",       name = "kafka",               version.ref = "testcontainers" }
+archunit-junit5                    = { group = "com.tngtech.archunit",     name = "archunit-junit5",     version.ref = "archunit" }
+
+[bundles]
+grpc = ["grpc-netty", "grpc-protobuf", "grpc-stub", "protobuf-java", "protobuf-util", "grpc-client-spring-boot-starter", "grpc-server-spring-boot-starter"]

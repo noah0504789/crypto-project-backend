@@ -1,0 +1,26 @@
+spring:
+  datasource:
+    write:
+      url: jdbc:mysql://mysql-primary:3306/${mysql.db}?serverTimezone=UTC&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
+      username: ${mysql.username}
+      password: ${mysql.password}
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      hikari:
+        maximum-pool-size: ${mysql.write.pool.max-size:10}
+        minimum-idle: ${mysql.write.pool.min-idle:2}
+        idle-timeout: 600000
+        max-lifetime: 1800000
+        connection-timeout: ${mysql.write.pool.connection-timeout:30000}
+        pool-name: write-pool
+    read:
+      url: jdbc:mysql://mysql-replica:3306/${mysql.db}?serverTimezone=UTC&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
+      username: ${mysql.username}
+      password: ${mysql.password}
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      hikari:
+        maximum-pool-size: 10
+        minimum-idle: 2
+        idle-timeout: 600000
+        max-lifetime: 1800000
+        connection-timeout: 30000
+        pool-name: read-pool

@@ -1,0 +1,11 @@
+plugins {
+    id 'crypto-adapter'
+}
+
+
+dependencies {
+    api project(':spring-cloud-config:spring-cloud-config-application')
+
+    api(libs.spring.boot.starter.web)
+
+}

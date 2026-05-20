@@ -1,0 +1,22 @@
+plugins {
+    id 'crypto-adapter'
+}
+
+
+dependencies {
+    api project(':common:common-core')
+    api project(':common:common-redis')
+    api project(':websocket-gateway:websocket-gateway-application')
+    api project(':websocket-gateway:websocket-gateway-domain')
+    api project(':protobuf')
+
+    api platform(libs.grpc.bom)
+    api(libs.grpc.netty)
+    api(libs.grpc.protobuf)
+    api(libs.grpc.stub)
+    api(libs.grpc.client.spring.boot.starter)
+    api(libs.spring.boot.starter.data.redis)
+    api(libs.spring.boot.starter.actuator)
+    implementation(libs.protobuf.java)
+
+}

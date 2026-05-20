@@ -1,0 +1,25 @@
+plugins {
+    id 'crypto-adapter'
+}
+
+
+dependencies {
+    api project(':common:common-core')
+    api project(':common:common-redis')
+    api project(':oauth2-authorization-server:oauth2-authorization-server-application')
+    api project(':protobuf')
+
+    api platform(libs.grpc.bom)
+    api(libs.grpc.stub)
+    api(libs.grpc.client.spring.boot.starter)
+    api(libs.spring.boot.starter.data.redis)
+    api(libs.spring.security.oauth2.authorization.server)
+    implementation(libs.spring.boot.starter.web)
+    implementation(libs.spring.boot.starter.actuator)
+    implementation(libs.micrometer.registry.prometheus)
+    implementation(libs.caffeine)
+    implementation(libs.protobuf.java)
+
+    testImplementation(libs.spring.security.test)
+    testImplementation project(':common:common-test')
+}

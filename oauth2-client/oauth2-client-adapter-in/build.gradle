@@ -1,0 +1,18 @@
+plugins {
+    id 'crypto-adapter'
+}
+
+
+dependencies {
+    api project(':common:common-core')
+    api project(':common:common-web')
+    api project(':oauth2-client:oauth2-client-application')
+
+    api(libs.spring.boot.starter.oauth2.client)
+    api(libs.spring.boot.starter.web)
+    api(libs.spring.boot.starter.actuator)
+
+    testImplementation project(':oauth2-client:oauth2-client-adapter-out')
+    testImplementation project(':protobuf')
+    testImplementation(libs.spring.security.test)
+}

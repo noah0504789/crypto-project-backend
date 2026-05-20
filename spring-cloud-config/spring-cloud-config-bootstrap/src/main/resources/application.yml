@@ -1,0 +1,30 @@
+server.port: 8888
+
+api-path:
+  jwks: /.well-known/jwks.json
+  sign: /sign
+
+vault:
+  transit:
+    sign-path-prefix: transit/sign/
+    key-path-prefix: transit/keys/
+
+spring:
+  profiles.active: git, vault
+  cloud.config.server:
+    git:
+      uri: ${CONFIG_REPO_URI:file:/config-repo}
+      default-label: main
+      order: 2
+    vault:
+      host: vault
+      port: 18200
+      scheme: http
+      authentication: APPROLE
+      app-role:
+        role-id: ${VAULT_ROLE_ID}
+        secret-id: ${VAULT_SECRET_ID}
+      backend: secret
+      kvVersion: 2
+      applicationName: mysql,mongo,oauth2
+      order: 1

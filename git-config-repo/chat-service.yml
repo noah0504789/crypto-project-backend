@@ -1,0 +1,106 @@
+server:
+  port: 8080
+  version: v1
+  servlet:
+    context-path: /api/${server.version}
+    encoding:
+      charset: UTF-8
+      force: true
+
+grpc:
+  server:
+    port: 18080
+
+api-path:
+  chat:
+    base: /chat
+    rooms-popular: /rooms/popular
+    rooms-me: /rooms/me
+    room: /room/{roomId}
+    room-me: /room/{roomId}/me
+    room-members: /room/{roomId}/members
+    room-activity: /room/{roomId}/activity
+    room-create: /room
+    room-messages: /room/{roomId}/messages
+
+spring:
+  jpa:
+#    show-sql: true
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+#        generate_statistics: true
+        format_sql: true
+        use_sql_comments: true
+    defer-datasource-initialization: true
+    open-in-view: false
+  data:
+    jpa:
+      repositories:
+        bootstrap-mode: deferred
+  cloud:
+    function:
+      definition: chatRoomEventConsumer;chatMessageEventConsumer;chatRoomDlqEventConsumer;chatMessageDlqEventConsumer
+    stream:
+      bindings:
+        chatRoomEventConsumer-in-0:
+          destination: chatroom-event
+          contentType: application/json
+          group: chat
+        chatMessageEventConsumer-in-0:
+          destination: chatmessage-event
+          contentType: application/json
+          group: chat
+        chatRoomDlqEventConsumer-in-0:
+          destination: chatroom-event.dlq
+          contentType: application/json
+          group: chat
+        chatMessageDlqEventConsumer-in-0:
+          destination: chatmessage-event.dlq
+          contentType: application/json
+          group: chat
+      kafka:
+        binder:
+          consumer-properties:
+            spring.json.trusted.packages: "*"
+            spring.json.type.mapping: org.example.event.chatmessage.ChatMessagePersistEvent:org.example.chatmessage.domain.model.event.ChatMessagePersistEvent
+        bindings:
+          chatRoomEventConsumer-in-0:
+            consumer:
+              reset-offsets: false
+              start-offset: latest
+              ack-mode: record
+          chatMessageEventConsumer-in-0:
+            consumer:
+              reset-offsets: false
+              start-offset: latest
+              ack-mode: record
+          chatRoomDlqEventConsumer-in-0:
+            consumer:
+              reset-offsets: false
+              start-offset: latest
+              ack-mode: record
+          chatMessageDlqEventConsumer-in-0:
+            consumer:
+              reset-offsets: false
+              start-offset: latest
+              ack-mode: record
+
+mysql:
+  username: ${mysql.event.username}
+  password: ${mysql.event.password}
+  db: ${mysql.event.db}
+  write:
+    pool:
+      max-size: 120
+      min-idle: 120
+      connection-timeout: 3500
+
+mongo:
+  user: ${mongo.chat.username}
+  pass: ${mongo.chat.password}
+  db: ${mongo.chat.db}
+  authSource: chat

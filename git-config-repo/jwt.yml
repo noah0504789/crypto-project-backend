@@ -1,0 +1,10 @@
+jwt:
+  key-name: my-authorization-server-jwt
+  key-version: 1
+  issuer-uri: http://crypto-oauth2-authorization-server:9000
+  jwks-uri: http://crypto-spring-cloud-config:8888/.well-known/jwks.json?keyName=${jwt.key-name}
+  sign-uri: http://crypto-spring-cloud-config:8888/sign
+  access-token-expiration-ms: 604800000 # 7200000 (2시간-운영)
+  refresh-token-expiration-ms: 604800000
+  connect-timeout-ms: 2000
+  read-timeout-ms: 3000

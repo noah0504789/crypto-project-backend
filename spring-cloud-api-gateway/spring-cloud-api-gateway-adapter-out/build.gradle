@@ -1,0 +1,15 @@
+plugins {
+    id 'crypto-adapter'
+}
+
+
+dependencies {
+    api project(':spring-cloud-api-gateway:spring-cloud-api-gateway-application')
+    api project(':protobuf')
+
+    api platform(libs.grpc.bom)
+    api(libs.grpc.stub)
+    api(libs.grpc.client.spring.boot.starter)
+    implementation(libs.protobuf.java)
+
+}

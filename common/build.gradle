@@ -1,0 +1,17 @@
+plugins {
+    id 'crypto-common-library'
+}
+
+
+dependencies {
+    api project(':common:common-core')
+    api project(':common:common-data')
+    api project(':common:common-event')
+    api project(':common:common-web')
+    api project(':common:common-grpc')
+    api project(':common:common-id')
+    api project(':common:common-outbox')
+    api project(':common:common-redis')
+    api project(':common:common-util')
+    api project(':common:common-mongo')
+}

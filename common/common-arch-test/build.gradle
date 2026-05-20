@@ -1,0 +1,19 @@
+plugins {
+    id 'crypto-common-library'
+}
+
+dependencies {
+    testImplementation libs.archunit.junit5
+
+    testRuntimeOnly project(':common')
+    testRuntimeOnly project(':chat')
+    testRuntimeOnly project(':websocket-gateway')
+    testRuntimeOnly project(':oauth2-authorization-server')
+    testRuntimeOnly project(':oauth2-client')
+    testRuntimeOnly project(':spring-cloud-api-gateway')
+    testRuntimeOnly project(':spring-cloud-config')
+    testRuntimeOnly project(':user')
+    testRuntimeOnly project(':outbox-poller')
+    testRuntimeOnly project(':market-detection')
+    testRuntimeOnly project(':spring-cloud-eureka-server')
+}

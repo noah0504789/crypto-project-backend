@@ -1,0 +1,10 @@
+POST http://localhost:8080/api/v1/user/sign-up
+Content-Type: application/json
+
+{
+  "email": "noah0504@naver.com",
+  "nickname": "noah",
+  "password": "shdk12"
+}
+
+###

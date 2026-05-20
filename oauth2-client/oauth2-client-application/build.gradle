@@ -1,0 +1,13 @@
+plugins {
+    id 'crypto-application'
+}
+
+
+dependencies {
+    api project(':common:common-core')
+
+    api(libs.spring.boot.starter.oauth2.client)
+    api(libs.spring.boot.starter.web)
+
+    testImplementation(libs.spring.security.test)
+}

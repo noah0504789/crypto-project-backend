@@ -1,0 +1,77 @@
+pluginManagement {
+    includeBuild('build-logic')
+}
+
+rootProject.name = 'crypto-project'
+
+include 'common'
+include 'common:common-core'
+include 'common:common-data'
+include 'common:common-event'
+include 'common:common-web'
+include 'common:common-grpc'
+include 'common:common-id'
+include 'common:common-outbox'
+include 'common:common-redis'
+include 'common:common-util'
+include 'common:common-mongo'
+include 'common:common-test'
+include 'common:common-arch-test'
+
+include 'protobuf'
+
+include 'chat'
+include 'chat:chat-contract'
+include 'chat:chat-domain'
+include 'chat:chat-application'
+include 'chat:chat-adapter-in'
+include 'chat:chat-adapter-out'
+include 'chat:chat-bootstrap'
+
+include 'websocket-gateway'
+include 'websocket-gateway:websocket-gateway-domain'
+include 'websocket-gateway:websocket-gateway-application'
+include 'websocket-gateway:websocket-gateway-adapter-in'
+include 'websocket-gateway:websocket-gateway-adapter-out'
+include 'websocket-gateway:websocket-gateway-bootstrap'
+
+include 'oauth2-authorization-server'
+include 'oauth2-authorization-server:oauth2-authorization-server-application'
+include 'oauth2-authorization-server:oauth2-authorization-server-adapter-in'
+include 'oauth2-authorization-server:oauth2-authorization-server-adapter-out'
+include 'oauth2-authorization-server:oauth2-authorization-server-bootstrap'
+
+include 'oauth2-client'
+include 'oauth2-client:oauth2-client-application'
+include 'oauth2-client:oauth2-client-adapter-in'
+include 'oauth2-client:oauth2-client-adapter-out'
+include 'oauth2-client:oauth2-client-bootstrap'
+
+include 'spring-cloud-api-gateway'
+include 'spring-cloud-api-gateway:spring-cloud-api-gateway-application'
+include 'spring-cloud-api-gateway:spring-cloud-api-gateway-adapter-in'
+include 'spring-cloud-api-gateway:spring-cloud-api-gateway-adapter-out'
+include 'spring-cloud-api-gateway:spring-cloud-api-gateway-bootstrap'
+
+include 'spring-cloud-config'
+include 'spring-cloud-config:spring-cloud-config-domain'
+include 'spring-cloud-config:spring-cloud-config-application'
+include 'spring-cloud-config:spring-cloud-config-adapter-in'
+include 'spring-cloud-config:spring-cloud-config-adapter-out'
+include 'spring-cloud-config:spring-cloud-config-bootstrap'
+
+include 'user'
+include 'user:user-domain'
+include 'user:user-application'
+include 'user:user-adapter-in'
+include 'user:user-adapter-out'
+include 'user:user-bootstrap'
+
+include 'outbox-poller'
+include 'outbox-poller:outbox-poller-application'
+include 'outbox-poller:outbox-poller-adapter-in'
+include 'outbox-poller:outbox-poller-adapter-out'
+include 'outbox-poller:outbox-poller-bootstrap'
+
+include 'market-detection'
+include 'spring-cloud-eureka-server'

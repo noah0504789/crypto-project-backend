@@ -1,0 +1,83 @@
+spring:
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+  main:
+    web-application-type: reactive
+
+  application:
+    name: api-gateway
+
+  config:
+    import: ""
+
+  cloud:
+    config:
+      enabled: false
+      fail-fast: false
+      import-check:
+        enabled: false
+    discovery:
+      enabled: false
+
+eureka:
+  client:
+    enabled: false
+
+jwt:
+  key-name: test-key
+  key-version: 1
+  issuer-uri: http://localhost:9000
+  jwks-uri: http://localhost:9000/oauth2/jwks
+  sign-uri: http://localhost:9000/sign
+  access-token-expiration-ms: 3600000
+  refresh-token-expiration-ms: 604800000
+  connect-timeout-ms: 1000
+  read-timeout-ms: 1000
+
+api-path:
+  actuator-pattern: /actuator/**
+  options-pattern: /**
+  auth:
+    pattern: /auth/**
+    logout: /auth/logout
+  user:
+    pattern: /user/**
+    me: /user/me
+    profile-pattern: /user/*/profile
+  chat:
+    base: /chat/**
+    rooms-popular: /chat/rooms/popular
+    rooms-me: /chat/rooms/me
+    room: /chat/room/*
+    room-me: /chat/room/me/*
+    room-members: /chat/room/*/members
+    room-activity: /chat/room/*/activity
+    room-create: /chat/room
+    room-messages: /chat/room/*/messages
+    pattern: /chat/**
+    room-me-pattern: /chat/room/me/*
+    room-members-pattern: /chat/room/*/members
+    room-activity-pattern: /chat/room/*/activity
+    room-messages-pattern: /chat/room/*/messages
+  oauth2:
+    authorization-base-uri: /oauth2/authorization
+    authorization-pattern: /oauth2/**
+    login-callback-pattern: /login/oauth2/code/**
+    login-callback-base-uri: /login/oauth2/code/*
+    login-failure-redirect-uri: /login?error
+    pattern: /oauth2/**
+  websocket:
+    sock-js-endpoint: /ws
+    native-endpoint: /ws-native
+    prefix: /ws
+    native-path: /ws-native
+    native-pattern: /ws-native/**
+    pattern: /ws/**
+    msg-pattern: /msg/**
+    info-pattern: /ws/info/**
+  stomp:
+    application-destination-prefix: /msg
+    user-destination-prefix: /user
+  route:
+    user-api-version: v1
+    chat-api-version: v1

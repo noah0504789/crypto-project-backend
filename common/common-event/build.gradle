@@ -1,0 +1,11 @@
+plugins {
+    id 'crypto-common-library'
+}
+
+dependencies {
+
+    api project(':common:common-core')
+
+    api 'org.springframework.boot:spring-boot'
+    api(libs.spring.cloud.starter.stream.kafka)
+}

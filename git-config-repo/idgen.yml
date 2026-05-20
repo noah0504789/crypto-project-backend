@@ -1,0 +1,9 @@
+spring:
+  jpa:
+    properties:
+      hibernate.resource.beans.container: spring
+
+idgen:
+  epoch: 2020-01-01T00:00:00Z
+  datacenter-id: ${snowflake.dc-id:0}
+  worker-id: ${spring.cloud.stream.instance-index:0} 

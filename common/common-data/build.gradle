@@ -1,0 +1,7 @@
+plugins {
+    id 'crypto-common-library'
+}
+
+dependencies {
+    api(libs.spring.boot.starter.data.jpa)
+}

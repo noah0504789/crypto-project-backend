@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: chat-service
+
+  config:
+    import: ""
+
+  cloud:
+    config:
+      enabled: false
+      fail-fast: false
+      import-check:
+        enabled: false
+    discovery:
+      enabled: false
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+    mongodb:
+      uri: mongodb://localhost:27017/test
+
+eureka:
+  client:
+    enabled: false

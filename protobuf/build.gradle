@@ -1,0 +1,64 @@
+buildscript {
+    ext {
+        protobufPluginVersion = '0.9.4'
+        protobufVersion = '3.25.3'
+        grpcVersion = '1.64.0'
+    }
+}
+
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'com.google.protobuf' version "${protobufPluginVersion}"
+}
+
+group = 'org.example'
+version = '1.0.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+//    querydsl.extendsFrom compileClasspath
+}
+
+dependencies {
+    compileOnly         'org.apache.tomcat:annotations-api:6.0.53'
+
+    implementation(platform(libs.grpc.bom))
+    implementation(libs.grpc.protobuf)
+    implementation(libs.grpc.stub)
+
+    testImplementation platform('org.junit:junit-bom:5.9.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+protobuf {
+    protoc {artifact = "com.google.protobuf:protoc:${protobufVersion}"}
+    plugins {grpc {artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}"}}
+    generateProtoTasks {all()*.plugins { grpc {} }}
+}
+
+publishing {
+    publications {
+        create('chatmessageV1Stubs', MavenPublication) {
+            from components.java
+            artifactId = 'protos'
+        }
+    }
+    repositories {
+        mavenLocal()
+    }
+}
+
+test {
+    useJUnitPlatform()
+}

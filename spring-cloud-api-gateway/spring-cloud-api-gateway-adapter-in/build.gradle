@@ -1,0 +1,24 @@
+plugins {
+    id 'crypto-adapter'
+}
+
+
+dependencies {
+    api project(':common:common-core')
+    api project(':common:common-web')
+    api project(':spring-cloud-api-gateway:spring-cloud-api-gateway-application')
+
+    api(libs.spring.boot.starter.webflux)
+    api(libs.spring.boot.starter.security)
+    api(libs.spring.security.oauth2.jose)
+    api(libs.spring.security.oauth2.resource.server)
+    api(libs.spring.cloud.gateway)
+    api(libs.spring.cloud.loadbalancer)
+    api platform(libs.grpc.bom)
+    api(libs.grpc.netty)
+
+    testImplementation project(':spring-cloud-api-gateway:spring-cloud-api-gateway-adapter-out')
+    testImplementation project(':protobuf')
+    testImplementation(libs.spring.security.test)
+    testImplementation(libs.reactor.test)
+}

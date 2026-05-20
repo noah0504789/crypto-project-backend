@@ -1,0 +1,26 @@
+spring:
+  data:
+    redis:
+      connect-timeout: 3s
+      timeout: 3s
+      cluster:
+        nodes:
+          - redis-0:7100
+          - redis-1:7101
+          - redis-2:7102
+          - redis-3:7103
+          - redis-4:7104
+          - redis-5:7105
+        max-redirects: 3
+
+app:
+  redis:
+    socket:
+      keep-alive: true
+    cluster:
+      refresh:
+        adaptive: true
+        dynamic-refresh-sources: false
+        period: 60s
+    connection:
+      validate: false

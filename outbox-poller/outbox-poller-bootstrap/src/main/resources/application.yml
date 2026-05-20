@@ -1,0 +1,7 @@
+spring:
+  application.name: outbox-poller
+  config.import: configserver:http://crypto-spring-cloud-config:8888
+  cloud:
+    config:
+      name: outbox-poller,eureka-client,monitoring,mysql,kafka
+      label: main

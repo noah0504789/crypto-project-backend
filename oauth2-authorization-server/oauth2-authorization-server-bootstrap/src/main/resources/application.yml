@@ -1,0 +1,7 @@
+spring:
+  application.name: oauth2-authorization-server
+  config.import: configserver:http://crypto-spring-cloud-config:8888
+  cloud:
+    config:
+      name: oauth2-authorization-server,eureka-client,jwt,redis
+      label: main

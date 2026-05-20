@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: user-service
+
+  config:
+    import: ""
+
+  cloud:
+    config:
+      enabled: false
+      fail-fast: false
+      import-check:
+        enabled: false
+    discovery:
+      enabled: false
+
+  test:
+    database:
+      replace: none
+
+eureka:
+  client:
+    enabled: false

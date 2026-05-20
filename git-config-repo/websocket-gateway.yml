@@ -1,0 +1,68 @@
+server:
+  port: 8100
+
+grpc:
+  client:
+    chat-client:
+      address: discovery:///chat-service
+      negotiation-type: plaintext
+      max-inbound-message-size:
+        bytes: 16777216 # 16MB
+#      enable-keep-alive: true
+#      keep-alive-time:
+#        seconds: 30
+  server:
+    enabled: false
+
+api-path:
+  websocket:
+    sock-js-endpoint: /ws
+    native-endpoint: /ws-native
+  stomp:
+    application-destination-prefix: /msg
+    user-destination-prefix: /user
+
+spring:
+  cloud:
+    function:
+      definition: chatRoomBroadcastEventConsumer;chatMessageBroadcastEventConsumer;webNotificationEventConsumer
+    stream:
+      bindings:
+        chatRoomBroadcastEventConsumer-in-0:
+          destination: chatroom-broadcast-event
+          contentType: application/json
+          group: chat-broadcast-${spring.cloud.stream.instance-index}
+          consumer:
+            concurrency: 2
+        chatMessageBroadcastEventConsumer-in-0:
+          destination: chatmessage-broadcast-event
+          contentType: application/json
+          group: chat-broadcast-${spring.cloud.stream.instance-index}
+          consumer:
+            concurrency: 2
+        webNotificationEventConsumer-in-0:
+          destination: notification-broadcast-event
+          contentType: application/json
+          group: notification-broadcast-${spring.cloud.stream.instance-index}
+          consumer:
+            concurrency: 2
+      kafka:
+        binder:
+          consumer-properties:
+            spring.json.trusted.packages: "org.example.contract.chatroom,org.example.contract.chatmessage,org.example.common.event.notification"
+        bindings:
+          chatRoomBroadcastEventConsumer-in-0:
+            consumer:
+              reset-offsets: false
+              start-offset: latest
+              ack-mode: record
+          chatMessageBroadcastEventConsumer-in-0:
+            consumer:
+              reset-offsets: false
+              start-offset: latest
+              ack-mode: record
+          webNotificationEventConsumer-in-0:
+            consumer:
+              reset-offsets: false
+              start-offset: latest
+              ack-mode: record

@@ -1,0 +1,12 @@
+plugins {
+    id 'crypto-common-library'
+}
+
+dependencies {
+    api(libs.spring.boot.starter.test)
+    api(libs.testcontainers)
+    api(libs.testcontainers.junit.jupiter)
+    api(libs.testcontainers.kafka)
+    api(libs.testcontainers.mongodb)
+    api(libs.testcontainers.mysql)
+}

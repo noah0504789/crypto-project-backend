@@ -1,0 +1,13 @@
+plugins {
+    id 'crypto-domain'
+}
+
+
+dependencies {
+    api project(':common:common-core')
+    api project(':common:common-data')
+    api project(':common:common-id')
+
+    api libs.spring.boot.starter.data.jpa
+
+}

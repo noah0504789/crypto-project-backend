@@ -1,0 +1,16 @@
+plugins {
+    id 'crypto-adapter'
+}
+
+
+dependencies {
+    api project(':common:common-core')
+    api project(':common:common-outbox')
+
+    runtimeOnly libs.mysql.connector.j
+
+    api libs.spring.boot.starter.data.jpa
+    api libs.spring.cloud.starter.stream.kafka
+    api libs.spring.cloud.stream.binder.kafka
+
+}

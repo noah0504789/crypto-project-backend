@@ -1,0 +1,74 @@
+package org.example.chatroom.application.service;
+
+import lombok.RequiredArgsConstructor;
+import org.example.chatroom.application.port.out.ChatRoomCachePort;
+import org.example.chatroom.application.port.out.ChatRoomPersistencePort;
+import org.example.chatroom.domain.model.ChatRoom;
+import org.example.chatroom.domain.model.event.dlq.*;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class ChatRoomDlqService implements org.example.chatroom.domain.port.ChatRoomDlqHandler {
+
+    private final ChatRoomPersistencePort persistence;
+    private final ChatRoomCachePort cache;
+
+    // TODO: DLQ 실패 정책 (로그 + 알림)
+
+    @Transactional("chatMongoTransactionManager")
+    public void handle(ChatRoomPersistedDlqEvent event) {
+        ChatRoom domain = ChatRoom.fromPayload(event.getPayload());
+
+        persistence.save(domain);
+    }
+
+    @Transactional("chatMongoTransactionManager")
+    public void handle(ChatRoomUpdatedDlqEvent event) {
+        persistence.updateAndReturn(event.getId(), event.getUpdated());
+    }
+
+    @Transactional("chatMongoTransactionManager")
+    public void handle(ChatRoomDeletedDlqEvent event) {
+        persistence.deleteById(event.getId());
+    }
+
+    @Transactional("chatMongoTransactionManager")
+    public void handle(ChatRoomJoinedDlqEvent event) {
+        persistence.join(event.getId(), event.getMemberId());
+    }
+
+    @Transactional("chatMongoTransactionManager")
+    public void handle(ChatRoomLeavedDlqEvent event) {
+        persistence.leave(event.getId(), event.getMemberId());
+    }
+
+    @Transactional("chatMongoTransactionManager")
+    public void handle(ChatRoomActiveDlqEvent event) {
+        persistence.active(event.getId(), event.getMemberId(), event.getLastMsgSeq(), event.getLastMsgMs());
+    }
+
+    public void handle(ChatRoomCacheSaveDlqEvent event) {
+        String id = event.getId();
+        persistence.findByIdWithLatest(id).ifPresent(cache::warmUp);
+    }
+
+    public void handle(ChatRoomCacheUpdateDlqEvent event) {
+        String id = event.getId();
+        String oldTitle = event.getOldTitle();
+        persistence.findByIdWithLatest(id).ifPresent(chatRoom -> cache.recoverUpdate(chatRoom, oldTitle));
+    }
+
+    public void handle(ChatRoomCacheDeleteDlqEvent event) {
+        cache.delete(event.getId(), event.getCategory(), event.getTitle(), event.getMemberIds());
+    }
+
+    public void handle(ChatRoomCacheActivityInvalidateDlqEvent event) {
+        cache.invalidateActivity(event.getId(), event.getMemberId());
+    }
+
+    public void handle(ChatRoomCacheInfoInvalidateDlqEvent event) {
+        cache.invalidateInfo(event.getId());
+    }
+}

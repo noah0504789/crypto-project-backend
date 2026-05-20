@@ -1,0 +1,11 @@
+.gradle/
+build/
+bin/
+out/
+.idea/
+.junie/
+*.class
+*.log
+*.lock
+.DS_Store
+property*/

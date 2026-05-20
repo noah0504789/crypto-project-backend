@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package token.v1;
+
+option java_package = "org.example.grpc.token";
+option java_multiple_files = true;
+option java_outer_classname = "TokenProto";
+
+import "google/protobuf/wrappers.proto"; // StringValue, BoolValue
+
+message FindAccessTokenGrpcRequest {
+  string clientRegistrationId = 1;
+  string username = 2;
+}
+
+message FindRefreshTokenGrpcRequest {
+  string clientRegistrationId = 1;
+  string username = 2;
+}
+
+message RegisterBlacklistTokenGrpcRequest {
+  string accessToken = 1;
+}
+
+message ExistsBlacklistTokenGrpcRequest {
+  string accessToken = 1;
+}
+
+message SaveAuthorizedClientRequest {
+  string clientRegistrationId   = 1;
+  string email                  = 2;
+  map<string,string> claims = 3;
+  string accessToken            = 4;
+  string refreshToken           = 5;
+}
+
+message RemoveAuthorizedClientRequest {
+  string email                  = 1;
+}
+
+service AccessTokenService {
+  rpc findValue(FindAccessTokenGrpcRequest) returns (google.protobuf.StringValue);
+}
+
+service RefreshTokenService {
+  rpc findValue(FindRefreshTokenGrpcRequest) returns (google.protobuf.StringValue);
+}
+
+service BlacklistTokenService {
+  rpc register(RegisterBlacklistTokenGrpcRequest) returns (google.protobuf.BoolValue);
+  rpc exists(ExistsBlacklistTokenGrpcRequest) returns (google.protobuf.BoolValue);
+}
+
+service AuthorizedClientService {
+  rpc save(SaveAuthorizedClientRequest) returns (google.protobuf.BoolValue);
+  rpc remove(RemoveAuthorizedClientRequest) returns (google.protobuf.BoolValue);
+}

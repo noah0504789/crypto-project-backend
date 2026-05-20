@@ -1,0 +1,15 @@
+plugins {
+    id 'crypto-common-library'
+}
+
+
+dependencies {
+
+    implementation project(':common')
+    implementation project(':oauth2-client:oauth2-client-application')
+    implementation project(':oauth2-client:oauth2-client-adapter-in')
+    implementation project(':oauth2-client:oauth2-client-adapter-out')
+    implementation project(':oauth2-client:oauth2-client-bootstrap')
+    implementation project(':protobuf')
+
+}

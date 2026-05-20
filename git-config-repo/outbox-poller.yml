@@ -1,0 +1,54 @@
+server:
+  port: 9200
+
+api-path:
+  dlq-poller:
+    base: /dlq-poller
+    start: /start
+    stop: /stop
+
+spring:
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:sql/schema.sql
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+    defer-datasource-initialization: true
+    open-in-view: false
+  data:
+    jpa:
+      repositories:
+        bootstrap-mode: deferred
+  cloud:
+    stream:
+      default-binder: kafka
+#      kafka:
+#        binder:
+#          transaction:
+#            transaction-id-prefix: tx-outbox-poller-${spring.cloud.stream.instance-index}-
+
+poller:
+  outbox:
+    general:
+      enabled: true
+      fixed-delay-ms: 2500
+      batch-size: 1000
+      max-retry-cnt: 3
+    broadcast:
+      enabled: true
+      fixed-delay-ms: 100
+      batch-size: 1000
+      max-retry-cnt: 3
+  dlq:
+    enabled: true
+    fixed-delay-ms: 10000
+    batch-size: 100
+
+mysql:
+  username: ${mysql.event.username}
+  password: ${mysql.event.password}
+  db: ${mysql.event.db}

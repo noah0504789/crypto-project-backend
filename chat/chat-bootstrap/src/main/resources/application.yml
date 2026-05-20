@@ -1,0 +1,8 @@
+spring:
+  application.name: chat-service
+  config.import: configserver:http://crypto-spring-cloud-config:8888
+  cloud:
+    config:
+      name: chat-service,eureka-client,monitoring,mysql,mongo,redis,kafka
+      label: main
+    stream.instance-index: ${SPRING_CLOUD_STREAM_INSTANCE_INDEX}

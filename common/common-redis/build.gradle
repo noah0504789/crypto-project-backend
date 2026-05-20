@@ -1,0 +1,10 @@
+plugins {
+    id 'crypto-common-library'
+}
+
+dependencies {
+    api project(':common:common-core')
+
+    api(libs.spring.boot.starter.data.redis)
+    api(libs.redisson.spring.boot.starter)
+}

@@ -1,0 +1,33 @@
+spring:
+  cloud:
+    stream:
+      default:
+        consumer:
+          use-native-decoding: true
+        producer:
+          use-native-encoding: true
+      kafka:
+        binder:
+          brokers: kafka-0:9092,kafka-1:9092
+          auto-create-topics: true
+          replication-factor: -1
+          health-timeout: 60
+          producer-properties:
+            enable.idempotence: true
+            acks: all
+            retries: 2147483647
+            max.in.flight.requests.per.connection: 5
+            linger.ms: 50
+            compression.type: lz4
+            batch.size: 262144 #256KB
+            buffer.memory: 67108864 # 64MB
+            request.timeout.ms: 30000
+            delivery.timeout.ms: 120000
+            retry.backoff.ms: 100
+            key.serializer: org.apache.kafka.common.serialization.StringSerializer
+            value.serializer: org.apache.kafka.common.serialization.StringSerializer
+          consumer-properties:
+            heartbeat.interval.ms: 3000
+            session.timeout.ms: 15000
+            isolation.level: read_committed
+            value.deserializer: org.springframework.kafka.support.serializer.JsonDeserializer

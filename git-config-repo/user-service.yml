@@ -1,0 +1,46 @@
+server:
+  port: 8090
+  version: v1
+  servlet:
+    context-path: /api/${server.version}
+    encoding:
+      charset: UTF-8
+      force: true
+
+grpc:
+  server:
+    port: 18090
+
+api-path:
+  user:
+    base: /user
+    sign-up: /sign-up
+    me: /me
+    profile: /{publicId}/profile
+
+spring:
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:sql/schema.sql
+  jpa:
+#    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+    defer-datasource-initialization: true
+    open-in-view: false
+  data:
+    jpa:
+      repositories:
+        bootstrap-mode: deferred
+
+mysql:
+  username: ${mysql.user.username} # user
+  password: ${mysql.user.password} # userpass
+  db: ${mysql.user.db} # user
+
+#logging:
+#  level:
+#    org.springframework.security: debug

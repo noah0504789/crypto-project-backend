@@ -1,0 +1,59 @@
+spring:
+  application:
+    name: oauth2-client
+
+  config:
+    import: ""
+
+  cloud:
+    config:
+      enabled: false
+      fail-fast: false
+      import-check:
+        enabled: false
+    discovery:
+      enabled: false
+
+eureka:
+  client:
+    enabled: false
+
+jwt:
+  key-name: test-key
+  key-version: 1
+  issuer-uri: http://localhost:9000
+  jwks-uri: http://localhost:9000/oauth2/jwks
+  sign-uri: http://localhost:9000/sign
+  access-token-expiration-ms: 3600000
+  refresh-token-expiration-ms: 604800000
+  connect-timeout-ms: 1000
+  read-timeout-ms: 1000
+
+google:
+  client-id: test-google-client-id
+  client-secret: test-google-client-secret
+
+kakao:
+  client-id: test-kakao-client-id
+  client-secret: test-kakao-client-secret
+
+my:
+  client-id: test-my-client-id
+  client-secret: test-my-client-secret
+
+oauth2:
+  internal-auth-server:
+    client-registration-id: my-authorization-server
+
+api-path:
+  auth:
+    pattern: /auth/**
+    logout: /auth/logout
+    refresh: /auth/refresh
+  oauth2:
+    authorization-base-uri: /oauth2/authorization
+    authorization-pattern: /oauth2/**
+    login-callback-pattern: /login/oauth2/code/**
+    login-callback-base-uri: /login/oauth2/code/*
+    login-failure-redirect-uri: http://localhost/login-failure
+    pattern: /oauth2/**

@@ -1,0 +1,47 @@
+server.port: 0
+
+spring:
+  cloud:
+    function:
+      definition: upbitTickerEventSupplier;upbitTickerWatcherEventConsumer
+    stream:
+      bindings:
+        upbitTickerEventSupplier-out-0:
+          destination: upbit-ticker-event
+          content-type: application/json
+          producer:
+            poller:
+              fixed-delay:
+                nanos: 500_000_000 # 0.5s
+        upbitTickerWatcherEventConsumer-in-0:
+          destination: upbit-ticker-event
+          content-type: application/json
+          group: upbit-ticker-watcher
+        web-notification-event-out:
+          destination: web-notification-event
+          content-type: application/json
+      kafka:
+        binder:
+          transaction:
+            transaction-id-prefix: tx-price-watcher-${spring.cloud.stream.instance-index}
+
+upbit:
+  websocket:
+    url: wss://api.upbit.com/websocket/v1
+    ticket: test
+    subscribe-codes:
+      - KRW-BTC
+    ticker-publish-interval: 3s
+    ticker-queue-capacity: 100
+
+  ticker:
+    alert:
+      window-minutes: 3
+      threshold-rate: 0.05
+
+  store:
+    ticker:
+      name: upbit-ticker-store
+      retention: 3m
+      window-size: 3m
+      retain-duplicates: false

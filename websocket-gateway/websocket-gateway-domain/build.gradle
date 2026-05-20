@@ -1,0 +1,11 @@
+plugins {
+    id 'crypto-domain'
+}
+
+
+dependencies {
+    api project(':common:common-core')
+
+    api(libs.spring.boot.starter.validation)
+
+}

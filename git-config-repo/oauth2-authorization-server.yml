@@ -1,0 +1,28 @@
+server:
+  port: 9000
+  # TODO: tsl
+
+grpc:
+  client:
+    user-client:
+      address: discovery:///user-service
+      negotiation-type: plaintext
+      max-inbound-message-size:
+        bytes: 16777216 # 16MB
+  server:
+    port: 19000
+
+oauth2:
+  registered-client:
+    id: ${my.client-id}
+    secret: ${my.client-secret}
+    registration-id: ${my.client-registration-id}
+
+mysql:
+  username: ${mysql.user.username} # user
+  password: ${mysql.user.password} # userpass
+  db: ${mysql.user.db} # user
+
+#logging:
+#  level:
+#    org.springframework.security: debug

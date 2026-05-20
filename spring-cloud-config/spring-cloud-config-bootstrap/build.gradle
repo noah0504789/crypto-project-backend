@@ -1,0 +1,19 @@
+plugins {
+    id 'crypto-bootstrap'
+}
+
+
+dependencies {
+
+    implementation project(':common')
+    implementation project(':spring-cloud-config:spring-cloud-config-domain')
+    implementation project(':spring-cloud-config:spring-cloud-config-application')
+    implementation project(':spring-cloud-config:spring-cloud-config-adapter-in')
+    implementation project(':spring-cloud-config:spring-cloud-config-adapter-out')
+
+    implementation(libs.spring.boot.starter.web)
+    implementation(libs.spring.security.oauth2.jose)
+    implementation(libs.spring.cloud.config.server)
+    implementation(libs.spring.vault.core)
+
+}

@@ -1,0 +1,15 @@
+plugins {
+    id 'crypto-common-library'
+}
+
+
+dependencies {
+
+    implementation project(':common')
+    implementation project(':spring-cloud-config:spring-cloud-config-domain')
+    implementation project(':spring-cloud-config:spring-cloud-config-application')
+    implementation project(':spring-cloud-config:spring-cloud-config-adapter-in')
+    implementation project(':spring-cloud-config:spring-cloud-config-adapter-out')
+    implementation project(':spring-cloud-config:spring-cloud-config-bootstrap')
+
+}

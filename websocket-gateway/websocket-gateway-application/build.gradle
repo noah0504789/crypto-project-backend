@@ -1,0 +1,16 @@
+plugins {
+    id 'crypto-application'
+}
+
+
+dependencies {
+    api project(':common:common-core')
+    api project(':websocket-gateway:websocket-gateway-domain')
+    api project(':protobuf')
+
+    api platform(libs.grpc.bom)
+    api(libs.grpc.stub)
+    api(libs.spring.boot.starter.websocket)
+    implementation(libs.caffeine)
+
+}

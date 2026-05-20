@@ -1,0 +1,15 @@
+plugins {
+    id 'crypto-common-library'
+}
+
+
+dependencies {
+
+    implementation project(':common')
+    implementation project(':common:common-outbox')
+    implementation project(':outbox-poller:outbox-poller-application')
+    implementation project(':outbox-poller:outbox-poller-adapter-in')
+    implementation project(':outbox-poller:outbox-poller-adapter-out')
+    implementation project(':outbox-poller:outbox-poller-bootstrap')
+
+}

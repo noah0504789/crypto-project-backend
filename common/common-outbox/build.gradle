@@ -1,0 +1,11 @@
+plugins {
+    id 'crypto-common-library'
+}
+
+dependencies {
+    api project(':common:common-data')
+    api project(':common:common-event')
+    api project(':common:common-util')
+
+    api 'com.fasterxml.jackson.core:jackson-databind'
+}

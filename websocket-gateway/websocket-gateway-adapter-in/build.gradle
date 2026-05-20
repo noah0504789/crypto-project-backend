@@ -1,0 +1,24 @@
+plugins {
+    id 'crypto-adapter'
+}
+
+
+dependencies {
+    api project(':common:common-core')
+    api project(':common:common-event')
+    api project(':common:common-web')
+    api project(':websocket-gateway:websocket-gateway-application')
+    api project(':websocket-gateway:websocket-gateway-domain')
+    api project(':chat:chat-contract')
+    api project(':protobuf')
+
+    api platform(libs.grpc.bom)
+    api(libs.grpc.stub)
+    api(libs.spring.boot.starter.websocket)
+    api(libs.spring.boot.starter.actuator)
+    api(libs.spring.cloud.stream.binder.kafka)
+    implementation(libs.micrometer.registry.prometheus)
+    implementation(libs.protobuf.java)
+    implementation 'org.mongodb:bson:5.1.0'
+
+}

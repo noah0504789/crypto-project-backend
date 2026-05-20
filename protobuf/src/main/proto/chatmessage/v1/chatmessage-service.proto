@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package chatmessage.v1;
+
+option java_package = "org.example.grpc.chatmessage";
+option java_multiple_files = true;
+option java_outer_classname = "ChatMessageProto";
+
+message ChatMessageGrpcRequest {
+  string clientMessageId = 1;
+  string messageId = 2;
+  string roomId = 3;
+  string writerId = 4;
+  string content = 5;
+}
+
+message ChatMessageGrpcResponse {
+  bool success = 1;
+  string id = 2;
+  int64 ts = 3;
+}
+
+message ChatMessageHardDeleteGrpcRequest {
+  string messageId = 1;
+  string roomId = 2;
+  string reason = 3;
+}
+
+message ChatMessageHardDeleteGrpcResponse {
+  bool success = 1;
+  string messageId = 2;
+  bool deleted = 3;
+  bool alreadyDeleted = 4;
+  bool notFound = 5;
+}
+
+service ChatMessageService {
+  rpc save(ChatMessageGrpcRequest) returns (ChatMessageGrpcResponse);
+  rpc HardDelete(ChatMessageHardDeleteGrpcRequest) returns (ChatMessageHardDeleteGrpcResponse);
+}

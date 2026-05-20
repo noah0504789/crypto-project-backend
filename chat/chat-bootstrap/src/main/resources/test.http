@@ -1,0 +1,51 @@
+POST http://localhost:8080/api/v1/chat/room
+Content-Type: application/json
+
+{
+  "hostId": "c00fe5c9-4f90-440a-a891-b5d56d7d28fc",
+  "title": "[DOGE] 투자방",
+  "description": "DOGE 가즈아",
+  "category": "CRYPTO_CURRENCY"
+}
+
+###
+
+PATCH http://localhost:8080/chat/room
+Content-Type: application/json
+
+{
+  "id": "689b446a7bbd93200400ae31",
+  "hostId": "4",
+  "title": "수정",
+  "description": "수정",
+  "category": "CRYPTO_CURRENCY"
+}
+
+###
+
+POST http://localhost:8080/chat/room/689b446a7bbd93200400ae31/member
+Content-Type: application/json
+
+"2"
+
+###
+
+DELETE http://localhost:8080/api/v1/chat/room/68e50bc6a78a9758082abf56
+
+###
+
+DELETE http://localhost:8080/chat/room/68e509508c7a6015123a7928
+
+###
+
+GET http://localhost/chat/room/6836d5606dc5ff0768911349
+
+###
+
+GET http://localhost/chat/room/category/CRYPTO_CURRENCY?page=0&size=5
+
+###
+
+GET http://localhost:8080/test/redis-cluster
+
+###

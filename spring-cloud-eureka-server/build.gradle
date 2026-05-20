@@ -1,0 +1,11 @@
+plugins {
+    id 'crypto-bootstrap'
+}
+
+
+dependencies {
+
+    implementation project(':common')
+    implementation(libs.spring.cloud.config.client)
+    implementation(libs.spring.cloud.eureka.server)
+}

@@ -1,0 +1,11 @@
+plugins {
+    id 'crypto-application'
+}
+
+
+dependencies {
+    api project(':spring-cloud-config:spring-cloud-config-domain')
+
+    api(libs.spring.security.oauth2.jose)
+
+}
