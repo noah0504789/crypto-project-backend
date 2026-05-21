@@ -1,15 +1,13 @@
 plugins {
-    id 'crypto-adapter'
+    id 'crypto-common-library'
 }
 
-
 dependencies {
-    api project(':oauth2-client:oauth2-client-application')
-    api project(':user:user-client')
+    api project(':user:user-contract')
+    api project(':protobuf')
 
     api platform(libs.grpc.bom)
     api(libs.grpc.stub)
     api(libs.grpc.client.spring.boot.starter)
     implementation(libs.protobuf.java)
-
 }

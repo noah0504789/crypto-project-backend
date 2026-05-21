@@ -177,6 +177,7 @@ class ModuleArchitectureTest {
                     .filter(target -> !target.isCommonProject())
                     .filter(target -> !target.isProtobufProject())
                     .filter(target -> !target.isContract())
+                    .filter(target -> !target.isClient())
                     .filter(target -> !(target.serviceName().equals(module.serviceName()) && (target.isApplication() || target.isDomain())))
                     .forEach(target -> failures.add(from + " must only depend on common/protobuf/own-application/own-domain/contract modules, but depends on " + target.path()));
         });
@@ -222,6 +223,7 @@ class ModuleArchitectureTest {
                     .filter(Objects::nonNull)
                     .filter(target -> target.isServiceProject() && !target.serviceName().equals(module.serviceName()))
                     .filter(target -> !target.isContract())
+                    .filter(target -> !target.isClient())
                     .forEach(target -> failures.add(from + " must not depend on other service implementation module " + target.path()));
         });
 
@@ -439,6 +441,10 @@ class ModuleArchitectureTest {
 
         boolean isContract() {
             return leafName().endsWith("-contract");
+        }
+
+        boolean isClient() {
+            return leafName().endsWith("-client");
         }
 
         private String leafName() {

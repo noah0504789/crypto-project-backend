@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.oauth2.CustomOidcUser;
 import org.example.user.UserCommandService;
 import org.example.user.UserQueryService;
-import org.example.user.UserResponse;
+import org.example.contract.user.UserResponse;
 import org.example.user.UserRoleAuthorityMapper;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;

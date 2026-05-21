@@ -1,6 +1,7 @@
 package org.example.user;
 
 import lombok.RequiredArgsConstructor;
+import org.example.contract.user.UserResponse;
 import org.springframework.stereotype.Service;
 
 @Service

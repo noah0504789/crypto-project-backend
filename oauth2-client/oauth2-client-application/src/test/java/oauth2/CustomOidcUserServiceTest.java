@@ -11,7 +11,7 @@ import org.example.oauth2.CustomOidcUser;
 import org.example.oauth2.service.CustomOidcUserService;
 import org.example.user.UserCommandService;
 import org.example.user.UserQueryService;
-import org.example.user.UserResponse;
+import org.example.contract.user.UserResponse;
 import org.example.user.UserRoleAuthorityMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

@@ -7,7 +7,7 @@ dependencies {
     api project(':common:common-core')
     api project(':common:common-redis')
     api project(':oauth2-authorization-server:oauth2-authorization-server-application')
-    api project(':protobuf')
+    api project(':user:user-client')
 
     api platform(libs.grpc.bom)
     api(libs.grpc.stub)

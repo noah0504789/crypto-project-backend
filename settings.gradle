@@ -61,6 +61,8 @@ include 'spring-cloud-config:spring-cloud-config-adapter-out'
 include 'spring-cloud-config:spring-cloud-config-bootstrap'
 
 include 'user'
+include 'user:user-contract'
+include 'user:user-client'
 include 'user:user-domain'
 include 'user:user-application'
 include 'user:user-adapter-in'

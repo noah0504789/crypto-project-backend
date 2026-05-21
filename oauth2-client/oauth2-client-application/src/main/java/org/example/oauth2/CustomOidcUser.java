@@ -1,6 +1,6 @@
 package org.example.oauth2;
 
-import org.example.user.UserResponse;
+import org.example.contract.user.UserResponse;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
@@ -74,7 +74,12 @@ public record CustomOidcUser(
 
     private static Map<String, Object> mergeAttributes(OidcUser delegate, UserResponse userResponse, String clientRegistrationId) {
         Map<String, Object> merged = new HashMap<>(delegate.getAttributes());
-        merged.putAll(userResponse.getAttributes(clientRegistrationId));
+        merged.put("id", userResponse.id());
+        merged.put("sub", userResponse.sub());
+        merged.put("email", userResponse.email());
+        merged.put("nickname", userResponse.nickname());
+        merged.put("clientRegistrationId", clientRegistrationId);
+        merged.put("createdAt", userResponse.createdAt());
 
         return Map.copyOf(merged);
     }
