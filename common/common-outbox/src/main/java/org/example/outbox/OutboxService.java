@@ -8,6 +8,7 @@ import org.example.outbox.properties.OutboxPollerProperties;
 import org.example.outbox.domain.Outbox;
 import org.example.outbox.domain.OutboxDispatchType;
 import org.example.outbox.domain.OutboxStatus;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,18 +21,29 @@ import java.util.List;
 public class OutboxService {
 
     private final OutboxRepository outboxRepository;
-    private final EventPublisherPort outboxPublisher;
-    private final OutboxPollerProperties outboxPollerProperties;
+    private final ObjectProvider<EventPublisherPort> outboxPublisherProvider;
+    private final ObjectProvider<OutboxPollerProperties> outboxPollerPropertiesProvider;
+
+    @Transactional("transactionManager")
+    public void save(Outbox outbox) {
+        outboxRepository.save(outbox);
+    }
+
+    @Transactional("transactionManager")
+    public void saveAll(List<Outbox> outboxes) {
+        outboxRepository.saveAll(outboxes);
+    }
 
     @Transactional("transactionManager")
     public void publishPending(OutboxDispatchType dispatchType) {
-        OutboxPollerProperties.Item props = outboxPollerProperties.get(dispatchType);
+        EventPublisherPort publisher = outboxPublisherProvider.getObject();
+        OutboxPollerProperties.Item props = outboxPollerPropertiesProvider.getObject().get(dispatchType);
 
         List<Outbox> pendings = outboxRepository.findByDispatchTypeAndStatusOrderByCreatedAtAsc(dispatchType, OutboxStatus.PENDING, PageRequest.of(0, props.batchSize()));
 
         for (Outbox outbox : pendings) {
             try {
-                outboxPublisher.publish(outbox);
+                publisher.publish(outbox);
                 outbox.markPublished();
             } catch (Exception e) {
                 outbox.increaseRetryCnt();

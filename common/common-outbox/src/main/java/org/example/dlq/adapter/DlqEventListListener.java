@@ -7,7 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.dlq.AbstractDlqEvent;
 import org.example.dlq.AbstractDlqEventList;
 import org.example.dlq.Dlq;
-import org.example.dlq.application.DlqService;
+import org.example.dlq.DlqService;
 import org.springframework.context.event.EventListener;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;

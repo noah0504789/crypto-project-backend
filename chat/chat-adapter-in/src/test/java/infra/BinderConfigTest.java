@@ -7,7 +7,7 @@ import org.example.chatroom.application.service.ChatRoomDlqService;
 import org.example.chatroom.application.service.ChatRoomEventService;
 import org.example.common.event.HandleableEvent;
 import org.example.common.event.RecoverableEvent;
-import org.example.dlq.application.DlqService;
+import org.example.dlq.DlqService;
 import org.example.infra.config.BinderConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

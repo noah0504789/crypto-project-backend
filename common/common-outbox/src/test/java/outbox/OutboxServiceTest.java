@@ -8,13 +8,14 @@ import org.example.outbox.domain.Outbox;
 import org.example.outbox.domain.OutboxDispatchType;
 import org.example.outbox.domain.OutboxDomainType;
 import org.example.outbox.domain.OutboxStatus;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
@@ -30,13 +31,52 @@ class OutboxServiceTest {
     private OutboxRepository outboxRepository;
 
     @Mock
+    private ObjectProvider<EventPublisherPort> outboxPublisherProvider;
+
+    @Mock
     private EventPublisherPort outboxPublisher;
+
+    @Mock
+    private ObjectProvider<OutboxPollerProperties> outboxPollerPropertiesProvider;
 
     @Mock
     private OutboxPollerProperties outboxPollerProperties;
 
-    @InjectMocks
     private OutboxService sut;
+
+    @BeforeEach
+    void setUp() {
+        sut = new OutboxService(outboxRepository, outboxPublisherProvider, outboxPollerPropertiesProvider);
+    }
+
+    @Test
+    @DisplayName("outbox 단건을 저장한다")
+    void save_delegatesToRepository() {
+        // given
+        Outbox outbox = createOutbox("outbox-1", OutboxDispatchType.GENERAL);
+
+        // when
+        sut.save(outbox);
+
+        // then
+        verify(outboxRepository).save(outbox);
+    }
+
+    @Test
+    @DisplayName("outbox 목록을 저장한다")
+    void saveAll_delegatesToRepository() {
+        // given
+        List<Outbox> outboxes = List.of(
+                createOutbox("outbox-1", OutboxDispatchType.GENERAL),
+                createOutbox("outbox-2", OutboxDispatchType.BROADCAST)
+        );
+
+        // when
+        sut.saveAll(outboxes);
+
+        // then
+        verify(outboxRepository).saveAll(outboxes);
+    }
 
     @Test
     @DisplayName("dispatchType에 맞는 PENDING outbox를 batchSize만큼 조회한다")
@@ -47,6 +87,10 @@ class OutboxServiceTest {
 
         when(outboxPollerProperties.get(OutboxDispatchType.GENERAL))
                 .thenReturn(props);
+        when(outboxPollerPropertiesProvider.getObject())
+                .thenReturn(outboxPollerProperties);
+        when(outboxPublisherProvider.getObject())
+                .thenReturn(outboxPublisher);
 
         when(outboxRepository.findByDispatchTypeAndStatusOrderByCreatedAtAsc(
                 eq(OutboxDispatchType.GENERAL),
@@ -82,6 +126,10 @@ class OutboxServiceTest {
 
         when(outboxPollerProperties.get(OutboxDispatchType.GENERAL))
                 .thenReturn(props);
+        when(outboxPollerPropertiesProvider.getObject())
+                .thenReturn(outboxPollerProperties);
+        when(outboxPublisherProvider.getObject())
+                .thenReturn(outboxPublisher);
 
         when(outboxRepository.findByDispatchTypeAndStatusOrderByCreatedAtAsc(
                 eq(OutboxDispatchType.GENERAL),
@@ -110,6 +158,10 @@ class OutboxServiceTest {
 
         when(outboxPollerProperties.get(OutboxDispatchType.GENERAL))
                 .thenReturn(props);
+        when(outboxPollerPropertiesProvider.getObject())
+                .thenReturn(outboxPollerProperties);
+        when(outboxPublisherProvider.getObject())
+                .thenReturn(outboxPublisher);
 
         when(outboxRepository.findByDispatchTypeAndStatusOrderByCreatedAtAsc(
                 eq(OutboxDispatchType.GENERAL),
@@ -143,6 +195,10 @@ class OutboxServiceTest {
 
         when(outboxPollerProperties.get(OutboxDispatchType.GENERAL))
                 .thenReturn(props);
+        when(outboxPollerPropertiesProvider.getObject())
+                .thenReturn(outboxPollerProperties);
+        when(outboxPublisherProvider.getObject())
+                .thenReturn(outboxPublisher);
 
         when(outboxRepository.findByDispatchTypeAndStatusOrderByCreatedAtAsc(
                 eq(OutboxDispatchType.GENERAL),
@@ -174,6 +230,10 @@ class OutboxServiceTest {
 
         when(outboxPollerProperties.get(OutboxDispatchType.GENERAL))
                 .thenReturn(props);
+        when(outboxPollerPropertiesProvider.getObject())
+                .thenReturn(outboxPollerProperties);
+        when(outboxPublisherProvider.getObject())
+                .thenReturn(outboxPublisher);
 
         when(outboxRepository.findByDispatchTypeAndStatusOrderByCreatedAtAsc(
                 eq(OutboxDispatchType.GENERAL),
@@ -210,6 +270,10 @@ class OutboxServiceTest {
 
         when(outboxPollerProperties.get(OutboxDispatchType.BROADCAST))
                 .thenReturn(props);
+        when(outboxPollerPropertiesProvider.getObject())
+                .thenReturn(outboxPollerProperties);
+        when(outboxPublisherProvider.getObject())
+                .thenReturn(outboxPublisher);
 
         when(outboxRepository.findByDispatchTypeAndStatusOrderByCreatedAtAsc(
                 eq(OutboxDispatchType.BROADCAST),
