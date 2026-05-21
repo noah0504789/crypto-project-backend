@@ -6,6 +6,7 @@ plugins {
 dependencies {
     api project(':common:common-core')
     api project(':common:common-redis')
+    api project(':chat:chat-client')
     api project(':websocket-gateway:websocket-gateway-application')
     api project(':websocket-gateway:websocket-gateway-domain')
     api project(':protobuf')

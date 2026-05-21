@@ -7,6 +7,7 @@ dependencies {
 
     implementation project(':common')
     implementation project(':chat:chat-contract')
+    implementation project(':chat:chat-client')
     implementation project(':chat:chat-domain')
     implementation project(':chat:chat-application')
     implementation project(':chat:chat-adapter-in')

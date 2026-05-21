@@ -5,11 +5,7 @@ plugins {
 
 dependencies {
     api project(':oauth2-client:oauth2-client-application')
+    api project(':oauth2-authorization-server:oauth2-authorization-server-client')
     api project(':user:user-client')
-
-    api platform(libs.grpc.bom)
-    api(libs.grpc.stub)
-    api(libs.grpc.client.spring.boot.starter)
-    implementation(libs.protobuf.java)
 
 }

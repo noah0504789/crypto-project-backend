@@ -10,6 +10,7 @@ dependencies {
     implementation project(':oauth2-client:oauth2-client-adapter-in')
     implementation project(':oauth2-client:oauth2-client-adapter-out')
     implementation project(':oauth2-client:oauth2-client-bootstrap')
+    implementation project(':oauth2-authorization-server:oauth2-authorization-server-client')
     implementation project(':protobuf')
 
 }

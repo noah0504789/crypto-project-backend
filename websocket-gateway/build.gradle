@@ -12,6 +12,7 @@ dependencies {
     implementation project(':websocket-gateway:websocket-gateway-adapter-out')
     implementation project(':websocket-gateway:websocket-gateway-bootstrap')
     implementation project(':chat:chat-contract')
+    implementation project(':chat:chat-client')
     implementation project(':protobuf')
 
     implementation(platform(libs.grpc.bom))

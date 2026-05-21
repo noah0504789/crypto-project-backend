@@ -10,6 +10,7 @@ dependencies {
     implementation project(':spring-cloud-api-gateway:spring-cloud-api-gateway-adapter-in')
     implementation project(':spring-cloud-api-gateway:spring-cloud-api-gateway-adapter-out')
     implementation project(':spring-cloud-api-gateway:spring-cloud-api-gateway-bootstrap')
+    implementation project(':oauth2-authorization-server:oauth2-authorization-server-client')
     implementation project(':protobuf')
 
 }

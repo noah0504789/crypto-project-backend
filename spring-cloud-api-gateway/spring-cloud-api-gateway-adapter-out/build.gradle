@@ -5,11 +5,6 @@ plugins {
 
 dependencies {
     api project(':spring-cloud-api-gateway:spring-cloud-api-gateway-application')
-    api project(':protobuf')
-
-    api platform(libs.grpc.bom)
-    api(libs.grpc.stub)
-    api(libs.grpc.client.spring.boot.starter)
-    implementation(libs.protobuf.java)
+    api project(':oauth2-authorization-server:oauth2-authorization-server-client')
 
 }

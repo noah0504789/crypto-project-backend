@@ -1,4 +1,4 @@
-package org.example.oauth2.grpc;
+package org.example.oauth2.client;
 
 import io.grpc.Channel;
 import lombok.RequiredArgsConstructor;
@@ -7,13 +7,13 @@ import net.devh.boot.grpc.client.inject.GrpcClient;
 import org.example.grpc.token.AccessTokenServiceGrpc;
 import org.example.grpc.token.AuthorizedClientServiceGrpc;
 import org.example.grpc.token.BlacklistTokenServiceGrpc;
+import org.example.grpc.token.ExistsBlacklistTokenGrpcRequest;
 import org.example.grpc.token.FindAccessTokenGrpcRequest;
 import org.example.grpc.token.FindRefreshTokenGrpcRequest;
 import org.example.grpc.token.RefreshTokenServiceGrpc;
 import org.example.grpc.token.RegisterBlacklistTokenGrpcRequest;
 import org.example.grpc.token.RemoveAuthorizedClientRequest;
 import org.example.grpc.token.SaveAuthorizedClientRequest;
-import org.example.oauth2.port.AuthServerTokenPort;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -24,47 +24,57 @@ import static java.util.stream.Collectors.toMap;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class Oauth2AuthorizationServerGrpcClient implements AuthServerTokenPort {
+public class GrpcOauth2AuthorizationServerClient implements Oauth2AuthorizationServerClient {
 
     @GrpcClient("oauth2-authorization-server-client")
     private Channel channel;
 
+    @Override
     public String findAccessToken(String clientRegistrationId, String username) {
         FindAccessTokenGrpcRequest request = FindAccessTokenGrpcRequest.newBuilder()
                 .setClientRegistrationId(clientRegistrationId)
                 .setUsername(username)
                 .build();
 
-        AccessTokenServiceGrpc.AccessTokenServiceBlockingStub stub = AccessTokenServiceGrpc.newBlockingStub(channel)
-                .withDeadlineAfter(3500, TimeUnit.MILLISECONDS);
-
-        return stub.findValue(request).getValue();
+        return accessTokenStub().findValue(request).getValue();
     }
 
+    @Override
     public String findRefreshToken(String clientRegistrationId, String username) {
         FindRefreshTokenGrpcRequest request = FindRefreshTokenGrpcRequest.newBuilder()
                 .setClientRegistrationId(clientRegistrationId)
                 .setUsername(username)
                 .build();
 
-        RefreshTokenServiceGrpc.RefreshTokenServiceBlockingStub stub = RefreshTokenServiceGrpc.newBlockingStub(channel)
-                .withDeadlineAfter(3500, TimeUnit.MILLISECONDS);
-
-        return stub.findValue(request).getValue();
+        return refreshTokenStub().findValue(request).getValue();
     }
 
+    @Override
     public boolean registerBlacklist(String accessToken) {
         RegisterBlacklistTokenGrpcRequest request = RegisterBlacklistTokenGrpcRequest.newBuilder()
                 .setAccessToken(accessToken)
                 .build();
 
-        BlacklistTokenServiceGrpc.BlacklistTokenServiceBlockingStub stub = BlacklistTokenServiceGrpc.newBlockingStub(channel)
-                .withDeadlineAfter(3500, TimeUnit.MILLISECONDS);
-
-        return stub.register(request).getValue();
+        return blacklistTokenStub().register(request).getValue();
     }
 
-    public boolean saveTokens(String clientRegistrationId, String email, Map<String, Object> claims, String accessToken, String refreshToken) {
+    @Override
+    public boolean existsBlacklist(String accessToken) {
+        ExistsBlacklistTokenGrpcRequest request = ExistsBlacklistTokenGrpcRequest.newBuilder()
+                .setAccessToken(accessToken)
+                .build();
+
+        return blacklistTokenStub().exists(request).getValue();
+    }
+
+    @Override
+    public boolean saveTokens(
+            String clientRegistrationId,
+            String email,
+            Map<String, Object> claims,
+            String accessToken,
+            String refreshToken
+    ) {
         SaveAuthorizedClientRequest request = SaveAuthorizedClientRequest.newBuilder()
                 .setClientRegistrationId(clientRegistrationId)
                 .setEmail(email)
@@ -73,20 +83,31 @@ public class Oauth2AuthorizationServerGrpcClient implements AuthServerTokenPort 
                 .setRefreshToken(refreshToken)
                 .build();
 
-        return getAuthorizedClientServiceBlockingStub().save(request).getValue();
+        return authorizedClientStub().save(request).getValue();
     }
 
+    @Override
     public boolean removeTokens(String email) {
         RemoveAuthorizedClientRequest request = RemoveAuthorizedClientRequest.newBuilder()
                 .setEmail(email)
                 .build();
 
-        return getAuthorizedClientServiceBlockingStub().remove(request).getValue();
+        return authorizedClientStub().remove(request).getValue();
     }
 
-    private AuthorizedClientServiceGrpc.AuthorizedClientServiceBlockingStub getAuthorizedClientServiceBlockingStub() {
-        AuthorizedClientServiceGrpc.AuthorizedClientServiceBlockingStub stub = AuthorizedClientServiceGrpc.newBlockingStub(channel)
-                .withDeadlineAfter(3500, TimeUnit.MILLISECONDS);
-        return stub;
+    private AccessTokenServiceGrpc.AccessTokenServiceBlockingStub accessTokenStub() {
+        return AccessTokenServiceGrpc.newBlockingStub(channel).withDeadlineAfter(3500, TimeUnit.MILLISECONDS);
+    }
+
+    private RefreshTokenServiceGrpc.RefreshTokenServiceBlockingStub refreshTokenStub() {
+        return RefreshTokenServiceGrpc.newBlockingStub(channel).withDeadlineAfter(3500, TimeUnit.MILLISECONDS);
+    }
+
+    private BlacklistTokenServiceGrpc.BlacklistTokenServiceBlockingStub blacklistTokenStub() {
+        return BlacklistTokenServiceGrpc.newBlockingStub(channel).withDeadlineAfter(3500, TimeUnit.MILLISECONDS);
+    }
+
+    private AuthorizedClientServiceGrpc.AuthorizedClientServiceBlockingStub authorizedClientStub() {
+        return AuthorizedClientServiceGrpc.newBlockingStub(channel).withDeadlineAfter(3500, TimeUnit.MILLISECONDS);
     }
 }
