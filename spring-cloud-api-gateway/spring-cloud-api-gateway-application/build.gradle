@@ -4,11 +4,11 @@ plugins {
 
 
 dependencies {
-    api project(':common:common-core')
+    implementation project(':common:common-core')
 
-    api(libs.spring.security.oauth2.jose)
-    api(libs.spring.security.oauth2.resource.server)
-    api(libs.spring.boot.starter.security)
+    implementation(libs.spring.security.oauth2.jose)
+    implementation(libs.spring.security.oauth2.resource.server)
+    implementation(libs.spring.boot.starter.security)
 
     testImplementation(libs.spring.security.test)
 }

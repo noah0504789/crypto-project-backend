@@ -4,5 +4,5 @@ plugins {
 
 
 dependencies {
-    api project(':common:common-outbox')
+    implementation project(':common:common-outbox')
 }

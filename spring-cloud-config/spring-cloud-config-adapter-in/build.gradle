@@ -4,8 +4,8 @@ plugins {
 
 
 dependencies {
-    api project(':spring-cloud-config:spring-cloud-config-application')
+    implementation project(':spring-cloud-config:spring-cloud-config-application')
 
-    api(libs.spring.boot.starter.web)
+    implementation(libs.spring.boot.starter.web)
 
 }

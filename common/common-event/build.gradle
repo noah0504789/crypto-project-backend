@@ -6,6 +6,6 @@ dependencies {
 
     api project(':common:common-core')
 
-    api 'org.springframework.boot:spring-boot'
-    api(libs.spring.cloud.starter.stream.kafka)
+    implementation 'org.springframework.boot:spring-boot'
+    implementation(libs.spring.cloud.starter.stream.kafka)
 }

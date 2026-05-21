@@ -5,16 +5,16 @@ plugins {
 
 dependencies {
     api project(':common:common-core')
-    api project(':common:common-web')
-    api project(':common:common-grpc')
-    api project(':oauth2-authorization-server:oauth2-authorization-server-application')
-    api project(':protobuf')
+    implementation project(':common:common-web')
+    implementation project(':common:common-grpc')
+    implementation project(':oauth2-authorization-server:oauth2-authorization-server-application')
+    implementation project(':protobuf')
 
-    api platform(libs.grpc.bom)
-    api(libs.grpc.stub)
-    api(libs.grpc.server.spring.boot.starter)
-    api(libs.spring.boot.starter.web)
-    api(libs.spring.security.oauth2.authorization.server)
+    implementation platform(libs.grpc.bom)
+    implementation(libs.grpc.stub)
+    implementation(libs.grpc.server.spring.boot.starter)
+    implementation(libs.spring.boot.starter.web)
+    implementation(libs.spring.security.oauth2.authorization.server)
     implementation(libs.protobuf.java)
 
     testImplementation(libs.spring.security.test)

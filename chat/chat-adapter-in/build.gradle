@@ -4,17 +4,17 @@ plugins {
 
 
 dependencies {
-    api project(':common:common-web')
-    api project(':common:common-grpc')
-    api project(':chat:chat-application')
-    api project(':protobuf')
+    implementation project(':common:common-web')
+    implementation project(':common:common-grpc')
+    implementation project(':chat:chat-application')
+    implementation project(':protobuf')
 
-    api platform(libs.grpc.bom)
-    api(libs.grpc.stub)
-    api(libs.grpc.server.spring.boot.starter)
-    api(libs.spring.boot.starter.web)
-    api(libs.spring.boot.starter.validation)
-    api(libs.spring.cloud.starter.stream.kafka)
+    implementation platform(libs.grpc.bom)
+    implementation(libs.grpc.stub)
+    implementation(libs.grpc.server.spring.boot.starter)
+    implementation(libs.spring.boot.starter.web)
+    implementation(libs.spring.boot.starter.validation)
+    implementation(libs.spring.cloud.starter.stream.kafka)
     implementation(libs.spring.integration.core)
 
     testImplementation project(':chat:chat-adapter-out')

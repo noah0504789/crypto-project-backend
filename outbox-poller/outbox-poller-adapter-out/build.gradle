@@ -5,12 +5,12 @@ plugins {
 
 dependencies {
     api project(':common:common-core')
-    api project(':common:common-outbox')
+    implementation project(':common:common-outbox')
 
     runtimeOnly libs.mysql.connector.j
 
-    api libs.spring.boot.starter.data.jpa
-    api libs.spring.cloud.starter.stream.kafka
-    api libs.spring.cloud.stream.binder.kafka
+    implementation libs.spring.boot.starter.data.jpa
+    implementation libs.spring.cloud.starter.stream.kafka
+    implementation libs.spring.cloud.stream.binder.kafka
 
 }
