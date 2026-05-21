@@ -4,8 +4,8 @@ plugins {
 
 
 dependencies {
-    implementation project(':spring-cloud-config:spring-cloud-config-domain')
+    api project(':spring-cloud-config:spring-cloud-config-domain')
 
-    implementation(libs.spring.security.oauth2.jose)
+    api(libs.spring.security.oauth2.jose)
 
 }

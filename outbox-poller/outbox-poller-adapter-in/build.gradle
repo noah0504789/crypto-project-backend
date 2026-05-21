@@ -4,8 +4,8 @@ plugins {
 
 
 dependencies {
-    implementation project(':outbox-poller:outbox-poller-application')
+    api project(':outbox-poller:outbox-poller-application')
 
-    implementation libs.spring.boot.starter.web
+    api libs.spring.boot.starter.web
 
 }

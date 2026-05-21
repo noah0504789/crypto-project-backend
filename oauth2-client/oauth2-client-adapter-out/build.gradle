@@ -4,8 +4,8 @@ plugins {
 
 
 dependencies {
-    implementation project(':oauth2-client:oauth2-client-application')
-    implementation project(':oauth2-authorization-server:oauth2-authorization-server-client')
-    implementation project(':user:user-client')
+    api project(':oauth2-client:oauth2-client-application')
+    api project(':oauth2-authorization-server:oauth2-authorization-server-client')
+    api project(':user:user-client')
 
 }

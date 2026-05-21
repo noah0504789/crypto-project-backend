@@ -5,15 +5,15 @@ plugins {
 
 dependencies {
     api project(':common:common-core')
-    implementation project(':common:common-redis')
-    implementation project(':oauth2-authorization-server:oauth2-authorization-server-application')
-    implementation project(':user:user-client')
+    api project(':common:common-redis')
+    api project(':oauth2-authorization-server:oauth2-authorization-server-application')
+    api project(':user:user-client')
 
-    implementation platform(libs.grpc.bom)
-    implementation(libs.grpc.stub)
-    implementation(libs.grpc.client.spring.boot.starter)
-    implementation(libs.spring.boot.starter.data.redis)
-    implementation(libs.spring.security.oauth2.authorization.server)
+    api platform(libs.grpc.bom)
+    api(libs.grpc.stub)
+    api(libs.grpc.client.spring.boot.starter)
+    api(libs.spring.boot.starter.data.redis)
+    api(libs.spring.security.oauth2.authorization.server)
     implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.boot.starter.actuator)
     implementation(libs.micrometer.registry.prometheus)

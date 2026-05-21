@@ -3,9 +3,9 @@ plugins {
 }
 
 dependencies {
-    implementation project(':common:common-jpa')
-    implementation project(':common:common-event')
-    implementation project(':common:common-util')
+    api project(':common:common-jpa')
+    api project(':common:common-event')
+    api project(':common:common-util')
 
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    api 'com.fasterxml.jackson.core:jackson-databind'
 }

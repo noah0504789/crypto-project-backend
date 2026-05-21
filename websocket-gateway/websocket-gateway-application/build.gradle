@@ -4,13 +4,13 @@ plugins {
 
 
 dependencies {
-    implementation project(':common:common-core')
-    implementation project(':websocket-gateway:websocket-gateway-domain')
-    implementation project(':protobuf')
+    api project(':common:common-core')
+    api project(':websocket-gateway:websocket-gateway-domain')
+    api project(':protobuf')
 
-    implementation platform(libs.grpc.bom)
-    implementation(libs.grpc.stub)
-    implementation(libs.spring.boot.starter.websocket)
+    api platform(libs.grpc.bom)
+    api(libs.grpc.stub)
+    api(libs.spring.boot.starter.websocket)
     implementation(libs.caffeine)
 
 }

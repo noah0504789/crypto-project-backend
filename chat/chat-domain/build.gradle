@@ -5,9 +5,9 @@ plugins {
 
 dependencies {
     api project(':common:common-core')
-    implementation project(':common:common-event')
-    implementation project(':common:common-outbox')
+    api project(':common:common-event')
+    api project(':common:common-outbox')
     api project(':chat:chat-contract')
 
-    implementation(libs.spring.boot.starter.validation)
+    api(libs.spring.boot.starter.validation)
 }
