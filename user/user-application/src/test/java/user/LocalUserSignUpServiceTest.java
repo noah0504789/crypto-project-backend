@@ -1,6 +1,5 @@
 package user;
 
-import org.example.user.application.service.LocalUserSignUpCommand;
 import org.example.user.application.service.LocalUserSignUpService;
 import org.example.user.application.service.UserCommandService;
 import org.example.user.application.service.UserQueryService;
@@ -41,12 +40,6 @@ class LocalUserSignUpServiceTest {
     @DisplayName("기본 Role이 이미 존재하면 Role 저장 없이 User에 Role을 추가하고 비밀번호를 인코딩한 뒤 저장한다")
     void signUp_whenDefaultRoleExists_savesUserWithEncodedPassword() {
         // given
-        LocalUserSignUpCommand request = new LocalUserSignUpCommand(
-                "noah@test.com",
-                "noah",
-                "raw-password"
-        );
-
         Role existingRole = Role.ofName(RoleEnum.USER);
 
         when(userQueryService.findRoleByName(RoleEnum.USER))
@@ -58,7 +51,7 @@ class LocalUserSignUpServiceTest {
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
 
         // when
-        sut.signUp(request);
+        sut.signUp("noah@test.com", "noah", "raw-password");
 
         // then
         verify(userQueryService).findRoleByName(RoleEnum.USER);
@@ -78,12 +71,6 @@ class LocalUserSignUpServiceTest {
     @DisplayName("기본 Role이 없으면 Role을 저장한 뒤 User에 추가하고 저장한다")
     void signUp_whenDefaultRoleDoesNotExist_savesRoleAndUser() {
         // given
-        LocalUserSignUpCommand request = new LocalUserSignUpCommand(
-                "noah@test.com",
-                "noah",
-                "raw-password"
-        );
-
         Role savedRole = Role.ofName(RoleEnum.USER);
 
         when(userQueryService.findRoleByName(RoleEnum.USER))
@@ -99,7 +86,7 @@ class LocalUserSignUpServiceTest {
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
 
         // when
-        sut.signUp(request);
+        sut.signUp("noah@test.com", "noah", "raw-password");
 
         // then
         verify(userQueryService).findRoleByName(RoleEnum.USER);
@@ -119,15 +106,9 @@ class LocalUserSignUpServiceTest {
     }
 
     @Test
-    @DisplayName("회원가입 command의 email, nickname, password를 User 도메인에 반영한다")
+    @DisplayName("회원가입 인자의 email, nickname, password를 User 도메인에 반영한다")
     void signUp_convertsRequestToUserDomain() {
         // given
-        LocalUserSignUpCommand request = new LocalUserSignUpCommand(
-                "member@test.com",
-                "member",
-                "password123"
-        );
-
         Role role = Role.ofName(RoleEnum.USER);
 
         when(userQueryService.findRoleByName(RoleEnum.USER))
@@ -139,7 +120,7 @@ class LocalUserSignUpServiceTest {
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
 
         // when
-        sut.signUp(request);
+        sut.signUp("member@test.com", "member", "password123");
 
         // then
         verify(userCommandService).save(userCaptor.capture());

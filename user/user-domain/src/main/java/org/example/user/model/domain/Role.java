@@ -11,7 +11,7 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.example.common.data.jpa.BaseEntity;
+import org.example.common.jpa.BaseEntity;
 import org.example.user.model.RoleEnum;
 
 @Entity

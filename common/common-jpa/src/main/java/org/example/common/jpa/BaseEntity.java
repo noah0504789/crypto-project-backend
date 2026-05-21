@@ -1,4 +1,4 @@
-package org.example.common.data.jpa;
+package org.example.common.jpa;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;

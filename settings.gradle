@@ -6,7 +6,7 @@ rootProject.name = 'crypto-project'
 
 include 'common'
 include 'common:common-core'
-include 'common:common-data'
+include 'common:common-jpa'
 include 'common:common-event'
 include 'common:common-web'
 include 'common:common-grpc'

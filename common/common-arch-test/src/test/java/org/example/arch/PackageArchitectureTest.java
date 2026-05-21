@@ -93,7 +93,7 @@ class PackageArchitectureTest {
 
         rule.check(importMainClasses(List.of(
                 "common/common-core",
-                "common/common-data",
+                "common/common-jpa",
                 "common/common-event",
                 "common/common-web",
                 "common/common-grpc",

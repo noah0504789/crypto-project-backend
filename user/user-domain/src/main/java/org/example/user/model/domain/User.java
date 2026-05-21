@@ -8,7 +8,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.*;
-import org.example.common.data.jpa.BaseEntity;
+import org.example.common.jpa.BaseEntity;
 import org.example.user.model.RoleEnum;
 import org.example.common.id.annotation.SnowflakeId;
 

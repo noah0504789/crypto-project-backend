@@ -1,4 +1,4 @@
-package org.example.infra.mysql;
+package org.example.common.jpa.datasource;
 
 public final class DataSourceContextHolder {
 

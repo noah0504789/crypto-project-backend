@@ -5,7 +5,6 @@ import org.example.common.enums.HttpHeaderKey;
 import org.example.common.exception.UserNotFoundException;
 import org.example.user.adapter.dto.UserRequest;
 import org.example.user.adapter.dto.UserResponse;
-import org.example.user.application.service.LocalUserSignUpCommand;
 import org.example.user.application.service.LocalUserSignUpService;
 import org.example.user.application.service.UserQueryService;
 import org.example.user.model.domain.User;
@@ -31,11 +30,11 @@ public class UserController {
 
     @PostMapping("${api-path.user.sign-up:/sign-up}")
     public ResponseEntity<?> signUp(@RequestBody UserRequest request) {
-        localUserSignUpService.signUp(new LocalUserSignUpCommand(
+        localUserSignUpService.signUp(
                 request.email(),
                 request.nickname(),
                 request.password()
-        ));
+        );
 
         return ResponseEntity.created(URI.create("/home")).build();
     }

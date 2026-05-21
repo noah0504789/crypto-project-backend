@@ -4,7 +4,6 @@ import org.example.common.exception.UserNotFoundException;
 import org.example.user.adapter.dto.UserRequest;
 import org.example.user.adapter.dto.UserResponse;
 import org.example.user.adapter.in.UserController;
-import org.example.user.application.service.LocalUserSignUpCommand;
 import org.example.user.application.service.LocalUserSignUpService;
 import org.example.user.application.service.UserQueryService;
 import org.example.user.model.RoleEnum;
@@ -13,7 +12,6 @@ import org.example.user.model.domain.User;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -55,15 +53,7 @@ class UserControllerTest {
         ResponseEntity<?> response = sut.signUp(request);
 
         // then
-        ArgumentCaptor<LocalUserSignUpCommand> commandCaptor = ArgumentCaptor.forClass(LocalUserSignUpCommand.class);
-
-        verify(localUserSignUpService).signUp(commandCaptor.capture());
-
-        LocalUserSignUpCommand command = commandCaptor.getValue();
-
-        assertThat(command.email()).isEqualTo("test@test.com");
-        assertThat(command.nickname()).isEqualTo("test");
-        assertThat(command.password()).isEqualTo("raw-password");
+        verify(localUserSignUpService).signUp("test@test.com", "test", "raw-password");
 
         assertThat(response.getStatusCode().value()).isEqualTo(201);
         assertThat(response.getHeaders().getLocation()).isEqualTo(URI.create("/home"));

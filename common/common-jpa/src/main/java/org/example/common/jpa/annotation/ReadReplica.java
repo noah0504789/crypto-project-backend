@@ -1,4 +1,4 @@
-package org.example.infra.annotation;
+package org.example.common.jpa.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

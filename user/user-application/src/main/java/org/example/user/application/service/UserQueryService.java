@@ -1,7 +1,7 @@
 package org.example.user.application.service;
 
 import lombok.RequiredArgsConstructor;
-import org.example.infra.annotation.ReadReplica;
+import org.example.common.jpa.annotation.ReadReplica;
 import org.example.user.application.port.RoleRepositoryPort;
 import org.example.user.application.port.UserRepositoryPort;
 import org.example.user.model.RoleEnum;

@@ -2,7 +2,7 @@ package org.example.outbox.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.example.common.data.jpa.BaseEntity;
+import org.example.common.jpa.BaseEntity;
 
 @Entity
 @Getter

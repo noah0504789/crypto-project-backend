@@ -1,8 +1,8 @@
 package aop;
 
 import org.aspectj.lang.ProceedingJoinPoint;
-import org.example.common.aop.ReadReplicaAspect;
-import org.example.infra.mysql.DataSourceContextHolder;
+import org.example.common.jpa.aop.ReadReplicaAspect;
+import org.example.common.jpa.datasource.DataSourceContextHolder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

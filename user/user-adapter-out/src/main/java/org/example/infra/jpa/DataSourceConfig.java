@@ -1,7 +1,8 @@
-package org.example.infra.mysql;
+package org.example.infra.jpa;
 
 import com.zaxxer.hikari.HikariDataSource;
-import org.example.infra.enums.DataSourceType;
+import org.example.common.jpa.datasource.DataSourceType;
+import org.example.common.jpa.datasource.ReplicationRoutingDataSource;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
