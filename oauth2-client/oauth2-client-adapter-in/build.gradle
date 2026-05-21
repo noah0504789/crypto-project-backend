@@ -15,4 +15,5 @@ dependencies {
     testImplementation project(':oauth2-client:oauth2-client-adapter-out')
     testImplementation project(':protobuf')
     testImplementation(libs.spring.security.test)
+    testImplementation project(':common:common-test')
 }

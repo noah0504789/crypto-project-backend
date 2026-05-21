@@ -3,6 +3,7 @@ package oauth2.endpoint;
 import config.*;
 import org.example.common.config.MessageConverterConfig;
 import org.example.common.config.ReactiveSecurityConfig;
+import org.example.common.test.config.TestBootApplication;
 import org.example.oauth2.filter.IdentityPropagationGlobalFilter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -31,6 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
                 TestGatewayJwtConfig.class,
                 TestGatewayCorsConfig.class,
                 TestGatewayRouteConfig.class,
+                TestPropertiesConfig.class,
                 TestDownstreamServerConfig.class,
                 TestLoadBalancerConfig.class
         },

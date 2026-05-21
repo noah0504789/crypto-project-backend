@@ -1,6 +1,6 @@
 package chatroom.adapter.in;
 
-import config.TestBootApplication;
+import org.example.common.test.config.TestBootApplication;
 import org.bson.types.ObjectId;
 import org.example.chatroom.adapter.dto.ChatRoomCreateRequest;
 import org.example.chatroom.adapter.dto.ChatRoomUpdateRequest;

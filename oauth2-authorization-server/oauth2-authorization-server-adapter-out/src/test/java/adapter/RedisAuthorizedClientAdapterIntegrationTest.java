@@ -2,7 +2,7 @@ package adapter;
 
 import config.TestPropertiesConfig;
 import org.example.common.testcontainer.RedisTestContainerInitializer;
-import config.TestBootApplication;
+import org.example.common.test.config.TestBootApplication;
 import config.TestRedisConfig;
 import org.example.common.enums.RedisKey;
 import org.example.common.redis.StringRedisHashOperations;

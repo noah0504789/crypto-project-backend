@@ -21,4 +21,5 @@ dependencies {
     testImplementation project(':protobuf')
     testImplementation(libs.spring.security.test)
     testImplementation(libs.reactor.test)
+    testImplementation project(':common:common-test')
 }

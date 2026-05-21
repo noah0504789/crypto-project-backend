@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import config.TestBootApplication;
+import org.example.common.test.config.TestBootApplication;
 import config.TestPropertiesConfig;
 import config.TestUpbitExternalDependencyConfig;
 import org.springframework.beans.factory.annotation.Autowired;

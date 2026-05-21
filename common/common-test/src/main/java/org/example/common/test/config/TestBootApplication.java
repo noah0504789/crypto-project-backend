@@ -1,4 +1,4 @@
-package config;
+package org.example.common.test.config;
 
 import org.springframework.boot.SpringBootConfiguration;
 

@@ -1,6 +1,6 @@
 package chatroom.adapter.out;
 
-import config.TestBootApplication;
+import org.example.common.test.config.TestBootApplication;
 import config.TestMongoConfig;
 import org.example.common.testcontainer.MongoDBTestContainerInitializer;
 import org.bson.types.ObjectId;

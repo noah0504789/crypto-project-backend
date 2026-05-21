@@ -2,7 +2,7 @@ package database;
 
 import org.example.common.testcontainer.ReadWriteMysqlTestContainerInitializer;
 import config.ReadReplicaRoutingTestConfig;
-import config.TestBootApplication;
+import org.example.common.test.config.TestBootApplication;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

@@ -12,4 +12,5 @@ dependencies {
     api(libs.spring.boot.starter.validation)
 
     testImplementation(libs.spring.security.test)
+    testImplementation project(':common:common-test')
 }

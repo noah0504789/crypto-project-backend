@@ -1,6 +1,6 @@
 package endpoint;
 
-import config.TestBootApplication;
+import org.example.common.test.config.TestBootApplication;
 import config.TestLogoutExternalDependencyConfig;
 import config.TestLogoutSecurityDependencyConfig;
 import config.TestPropertiesConfig;

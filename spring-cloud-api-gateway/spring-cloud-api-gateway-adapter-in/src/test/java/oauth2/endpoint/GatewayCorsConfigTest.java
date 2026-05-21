@@ -1,6 +1,6 @@
 package oauth2.endpoint;
 
-import config.TestBootApplication;
+import org.example.common.test.config.TestBootApplication;
 import config.TestGatewayCorsConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

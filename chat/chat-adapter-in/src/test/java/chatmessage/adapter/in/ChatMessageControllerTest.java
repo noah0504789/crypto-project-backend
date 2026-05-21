@@ -1,6 +1,6 @@
 package chatmessage.adapter.in;
 
-import config.TestBootApplication;
+import org.example.common.test.config.TestBootApplication;
 import org.example.chatmessage.adapter.dto.ChatMessageDlqEventList;
 import org.example.chatmessage.adapter.dto.ChatMessageEventList;
 import org.example.chatmessage.adapter.in.ChatMessageController;

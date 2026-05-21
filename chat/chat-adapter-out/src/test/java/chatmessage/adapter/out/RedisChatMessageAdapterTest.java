@@ -1,6 +1,6 @@
 package chatmessage.adapter.out;
 
-import config.TestBootApplication;
+import org.example.common.test.config.TestBootApplication;
 import config.TestRedisConfig;
 import org.example.common.testcontainer.RedisTestContainerInitializer;
 import org.example.chatmessage.adapter.out.cache.RedisChatMessageAdapter;

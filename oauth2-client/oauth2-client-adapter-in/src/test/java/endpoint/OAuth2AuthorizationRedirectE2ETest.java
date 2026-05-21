@@ -3,6 +3,7 @@ package endpoint;
 import config.*;
 import org.example.common.config.MessageConverterConfig;
 import org.example.common.config.SecurityFilterChainConfig;
+import org.example.common.test.config.TestBootApplication;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 

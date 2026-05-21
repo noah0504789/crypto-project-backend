@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import java.util.Optional;
 
-import config.TestBootApplication;
+import org.example.common.test.config.TestBootApplication;
 import config.TestObjectMapperConfig;
 import config.TestPropertiesConfig;
 import config.TestRedisConfig;

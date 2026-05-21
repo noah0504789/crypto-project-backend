@@ -18,4 +18,5 @@ dependencies {
     implementation(libs.spring.integration.core)
 
     testImplementation project(':chat:chat-adapter-out')
+    testImplementation project(':common:common-test')
 }
