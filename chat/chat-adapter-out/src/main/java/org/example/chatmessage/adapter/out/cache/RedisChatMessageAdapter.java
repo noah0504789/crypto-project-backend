@@ -7,7 +7,7 @@ import org.example.chatroom.adapter.dto.MembershipScore;
 import org.example.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chatroom.domain.model.ChatRoom;
 import org.example.chatroom.domain.model.ChatRoomCategory;
-import org.example.common.cache.CacheFailOpen;
+import org.example.common.redis.cache.CacheFailOpen;
 import org.example.common.clock.Clock;
 import org.example.common.exception.ChatRoomNotFoundException;
 import org.example.infra.redis.RedisCollectionRegistry;

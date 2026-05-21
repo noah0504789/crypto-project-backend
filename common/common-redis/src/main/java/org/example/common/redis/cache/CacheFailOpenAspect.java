@@ -1,4 +1,4 @@
-package org.example.common.cache;
+package org.example.common.redis.cache;
 
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -16,7 +16,7 @@ import java.util.*;
 @Component
 public class CacheFailOpenAspect {
 
-    @Around("@annotation(org.example.common.cache.CacheFailOpen) || @within(org.example.common.cache.CacheFailOpen)")
+    @Around("@annotation(org.example.common.redis.cache.CacheFailOpen) || @within(org.example.common.redis.cache.CacheFailOpen)")
     public Object guard(ProceedingJoinPoint pjp) {
         try {
             return pjp.proceed();

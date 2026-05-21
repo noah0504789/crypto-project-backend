@@ -1,6 +1,6 @@
 spring:
   application:
-    name: user-service
+    name: common-jpa-test
 
   config:
     import: ""

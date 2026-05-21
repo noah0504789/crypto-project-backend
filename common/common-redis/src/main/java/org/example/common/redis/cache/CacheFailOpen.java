@@ -1,4 +1,4 @@
-package org.example.common.cache;
+package org.example.common.redis.cache;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

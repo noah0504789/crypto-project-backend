@@ -4,7 +4,7 @@ import org.example.chatmessage.domain.model.ChatMessage;
 import org.example.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chatroom.domain.model.ChatRoom;
 import org.example.chatroom.domain.model.ChatRoomCategory;
-import org.example.common.cache.CacheFailOpen;
+import org.example.common.redis.cache.CacheFailOpen;
 import org.example.infra.redis.RedisCollectionRegistry;
 import org.example.common.redis.RedisHashCodec;
 import org.example.common.redis.StringRedisHashOperations;

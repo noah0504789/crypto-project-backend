@@ -1,9 +1,7 @@
-package infra;
+package org.example.common.redis;
 
 import org.example.common.exception.DistributedLockAcquireFailedException;
 import org.example.common.exception.DistributedLockInterruptedException;
-import org.example.common.redis.DistributedLockExecutor;
-import org.example.common.redis.DistributedLockPolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

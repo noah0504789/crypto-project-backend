@@ -6,5 +6,6 @@ dependencies {
     api project(':common:common-core')
 
     api(libs.spring.boot.starter.data.redis)
+    api(libs.spring.boot.starter.aop)
     api(libs.redisson.spring.boot.starter)
 }

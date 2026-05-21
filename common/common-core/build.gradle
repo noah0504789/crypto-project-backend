@@ -6,6 +6,4 @@ plugins {
 dependencies {
 
     api(libs.spring.boot.starter.validation)
-    api(libs.spring.boot.starter.data.jpa)
-    api(libs.spring.boot.starter.aop)
 }
