@@ -1,10 +1,10 @@
 package chatroom.domain;
 
-import org.example.chatroom.adapter.dto.ChatRoomDlqEventList;
-import org.example.chatroom.adapter.dto.ChatRoomPayload;
+import org.example.chatroom.domain.event.dlq.ChatRoomDlqEventList;
+import org.example.chatroom.domain.event.payload.ChatRoomPayload;
 import org.example.chatroom.domain.model.ChatRoom;
 import org.example.chatroom.domain.model.ChatRoomCategory;
-import org.example.chatroom.adapter.dto.ChatRoomEventList;
+import org.example.chatroom.domain.event.ChatRoomEventList;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.test.context.junit.jupiter.SpringExtension;

@@ -1,7 +1,7 @@
 package chatmessage.adapter.in;
 
-import org.example.chatmessage.adapter.dto.ChatMessageDlqEventList;
-import org.example.chatmessage.adapter.dto.ChatMessageEventList;
+import org.example.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
+import org.example.chatmessage.domain.event.ChatMessageEventList;
 import org.example.chatmessage.adapter.in.ChatMessageScheduler;
 import org.example.chatmessage.domain.model.ChatMessage;
 import org.example.common.clock.Clock;

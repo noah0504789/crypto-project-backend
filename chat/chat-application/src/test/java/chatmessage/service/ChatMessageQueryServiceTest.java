@@ -1,7 +1,7 @@
 package chatmessage.service;
 
-import org.example.chatmessage.adapter.dto.ChatMessageDlqEventList;
-import org.example.chatmessage.adapter.dto.ChatMessageEventList;
+import org.example.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
+import org.example.chatmessage.domain.event.ChatMessageEventList;
 import org.example.chatmessage.application.port.out.ChatMessageCachePort;
 import org.example.chatmessage.application.service.ChatMessageQueryRepairService;
 import org.example.chatmessage.application.service.ChatMessageQueryService;

@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.chatmessage.application.port.out.ChatMessageCachePort;
 import org.example.chatmessage.application.port.out.ChatMessagePersistencePort;
 import org.example.chatmessage.domain.model.ChatMessage;
-import org.example.chatroom.adapter.dto.MembershipScore;
+import org.example.chatroom.application.dto.ChatRoomMembershipScore;
 import org.example.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.TransientDataAccessException;
@@ -47,9 +47,9 @@ public class ChatMessageCommandService {
                 .map(ChatMessage::toEpochMillis)
                 .orElse(0L);
 
-        List<MembershipScore> membershipScores = chatRoomPersistencePort.refreshMembershipScores(roomId, fallbackMsgCreatedAt);
+        List<ChatRoomMembershipScore> chatRoomMembershipScores = chatRoomPersistencePort.refreshMembershipScores(roomId, fallbackMsgCreatedAt);
 
-        hardDeleteCacheSafely(messageId, roomId, membershipScores);
+        hardDeleteCacheSafely(messageId, roomId, chatRoomMembershipScores);
     }
 
     @Recover
@@ -72,9 +72,9 @@ public class ChatMessageCommandService {
         log.error("[chat message] hardDelete retry exhausted. messageId={}, roomId={}, error={}", messageId, roomId, e.getMessage(), e);
     }
 
-    private void hardDeleteCacheSafely(String messageId, String roomId, List<MembershipScore> membershipScores) {
+    private void hardDeleteCacheSafely(String messageId, String roomId, List<ChatRoomMembershipScore> chatRoomMembershipScores) {
         try {
-            chatMessageCachePort.hardDelete(messageId, roomId, membershipScores);
+            chatMessageCachePort.hardDelete(messageId, roomId, chatRoomMembershipScores);
         } catch (Exception e) {
             log.warn("[redis] chatmessage hardDelete failed. messageId={}, roomId={}, error={}", messageId, roomId, e.getMessage(), e);
         }

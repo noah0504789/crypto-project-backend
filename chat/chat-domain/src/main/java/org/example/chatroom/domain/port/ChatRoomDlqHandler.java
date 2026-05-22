@@ -1,16 +1,16 @@
 package org.example.chatroom.domain.port;
 
-import org.example.chatroom.domain.model.event.dlq.ChatRoomActiveDlqEvent;
-import org.example.chatroom.domain.model.event.dlq.ChatRoomCacheActivityInvalidateDlqEvent;
-import org.example.chatroom.domain.model.event.dlq.ChatRoomCacheDeleteDlqEvent;
-import org.example.chatroom.domain.model.event.dlq.ChatRoomCacheInfoInvalidateDlqEvent;
-import org.example.chatroom.domain.model.event.dlq.ChatRoomCacheSaveDlqEvent;
-import org.example.chatroom.domain.model.event.dlq.ChatRoomCacheUpdateDlqEvent;
-import org.example.chatroom.domain.model.event.dlq.ChatRoomDeletedDlqEvent;
-import org.example.chatroom.domain.model.event.dlq.ChatRoomJoinedDlqEvent;
-import org.example.chatroom.domain.model.event.dlq.ChatRoomLeavedDlqEvent;
-import org.example.chatroom.domain.model.event.dlq.ChatRoomPersistedDlqEvent;
-import org.example.chatroom.domain.model.event.dlq.ChatRoomUpdatedDlqEvent;
+import org.example.chatroom.domain.event.dlq.ChatRoomActiveDlqEvent;
+import org.example.chatroom.domain.event.dlq.ChatRoomCacheActivityInvalidateDlqEvent;
+import org.example.chatroom.domain.event.dlq.ChatRoomCacheDeleteDlqEvent;
+import org.example.chatroom.domain.event.dlq.ChatRoomCacheInfoInvalidateDlqEvent;
+import org.example.chatroom.domain.event.dlq.ChatRoomCacheSaveDlqEvent;
+import org.example.chatroom.domain.event.dlq.ChatRoomCacheUpdateDlqEvent;
+import org.example.chatroom.domain.event.dlq.ChatRoomDeletedDlqEvent;
+import org.example.chatroom.domain.event.dlq.ChatRoomJoinedDlqEvent;
+import org.example.chatroom.domain.event.dlq.ChatRoomLeavedDlqEvent;
+import org.example.chatroom.domain.event.dlq.ChatRoomPersistedDlqEvent;
+import org.example.chatroom.domain.event.dlq.ChatRoomUpdatedDlqEvent;
 
 public interface ChatRoomDlqHandler {
     void handle(ChatRoomPersistedDlqEvent event);

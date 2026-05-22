@@ -5,17 +5,13 @@ import config.TestRedisConfig;
 import org.example.common.testcontainer.RedisTestContainerInitializer;
 import org.example.chatmessage.adapter.out.cache.RedisChatMessageAdapter;
 import org.example.chatmessage.domain.model.ChatMessage;
-import org.example.chatroom.adapter.dto.MembershipScore;
-import org.example.chatroom.application.port.out.ChatRoomCachePort;
-import org.example.chatroom.domain.model.ChatRoom;
+import org.example.chatroom.application.dto.ChatRoomMembershipScore;
 import org.example.chatroom.domain.model.ChatRoomCategory;
 import org.example.common.clock.Clock;
-import org.example.common.exception.ChatRoomNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.data.redis.DataRedisTest;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -25,7 +21,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -357,13 +352,13 @@ class RedisChatMessageAdapterTest {
             masterHashRedisTemplate.opsForZSet().add(memberRecentKey, ROOM_ID, 9999D);
             masterHashRedisTemplate.opsForZSet().add(otherMemberRecentKey, ROOM_ID, 8888D);
 
-            List<MembershipScore> membershipScores = List.of(
-                    new MembershipScore(MEMBER_ID, 0L),
-                    new MembershipScore(OTHER_MEMBER_ID, 1234L)
+            List<ChatRoomMembershipScore> chatRoomMembershipScores = List.of(
+                    new ChatRoomMembershipScore(MEMBER_ID, 0L),
+                    new ChatRoomMembershipScore(OTHER_MEMBER_ID, 1234L)
             );
 
             // when
-            sut.hardDelete(MESSAGE_ID_2, ROOM_ID, membershipScores);
+            sut.hardDelete(MESSAGE_ID_2, ROOM_ID, chatRoomMembershipScores);
 
             // then
             List<ChatMessage> latest = sut.listLatest(ROOM_ID, 10);

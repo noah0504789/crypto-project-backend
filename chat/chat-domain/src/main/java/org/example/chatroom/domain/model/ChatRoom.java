@@ -5,11 +5,11 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.example.chatmessage.domain.model.ChatMessage;
-import org.example.chatroom.adapter.dto.ChatRoomDlqEventList;
-import org.example.chatroom.adapter.dto.ChatRoomPayload;
-import org.example.chatroom.domain.model.event.*;
-import org.example.chatroom.adapter.dto.ChatRoomEventList;
-import org.example.chatroom.domain.model.event.dlq.*;
+import org.example.chatroom.domain.event.dlq.ChatRoomDlqEventList;
+import org.example.chatroom.domain.event.payload.ChatRoomPayload;
+import org.example.chatroom.domain.event.*;
+import org.example.chatroom.domain.event.dlq.*;
+import org.example.chatroom.domain.event.ChatRoomEventList;
 
 import java.time.Instant;
 import java.time.LocalDateTime;

@@ -3,14 +3,15 @@ package org.example.chatroom.application.service;
 import lombok.RequiredArgsConstructor;
 import org.example.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chatroom.application.port.out.ChatRoomPersistencePort;
+import org.example.chatroom.domain.event.dlq.*;
 import org.example.chatroom.domain.model.ChatRoom;
-import org.example.chatroom.domain.model.event.dlq.*;
+import org.example.chatroom.domain.port.ChatRoomDlqHandler;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class ChatRoomDlqService implements org.example.chatroom.domain.port.ChatRoomDlqHandler {
+public class ChatRoomDlqService implements ChatRoomDlqHandler {
 
     private final ChatRoomPersistencePort persistence;
     private final ChatRoomCachePort cache;

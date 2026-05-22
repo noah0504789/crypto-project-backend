@@ -5,7 +5,7 @@ import org.example.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chatroom.application.service.ChatRoomCommandService;
 import org.example.chatroom.domain.model.ChatRoom;
 import org.example.chatroom.domain.model.ChatRoomCategory;
-import org.example.common.exception.ChatRoomNotFoundException;
+import org.example.chatroom.domain.exception.ChatRoomNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

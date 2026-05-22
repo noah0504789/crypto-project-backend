@@ -4,12 +4,12 @@ import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.example.chatmessage.adapter.out.persistence.MongoChatMessage;
 import org.example.chatmessage.adapter.out.persistence.MongoChatMessageRepository;
-import org.example.chatroom.adapter.dto.MembershipScore;
+import org.example.chatroom.application.dto.ChatRoomMembershipScore;
 import org.example.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chatroom.domain.model.ChatRoom;
 import org.example.chatroom.domain.model.ChatRoomCategory;
-import org.example.common.exception.ChatRoomMembershipNotFoundException;
-import org.example.common.exception.ChatRoomNotFoundException;
+import org.example.chatroom.domain.exception.ChatRoomMembershipNotFoundException;
+import org.example.chatroom.domain.exception.ChatRoomNotFoundException;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -47,7 +47,7 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
     }
 
     @Override
-    public List<MembershipScore> refreshMembershipScores(String id, long fallbackMsgCreatedAt) {
+    public List<ChatRoomMembershipScore> refreshMembershipScores(String id, long fallbackMsgCreatedAt) {
         return membershipRepository.findAllByRoomId(new ObjectId(id))
                 .stream()
                 .map(membership -> {
@@ -55,7 +55,7 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
                     long newScore = MongoChatRoomMembership.rescoreKeepingUnreadState(score, fallbackMsgCreatedAt);
                     membershipRepository.refresh(membership.getId(), newScore);
 
-                    return new MembershipScore(membership.getMemberId(), newScore);
+                    return new ChatRoomMembershipScore(membership.getMemberId(), newScore);
                 })
                 .toList();
     }

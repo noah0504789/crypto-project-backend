@@ -3,14 +3,13 @@ package org.example.chatroom.application.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
-import org.example.chatroom.adapter.dto.ChatRoomCreateRequest;
-import org.example.chatroom.adapter.dto.ChatRoomUpdateRequest;
+import org.example.chatroom.application.dto.ChatRoomCreateRequest;
 import org.example.chatroom.application.port.in.ChatRoomCommandUseCase;
 import org.example.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chatroom.domain.model.ChatRoom;
 import org.example.chatroom.domain.model.ChatRoomCategory;
-import org.example.common.exception.ChatRoomNotFoundException;
+import org.example.chatroom.domain.exception.ChatRoomNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;

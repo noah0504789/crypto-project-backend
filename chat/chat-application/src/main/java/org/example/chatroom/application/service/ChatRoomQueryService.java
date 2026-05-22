@@ -2,7 +2,7 @@ package org.example.chatroom.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.chatroom.adapter.dto.MyChatRoomResponse;
+import org.example.chatroom.application.dto.MyChatRoomResponse;
 import org.example.chatroom.application.port.in.ChatRoomQueryUseCase;
 import org.example.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chatroom.application.port.out.ChatRoomPersistencePort;

@@ -4,7 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.chatmessage.application.port.out.ChatMessagePersistencePort;
 import org.example.chatmessage.domain.model.ChatMessage;
-import org.example.chatmessage.domain.model.event.ChatMessagePersistEvent;
+import org.example.chatmessage.domain.event.ChatMessagePersistEvent;
+import org.example.chatmessage.domain.port.ChatMessageEventHandler;
 import org.example.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
@@ -18,7 +19,7 @@ import java.util.Arrays;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class ChatMessageEventService implements org.example.chatmessage.domain.port.ChatMessageEventHandler {
+public class ChatMessageEventService implements ChatMessageEventHandler {
 
     private final ChatMessagePersistencePort chatMessagePersistencePort;
     private final ChatRoomPersistencePort chatRoomPersistencePort;

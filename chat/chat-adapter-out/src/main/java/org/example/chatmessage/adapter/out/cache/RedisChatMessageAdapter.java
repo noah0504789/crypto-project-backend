@@ -3,17 +3,14 @@ package org.example.chatmessage.adapter.out.cache;
 import lombok.extern.slf4j.Slf4j;
 import org.example.chatmessage.application.port.out.ChatMessageCachePort;
 import org.example.chatmessage.domain.model.ChatMessage;
-import org.example.chatroom.adapter.dto.MembershipScore;
-import org.example.chatroom.application.port.out.ChatRoomCachePort;
-import org.example.chatroom.domain.model.ChatRoom;
+import org.example.chatroom.application.dto.ChatRoomMembershipScore;
 import org.example.chatroom.domain.model.ChatRoomCategory;
 import org.example.common.redis.cache.CacheFailOpen;
 import org.example.common.clock.Clock;
-import org.example.common.exception.ChatRoomNotFoundException;
 import org.example.infra.redis.RedisCollectionRegistry;
 import org.example.common.redis.RedisValueCodec;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.example.common.exception.ChatCacheException;
+import org.example.chat.common.exception.ChatCacheException;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.data.redis.core.script.RedisScript;
@@ -157,10 +154,10 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
     }
 
     @Override
-    public void hardDelete(String id, String roomId, List<MembershipScore> membershipScores) {
-        List<MembershipScore> validScores = membershipScores == null
+    public void hardDelete(String id, String roomId, List<ChatRoomMembershipScore> chatRoomMembershipScores) {
+        List<ChatRoomMembershipScore> validScores = chatRoomMembershipScores == null
                 ? List.of()
-                : membershipScores.stream()
+                : chatRoomMembershipScores.stream()
                     .filter(Objects::nonNull)
                     .filter(score -> score.memberId() != null)
                     .toList();
@@ -171,7 +168,7 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
         String roomInfoKey = CHAT_ROOM_INFO.keyFor(roomId);
         Collections.addAll(keys, messageKey, messageAccessKey, roomInfoKey);
         validScores.stream()
-                .map(MembershipScore::memberId)
+                .map(ChatRoomMembershipScore::memberId)
                 .map(RECENT_CHAT_ROOM_BY_MEMBER_INDEX::keyFor)
                 .forEach(keys::add);
 
@@ -179,8 +176,8 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
         args.add(id);
         args.add(roomId);
         args.add(validScores.size()+"");
-        for (MembershipScore membershipScore : validScores) {
-            Long score = membershipScore.score();
+        for (ChatRoomMembershipScore chatRoomMembershipScore : validScores) {
+            Long score = chatRoomMembershipScore.score();
             args.add(String.valueOf(score == null ? 0L : score));
         }
 

@@ -2,11 +2,12 @@ package org.example.chatroom.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.chatroom.adapter.dto.ChatRoomPayload;
+import org.example.chatroom.domain.event.payload.ChatRoomPayload;
 import org.example.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chatroom.application.port.out.ChatRoomPersistencePort;
+import org.example.chatroom.domain.event.*;
 import org.example.chatroom.domain.model.ChatRoom;
-import org.example.chatroom.domain.model.event.*;
+import org.example.chatroom.domain.port.ChatRoomEventHandler;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
@@ -18,7 +19,7 @@ import java.util.Arrays;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class ChatRoomEventService implements org.example.chatroom.domain.port.ChatRoomEventHandler {
+public class ChatRoomEventService implements ChatRoomEventHandler {
 
     private final ChatRoomPersistencePort persistence;
     private final ChatRoomCachePort cache;

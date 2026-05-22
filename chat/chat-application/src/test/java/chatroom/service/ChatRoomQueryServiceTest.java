@@ -1,6 +1,6 @@
 package chatroom.service;
 
-import org.example.chatroom.adapter.dto.MyChatRoomResponse;
+import org.example.chatroom.application.dto.MyChatRoomResponse;
 import org.example.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chatroom.application.service.ChatRoomActivityScore;

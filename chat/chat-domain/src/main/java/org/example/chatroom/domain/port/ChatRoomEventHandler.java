@@ -1,16 +1,16 @@
 package org.example.chatroom.domain.port;
 
-import org.example.chatroom.domain.model.event.ChatRoomActiveEvent;
-import org.example.chatroom.domain.model.event.ChatRoomCacheActivityInvalidateEvent;
-import org.example.chatroom.domain.model.event.ChatRoomCacheDeleteEvent;
-import org.example.chatroom.domain.model.event.ChatRoomCacheInfoInvalidateEvent;
-import org.example.chatroom.domain.model.event.ChatRoomCacheSaveEvent;
-import org.example.chatroom.domain.model.event.ChatRoomCacheUpdateEvent;
-import org.example.chatroom.domain.model.event.ChatRoomDeletedEvent;
-import org.example.chatroom.domain.model.event.ChatRoomJoinedEvent;
-import org.example.chatroom.domain.model.event.ChatRoomLeavedEvent;
-import org.example.chatroom.domain.model.event.ChatRoomPersistedEvent;
-import org.example.chatroom.domain.model.event.ChatRoomUpdatedEvent;
+import org.example.chatroom.domain.event.ChatRoomActiveEvent;
+import org.example.chatroom.domain.event.ChatRoomCacheActivityInvalidateEvent;
+import org.example.chatroom.domain.event.ChatRoomCacheDeleteEvent;
+import org.example.chatroom.domain.event.ChatRoomCacheInfoInvalidateEvent;
+import org.example.chatroom.domain.event.ChatRoomCacheSaveEvent;
+import org.example.chatroom.domain.event.ChatRoomCacheUpdateEvent;
+import org.example.chatroom.domain.event.ChatRoomDeletedEvent;
+import org.example.chatroom.domain.event.ChatRoomJoinedEvent;
+import org.example.chatroom.domain.event.ChatRoomLeavedEvent;
+import org.example.chatroom.domain.event.ChatRoomPersistedEvent;
+import org.example.chatroom.domain.event.ChatRoomUpdatedEvent;
 
 public interface ChatRoomEventHandler {
     void handle(ChatRoomPersistedEvent event, String txId);

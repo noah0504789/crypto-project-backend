@@ -5,7 +5,7 @@ import org.example.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chatroom.application.service.ChatRoomQueryRepairService;
 import org.example.chatroom.domain.model.ChatRoom;
 import org.example.chatroom.domain.model.ChatRoomCategory;
-import org.example.common.exception.ChatRoomNotFoundException;
+import org.example.chatroom.domain.exception.ChatRoomNotFoundException;
 import org.example.common.redis.DistributedLockExecutor;
 import org.example.common.redis.DistributedLockPolicy;
 import org.junit.jupiter.api.BeforeEach;

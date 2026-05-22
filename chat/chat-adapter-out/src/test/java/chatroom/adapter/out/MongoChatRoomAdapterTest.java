@@ -6,12 +6,12 @@ import org.example.common.testcontainer.MongoDBTestContainerInitializer;
 import org.bson.types.ObjectId;
 import org.example.chatmessage.adapter.out.persistence.MongoChatMessage;
 import org.example.chatmessage.adapter.out.persistence.MongoChatMessageRepository;
-import org.example.chatroom.adapter.dto.MembershipScore;
+import org.example.chatroom.application.dto.ChatRoomMembershipScore;
 import org.example.chatroom.adapter.out.persistence.*;
 import org.example.chatroom.application.service.ChatRoomActivityScore;
 import org.example.chatroom.domain.model.ChatRoom;
 import org.example.chatroom.domain.model.ChatRoomCategory;
-import org.example.common.exception.ChatRoomNotFoundException;
+import org.example.chatroom.domain.exception.ChatRoomNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -26,7 +26,6 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.test.context.ContextConfiguration;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
@@ -363,11 +362,11 @@ class MongoChatRoomAdapterTest {
             saveMembership(unreadMembership(roomId1, OTHER_MEMBER_ID, SCORE_2000));
 
             // when
-            List<MembershipScore> result = sut.refreshMembershipScores(roomId1.toHexString(), SCORE_9999);
+            List<ChatRoomMembershipScore> result = sut.refreshMembershipScores(roomId1.toHexString(), SCORE_9999);
 
             // then
             assertThat(result)
-                    .extracting(MembershipScore::memberId)
+                    .extracting(ChatRoomMembershipScore::memberId)
                     .containsExactlyInAnyOrder(MEMBER_ID, OTHER_MEMBER_ID);
 
             MongoChatRoomMembership readMember = findMembership(roomId1, MEMBER_ID);

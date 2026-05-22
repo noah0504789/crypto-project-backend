@@ -1,12 +1,12 @@
 package chatmessage.service;
 
-import org.example.chatmessage.adapter.dto.ChatMessageDlqEventList;
-import org.example.chatmessage.adapter.dto.ChatMessageEventList;
+import org.example.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
+import org.example.chatmessage.domain.event.ChatMessageEventList;
 import org.example.chatmessage.application.port.out.ChatMessageCachePort;
 import org.example.chatmessage.application.port.out.ChatMessagePersistencePort;
 import org.example.chatmessage.application.service.ChatMessageCommandService;
 import org.example.chatmessage.domain.model.ChatMessage;
-import org.example.chatroom.adapter.dto.MembershipScore;
+import org.example.chatroom.application.dto.ChatRoomMembershipScore;
 import org.example.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -64,9 +64,9 @@ class ChatMessageCommandServiceTest {
             // given
             ChatMessage latestMessage = chatMessage("100000000000000000000002", latestCreatedAt);
 
-            List<MembershipScore> membershipScores = List.of(
-                    new MembershipScore(memberId1, latestCreatedAtMillis),
-                    new MembershipScore(memberId2, 0L)
+            List<ChatRoomMembershipScore> chatRoomMembershipScores = List.of(
+                    new ChatRoomMembershipScore(memberId1, latestCreatedAtMillis),
+                    new ChatRoomMembershipScore(memberId2, 0L)
             );
 
             given(chatMessagePersistencePort.hardDelete(messageId))
@@ -76,7 +76,7 @@ class ChatMessageCommandServiceTest {
                     .willReturn(Optional.of(latestMessage));
 
             given(chatRoomPersistencePort.refreshMembershipScores(roomId, latestCreatedAtMillis))
-                    .willReturn(membershipScores);
+                    .willReturn(chatRoomMembershipScores);
 
             // when
             sut.hardDelete(messageId, roomId);
@@ -86,7 +86,7 @@ class ChatMessageCommandServiceTest {
             verify(chatRoomPersistencePort).decrementMsgCnt(roomId);
             verify(chatMessagePersistencePort).findLatestExcluding(roomId, messageId);
             verify(chatRoomPersistencePort).refreshMembershipScores(roomId, latestCreatedAtMillis);
-            verify(chatMessageCachePort).hardDelete(messageId, roomId, membershipScores);
+            verify(chatMessageCachePort).hardDelete(messageId, roomId, chatRoomMembershipScores);
         }
 
         @Test
@@ -112,9 +112,9 @@ class ChatMessageCommandServiceTest {
         @DisplayName("삭제 후 남은 최신 메시지가 없으면 fallbackMsgCreatedAt=0으로 membership score를 갱신한다")
         void hardDeleteWithNoLatestMessage() {
             // given
-            List<MembershipScore> membershipScores = List.of(
-                    new MembershipScore(memberId1, 0L),
-                    new MembershipScore(memberId2, 0L)
+            List<ChatRoomMembershipScore> chatRoomMembershipScores = List.of(
+                    new ChatRoomMembershipScore(memberId1, 0L),
+                    new ChatRoomMembershipScore(memberId2, 0L)
             );
 
             given(chatMessagePersistencePort.hardDelete(messageId))
@@ -124,7 +124,7 @@ class ChatMessageCommandServiceTest {
                     .willReturn(Optional.empty());
 
             given(chatRoomPersistencePort.refreshMembershipScores(roomId, 0L))
-                    .willReturn(membershipScores);
+                    .willReturn(chatRoomMembershipScores);
 
             // when
             sut.hardDelete(messageId, roomId);
@@ -133,7 +133,7 @@ class ChatMessageCommandServiceTest {
             verify(chatRoomPersistencePort).decrementMsgCnt(roomId);
             verify(chatMessagePersistencePort).findLatestExcluding(roomId, messageId);
             verify(chatRoomPersistencePort).refreshMembershipScores(roomId, 0L);
-            verify(chatMessageCachePort).hardDelete(messageId, roomId, membershipScores);
+            verify(chatMessageCachePort).hardDelete(messageId, roomId, chatRoomMembershipScores);
         }
 
         @Test
@@ -142,8 +142,8 @@ class ChatMessageCommandServiceTest {
             // given
             ChatMessage latestMessage = chatMessage("100000000000000000000002", latestCreatedAt);
 
-            List<MembershipScore> membershipScores = List.of(
-                    new MembershipScore(memberId1, latestCreatedAtMillis)
+            List<ChatRoomMembershipScore> chatRoomMembershipScores = List.of(
+                    new ChatRoomMembershipScore(memberId1, latestCreatedAtMillis)
             );
 
             given(chatMessagePersistencePort.hardDelete(messageId))
@@ -153,17 +153,17 @@ class ChatMessageCommandServiceTest {
                     .willReturn(Optional.of(latestMessage));
 
             given(chatRoomPersistencePort.refreshMembershipScores(roomId, latestCreatedAtMillis))
-                    .willReturn(membershipScores);
+                    .willReturn(chatRoomMembershipScores);
 
             doThrow(new RuntimeException("redis delete failed"))
                     .when(chatMessageCachePort)
-                    .hardDelete(messageId, roomId, membershipScores);
+                    .hardDelete(messageId, roomId, chatRoomMembershipScores);
 
             // when & then
             assertThatCode(() -> sut.hardDelete(messageId, roomId))
                     .doesNotThrowAnyException();
 
-            verify(chatMessageCachePort).hardDelete(messageId, roomId, membershipScores);
+            verify(chatMessageCachePort).hardDelete(messageId, roomId, chatRoomMembershipScores);
         }
 
         @Test

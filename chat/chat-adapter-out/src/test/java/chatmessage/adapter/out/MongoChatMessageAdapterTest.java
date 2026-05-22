@@ -1,8 +1,8 @@
 package chatmessage.adapter.out;
 
 import org.bson.types.ObjectId;
-import org.example.chatmessage.adapter.dto.ChatMessageDlqEventList;
-import org.example.chatmessage.adapter.dto.ChatMessageEventList;
+import org.example.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
+import org.example.chatmessage.domain.event.ChatMessageEventList;
 import org.example.chatmessage.adapter.out.persistence.MongoChatMessage;
 import org.example.chatmessage.adapter.out.persistence.MongoChatMessageAdapter;
 import org.example.chatmessage.adapter.out.persistence.MongoChatMessageRepository;

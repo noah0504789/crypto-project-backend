@@ -1,6 +1,6 @@
 package org.example.chatroom.application.port.out;
 
-import org.example.chatroom.adapter.dto.MembershipScore;
+import org.example.chatroom.application.dto.ChatRoomMembershipScore;
 import org.example.chatroom.domain.model.ChatRoom;
 import org.example.chatroom.domain.model.ChatRoomCategory;
 
@@ -20,7 +20,7 @@ public interface ChatRoomPersistencePort {
 
     void updateMembershipScores(String id, Set<String> memberIds, long lastMsgCreatedAt);
 
-    List<MembershipScore> refreshMembershipScores(String id, long fallbackMsgCreatedAt);
+    List<ChatRoomMembershipScore> refreshMembershipScores(String id, long fallbackMsgCreatedAt);
 
     void active(String id, String memberId, Long lastMsgReadSeq, Long lastMsgCreatedAt);
     void leave(String id, String memberId);
