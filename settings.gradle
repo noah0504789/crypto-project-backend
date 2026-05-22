@@ -72,10 +72,5 @@ include 'user:user-adapter-out'
 include 'user:user-bootstrap'
 
 include 'outbox-poller'
-include 'outbox-poller:outbox-poller-application'
-include 'outbox-poller:outbox-poller-adapter-in'
-include 'outbox-poller:outbox-poller-adapter-out'
-include 'outbox-poller:outbox-poller-bootstrap'
-
 include 'market-detection'
 include 'spring-cloud-eureka-server'
