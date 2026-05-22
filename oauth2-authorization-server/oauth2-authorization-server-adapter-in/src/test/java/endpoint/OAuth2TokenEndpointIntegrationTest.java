@@ -6,24 +6,23 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.example.common.test.config.TestBootApplication;
-import config.TestObjectMapperConfig;
 import config.TestPropertiesConfig;
 import config.TestRedisConfig;
 import org.example.common.testcontainer.RedisTestContainerInitializer;
-import org.example.common.config.AuthorizationServerConfig;
+import org.example.oauth2.adapter.in.config.AuthorizationServerConfig;
 import org.example.common.config.MessageConverterConfig;
-import org.example.common.config.SecurityFilterChainConfig;
-import org.example.common.config.TokenConfig;
+import org.example.oauth2.adapter.in.config.SecurityFilterChainConfig;
+import org.example.oauth2.adapter.in.config.TokenConfig;
 import org.example.common.enums.RedisKey;
 import org.example.common.properties.JwtProperties;
 import org.example.common.redis.StringRedisHashOperations;
 import org.example.oauth2.CustomAuthenticationSuccessHandler;
-import org.example.oauth2.RedisOAuth2AuthorizationService;
-import org.example.oauth2.token.Rs256JwtEncoder;
-import org.example.oauth2.token.adapter.RedisAccessTokenAdapter;
-import org.example.oauth2.token.adapter.RedisRefreshTokenAdapter;
-import org.example.oauth2.token.dto.SignRequest;
-import org.example.oauth2.token.dto.SignResponse;
+import org.example.oauth2.CustomOAuth2AuthorizationService;
+import org.example.oauth2.token.adapter.out.vault.Rs256JwtEncoder;
+import org.example.oauth2.token.adapter.out.redis.RedisAccessTokenAdapter;
+import org.example.oauth2.token.adapter.out.redis.RedisRefreshTokenAdapter;
+import org.example.oauth2.token.adapter.out.vault.dto.SignRequest;
+import org.example.oauth2.token.adapter.out.vault.dto.SignResponse;
 import org.example.oauth2.token.policy.RotatingRefreshTokenPolicy;
 import org.example.user.UserQueryService;
 import org.junit.jupiter.api.BeforeEach;
@@ -61,7 +60,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         MessageConverterConfig.class,
 
         // 실제 컴포넌트
-        RedisOAuth2AuthorizationService.class,
+        CustomOAuth2AuthorizationService.class,
         RedisRefreshTokenAdapter.class,
         RedisAccessTokenAdapter.class,
         StringRedisHashOperations.class,

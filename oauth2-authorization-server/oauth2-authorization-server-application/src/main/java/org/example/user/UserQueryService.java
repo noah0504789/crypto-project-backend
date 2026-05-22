@@ -10,9 +10,9 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UserQueryService {
 
-    private final UserLookupPort userLookupPort;
+    private final UserClientPort userClientPort;
 
     public Optional<UserResponse> findByEmail(String email) {
-        return userLookupPort.findByEmail(email);
+        return userClientPort.findByEmail(email);
     }
 }

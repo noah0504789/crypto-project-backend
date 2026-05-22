@@ -6,9 +6,9 @@ import java.util.List;
 import java.util.Map;
 
 import org.example.common.enums.RedisKey;
-import org.example.oauth2.token.adapter.RedisAccessTokenAdapter;
-import org.example.oauth2.token.adapter.RedisAuthorizedClientAdapter;
-import org.example.oauth2.token.adapter.RedisRefreshTokenAdapter;
+import org.example.oauth2.token.adapter.out.redis.RedisAccessTokenAdapter;
+import org.example.oauth2.token.adapter.out.redis.RedisAuthorizedClientAdapter;
+import org.example.oauth2.token.adapter.out.redis.RedisRefreshTokenAdapter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

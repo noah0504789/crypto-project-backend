@@ -7,7 +7,7 @@ import config.TestSecurityDependencyConfig;
 import jakarta.servlet.http.Cookie;
 import org.example.AuthController;
 import org.example.common.config.MessageConverterConfig;
-import org.example.common.config.SecurityFilterChainConfig;
+import org.example.oauth2.adapter.in.config.SecurityFilterChainConfig;
 import org.example.oauth2.port.AuthServerTokenPort;
 import org.example.oauth2.service.token.RefreshTokenService;
 import org.junit.jupiter.api.BeforeEach;
