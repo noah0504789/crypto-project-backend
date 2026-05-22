@@ -1,6 +1,6 @@
 package config;
 
-import org.example.oauth2.port.AuthServerTokenPort;
+import org.example.oauth2.port.out.AuthServerTokenClientPort;
 import org.example.oauth2.service.token.BlacklistTokenService;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -16,8 +16,8 @@ import static org.mockito.Mockito.mock;
 public class TestLogoutExternalDependencyConfig {
 
     @Bean
-    public AuthServerTokenPort testAuthServerTokenPort() {
-        return mock(AuthServerTokenPort.class);
+    public AuthServerTokenClientPort testAuthServerTokenPort() {
+        return mock(AuthServerTokenClientPort.class);
     }
 
     @Bean

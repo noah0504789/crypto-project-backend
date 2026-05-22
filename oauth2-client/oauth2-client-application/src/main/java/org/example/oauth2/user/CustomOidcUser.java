@@ -1,4 +1,4 @@
-package org.example.oauth2;
+package org.example.oauth2.user;
 
 import org.example.contract.user.UserResponse;
 import org.springframework.security.core.GrantedAuthority;

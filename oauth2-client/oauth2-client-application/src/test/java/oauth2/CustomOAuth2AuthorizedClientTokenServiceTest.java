@@ -3,8 +3,8 @@ package oauth2;
 import java.time.Instant;
 import java.util.Map;
 
-import org.example.oauth2.service.AuthorizedClientService;
-import org.example.oauth2.service.CustomOAuth2AuthorizedClientService;
+import org.example.oauth2.service.AuthorizedClientTokenService;
+import org.example.oauth2.client.CustomOAuth2AuthorizedClientService;
 import org.example.oauth2.service.token.AccessTokenService;
 import org.example.oauth2.service.token.RefreshTokenService;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,7 +29,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
-class CustomOAuth2AuthorizedClientServiceTest {
+class CustomOAuth2AuthorizedClientTokenServiceTest {
 
     private static final String REGISTRATION_ID = "google";
     private static final String CLIENT_ID = "google-client-id";
@@ -44,7 +44,7 @@ class CustomOAuth2AuthorizedClientServiceTest {
     private RefreshTokenService refreshTokenService;
 
     @Mock
-    private AuthorizedClientService authorizedClientService;
+    private AuthorizedClientTokenService authorizedClientTokenService;
 
     @Mock
     private ClientRegistrationRepository clientRegistrationRepository;
@@ -56,7 +56,7 @@ class CustomOAuth2AuthorizedClientServiceTest {
         sut = new CustomOAuth2AuthorizedClientService(
                 accessTokenService,
                 refreshTokenService,
-                authorizedClientService,
+                authorizedClientTokenService,
                 clientRegistrationRepository
         );
     }
@@ -177,7 +177,7 @@ class CustomOAuth2AuthorizedClientServiceTest {
         sut.saveAuthorizedClient(authorizedClient, authentication);
 
         // then
-        then(authorizedClientService)
+        then(authorizedClientTokenService)
                 .should()
                 .save(
                         REGISTRATION_ID,
@@ -204,7 +204,7 @@ class CustomOAuth2AuthorizedClientServiceTest {
         sut.saveAuthorizedClient(authorizedClient, authentication);
 
         // then
-        then(authorizedClientService)
+        then(authorizedClientTokenService)
                 .should()
                 .save(
                         REGISTRATION_ID,
@@ -222,7 +222,7 @@ class CustomOAuth2AuthorizedClientServiceTest {
         sut.removeAuthorizedClient(REGISTRATION_ID, PRINCIPAL_NAME);
 
         // then
-        then(authorizedClientService)
+        then(authorizedClientTokenService)
                 .should()
                 .removeAllByEmail(PRINCIPAL_NAME);
     }

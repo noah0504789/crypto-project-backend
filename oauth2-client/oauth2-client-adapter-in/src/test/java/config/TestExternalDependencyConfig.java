@@ -1,6 +1,6 @@
 package config;
 
-import org.example.oauth2.port.AuthServerTokenPort;
+import org.example.oauth2.port.out.AuthServerTokenClientPort;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.oauth2.client.endpoint.OAuth2AccessTokenResponseClient;
@@ -14,8 +14,8 @@ import static org.mockito.Mockito.mock;
 public class TestExternalDependencyConfig {
 
     @Bean
-    public AuthServerTokenPort testAuthServerTokenPort() {
-        return mock(AuthServerTokenPort.class);
+    public AuthServerTokenClientPort testAuthServerTokenPort() {
+        return mock(AuthServerTokenClientPort.class);
     }
 
     @Bean

@@ -1,8 +1,8 @@
-package org.example.user.grpc;
+package org.example.user.adapter.out.grpc;
 
 import lombok.RequiredArgsConstructor;
 import org.example.contract.user.UserResponse;
-import org.example.user.UserPort;
+import org.example.user.port.out.UserClientPort;
 import org.example.user.client.UserClient;
 import org.springframework.stereotype.Service;
 
@@ -10,7 +10,7 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class UserClientAdapter implements UserPort {
+public class GrpcUserClientAdapter implements UserClientPort {
 
     private final UserClient userClient;
 

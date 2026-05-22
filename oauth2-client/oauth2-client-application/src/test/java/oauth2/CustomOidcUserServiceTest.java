@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.example.oauth2.CustomOidcUser;
-import org.example.oauth2.service.CustomOidcUserService;
+import org.example.oauth2.user.CustomOidcUser;
+import org.example.oauth2.user.CustomOidcUserService;
 import org.example.user.UserCommandService;
 import org.example.user.UserQueryService;
 import org.example.contract.user.UserResponse;

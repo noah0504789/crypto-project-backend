@@ -1,7 +1,6 @@
-package org.example.oauth2.service;
+package org.example.oauth2.user;
 
 import lombok.RequiredArgsConstructor;
-import org.example.oauth2.CustomOidcUser;
 import org.example.user.UserCommandService;
 import org.example.user.UserQueryService;
 import org.example.contract.user.UserResponse;

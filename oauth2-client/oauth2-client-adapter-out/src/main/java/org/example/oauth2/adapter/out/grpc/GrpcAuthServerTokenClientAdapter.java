@@ -1,15 +1,15 @@
-package org.example.oauth2.grpc;
+package org.example.oauth2.adapter.out.grpc;
 
 import lombok.RequiredArgsConstructor;
 import org.example.oauth2.client.Oauth2AuthorizationServerClient;
-import org.example.oauth2.port.AuthServerTokenPort;
+import org.example.oauth2.port.out.AuthServerTokenClientPort;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-public class Oauth2AuthorizationServerClientAdapter implements AuthServerTokenPort {
+public class GrpcAuthServerTokenClientAdapter implements AuthServerTokenClientPort {
 
     private final Oauth2AuthorizationServerClient authorizationServerClient;
 

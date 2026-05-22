@@ -1,7 +1,7 @@
 package oauth2;
 
 import jakarta.servlet.http.Cookie;
-import org.example.oauth2.port.AuthServerTokenPort;
+import org.example.oauth2.port.out.AuthServerTokenClientPort;
 import org.example.oauth2.properties.InternalAuthServerProperties;
 import org.example.common.properties.JwtProperties;
 import org.example.oauth2.exception.OAuth2ClientInfrastructureException;
@@ -42,7 +42,7 @@ class RefreshTokenServiceTest {
     private static final String INTERNAL_AUTH_SERVER_CLIENT_REGISTRATION_ID = "my-authorization-server";
 
     @Mock
-    private AuthServerTokenPort grpcClient;
+    private AuthServerTokenClientPort grpcClient;
 
     @Mock
     private JwtProperties jwtProperties;

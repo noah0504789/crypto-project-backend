@@ -1,4 +1,4 @@
-package org.example.common.config;
+package org.example.oauth2.adapter.in.config;
 
 import org.example.common.properties.JwtProperties;
 import org.springframework.context.annotation.Bean;

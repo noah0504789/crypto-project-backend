@@ -2,7 +2,7 @@ package org.example.oauth2.service.token;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.oauth2.port.AuthServerTokenPort;
+import org.example.oauth2.port.out.AuthServerTokenClientPort;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -10,9 +10,9 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AccessTokenService {
 
-    private final AuthServerTokenPort authServerTokenPort;
+    private final AuthServerTokenClientPort authServerTokenClientPort;
 
     public String findValue(String clientRegistrationId, String username) {
-        return authServerTokenPort.findAccessToken(clientRegistrationId, username);
+        return authServerTokenClientPort.findAccessToken(clientRegistrationId, username);
     }
 }

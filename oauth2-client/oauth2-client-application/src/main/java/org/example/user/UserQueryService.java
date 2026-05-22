@@ -2,6 +2,7 @@ package org.example.user;
 
 import lombok.RequiredArgsConstructor;
 import org.example.contract.user.UserResponse;
+import org.example.user.port.out.UserClientPort;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -10,9 +11,9 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UserQueryService {
 
-    private final UserPort userPort;
+    private final UserClientPort userClientPort;
 
     public Optional<UserResponse> findByEmail(String email) {
-        return userPort.findByEmail(email);
+        return userClientPort.findByEmail(email);
     }
 }

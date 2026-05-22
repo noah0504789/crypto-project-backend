@@ -1,6 +1,7 @@
-package org.example.oauth2.service;
+package org.example.oauth2.client;
 
 import lombok.RequiredArgsConstructor;
+import org.example.oauth2.service.AuthorizedClientTokenService;
 import org.example.oauth2.service.token.AccessTokenService;
 import org.example.oauth2.service.token.RefreshTokenService;
 import org.springframework.security.core.Authentication;
@@ -22,7 +23,7 @@ public class CustomOAuth2AuthorizedClientService implements OAuth2AuthorizedClie
 
     private final AccessTokenService accessTokenService;
     private final RefreshTokenService refreshTokenService;
-    private final AuthorizedClientService authorizedClientService;
+    private final AuthorizedClientTokenService authorizedClientTokenService;
     private final ClientRegistrationRepository clientRegistrationRepository;
 
     @Override
@@ -72,7 +73,7 @@ public class CustomOAuth2AuthorizedClientService implements OAuth2AuthorizedClie
 
         Map<String, Object> attributes = resolveAttributes(authentication);
 
-        authorizedClientService.save(
+        authorizedClientTokenService.save(
                 clientRegistrationId,
                 principalName,
                 attributes,
@@ -83,7 +84,7 @@ public class CustomOAuth2AuthorizedClientService implements OAuth2AuthorizedClie
 
     @Override
     public void removeAuthorizedClient(String clientRegistrationId, String principalName) {
-        authorizedClientService.removeAllByEmail(principalName);
+        authorizedClientTokenService.removeAllByEmail(principalName);
     }
 
     private Map<String, Object> resolveAttributes(Authentication authentication) {

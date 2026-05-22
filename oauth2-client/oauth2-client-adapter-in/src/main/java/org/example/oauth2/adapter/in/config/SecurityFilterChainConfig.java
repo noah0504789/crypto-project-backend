@@ -1,8 +1,7 @@
-package org.example.common.config;
+package org.example.oauth2.adapter.in.config;
 
 import org.example.common.properties.ApiPathProperties;
-import org.example.oauth2.service.CustomOidcUserService;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.example.oauth2.user.CustomOidcUserService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;

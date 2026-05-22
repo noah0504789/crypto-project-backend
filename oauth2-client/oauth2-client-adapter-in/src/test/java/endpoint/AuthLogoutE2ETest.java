@@ -6,7 +6,7 @@ import config.TestLogoutSecurityDependencyConfig;
 import config.TestPropertiesConfig;
 import org.example.common.config.MessageConverterConfig;
 import org.example.oauth2.adapter.in.config.SecurityFilterChainConfig;
-import org.example.oauth2.port.AuthServerTokenPort;
+import org.example.oauth2.port.out.AuthServerTokenClientPort;
 import org.example.oauth2.handler.CustomLogoutSuccessHandler;
 import org.example.oauth2.service.token.BlacklistTokenService;
 import org.example.oauth2.service.token.RefreshTokenService;
@@ -65,7 +65,7 @@ class AuthLogoutE2ETest {
     private JwtDecoder authServerJwtDecoder;
 
     @Autowired
-    private AuthServerTokenPort grpcClient;
+    private AuthServerTokenClientPort grpcClient;
 
     @Autowired
     private BlacklistTokenService blacklistTokenService;

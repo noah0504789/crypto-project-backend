@@ -5,10 +5,10 @@ import config.TestExternalDependencyConfig;
 import config.TestPropertiesConfig;
 import config.TestSecurityDependencyConfig;
 import jakarta.servlet.http.Cookie;
-import org.example.AuthController;
+import org.example.oauth2.adapter.in.web.AuthController;
 import org.example.common.config.MessageConverterConfig;
 import org.example.oauth2.adapter.in.config.SecurityFilterChainConfig;
-import org.example.oauth2.port.AuthServerTokenPort;
+import org.example.oauth2.port.out.AuthServerTokenClientPort;
 import org.example.oauth2.service.token.RefreshTokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
@@ -67,7 +67,7 @@ class AuthRefreshE2ETest {
     private OAuth2AccessTokenResponseClient<OAuth2RefreshTokenGrantRequest> refreshTokenResponseClient;
 
     @Autowired
-    private AuthServerTokenPort grpcClient;
+    private AuthServerTokenClientPort grpcClient;
 
     @BeforeEach
     void resetMocks() {
