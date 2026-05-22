@@ -2,9 +2,7 @@ plugins {
     id 'crypto-bootstrap'
 }
 
-
 dependencies {
-
     implementation project(':common')
     implementation project(':common:common-event')
     implementation(libs.okhttp)
@@ -15,6 +13,6 @@ dependencies {
     implementation(libs.spring.cloud.stream.binder.kafka)
     implementation(libs.spring.cloud.stream.binder.kafka.streams)
 
-    testImplementation(libs.kafka.streams.test.utils)
     testImplementation project(':common:common-test')
+    testImplementation(libs.kafka.streams.test.utils)
 }

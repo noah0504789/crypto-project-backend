@@ -2,7 +2,6 @@ plugins {
     id 'crypto-application'
 }
 
-
 dependencies {
     api project(':common:common-outbox')
 }

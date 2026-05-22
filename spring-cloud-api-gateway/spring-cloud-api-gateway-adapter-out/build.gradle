@@ -2,9 +2,7 @@ plugins {
     id 'crypto-adapter'
 }
 
-
 dependencies {
-    api project(':spring-cloud-api-gateway:spring-cloud-api-gateway-application')
-    api project(':oauth2-authorization-server:oauth2-authorization-server-client')
-
+    implementation project(':spring-cloud-api-gateway:spring-cloud-api-gateway-application')
+    implementation project(':oauth2-authorization-server:oauth2-authorization-server-client')
 }

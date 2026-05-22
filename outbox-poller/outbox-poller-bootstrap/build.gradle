@@ -2,7 +2,6 @@ plugins {
     id 'crypto-bootstrap'
 }
 
-
 dependencies {
     runtimeOnly libs.mysql.connector.j
 
@@ -20,5 +19,4 @@ dependencies {
     implementation libs.spring.cloud.stream.binder.kafka
     implementation libs.spring.cloud.config.client
     implementation libs.spring.cloud.eureka.client
-
 }

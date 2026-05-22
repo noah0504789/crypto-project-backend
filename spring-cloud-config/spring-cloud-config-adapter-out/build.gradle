@@ -2,10 +2,8 @@ plugins {
     id 'crypto-adapter'
 }
 
-
 dependencies {
-    api project(':spring-cloud-config:spring-cloud-config-application')
+    implementation project(':spring-cloud-config:spring-cloud-config-application')
 
-    api(libs.spring.vault.core)
-
+    implementation(libs.spring.vault.core)
 }

@@ -4,10 +4,11 @@ plugins {
 
 dependencies {
     api project(':user:user-contract')
-    api project(':protobuf')
 
-    api platform(libs.grpc.bom)
-    api(libs.grpc.stub)
-    api(libs.grpc.client.spring.boot.starter)
+    implementation project(':protobuf')
+
+    implementation platform(libs.grpc.bom)
+    implementation(libs.grpc.stub)
+    implementation(libs.grpc.client.spring.boot.starter)
     implementation(libs.protobuf.java)
 }

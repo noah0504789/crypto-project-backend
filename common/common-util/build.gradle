@@ -3,5 +3,5 @@ plugins {
 }
 
 dependencies {
-    api(libs.ulid.creator)
+    implementation(libs.ulid.creator)
 }

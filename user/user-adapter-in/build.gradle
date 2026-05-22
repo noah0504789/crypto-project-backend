@@ -2,20 +2,18 @@ plugins {
     id 'crypto-adapter'
 }
 
-
 dependencies {
-    api project(':common:common-core')
-    api project(':common:common-web')
-    api project(':common:common-grpc')
-    api project(':user:user-application')
-    api project(':protobuf')
+    implementation project(':common:common-core')
+    implementation project(':common:common-web')
+    implementation project(':common:common-grpc')
+    implementation project(':user:user-application')
+    implementation project(':protobuf')
 
-    api platform(libs.grpc.bom)
-    api libs.grpc.stub
-    api libs.grpc.server.spring.boot.starter
-    api libs.spring.boot.starter.web
-    api libs.spring.boot.starter.security
+    implementation platform(libs.grpc.bom)
+    implementation libs.grpc.stub
+    implementation libs.grpc.server.spring.boot.starter
+    implementation libs.spring.boot.starter.web
+    implementation libs.spring.boot.starter.security
     implementation libs.protobuf.java
     implementation libs.protobuf.util
-
 }

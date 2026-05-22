@@ -2,9 +2,8 @@ plugins {
     id 'crypto-application'
 }
 
-
 dependencies {
-    api project(':common:common-core')
+    implementation project(':common:common-core')
 
     api(libs.spring.security.oauth2.jose)
     api(libs.spring.security.oauth2.resource.server)

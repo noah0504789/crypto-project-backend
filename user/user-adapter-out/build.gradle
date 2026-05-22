@@ -2,14 +2,13 @@ plugins {
     id 'crypto-adapter'
 }
 
-
 dependencies {
-    api project(':user:user-application')
+    implementation project(':user:user-application')
 
     runtimeOnly libs.mysql.connector.j
 
-    api libs.spring.boot.starter.data.jpa
-    api libs.spring.boot.starter.aop
+    implementation libs.spring.boot.starter.data.jpa
+    implementation libs.spring.boot.starter.aop
 
     testImplementation project(':common:common-test')
 }

@@ -2,12 +2,10 @@ plugins {
     id 'crypto-application'
 }
 
-
 dependencies {
     api project(':user:user-domain')
 
-    api libs.spring.boot.starter.data.jpa
-    api libs.spring.boot.starter.aop
-    api libs.spring.boot.starter.security
-
+    implementation libs.spring.boot.starter.data.jpa
+    implementation libs.spring.boot.starter.aop
+    implementation libs.spring.boot.starter.security
 }

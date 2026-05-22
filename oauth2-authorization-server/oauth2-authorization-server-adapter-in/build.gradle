@@ -2,7 +2,6 @@ plugins {
     id 'crypto-adapter'
 }
 
-
 dependencies {
     api project(':common:common-core')
     api project(':common:common-web')
@@ -13,13 +12,15 @@ dependencies {
     api platform(libs.grpc.bom)
     api(libs.grpc.stub)
     api(libs.grpc.server.spring.boot.starter)
-    api(libs.spring.boot.starter.web)
-    api(libs.spring.security.oauth2.authorization.server)
-    implementation(libs.protobuf.java)
+    api(libs.protobuf.java)
 
-    testImplementation(libs.spring.security.test)
+    implementation(libs.spring.boot.starter.web)
+    implementation(libs.spring.security.oauth2.authorization.server)
+
     testImplementation project(':oauth2-authorization-server:oauth2-authorization-server-adapter-out')
+    testImplementation project(':common:common-test')
+    testImplementation project(':common:common-redis')
+    testImplementation(libs.spring.security.test)
     testImplementation(libs.spring.boot.starter.data.redis)
     testImplementation(libs.caffeine)
-    testImplementation project(':common:common-test')
 }
