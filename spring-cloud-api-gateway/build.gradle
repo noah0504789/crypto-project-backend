@@ -1,16 +1,34 @@
 plugins {
-    id 'crypto-common-library'
+    id 'crypto-bootstrap'
 }
 
-
 dependencies {
-
-    implementation project(':common')
-    implementation project(':spring-cloud-api-gateway:spring-cloud-api-gateway-application')
-    implementation project(':spring-cloud-api-gateway:spring-cloud-api-gateway-adapter-in')
-    implementation project(':spring-cloud-api-gateway:spring-cloud-api-gateway-adapter-out')
-    implementation project(':spring-cloud-api-gateway:spring-cloud-api-gateway-bootstrap')
+    implementation project(':common:common-core')
+    implementation project(':common:common-web')
     implementation project(':oauth2-authorization-server:oauth2-authorization-server-client')
     implementation project(':protobuf')
 
+    implementation(platform(libs.grpc.bom))
+    implementation(libs.grpc.netty)
+    implementation(libs.grpc.protobuf)
+    implementation(libs.grpc.stub)
+    implementation(libs.grpc.client.spring.boot.starter)
+
+    implementation(libs.protobuf.java)
+    implementation(libs.protobuf.util)
+
+    implementation(libs.spring.boot.starter.actuator)
+    implementation(libs.spring.boot.starter.webflux)
+    implementation(libs.spring.boot.starter.security)
+    implementation(libs.spring.security.oauth2.jose)
+    implementation(libs.spring.security.oauth2.resource.server)
+
+    implementation(libs.spring.cloud.config.client)
+    implementation(libs.spring.cloud.eureka.client)
+    implementation(libs.spring.cloud.gateway)
+    implementation(libs.spring.cloud.loadbalancer)
+
+    testImplementation project(':common:common-test')
+    testImplementation(libs.spring.security.test)
+    testImplementation(libs.reactor.test)
 }
