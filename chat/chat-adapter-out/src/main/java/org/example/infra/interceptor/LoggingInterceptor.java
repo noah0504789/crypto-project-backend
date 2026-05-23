@@ -1,4 +1,4 @@
-package org.example.config.interceptor;
+package org.example.infra.interceptor;
 
 import lombok.extern.slf4j.Slf4j;
 import org.example.common.enums.KafkaHeaderKey;

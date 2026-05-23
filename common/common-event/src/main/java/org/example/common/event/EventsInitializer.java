@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class EventsInitlalizer implements ApplicationListener<ApplicationReadyEvent> {
+public class EventsInitializer implements ApplicationListener<ApplicationReadyEvent> {
 
     private final ApplicationEventPublisher publisher;
 

@@ -10,7 +10,7 @@ import config.TestPropertiesConfig;
 import config.TestRedisConfig;
 import org.example.test.testcontainer.RedisTestContainerInitializer;
 import org.example.oauth2.adapter.in.config.AuthorizationServerConfig;
-import org.example.config.MessageConverterConfig;
+import org.example.common.config.MessageConverterConfig;
 import org.example.oauth2.adapter.in.config.SecurityFilterChainConfig;
 import org.example.oauth2.adapter.in.config.TokenConfig;
 import org.example.common.enums.RedisKey;

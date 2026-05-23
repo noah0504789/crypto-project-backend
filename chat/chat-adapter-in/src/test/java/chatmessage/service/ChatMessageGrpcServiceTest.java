@@ -2,7 +2,7 @@ package chatmessage.service;
 
 import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
-import org.example.chatmessage.adapter.in.ChatMessageGrpcService;
+import org.example.chatmessage.adapter.in.grpc.ChatMessageGrpcService;
 import org.example.chatmessage.application.port.out.ChatMessageCachePort;
 import org.example.chatmessage.application.service.ChatMessageCommandService;
 import org.example.chatmessage.domain.model.ChatMessage;

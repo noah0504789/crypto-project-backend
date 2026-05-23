@@ -1,7 +1,7 @@
 package endpoint;
 
 import config.*;
-import org.example.config.MessageConverterConfig;
+import org.example.common.config.MessageConverterConfig;
 import org.example.oauth2.adapter.in.config.SecurityFilterChainConfig;
 import org.example.test.config.TestBootApplication;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;

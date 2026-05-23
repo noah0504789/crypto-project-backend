@@ -1,9 +1,12 @@
-package org.example.common.exception;
+package org.example.grpc.common.exception;
 
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.advice.GrpcExceptionHandler;
+import org.example.common.exception.InfrastructureException;
+import org.example.common.exception.InvalidRequestException;
+import org.example.common.exception.ResourceNotFoundException;
 
 @Slf4j
 public abstract class BaseGrpcExceptionAdvice {

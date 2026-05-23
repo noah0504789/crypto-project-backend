@@ -1,4 +1,4 @@
-package org.example.chatmessage.adapter.in;
+package org.example.chatmessage.adapter.in.scheduler;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

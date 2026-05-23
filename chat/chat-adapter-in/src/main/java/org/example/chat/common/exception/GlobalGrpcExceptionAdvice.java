@@ -12,7 +12,7 @@ import org.example.chatmessage.adapter.in.exception.ChatMessageResourceExhausted
 import org.example.chatmessage.application.service.ChatMessageCommandService;
 import org.example.chatmessage.domain.model.ChatMessage;
 import org.example.chatroom.domain.exception.ChatRoomNotFoundException;
-import org.example.common.exception.BaseGrpcExceptionAdvice;
+import org.example.grpc.common.exception.BaseGrpcExceptionAdvice;
 
 @Slf4j
 @GrpcAdvice

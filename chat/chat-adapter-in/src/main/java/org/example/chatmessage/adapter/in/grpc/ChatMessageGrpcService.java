@@ -1,4 +1,4 @@
-package org.example.chatmessage.adapter.in;
+package org.example.chatmessage.adapter.in.grpc;
 
 import io.grpc.Context;
 import io.grpc.stub.StreamObserver;

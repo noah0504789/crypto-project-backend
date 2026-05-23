@@ -1,4 +1,4 @@
-package org.example.chatmessage.adapter.in;
+package org.example.chatmessage.adapter.in.web;
 
 import lombok.RequiredArgsConstructor;
 import org.example.chatmessage.application.dto.ChatMessageResponse;
