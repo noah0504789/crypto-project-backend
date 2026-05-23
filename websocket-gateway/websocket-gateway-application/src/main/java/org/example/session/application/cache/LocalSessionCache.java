@@ -1,0 +1,53 @@
+package org.example.session.application.cache;
+
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import org.springframework.stereotype.Component;
+
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+@Component
+public class LocalSessionCache {
+
+    private final Cache<String, String> sessionToUser = Caffeine.newBuilder()
+            .maximumSize(500_000)
+            .build();
+
+    private final Cache<String, Set<String>> userToSessions = Caffeine.newBuilder()
+            .maximumSize(500_000)
+            .build();
+
+    public void register(String sessionId, String userId) {
+        sessionToUser.put(sessionId, userId);
+
+        Set<String> sessions = userToSessions.get(userId, key -> ConcurrentHashMap.newKeySet());
+
+        sessions.add(sessionId);
+    }
+
+    public String findUserId(String sessionId) {
+        return sessionToUser.getIfPresent(sessionId);
+    }
+
+    public boolean hasUser(String userId) {
+        Set<String> sessions = userToSessions.getIfPresent(userId);
+        return sessions != null && !sessions.isEmpty();
+    }
+
+    public void remove(String sessionId) {
+        String userId = sessionToUser.getIfPresent(sessionId);
+        if (userId == null) return;
+
+        sessionToUser.invalidate(sessionId);
+
+        Set<String> sessions = userToSessions.getIfPresent(userId);
+        if (sessions == null) return;
+
+        sessions.remove(sessionId);
+
+        if (sessions.isEmpty()) {
+            userToSessions.invalidate(userId);
+        }
+    }
+}

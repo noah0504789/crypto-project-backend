@@ -2,7 +2,7 @@ package org.example.websocket.adapter.in.exception;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.event.chatmessage.dto.ChatMessageAck;
+import org.example.websocket.stomp.dto.ChatMessageAck;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.support.MethodArgumentNotValidException;
 import org.springframework.messaging.simp.annotation.SendToUser;
