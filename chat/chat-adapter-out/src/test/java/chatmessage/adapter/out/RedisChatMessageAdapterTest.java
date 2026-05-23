@@ -1,8 +1,8 @@
 package chatmessage.adapter.out;
 
-import org.example.common.test.config.TestBootApplication;
+import org.example.test.config.TestBootApplication;
 import config.TestRedisConfig;
-import org.example.common.testcontainer.RedisTestContainerInitializer;
+import org.example.test.testcontainer.RedisTestContainerInitializer;
 import org.example.chatmessage.adapter.out.cache.RedisChatMessageAdapter;
 import org.example.chatmessage.domain.model.ChatMessage;
 import org.example.chatroom.application.dto.ChatRoomMembershipScore;
@@ -27,7 +27,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.example.common.enums.RedisKey.*;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
 
 @DataRedisTest(properties = {"spring.data.redis.repositories.enabled=false"})
 @ContextConfiguration(

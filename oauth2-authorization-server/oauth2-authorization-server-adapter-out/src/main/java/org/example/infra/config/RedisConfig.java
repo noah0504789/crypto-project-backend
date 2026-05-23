@@ -6,7 +6,7 @@ import io.lettuce.core.resource.ClientResources;
 import io.lettuce.core.tracing.MicrometerTracing;
 import io.micrometer.observation.ObservationRegistry;
 import org.example.common.properties.AppRedisProperties;
-import org.example.common.redis.RedisConnectionFactorySupport;
+import org.example.common.redis.support.RedisConnectionFactorySupport;
 import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

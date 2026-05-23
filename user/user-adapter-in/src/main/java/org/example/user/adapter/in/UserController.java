@@ -2,7 +2,7 @@ package org.example.user.adapter.in;
 
 import lombok.RequiredArgsConstructor;
 import org.example.common.enums.HttpHeaderKey;
-import org.example.common.exception.UserNotFoundException;
+import org.example.user.exception.UserNotFoundException;
 import org.example.user.adapter.dto.UserRequest;
 import org.example.user.adapter.dto.UserResponse;
 import org.example.user.application.service.LocalUserSignUpService;

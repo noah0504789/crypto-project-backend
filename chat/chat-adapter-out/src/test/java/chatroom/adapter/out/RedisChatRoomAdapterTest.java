@@ -1,7 +1,7 @@
 package chatroom.adapter.out;
 
-import org.example.common.testcontainer.RedisTestContainerInitializer;
-import org.example.common.test.config.TestBootApplication;
+import org.example.test.testcontainer.RedisTestContainerInitializer;
+import org.example.test.config.TestBootApplication;
 import config.TestRedisConfig;
 import org.example.chatroom.adapter.out.cache.RedisChatRoomAdapter;
 import org.example.chatroom.domain.model.ChatRoom;

@@ -14,13 +14,12 @@ import org.example.chatmessage.domain.model.ChatMessage;
 import org.example.chatroom.adapter.out.cache.RedisChatRoom;
 import org.example.chatroom.adapter.out.cache.RedisChatRoomAdapter;
 import org.example.chatroom.adapter.out.cache.RedisChatRoomCodec;
-import org.example.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.common.clock.Clock;
-import org.example.common.clock.SystemClock;
+import org.example.common.clock.ClockService;
 import org.example.infra.redis.RedisCollectionRegistry;
-import org.example.common.redis.RedisHashCodec;
-import org.example.common.redis.StringRedisHashOperations;
-import org.example.common.redis.RedisValueCodec;
+import org.example.common.redis.codec.RedisHashCodec;
+import org.example.common.redis.operation.StringRedisHashOperations;
+import org.example.common.redis.codec.RedisValueCodec;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -61,7 +60,7 @@ public class TestRedisConfig {
 
     @Bean("instantClock")
     public Clock instantClock() {
-        return new SystemClock();
+        return new ClockService();
     }
 
     @Primary

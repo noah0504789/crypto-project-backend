@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.outbox.adapter.OutboxEventListListener;
 import org.example.outbox.domain.event.AbstractOutboxEvent;
 import org.example.outbox.domain.Outbox;
-import org.example.outbox.OutboxService;
+import org.example.outbox.application.OutboxService;
 import org.example.outbox.domain.event.AbstractOutboxEventList;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

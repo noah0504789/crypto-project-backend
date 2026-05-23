@@ -3,7 +3,7 @@ package org.example.infra.event;
 import lombok.RequiredArgsConstructor;
 import org.example.outbox.application.EventPublisherPort;
 import org.example.common.enums.KafkaHeaderKey;
-import org.example.dlq.Dlq;
+import org.example.dlq.domain.Dlq;
 import org.example.outbox.domain.Outbox;
 import org.example.infra.exception.OutboxPollerInfrastructureException;
 import org.springframework.cloud.stream.function.StreamBridge;

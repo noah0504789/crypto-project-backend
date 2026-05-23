@@ -5,10 +5,10 @@ import org.example.chatmessage.application.port.out.ChatMessageCachePort;
 import org.example.chatmessage.domain.model.ChatMessage;
 import org.example.chatroom.application.dto.ChatRoomMembershipScore;
 import org.example.chatroom.domain.model.ChatRoomCategory;
-import org.example.common.redis.cache.CacheFailOpen;
+import org.example.common.redis.failover.CacheFailOpen;
 import org.example.common.clock.Clock;
 import org.example.infra.redis.RedisCollectionRegistry;
-import org.example.common.redis.RedisValueCodec;
+import org.example.common.redis.codec.RedisValueCodec;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.example.chat.common.exception.ChatCacheException;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -42,7 +42,7 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
             @Qualifier("storeChatMessage_lua") RedisScript<Boolean> storeChatMessage_lua,
             @Qualifier("warmUpChatMessageList_lua") RedisScript<Boolean> warmUpChatMessageList_lua,
             @Qualifier("deleteChatMessage_lua") RedisScript<Long> deleteChatMessage_lua,
-            @Qualifier("instantClock") Clock instantClock
+            Clock clock
     ) {
         this.masterHashRedisTemplate = masterHashRedisTemplate;
         this.replicaHashRedisTemplate = replicaHashRedisTemplate;
@@ -51,7 +51,7 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
         this.storeChatMessage_lua = storeChatMessage_lua;
         this.warmUpChatMessageList_lua = warmUpChatMessageList_lua;
         this.deleteChatMessage_lua = deleteChatMessage_lua;
-        this.instantClock = instantClock;
+        this.instantClock = clock;
     }
 
     @Override

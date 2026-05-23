@@ -6,8 +6,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.advice.GrpcAdvice;
 import net.devh.boot.grpc.server.advice.GrpcExceptionHandler;
-import org.example.chat.common.exception.ChatMessageCacheException;
-import org.example.chat.common.exception.ChatMessagePersistException;
 import org.example.chatmessage.adapter.in.exception.ChatMessageGrpcCancelledException;
 import org.example.chatmessage.adapter.in.exception.ChatMessageGrpcException;
 import org.example.chatmessage.adapter.in.exception.ChatMessageResourceExhaustedException;

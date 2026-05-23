@@ -1,6 +1,6 @@
 package session;
 
-import org.example.common.redis.StringRedisHashOperations;
+import org.example.common.redis.operation.StringRedisHashOperations;
 import org.example.session.RedisSessionLocationAdapter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

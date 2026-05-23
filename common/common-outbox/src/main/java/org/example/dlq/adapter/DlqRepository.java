@@ -1,7 +1,7 @@
 package org.example.dlq.adapter;
 
-import org.example.dlq.Dlq;
-import org.example.dlq.DlqStatus;
+import org.example.dlq.domain.Dlq;
+import org.example.dlq.domain.DlqStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 

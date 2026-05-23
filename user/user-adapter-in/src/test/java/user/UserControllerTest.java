@@ -1,6 +1,6 @@
 package user;
 
-import org.example.common.exception.UserNotFoundException;
+import org.example.user.exception.UserNotFoundException;
 import org.example.user.adapter.dto.UserRequest;
 import org.example.user.adapter.dto.UserResponse;
 import org.example.user.adapter.in.UserController;

@@ -1,21 +1,16 @@
 package org.example.chatroom.domain.event.dlq;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.ToString;
 import org.example.chatroom.domain.port.ChatRoomDlqHandler;
 import org.example.common.enums.KafkaTopic;
-import org.example.common.event.HandleableEvent;
 import org.example.common.event.RecoverableEvent;
-import org.example.dlq.AbstractDlqEvent;
+import org.example.dlq.domain.event.AbstractDlqEvent;
 import org.example.outbox.domain.OutboxDomainType;
-import org.example.outbox.domain.event.AbstractOutboxEvent;
 
 import java.util.Map;
-
-import static org.example.common.enums.KafkaTopic.CHAT_ROOM;
 
 @ToString
 @Getter

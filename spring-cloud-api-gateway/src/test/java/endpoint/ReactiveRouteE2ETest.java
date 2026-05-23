@@ -1,8 +1,8 @@
 package endpoint;
 
 import config.*;
-import org.example.common.config.MessageConverterConfig;
-import org.example.common.test.config.TestBootApplication;
+import org.example.config.MessageConverterConfig;
+import org.example.test.config.TestBootApplication;
 import org.example.gateway.config.ReactiveSecurityConfig;
 import org.example.gateway.filter.IdentityPropagationGlobalFilter;
 import org.junit.jupiter.api.BeforeEach;

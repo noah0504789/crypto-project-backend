@@ -1,7 +1,6 @@
 package org.example.event.chatmessage.dto;
 
 import jakarta.validation.ConstraintViolation;
-import jakarta.validation.constraints.NotBlank;
 import org.example.common.validation.ValidationResult;
 
 import java.util.Set;

@@ -1,8 +1,8 @@
 package adapter;
 
 import config.TestPropertiesConfig;
-import org.example.common.testcontainer.RedisTestContainerInitializer;
-import org.example.common.test.config.TestBootApplication;
+import org.example.test.testcontainer.RedisTestContainerInitializer;
+import org.example.test.config.TestBootApplication;
 import config.TestRedisConfig;
 import org.example.common.enums.RedisKey;
 import org.example.oauth2.token.adapter.out.redis.RedisRefreshTokenAdapter;

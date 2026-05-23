@@ -8,7 +8,6 @@ import org.apache.kafka.streams.state.WindowStore;
 import org.apache.kafka.streams.state.WindowStoreIterator;
 import org.example.infra.properties.UpbitProperties;
 import org.example.common.event.notification.WebNotificationEvent;
-import org.example.upbit.UpbitTickerProcessor;
 import org.example.upbit.event.UpbitTickerEvent;
 import org.example.upbit.event.UpbitTickerValue;
 import org.junit.jupiter.api.BeforeEach;

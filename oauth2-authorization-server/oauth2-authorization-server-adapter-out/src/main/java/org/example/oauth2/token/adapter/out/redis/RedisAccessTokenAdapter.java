@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.common.enums.RedisKey;
 import org.example.common.properties.JwtProperties;
-import org.example.common.redis.StringRedisHashOperations;
+import org.example.common.redis.operation.StringRedisHashOperations;
 import org.example.oauth2.token.port.out.AccessTokenPort;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;

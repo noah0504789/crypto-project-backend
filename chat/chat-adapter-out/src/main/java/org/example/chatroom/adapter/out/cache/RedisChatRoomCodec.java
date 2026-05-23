@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.example.chat.common.exception.ChatCacheException;
 import org.example.chatroom.domain.model.ChatRoomCategory;
-import org.example.common.redis.RedisHashCodec;
+import org.example.common.redis.codec.RedisHashCodec;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;

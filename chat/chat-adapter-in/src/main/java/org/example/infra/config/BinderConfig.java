@@ -8,13 +8,12 @@ import org.example.chatroom.application.service.ChatRoomEventService;
 import org.example.common.event.HandleableEvent;
 import org.example.common.event.RecoverableEvent;
 import org.example.common.enums.KafkaHeaderKey;
-import org.example.dlq.DlqService;
+import org.example.dlq.application.DlqService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 
-import java.nio.charset.StandardCharsets;
 import java.util.function.Consumer;
 
 @Slf4j

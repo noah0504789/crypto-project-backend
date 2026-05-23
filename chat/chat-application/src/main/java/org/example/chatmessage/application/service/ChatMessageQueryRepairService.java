@@ -2,14 +2,12 @@ package org.example.chatmessage.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.chatmessage.application.port.in.ChatMessageQueryUsecase;
 import org.example.chatmessage.application.port.out.ChatMessageCachePort;
 import org.example.chatmessage.application.port.out.ChatMessagePersistencePort;
 import org.example.chatmessage.domain.model.ChatMessage;
-import org.example.common.redis.DistributedLockExecutor;
-import org.example.common.redis.DistributedLockPolicy;
+import org.example.common.redis.lock.DistributedLockExecutor;
+import org.example.common.redis.lock.DistributedLockPolicy;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 

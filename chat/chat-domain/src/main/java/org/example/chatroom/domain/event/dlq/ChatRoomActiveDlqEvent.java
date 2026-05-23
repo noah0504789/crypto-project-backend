@@ -6,13 +6,9 @@ import lombok.Getter;
 import lombok.ToString;
 import org.example.chatroom.domain.port.ChatRoomDlqHandler;
 import org.example.common.enums.KafkaTopic;
-import org.example.common.event.HandleableEvent;
 import org.example.common.event.RecoverableEvent;
-import org.example.dlq.AbstractDlqEvent;
+import org.example.dlq.domain.event.AbstractDlqEvent;
 import org.example.outbox.domain.OutboxDomainType;
-import org.example.outbox.domain.event.AbstractOutboxEvent;
-
-import static org.example.common.enums.KafkaTopic.CHAT_ROOM;
 
 @ToString
 @Getter

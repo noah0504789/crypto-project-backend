@@ -6,7 +6,7 @@ import org.example.chatmessage.domain.model.ChatMessage;
 import org.example.chat.common.exception.ChatCacheException;
 import org.example.common.clock.Clock;
 import org.example.infra.redis.RedisCollectionRegistry;
-import org.example.common.redis.RedisValueCodec;
+import org.example.common.redis.codec.RedisValueCodec;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.RedisTemplate;

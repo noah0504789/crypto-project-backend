@@ -1,12 +1,11 @@
 package chatmessage.adapter.out;
 
-import org.example.common.test.config.TestBootApplication;
+import org.example.test.config.TestBootApplication;
 import config.TestMongoConfig;
-import org.example.common.testcontainer.MongoDBTestContainerInitializer;
+import org.example.test.testcontainer.MongoDBTestContainerInitializer;
 import org.bson.types.ObjectId;
 import org.example.chatmessage.adapter.out.persistence.MongoChatMessage;
 import org.example.chatmessage.adapter.out.persistence.MongoChatMessageRepository;
-import org.example.chatroom.adapter.out.persistence.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -21,7 +20,6 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.test.context.ContextConfiguration;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 

@@ -1,12 +1,11 @@
 package org.example.session;
 
 import lombok.RequiredArgsConstructor;
-import org.example.common.redis.StringRedisHashOperations;
+import org.example.common.redis.operation.StringRedisHashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-import java.util.*;
 
 import static org.example.common.enums.RedisKey.SESSION_INFO;
 

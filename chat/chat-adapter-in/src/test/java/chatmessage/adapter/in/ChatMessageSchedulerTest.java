@@ -6,7 +6,7 @@ import org.example.chatmessage.adapter.in.ChatMessageScheduler;
 import org.example.chatmessage.domain.model.ChatMessage;
 import org.example.common.clock.Clock;
 import org.example.infra.redis.RedisCollectionRegistry;
-import org.example.common.redis.RedisValueCodec;
+import org.example.common.redis.codec.RedisValueCodec;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

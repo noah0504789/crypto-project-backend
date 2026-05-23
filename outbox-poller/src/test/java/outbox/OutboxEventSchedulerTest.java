@@ -3,7 +3,7 @@ package outbox;
 import org.example.outbox.properties.OutboxPollerProperties;
 import org.example.outbox.domain.OutboxDispatchType;
 import org.example.outbox.OutboxEventScheduler;
-import org.example.outbox.OutboxService;
+import org.example.outbox.application.OutboxService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

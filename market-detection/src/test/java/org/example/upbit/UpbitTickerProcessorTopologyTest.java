@@ -1,7 +1,7 @@
 package org.example.upbit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.example.common.test.config.TestBootApplication;
+import org.example.test.config.TestBootApplication;
 import config.TestPropertiesConfig;
 import config.TestUpbitExternalDependencyConfig;
 import org.apache.kafka.common.serialization.Serdes;

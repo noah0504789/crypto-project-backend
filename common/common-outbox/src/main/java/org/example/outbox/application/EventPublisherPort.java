@@ -1,6 +1,6 @@
 package org.example.outbox.application;
 
-import org.example.dlq.Dlq;
+import org.example.dlq.domain.Dlq;
 import org.example.outbox.domain.Outbox;
 
 public interface EventPublisherPort {

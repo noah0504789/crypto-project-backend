@@ -8,7 +8,7 @@ import org.example.chatroom.domain.port.ChatRoomDlqHandler;
 import org.example.chatroom.domain.model.ChatRoomCategory;
 import org.example.common.enums.KafkaTopic;
 import org.example.common.event.RecoverableEvent;
-import org.example.dlq.AbstractDlqEvent;
+import org.example.dlq.domain.event.AbstractDlqEvent;
 import org.example.outbox.domain.OutboxDomainType;
 
 import java.util.Set;

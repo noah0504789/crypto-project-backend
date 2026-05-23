@@ -1,12 +1,12 @@
 package endpoint;
 
-import org.example.common.test.config.TestBootApplication;
+import org.example.test.config.TestBootApplication;
 import config.TestExternalDependencyConfig;
 import config.TestPropertiesConfig;
 import config.TestSecurityDependencyConfig;
 import jakarta.servlet.http.Cookie;
 import org.example.oauth2.adapter.in.web.AuthController;
-import org.example.common.config.MessageConverterConfig;
+import org.example.config.MessageConverterConfig;
 import org.example.oauth2.adapter.in.config.SecurityFilterChainConfig;
 import org.example.oauth2.port.out.AuthServerTokenClientPort;
 import org.example.oauth2.service.token.RefreshTokenService;

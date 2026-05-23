@@ -1,6 +1,7 @@
 package org.example.dlq;
 
 import lombok.RequiredArgsConstructor;
+import org.example.dlq.application.DlqService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 

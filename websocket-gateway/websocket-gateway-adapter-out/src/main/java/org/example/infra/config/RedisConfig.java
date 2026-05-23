@@ -3,7 +3,7 @@ package org.example.infra.config;
 import io.lettuce.core.ReadFrom;
 import io.lettuce.core.resource.ClientResources;
 import org.example.common.properties.AppRedisProperties;
-import org.example.common.redis.RedisConnectionFactorySupport;
+import org.example.common.redis.support.RedisConnectionFactorySupport;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 import org.springframework.context.annotation.Bean;

@@ -1,6 +1,6 @@
 package event;
 
-import org.example.dlq.Dlq;
+import org.example.dlq.domain.Dlq;
 import org.example.infra.event.EventPublisher;
 import org.example.infra.exception.OutboxPollerInfrastructureException;
 import org.example.outbox.domain.Outbox;
