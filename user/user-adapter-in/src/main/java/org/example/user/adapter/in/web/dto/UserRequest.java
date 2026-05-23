@@ -1,4 +1,4 @@
-package org.example.user.adapter.dto;
+package org.example.user.adapter.in.web.dto;
 
 public record UserRequest(
         String email,

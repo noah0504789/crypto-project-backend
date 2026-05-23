@@ -1,4 +1,4 @@
-package org.example.user.adapter.in;
+package org.example.user.adapter.in.grpc;
 
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
@@ -11,8 +11,7 @@ import org.example.grpc.user.SignUpOauth2GrpcResponse;
 import org.example.grpc.user.UserServiceGrpc;
 import org.example.user.application.service.Oauth2UserSignUpService;
 import org.example.user.application.service.UserQueryService;
-import org.example.user.model.UserGrpcMapper;
-import org.example.user.model.domain.User;
+import org.example.user.domain.model.User;
 
 @Slf4j
 @GrpcService

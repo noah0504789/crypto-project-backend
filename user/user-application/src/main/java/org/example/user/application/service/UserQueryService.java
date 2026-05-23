@@ -2,11 +2,11 @@ package org.example.user.application.service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.common.jpa.annotation.ReadReplica;
-import org.example.user.application.port.RoleRepositoryPort;
-import org.example.user.application.port.UserRepositoryPort;
-import org.example.user.model.RoleEnum;
-import org.example.user.model.domain.Role;
-import org.example.user.model.domain.User;
+import org.example.user.application.port.out.RoleRepositoryPort;
+import org.example.user.application.port.out.UserRepositoryPort;
+import org.example.user.domain.model.RoleEnum;
+import org.example.user.domain.model.Role;
+import org.example.user.domain.model.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

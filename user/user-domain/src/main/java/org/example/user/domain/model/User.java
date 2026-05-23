@@ -1,4 +1,4 @@
-package org.example.user.model.domain;
+package org.example.user.domain.model;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -9,7 +9,6 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.*;
 import org.example.common.jpa.BaseEntity;
-import org.example.user.model.RoleEnum;
 import org.example.common.id.annotation.SnowflakeId;
 
 import java.time.Instant;

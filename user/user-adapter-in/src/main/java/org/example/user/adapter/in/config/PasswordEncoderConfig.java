@@ -1,4 +1,4 @@
-package org.example.config.config;
+package org.example.user.adapter.in.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

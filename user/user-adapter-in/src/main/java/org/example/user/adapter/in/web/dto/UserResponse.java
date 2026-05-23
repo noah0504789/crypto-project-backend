@@ -1,6 +1,6 @@
-package org.example.user.adapter.dto;
+package org.example.user.adapter.in.web.dto;
 
-import org.example.user.model.domain.User;
+import org.example.user.domain.model.User;
 
 import java.time.Instant;
 import java.util.UUID;

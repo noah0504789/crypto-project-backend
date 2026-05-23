@@ -1,6 +1,6 @@
-package org.example.user.application.port;
+package org.example.user.application.port.out;
 
-import org.example.user.model.domain.User;
+import org.example.user.domain.model.User;
 
 import java.util.Optional;
 import java.util.UUID;

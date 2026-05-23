@@ -1,4 +1,4 @@
-package org.example.user.model.domain;
+package org.example.user.domain.model;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;

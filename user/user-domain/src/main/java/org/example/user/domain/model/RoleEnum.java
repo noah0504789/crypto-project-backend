@@ -1,4 +1,4 @@
-package org.example.user.model;
+package org.example.user.domain.model;
 
 import org.example.common.enums.RoleKey;
 

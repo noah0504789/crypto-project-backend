@@ -1,8 +1,8 @@
-package org.example.user.adapter.out;
+package org.example.user.adapter.out.persistence;
 
-import org.example.user.model.RoleEnum;
-import org.example.user.application.port.RoleRepositoryPort;
-import org.example.user.model.domain.Role;
+import org.example.user.domain.model.RoleEnum;
+import org.example.user.application.port.out.RoleRepositoryPort;
+import org.example.user.domain.model.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

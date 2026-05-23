@@ -1,4 +1,4 @@
-package org.example.user.model.domain;
+package org.example.user.domain.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -12,7 +12,6 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.example.common.jpa.BaseEntity;
-import org.example.user.model.RoleEnum;
 
 @Entity
 @Table(name = "role")

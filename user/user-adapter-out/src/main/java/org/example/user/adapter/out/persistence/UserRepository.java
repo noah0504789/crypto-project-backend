@@ -1,7 +1,7 @@
-package org.example.user.adapter.out;
+package org.example.user.adapter.out.persistence;
 
-import org.example.user.application.port.UserRepositoryPort;
-import org.example.user.model.domain.User;
+import org.example.user.application.port.out.UserRepositoryPort;
+import org.example.user.domain.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

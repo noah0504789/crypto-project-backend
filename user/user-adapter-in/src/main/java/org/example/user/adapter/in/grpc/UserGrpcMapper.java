@@ -1,11 +1,11 @@
-package org.example.user.model;
+package org.example.user.adapter.in.grpc;
 
 import com.google.protobuf.Timestamp;
 import com.google.protobuf.util.Timestamps;
 import org.example.grpc.user.FindByEmailGrpcResponse;
 import org.example.grpc.user.SignUpOauth2GrpcResponse;
 import org.example.grpc.user.UserGrpc;
-import org.example.user.model.domain.User;
+import org.example.user.domain.model.User;
 import org.springframework.stereotype.Component;
 
 @Component

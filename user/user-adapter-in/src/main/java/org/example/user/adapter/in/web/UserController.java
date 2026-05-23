@@ -1,13 +1,13 @@
-package org.example.user.adapter.in;
+package org.example.user.adapter.in.web;
 
 import lombok.RequiredArgsConstructor;
 import org.example.common.enums.HttpHeaderKey;
-import org.example.user.exception.UserNotFoundException;
-import org.example.user.adapter.dto.UserRequest;
-import org.example.user.adapter.dto.UserResponse;
+import org.example.user.domain.exception.UserNotFoundException;
+import org.example.user.adapter.in.web.dto.UserRequest;
+import org.example.user.adapter.in.web.dto.UserResponse;
 import org.example.user.application.service.LocalUserSignUpService;
 import org.example.user.application.service.UserQueryService;
-import org.example.user.model.domain.User;
+import org.example.user.domain.model.User;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

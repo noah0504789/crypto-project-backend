@@ -1,14 +1,14 @@
 package user;
 
-import org.example.user.exception.UserNotFoundException;
-import org.example.user.adapter.dto.UserRequest;
-import org.example.user.adapter.dto.UserResponse;
-import org.example.user.adapter.in.UserController;
+import org.example.user.domain.exception.UserNotFoundException;
+import org.example.user.adapter.in.web.dto.UserRequest;
+import org.example.user.adapter.in.web.dto.UserResponse;
+import org.example.user.adapter.in.web.UserController;
 import org.example.user.application.service.LocalUserSignUpService;
 import org.example.user.application.service.UserQueryService;
-import org.example.user.model.RoleEnum;
-import org.example.user.model.domain.Role;
-import org.example.user.model.domain.User;
+import org.example.user.domain.model.RoleEnum;
+import org.example.user.domain.model.Role;
+import org.example.user.domain.model.User;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

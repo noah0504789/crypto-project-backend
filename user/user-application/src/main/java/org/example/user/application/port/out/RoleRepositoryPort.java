@@ -1,7 +1,7 @@
-package org.example.user.application.port;
+package org.example.user.application.port.out;
 
-import org.example.user.model.RoleEnum;
-import org.example.user.model.domain.Role;
+import org.example.user.domain.model.RoleEnum;
+import org.example.user.domain.model.Role;
 
 import java.util.Optional;
 

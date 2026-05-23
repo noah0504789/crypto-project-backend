@@ -1,9 +1,9 @@
 package org.example.user.application.service;
 
 import lombok.RequiredArgsConstructor;
-import org.example.user.model.RoleEnum;
-import org.example.user.model.domain.Role;
-import org.example.user.model.domain.User;
+import org.example.user.domain.model.RoleEnum;
+import org.example.user.domain.model.Role;
+import org.example.user.domain.model.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
