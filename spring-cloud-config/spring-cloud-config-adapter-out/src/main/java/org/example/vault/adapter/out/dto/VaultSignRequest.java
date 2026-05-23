@@ -1,4 +1,4 @@
-package org.example.sign;
+package org.example.vault.adapter.out.dto;
 
 public record VaultSignRequest(
         String input,

@@ -1,10 +1,11 @@
-package org.example.vault;
+package org.example.vault.adapter.out;
 
 import lombok.RequiredArgsConstructor;
-import org.example.common.exception.ConfigInfrastructureException;
-import org.example.common.exception.VaultKeyNotFoundException;
-import org.example.infra.properties.VaultTransitProperties;
-import org.example.vault.VaultTransitKeyReadPort;
+import org.example.config.exception.ConfigInfrastructureException;
+import org.example.config.exception.VaultKeyNotFoundException;
+import org.example.vault.adapter.out.properties.VaultTransitProperties;
+import org.example.vault.port.out.VaultTransitKeyReadPort;
+import org.example.vault.VaultTransitPublicKeyInfo;
 import org.springframework.stereotype.Component;
 import org.springframework.vault.core.VaultTemplate;
 import org.springframework.vault.support.VaultResponse;

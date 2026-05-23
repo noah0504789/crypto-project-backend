@@ -1,8 +1,10 @@
 package org.example.sign;
 
 import lombok.RequiredArgsConstructor;
+import org.example.sign.dto.SignRequest;
+import org.example.sign.dto.SignResponse;
 import org.example.vault.VaultTransitSignResult;
-import org.example.vault.VaultTransitSignPort;
+import org.example.vault.port.out.VaultTransitSignPort;
 import org.springframework.stereotype.Service;
 
 @Service

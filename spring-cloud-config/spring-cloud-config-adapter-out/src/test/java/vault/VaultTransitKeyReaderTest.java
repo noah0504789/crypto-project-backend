@@ -1,10 +1,10 @@
 package vault;
 
-import org.example.common.exception.ConfigInfrastructureException;
-import org.example.common.exception.VaultKeyNotFoundException;
-import org.example.vault.VaultTransitKeyReader;
+import org.example.config.exception.ConfigInfrastructureException;
+import org.example.config.exception.VaultKeyNotFoundException;
+import org.example.vault.adapter.out.VaultTransitKeyReader;
 import org.example.vault.VaultTransitPublicKeyInfo;
-import org.example.infra.properties.VaultTransitProperties;
+import org.example.vault.adapter.out.properties.VaultTransitProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

@@ -1,4 +1,4 @@
-package org.example.sign;
+package org.example.sign.dto;
 
 public record SignRequest(
         String keyName,

@@ -1,4 +1,6 @@
-package org.example.vault;
+package org.example.vault.port.out;
+
+import org.example.vault.VaultTransitSignResult;
 
 public interface VaultTransitSignPort {
 

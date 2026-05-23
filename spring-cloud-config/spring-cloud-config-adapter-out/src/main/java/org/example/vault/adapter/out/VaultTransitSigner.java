@@ -1,9 +1,10 @@
-package org.example.vault;
+package org.example.vault.adapter.out;
 
 import lombok.RequiredArgsConstructor;
-import org.example.infra.properties.VaultTransitProperties;
-import org.example.sign.VaultSignRequest;
-import org.example.vault.VaultTransitSignPort;
+import org.example.vault.adapter.out.properties.VaultTransitProperties;
+import org.example.vault.adapter.out.dto.VaultSignRequest;
+import org.example.vault.port.out.VaultTransitSignPort;
+import org.example.vault.VaultTransitSignResult;
 import org.springframework.stereotype.Component;
 import org.springframework.vault.core.VaultTemplate;
 import org.springframework.vault.support.VaultResponse;

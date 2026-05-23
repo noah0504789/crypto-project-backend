@@ -1,9 +1,9 @@
 package vault;
 
-import org.example.sign.VaultSignRequest;
-import org.example.infra.properties.VaultTransitProperties;
+import org.example.vault.adapter.out.dto.VaultSignRequest;
+import org.example.vault.adapter.out.properties.VaultTransitProperties;
 import org.example.vault.VaultTransitSignResult;
-import org.example.vault.VaultTransitSigner;
+import org.example.vault.adapter.out.VaultTransitSigner;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

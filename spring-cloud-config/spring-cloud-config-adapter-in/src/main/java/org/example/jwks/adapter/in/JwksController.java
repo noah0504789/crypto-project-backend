@@ -1,9 +1,10 @@
-package org.example.jwks;
+package org.example.jwks.adapter.in;
 
 import lombok.RequiredArgsConstructor;
+import org.example.jwks.JwksService;
 import org.example.sign.JwtSigningService;
-import org.example.sign.SignRequest;
-import org.example.sign.SignResponse;
+import org.example.sign.dto.SignRequest;
+import org.example.sign.dto.SignResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;

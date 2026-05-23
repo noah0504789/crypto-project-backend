@@ -1,7 +1,7 @@
 package org.example.jwks;
 
 import lombok.RequiredArgsConstructor;
-import org.example.vault.VaultTransitKeyReadPort;
+import org.example.vault.port.out.VaultTransitKeyReadPort;
 import org.example.vault.VaultTransitPublicKeyInfo;
 import org.springframework.stereotype.Service;
 

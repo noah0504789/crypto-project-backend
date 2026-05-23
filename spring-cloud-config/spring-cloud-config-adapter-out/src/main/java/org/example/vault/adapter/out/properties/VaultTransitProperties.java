@@ -1,4 +1,4 @@
-package org.example.infra.properties;
+package org.example.vault.adapter.out.properties;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
