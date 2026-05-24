@@ -3,6 +3,7 @@ package user;
 import org.example.user.application.service.LocalUserSignUpService;
 import org.example.user.application.service.UserCommandService;
 import org.example.user.application.service.UserQueryService;
+import org.example.user.domain.exception.RoleNotFoundException;
 import org.example.user.domain.model.RoleEnum;
 import org.example.user.domain.model.Role;
 import org.example.user.domain.model.User;
@@ -18,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -37,7 +39,7 @@ class LocalUserSignUpServiceTest {
     private LocalUserSignUpService sut;
 
     @Test
-    @DisplayName("기본 Role이 이미 존재하면 Role 저장 없이 User에 Role을 추가하고 비밀번호를 인코딩한 뒤 저장한다")
+    @DisplayName("기본 Role이 존재하면 User에 Role을 추가하고 비밀번호를 인코딩한 뒤 저장한다")
     void signUp_whenDefaultRoleExists_savesUserWithEncodedPassword() {
         // given
         Role existingRole = Role.ofName(RoleEnum.USER);
@@ -55,7 +57,6 @@ class LocalUserSignUpServiceTest {
 
         // then
         verify(userQueryService).findRoleByName(RoleEnum.USER);
-        verify(userCommandService, never()).saveRole(any(Role.class));
         verify(passwordEncoder).encode("raw-password");
         verify(userCommandService).save(userCaptor.capture());
 
@@ -68,41 +69,19 @@ class LocalUserSignUpServiceTest {
     }
 
     @Test
-    @DisplayName("기본 Role이 없으면 Role을 저장한 뒤 User에 추가하고 저장한다")
-    void signUp_whenDefaultRoleDoesNotExist_savesRoleAndUser() {
+    @DisplayName("기본 Role이 없으면 RoleNotFoundException을 던지고 User를 저장하지 않는다")
+    void signUp_whenDefaultRoleDoesNotExist_throwsRoleNotFoundException() {
         // given
-        Role savedRole = Role.ofName(RoleEnum.USER);
-
         when(userQueryService.findRoleByName(RoleEnum.USER))
                 .thenReturn(Optional.empty());
 
-        when(userCommandService.saveRole(any(Role.class)))
-                .thenReturn(savedRole);
+        // when & then
+        assertThatThrownBy(() -> sut.signUp("test@test.com", "test", "raw-password"))
+                .isInstanceOf(RoleNotFoundException.class);
 
-        when(passwordEncoder.encode("raw-password"))
-                .thenReturn("encoded-password");
-
-        ArgumentCaptor<Role> roleCaptor = ArgumentCaptor.forClass(Role.class);
-        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
-
-        // when
-        sut.signUp("noah@test.com", "noah", "raw-password");
-
-        // then
         verify(userQueryService).findRoleByName(RoleEnum.USER);
-        verify(userCommandService).saveRole(roleCaptor.capture());
-        verify(passwordEncoder).encode("raw-password");
-        verify(userCommandService).save(userCaptor.capture());
-
-        Role roleToSave = roleCaptor.getValue();
-        assertThat(roleToSave.getName()).isEqualTo(RoleEnum.USER);
-
-        User savedUser = userCaptor.getValue();
-
-        assertThat(savedUser.getEmail()).isEqualTo("noah@test.com");
-        assertThat(savedUser.getNickname()).isEqualTo("noah");
-        assertThat(savedUser.getPassword()).isEqualTo("encoded-password");
-        assertThat(savedUser.getRoleNames()).contains(RoleEnum.USER.getName());
+        verify(passwordEncoder, never()).encode(anyString());
+        verify(userCommandService, never()).save(any(User.class));
     }
 
     @Test
@@ -130,5 +109,6 @@ class LocalUserSignUpServiceTest {
         assertThat(savedUser.getEmail()).isEqualTo("member@test.com");
         assertThat(savedUser.getNickname()).isEqualTo("member");
         assertThat(savedUser.getPassword()).isEqualTo("encoded-password123");
+        assertThat(savedUser.getRoleNames()).contains(RoleEnum.USER.getName());
     }
 }

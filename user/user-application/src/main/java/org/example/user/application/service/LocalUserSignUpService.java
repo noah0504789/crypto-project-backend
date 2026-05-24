@@ -1,6 +1,7 @@
 package org.example.user.application.service;
 
 import lombok.RequiredArgsConstructor;
+import org.example.user.domain.exception.RoleNotFoundException;
 import org.example.user.domain.model.RoleEnum;
 import org.example.user.domain.model.Role;
 import org.example.user.domain.model.User;
@@ -21,7 +22,7 @@ public class LocalUserSignUpService {
         RoleEnum defaultRole = User.getDefaultRole();
 
         Role role = userQueryService.findRoleByName(defaultRole)
-                .orElseGet(() -> userCommandService.saveRole(Role.ofName(defaultRole)));
+                .orElseThrow(() -> new RoleNotFoundException(defaultRole));
 
         String encodedPassword = passwordEncoder.encode(password);
 

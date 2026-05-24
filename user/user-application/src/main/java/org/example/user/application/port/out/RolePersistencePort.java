@@ -5,9 +5,7 @@ import org.example.user.domain.model.Role;
 
 import java.util.Optional;
 
-public interface RoleRepositoryPort {
-
-    Role save(Role role);
+public interface RolePersistencePort {
 
     Optional<Role> findByName(RoleEnum name);
 }

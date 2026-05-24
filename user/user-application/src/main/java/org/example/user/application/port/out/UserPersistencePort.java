@@ -5,7 +5,7 @@ import org.example.user.domain.model.User;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface UserRepositoryPort {
+public interface UserPersistencePort {
 
     User save(User user);
 

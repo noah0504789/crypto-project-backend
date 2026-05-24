@@ -3,6 +3,7 @@ package user;
 import org.example.user.application.service.Oauth2UserSignUpService;
 import org.example.user.application.service.UserCommandService;
 import org.example.user.application.service.UserQueryService;
+import org.example.user.domain.exception.RoleNotFoundException;
 import org.example.user.domain.model.RoleEnum;
 import org.example.user.domain.model.Role;
 import org.example.user.domain.model.User;
@@ -17,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -37,7 +39,7 @@ class Oauth2UserSignUpServiceTest {
     private final String nickname = "test";
 
     @Test
-    @DisplayName("기본 Role이 이미 존재하면 Role을 새로 저장하지 않고 User만 저장한다")
+    @DisplayName("기본 Role이 존재하면 User에 Role을 추가하고 User만 저장한다")
     void signUp_whenDefaultRoleExists_savesUserOnly() {
         // given
         Role existingRole = Role.ofName(RoleEnum.USER);
@@ -55,7 +57,6 @@ class Oauth2UserSignUpServiceTest {
 
         // then
         verify(userQueryService).findRoleByName(RoleEnum.USER);
-        verify(userCommandService, never()).saveRole(any(Role.class));
         verify(userCommandService).save(userCaptor.capture());
 
         User savedUser = userCaptor.getValue();
@@ -69,45 +70,18 @@ class Oauth2UserSignUpServiceTest {
     }
 
     @Test
-    @DisplayName("기본 Role이 없으면 Role을 저장한 뒤 User에 추가하고 User를 저장한다")
-    void signUp_whenDefaultRoleDoesNotExist_savesRoleAndUser() {
+    @DisplayName("기본 Role이 없으면 RoleNotFoundException을 던지고 User를 저장하지 않는다")
+    void signUp_whenDefaultRoleDoesNotExist_throwsRoleNotFoundException() {
         // given
-
-
-        Role savedRole = Role.ofName(RoleEnum.USER);
-
         when(userQueryService.findRoleByName(RoleEnum.USER))
                 .thenReturn(Optional.empty());
 
-        when(userCommandService.saveRole(any(Role.class)))
-                .thenReturn(savedRole);
+        // when & then
+        assertThatThrownBy(() -> sut.signUp(sub, email, nickname))
+                .isInstanceOf(RoleNotFoundException.class);
 
-        when(userCommandService.save(any(User.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
-        ArgumentCaptor<Role> roleCaptor = ArgumentCaptor.forClass(Role.class);
-        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
-
-        // when
-        User result = sut.signUp(sub, email, nickname);
-
-        // then
         verify(userQueryService).findRoleByName(RoleEnum.USER);
-        verify(userCommandService).saveRole(roleCaptor.capture());
-        verify(userCommandService).save(userCaptor.capture());
-
-        Role roleToSave = roleCaptor.getValue();
-
-        assertThat(roleToSave.getName()).isEqualTo(RoleEnum.USER);
-
-        User savedUser = userCaptor.getValue();
-
-        assertThat(savedUser.getSub()).isEqualTo(sub);
-        assertThat(savedUser.getEmail()).isEqualTo(email);
-        assertThat(savedUser.getNickname()).isEqualTo(nickname);
-        assertThat(savedUser.getRoleNames()).contains(RoleEnum.USER.getName());
-
-        assertThat(result).isSameAs(savedUser);
+        verify(userCommandService, never()).save(any(User.class));
     }
 
     @Test
@@ -134,6 +108,5 @@ class Oauth2UserSignUpServiceTest {
 
         verify(userQueryService).findRoleByName(RoleEnum.USER);
         verify(userCommandService).save(any(User.class));
-        verify(userCommandService, never()).saveRole(any(Role.class));
     }
 }

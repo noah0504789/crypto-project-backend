@@ -2,8 +2,8 @@ package org.example.user.application.service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.common.jpa.annotation.ReadReplica;
-import org.example.user.application.port.out.RoleRepositoryPort;
-import org.example.user.application.port.out.UserRepositoryPort;
+import org.example.user.application.port.out.RolePersistencePort;
+import org.example.user.application.port.out.UserPersistencePort;
 import org.example.user.domain.model.RoleEnum;
 import org.example.user.domain.model.Role;
 import org.example.user.domain.model.User;
@@ -17,8 +17,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserQueryService {
 
-    private final UserRepositoryPort userRepository;
-    private final RoleRepositoryPort roleRepository;
+    private final UserPersistencePort userRepository;
+    private final RolePersistencePort roleRepository;
 
     @Transactional(readOnly = true)
     public Optional<User> findByPublicId(UUID publicId) {
