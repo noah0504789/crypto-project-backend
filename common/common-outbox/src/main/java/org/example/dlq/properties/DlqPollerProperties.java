@@ -1,4 +1,4 @@
-package org.example.outbox.properties;
+package org.example.dlq.properties;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

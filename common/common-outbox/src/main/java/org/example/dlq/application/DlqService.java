@@ -7,7 +7,7 @@ import org.example.dlq.domain.DlqStatus;
 import org.example.dlq.adapter.DlqRepository;
 import org.example.dlq.domain.Dlq;
 import org.example.outbox.application.EventPublisherPort;
-import org.example.outbox.properties.DlqPollerProperties;
+import org.example.dlq.properties.DlqPollerProperties;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;

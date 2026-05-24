@@ -6,7 +6,7 @@ import org.example.outbox.application.EventPublisherPort;
 import org.example.dlq.application.DlqService;
 import org.example.dlq.domain.Dlq;
 import org.example.dlq.domain.DlqStatus;
-import org.example.outbox.properties.DlqPollerProperties;
+import org.example.dlq.properties.DlqPollerProperties;
 import org.example.outbox.domain.OutboxDomainType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

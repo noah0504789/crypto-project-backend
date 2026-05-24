@@ -2,7 +2,7 @@ package org.example.dlq;
 
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
-import org.example.outbox.properties.DlqPollerProperties;
+import org.example.dlq.properties.DlqPollerProperties;
 import org.springframework.stereotype.Component;
 
 @Component
