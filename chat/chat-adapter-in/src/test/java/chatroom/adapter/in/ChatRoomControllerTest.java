@@ -1,9 +1,9 @@
 package chatroom.adapter.in;
 
+import org.example.chatroom.application.query.MyChatRoomSummary;
 import org.example.test.config.TestBootApplication;
 import org.bson.types.ObjectId;
 import org.example.chatroom.application.dto.ChatRoomCreateRequest;
-import org.example.chatroom.application.dto.MyChatRoomResponse;
 import org.example.chatroom.adapter.in.ChatRoomController;
 import org.example.chatroom.application.port.in.ChatRoomCommandUseCase;
 import org.example.chatroom.application.port.in.ChatRoomQueryUseCase;
@@ -160,9 +160,9 @@ class ChatRoomControllerTest {
             // given
             given(chatRoomQueryUseCase.listLatestActive(USER_ID, 3))
                     .willReturn(List.of(
-                            myChatRoomResponse(roomId1, "내 방1", 0L),
-                            myChatRoomResponse(roomId2, "내 방2", 0L),
-                            myChatRoomResponse(roomId3, "내 방3", 0L)
+                            myChatRoomSummary(roomId1, "내 방1", 0L),
+                            myChatRoomSummary(roomId2, "내 방2", 0L),
+                            myChatRoomSummary(roomId3, "내 방3", 0L)
                     ));
 
             // when & then
@@ -193,7 +193,7 @@ class ChatRoomControllerTest {
                     lastMsgCreatedAt.toEpochMilli(),
                     3
             )).willReturn(List.of(
-                    myChatRoomResponse(roomId2, "내 방2", 0L)
+                    myChatRoomSummary(roomId2, "내 방2", 0L)
             ));
 
             // when & then
@@ -270,7 +270,7 @@ class ChatRoomControllerTest {
         void myChatRoom() throws Exception {
             // given
             given(chatRoomQueryUseCase.findActive(roomId1, USER_ID))
-                    .willReturn(myChatRoomResponse(roomId1, "내 방1", 0L));
+                    .willReturn(myChatRoomSummary(roomId1, "내 방1", 0L));
 
             // when & then
             mockMvc.perform(get("/chat/room/{roomId}/me", roomId1)
@@ -1012,7 +1012,17 @@ class ChatRoomControllerTest {
                 .build();
     }
 
-    private MyChatRoomResponse myChatRoomResponse(String id, String title, long lastMsgSeq) {
-        return MyChatRoomResponse.fromRoom(chatRoom(id, title, 0L), lastMsgSeq);
+    private MyChatRoomSummary myChatRoomSummary(String id, String title, Long unreadMsgCnt) {
+        return MyChatRoomSummary.builder()
+                .id(id)
+                .hostId(USER_ID)
+                .title(title)
+                .description("설명")
+                .category(ChatRoomCategory.FREE)
+                .memberCnt(1)
+                .lastMsgContent("마지막 메시지")
+                .lastMsgCreatedAt(Instant.parse("2026-01-01T00:00:00Z"))
+                .unreadMsgCnt(unreadMsgCnt)
+                .build();
     }
 }

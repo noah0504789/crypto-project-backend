@@ -1,6 +1,6 @@
 package org.example.chatroom.application.port.in;
 
-import org.example.chatroom.application.dto.MyChatRoomResponse;
+import org.example.chatroom.application.query.MyChatRoomSummary;
 import org.example.chatroom.domain.model.ChatRoom;
 import org.example.chatroom.domain.model.ChatRoomCategory;
 
@@ -10,15 +10,15 @@ public interface ChatRoomQueryUseCase {
 
     ChatRoom findById(String id);
 
-    MyChatRoomResponse findActive(String id, String memberId);
+    MyChatRoomSummary findActive(String id, String memberId);
 
     List<ChatRoom> listMostPopular(ChatRoomCategory category, int limit);
 
     List<ChatRoom> listNextPopular(ChatRoomCategory category, String lastId, Long lastPopularity, int limit);
 
-    List<MyChatRoomResponse> listLatestActive(String memberId, int limit);
+    List<MyChatRoomSummary> listLatestActive(String memberId, int limit);
 
-    List<MyChatRoomResponse> listActiveBefore(String memberId, String lastId, Boolean lastUnreadFlag, Long lastMsgCreatedAt, int limit);
+    List<MyChatRoomSummary> listActiveBefore(String memberId, String lastId, Boolean lastUnreadFlag, Long lastMsgCreatedAt, int limit);
 
     boolean existsByTitle(String title);
 }

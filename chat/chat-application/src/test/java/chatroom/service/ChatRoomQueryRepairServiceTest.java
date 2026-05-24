@@ -3,12 +3,13 @@ package chatroom.service;
 import org.example.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chatroom.application.service.ChatRoomQueryRepairService;
+import org.example.chatroom.domain.exception.ChatRoomNotFoundException;
 import org.example.chatroom.domain.model.ChatRoom;
 import org.example.chatroom.domain.model.ChatRoomCategory;
-import org.example.chatroom.domain.exception.ChatRoomNotFoundException;
 import org.example.common.redis.lock.DistributedLockExecutor;
 import org.example.common.redis.lock.DistributedLockPolicy;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -60,6 +61,7 @@ class ChatRoomQueryRepairServiceTest {
     }
 
     @Test
+    @DisplayName("repairFindById: 락 내부 double-check에서 캐시 히트 시 영속 저장소를 조회하지 않고 캐시된 채팅방을 반환한다")
     void should_return_cached_room_without_persistence_when_repair_find_by_id_double_check_hits() {
         // given
         when(cache.findById("room-1"))
@@ -81,6 +83,7 @@ class ChatRoomQueryRepairServiceTest {
     }
 
     @Test
+    @DisplayName("repairFindById: 캐시 미스 시 영속 저장소에서 채팅방을 조회하고 캐시를 warm-up 한다")
     void should_load_room_from_persistence_and_warm_up_when_repair_find_by_id_cache_misses() {
         // given
         when(cache.findById("room-1"))
@@ -99,6 +102,7 @@ class ChatRoomQueryRepairServiceTest {
     }
 
     @Test
+    @DisplayName("repairFindById: 캐시 warm-up에 실패해도 영속 저장소에서 조회한 채팅방을 반환한다")
     void should_return_room_even_when_warm_up_fails() {
         // given
         when(cache.findById("room-1"))
@@ -120,6 +124,7 @@ class ChatRoomQueryRepairServiceTest {
     }
 
     @Test
+    @DisplayName("repairFindById: 영속 저장소에도 채팅방이 없으면 ChatRoomNotFoundException을 던진다")
     void should_throw_not_found_exception_when_room_does_not_exist() {
         // given
         when(cache.findById("room-1"))
@@ -135,6 +140,7 @@ class ChatRoomQueryRepairServiceTest {
     }
 
     @Test
+    @DisplayName("repairMostPopular: 락 내부 double-check에서 캐시 히트 시 영속 저장소를 조회하지 않고 인기 채팅방 목록을 반환한다")
     void should_return_cached_most_popular_without_persistence_when_double_check_hits() {
         // given
         List<ChatRoom> cached = List.of(room);
@@ -153,6 +159,7 @@ class ChatRoomQueryRepairServiceTest {
     }
 
     @Test
+    @DisplayName("repairMostPopular: 캐시 미스 시 영속 저장소에서 인기 채팅방 목록을 조회하고 popularity score로 warm-up 한다")
     void should_load_most_popular_from_persistence_and_warm_up_when_cache_misses() {
         // given
         when(room.getId()).thenReturn("room-1");
@@ -185,6 +192,7 @@ class ChatRoomQueryRepairServiceTest {
     }
 
     @Test
+    @DisplayName("repairMostPopular: 영속 저장소 조회 결과가 비어 있으면 빈 목록을 반환하고 warm-up 하지 않는다")
     void should_return_empty_list_and_not_warm_up_when_most_popular_not_found() {
         // given
         when(cache.listMostPopular(ChatRoomCategory.FREE, 10))
@@ -202,6 +210,7 @@ class ChatRoomQueryRepairServiceTest {
     }
 
     @Test
+    @DisplayName("repairNextPopular: 캐시 미스 시 영속 저장소에서 다음 인기 채팅방 목록을 조회하고 warm-up 한다")
     void should_load_next_popular_from_persistence_and_warm_up_when_cache_misses() {
         // given
         when(room.getId()).thenReturn("room-1");
@@ -235,6 +244,7 @@ class ChatRoomQueryRepairServiceTest {
     }
 
     @Test
+    @DisplayName("repairLatestActive: 락 내부 double-check에서 캐시 히트 시 영속 저장소를 조회하지 않고 최근 활성 채팅방 목록을 반환한다")
     void should_return_cached_latest_active_without_persistence_when_double_check_hits() {
         // given
         List<ChatRoom> cached = List.of(room);
@@ -253,6 +263,7 @@ class ChatRoomQueryRepairServiceTest {
     }
 
     @Test
+    @DisplayName("repairLatestActive: 캐시 미스 시 영속 저장소에서 최근 활성 채팅방 목록을 조회하고 warm-up 한다")
     void should_load_latest_active_from_persistence_and_warm_up_when_cache_misses() {
         // given
         when(room.getId()).thenReturn("room-1");
@@ -279,6 +290,7 @@ class ChatRoomQueryRepairServiceTest {
     }
 
     @Test
+    @DisplayName("repairActiveBefore: 캐시 미스 시 영속 저장소에서 커서 이전 활성 채팅방 목록을 조회하고 warm-up 한다")
     void should_load_active_before_from_persistence_and_warm_up_when_cache_misses() {
         // given
         when(room.getId()).thenReturn("room-1");
@@ -312,6 +324,7 @@ class ChatRoomQueryRepairServiceTest {
     }
 
     @Test
+    @DisplayName("repairMostPopular: 목록 warm-up에 실패해도 영속 저장소에서 조회한 목록을 반환한다")
     void should_return_stored_list_even_when_warm_up_list_fails() {
         // given
         when(room.getId()).thenReturn("room-1");

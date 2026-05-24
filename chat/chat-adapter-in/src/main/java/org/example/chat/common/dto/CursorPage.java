@@ -1,4 +1,4 @@
-package org.example.chatmessage.application.dto;
+package org.example.chat.common.dto;
 
 import java.util.List;
 

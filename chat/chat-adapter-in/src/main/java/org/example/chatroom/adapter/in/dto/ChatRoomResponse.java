@@ -1,4 +1,4 @@
-package org.example.chatroom.application.dto;
+package org.example.chatroom.adapter.in.dto;
 
 import lombok.Builder;
 import org.example.chatroom.domain.model.ChatRoom;

@@ -1,4 +1,4 @@
-package org.example.chatroom.application.dto;
+package org.example.chatroom.application.query;
 
 import lombok.Builder;
 import org.example.chatroom.domain.model.ChatRoom;
@@ -7,7 +7,7 @@ import org.example.chatroom.domain.model.ChatRoomCategory;
 import java.time.Instant;
 
 @Builder
-public record MyChatRoomResponse(
+public record MyChatRoomSummary(
         String id,
         String hostId,
         String title,
@@ -18,17 +18,20 @@ public record MyChatRoomResponse(
         Instant lastMsgCreatedAt,
         Long unreadMsgCnt
 ) {
-    public static MyChatRoomResponse fromRoom(ChatRoom chatRoom, Long lastMsgSeq) {
-        return MyChatRoomResponse.builder()
+    public static MyChatRoomSummary fromRoom(ChatRoom chatRoom, Long lastMsgSeq) {
+        long safeLastMsgSeq = lastMsgSeq == null ? 0L : lastMsgSeq;
+        long msgCnt = chatRoom.getMsgCnt() == null ? 0L : chatRoom.getMsgCnt();
+
+        return MyChatRoomSummary.builder()
                 .id(chatRoom.getId())
                 .hostId(chatRoom.getHostId())
                 .title(chatRoom.getTitle())
-                .memberCnt(chatRoom.getMemberIds().size())
-                .lastMsgContent(chatRoom.getLastMsgContent())
-                .lastMsgCreatedAt(chatRoom.getLastMsgCreatedAt())
-                .unreadMsgCnt(chatRoom.getMsgCnt() - lastMsgSeq)
                 .description(chatRoom.getDescription())
                 .category(chatRoom.getCategory())
+                .memberCnt(chatRoom.getMemberIds() == null ? 0 : chatRoom.getMemberIds().size())
+                .lastMsgContent(chatRoom.getLastMsgContent())
+                .lastMsgCreatedAt(chatRoom.getLastMsgCreatedAt())
+                .unreadMsgCnt(Math.max(0, msgCnt - safeLastMsgSeq))
                 .build();
     }
 }

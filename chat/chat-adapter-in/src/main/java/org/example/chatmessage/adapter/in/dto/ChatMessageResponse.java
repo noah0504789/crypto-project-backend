@@ -1,4 +1,4 @@
-package org.example.chatmessage.application.dto;
+package org.example.chatmessage.adapter.in.dto;
 
 import lombok.Builder;
 import org.example.chatmessage.domain.model.ChatMessage;

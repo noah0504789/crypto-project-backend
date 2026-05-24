@@ -2,10 +2,10 @@ package org.example.chatroom.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.chatroom.application.dto.MyChatRoomResponse;
 import org.example.chatroom.application.port.in.ChatRoomQueryUseCase;
 import org.example.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chatroom.application.port.out.ChatRoomPersistencePort;
+import org.example.chatroom.application.query.MyChatRoomSummary;
 import org.example.chatroom.domain.model.ChatRoom;
 import org.example.chatroom.domain.model.ChatRoomCategory;
 import org.springframework.stereotype.Service;
@@ -31,10 +31,10 @@ public class ChatRoomQueryService implements ChatRoomQueryUseCase {
 
     @Override
     @Transactional(transactionManager = "chatMongoTransactionManager", readOnly = true)
-    public MyChatRoomResponse findActive(String id, String memberId) {
+    public MyChatRoomSummary findActive(String id, String memberId) {
         return cache.findById(id)
-                .map(room -> toMyChatRoomResponseWithLastRead(room, memberId))
-                .orElseGet(() -> toMyChatRoomResponseWithPersistedLastRead(queryRepairService.repairFindById(id), memberId));
+                .map(room -> toMyChatRoomSummaryWithLastRead(room, memberId))
+                .orElseGet(() -> toMyChatRoomSummaryWithPersistedLastRead(queryRepairService.repairFindById(id), memberId));
     }
 
     @Override
@@ -63,35 +63,35 @@ public class ChatRoomQueryService implements ChatRoomQueryUseCase {
 
     @Override
     @Transactional(transactionManager = "chatMongoTransactionManager", readOnly = true)
-    public List<MyChatRoomResponse> listLatestActive(String memberId, int limit) {
+    public List<MyChatRoomSummary> listLatestActive(String memberId, int limit) {
         List<ChatRoom> cached = cache.listLatestActive(memberId, limit);
 
         if (!cached.isEmpty()) {
             return cached.stream()
-                    .map(room -> toMyChatRoomResponseWithLastRead(room, memberId))
+                    .map(room -> toMyChatRoomSummaryWithLastRead(room, memberId))
                     .toList();
         }
 
         return queryRepairService.repairLatestActive(memberId, limit).stream()
-                .map(room -> toMyChatRoomResponseWithPersistedLastRead(room, memberId))
+                .map(room -> toMyChatRoomSummaryWithPersistedLastRead(room, memberId))
                 .toList();
     }
 
     @Override
     @Transactional(transactionManager = "chatMongoTransactionManager", readOnly = true)
-    public List<MyChatRoomResponse> listActiveBefore(String memberId, String lastId, Boolean lastUnreadFlag, Long lastMsgCreatedAt, int limit) {
+    public List<MyChatRoomSummary> listActiveBefore(String memberId, String lastId, Boolean lastUnreadFlag, Long lastMsgCreatedAt, int limit) {
         Long score = ChatRoomActivityScore.calculate(lastMsgCreatedAt == null ? 0L : lastMsgCreatedAt, Boolean.TRUE.equals(lastUnreadFlag));
 
         List<ChatRoom> cached = cache.listActiveBefore(memberId, lastId, score, limit);
 
         if (!cached.isEmpty()) {
             return cached.stream()
-                    .map(room -> toMyChatRoomResponseWithLastRead(room, memberId))
+                    .map(room -> toMyChatRoomSummaryWithLastRead(room, memberId))
                     .toList();
         }
 
         return queryRepairService.repairActiveBefore(memberId, lastId, score, limit).stream()
-                .map(room -> toMyChatRoomResponseWithPersistedLastRead(room, memberId))
+                .map(room -> toMyChatRoomSummaryWithPersistedLastRead(room, memberId))
                 .toList();
     }
 
@@ -101,22 +101,22 @@ public class ChatRoomQueryService implements ChatRoomQueryUseCase {
                 .orElseGet(() -> persistence.existsByTitle(title));
     }
 
-    private MyChatRoomResponse toMyChatRoomResponseWithLastRead(ChatRoom room, String memberId) {
+    private MyChatRoomSummary toMyChatRoomSummaryWithLastRead(ChatRoom room, String memberId) {
         LastReadResult lastRead = getLastReadSeq(room.getId(), memberId);
 
         if (lastRead.cacheMiss()) {
             refreshActiveCacheSafely(room, memberId, lastRead.seq());
         }
 
-        return MyChatRoomResponse.fromRoom(room, lastRead.seq());
+        return MyChatRoomSummary.fromRoom(room, lastRead.seq());
     }
 
-    private MyChatRoomResponse toMyChatRoomResponseWithPersistedLastRead(ChatRoom room, String memberId) {
+    private MyChatRoomSummary toMyChatRoomSummaryWithPersistedLastRead(ChatRoom room, String memberId) {
         Long lastReadSeq = persistence.getLastReadSeq(room.getId(), memberId);
 
         refreshActiveCacheSafely(room, memberId, lastReadSeq);
 
-        return MyChatRoomResponse.fromRoom(room, lastReadSeq);
+        return MyChatRoomSummary.fromRoom(room, lastReadSeq);
     }
 
     private LastReadResult getLastReadSeq(String roomId, String memberId) {

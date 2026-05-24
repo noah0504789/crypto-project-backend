@@ -1,8 +1,8 @@
 package org.example.chatmessage.adapter.in.web;
 
 import lombok.RequiredArgsConstructor;
-import org.example.chatmessage.application.dto.ChatMessageResponse;
-import org.example.chatmessage.application.dto.CursorPage;
+import org.example.chatmessage.adapter.in.dto.ChatMessageResponse;
+import org.example.chat.common.dto.CursorPage;
 import org.example.chatmessage.application.dto.ChatMessageCursor;
 import org.example.chatmessage.application.port.in.ChatMessageQueryUsecase;
 import org.example.chatmessage.domain.model.ChatMessage;
