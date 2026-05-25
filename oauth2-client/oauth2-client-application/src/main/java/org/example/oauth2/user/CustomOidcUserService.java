@@ -47,8 +47,12 @@ public class CustomOidcUserService implements OAuth2UserService<OidcUserRequest,
 
         return new CustomOidcUser(
                 oidcUser,
-                userResponse,
+                String.valueOf(userResponse.id()),
+                userResponse.sub(),
+                userResponse.email(),
+                userResponse.nickname(),
                 clientRegistrationId,
+                userResponse.createdAt(),
                 authorities
         );
     }

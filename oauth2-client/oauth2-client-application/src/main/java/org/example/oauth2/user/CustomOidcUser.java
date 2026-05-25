@@ -1,39 +1,63 @@
 package org.example.oauth2.user;
 
-import org.example.contract.user.UserResponse;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public record CustomOidcUser(
         OidcUser delegate,
-        UserResponse userResponse,
+        String userId,
+        String sub,
+        String email,
+        String nickname,
         String clientRegistrationId,
+        Object createdAt,
         Collection<? extends GrantedAuthority> authorities,
         Map<String, Object> attributes
 ) implements OidcUser {
 
     public CustomOidcUser(
             OidcUser delegate,
-            UserResponse userResponse,
+            String userId,
+            String sub,
+            String email,
+            String nickname,
             String clientRegistrationId,
+            Object createdAt,
             Collection<? extends GrantedAuthority> authorities
     ) {
         this(
                 delegate,
-                userResponse,
+                userId,
+                sub,
+                email,
+                nickname,
                 clientRegistrationId,
+                createdAt,
                 authorities,
-                mergeAttributes(delegate, userResponse, clientRegistrationId)
+                mergeAttributes(
+                        delegate,
+                        userId,
+                        sub,
+                        email,
+                        nickname,
+                        clientRegistrationId,
+                        createdAt
+                )
         );
     }
 
     public CustomOidcUser {
         Objects.requireNonNull(delegate, "delegate must not be null");
-        Objects.requireNonNull(userResponse, "userResponse must not be null");
+        Objects.requireNonNull(userId, "userId must not be null");
+        Objects.requireNonNull(email, "email must not be null");
         Objects.requireNonNull(clientRegistrationId, "clientRegistrationId must not be null");
         Objects.requireNonNull(authorities, "authorities must not be null");
         Objects.requireNonNull(attributes, "attributes must not be null");
@@ -69,17 +93,26 @@ public record CustomOidcUser(
 
     @Override
     public String getName() {
-        return userResponse.id();
+        return userId;
     }
 
-    private static Map<String, Object> mergeAttributes(OidcUser delegate, UserResponse userResponse, String clientRegistrationId) {
+    private static Map<String, Object> mergeAttributes(
+            OidcUser delegate,
+            String userId,
+            String sub,
+            String email,
+            String nickname,
+            String clientRegistrationId,
+            Object createdAt
+    ) {
         Map<String, Object> merged = new HashMap<>(delegate.getAttributes());
-        merged.put("id", userResponse.id());
-        merged.put("sub", userResponse.sub());
-        merged.put("email", userResponse.email());
-        merged.put("nickname", userResponse.nickname());
+
+        merged.put("id", userId);
+        merged.put("sub", sub);
+        merged.put("email", email);
+        merged.put("nickname", nickname);
         merged.put("clientRegistrationId", clientRegistrationId);
-        merged.put("createdAt", userResponse.createdAt());
+        merged.put("createdAt", createdAt);
 
         return Map.copyOf(merged);
     }
