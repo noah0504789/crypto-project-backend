@@ -1,13 +1,12 @@
 package user;
 
-import org.example.role.application.service.RoleQueryService;
-import org.example.user.application.service.LocalUserSignUpService;
-import org.example.user.application.service.UserCommandService;
-import org.example.user.application.service.UserQueryService;
-import org.example.role.domain.exception.RoleNotFoundException;
-import org.example.role.domain.model.RoleEnum;
-import org.example.role.domain.model.Role;
-import org.example.user.domain.model.User;
+import org.example.user.role.application.service.RoleQueryService;
+import org.example.user.account.application.service.LocalUserSignUpService;
+import org.example.user.account.application.service.UserCommandService;
+import org.example.user.role.domain.exception.RoleNotFoundException;
+import org.example.user.role.domain.model.RoleEnum;
+import org.example.user.role.domain.model.Role;
+import org.example.user.account.domain.model.User;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -1,11 +1,11 @@
 package adapter;
 
 import config.TestPropertiesConfig;
-import org.example.test.testcontainer.RedisTestContainerInitializer;
-import org.example.test.config.TestBootApplication;
+import org.example.common.test.testcontainer.RedisTestContainerInitializer;
+import org.example.common.test.config.TestBootApplication;
 import config.TestRedisConfig;
 import org.example.common.enums.RedisKey;
-import org.example.oauth2.token.adapter.out.redis.RedisRefreshTokenAdapter;
+import org.example.oauth2.authorizationserver.token.adapter.out.redis.RedisRefreshTokenAdapter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

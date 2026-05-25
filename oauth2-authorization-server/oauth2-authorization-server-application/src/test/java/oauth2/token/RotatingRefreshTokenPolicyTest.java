@@ -9,7 +9,7 @@ import static org.mockito.BDDMockito.then;
 import java.time.Instant;
 import java.util.Set;
 
-import org.example.oauth2.token.policy.RotatingRefreshTokenPolicy;
+import org.example.oauth2.authorizationserver.token.application.policy.RotatingRefreshTokenPolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

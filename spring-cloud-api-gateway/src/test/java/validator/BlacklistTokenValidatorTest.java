@@ -1,7 +1,7 @@
 package validator;
 
-import org.example.oauth2.service.BlacklistTokenService;
-import org.example.oauth2.validator.BlacklistTokenValidator;
+import org.example.gateway.oauth2.application.service.BlacklistTokenService;
+import org.example.gateway.oauth2.validator.BlacklistTokenValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

@@ -2,9 +2,9 @@ package event;
 
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.example.websocket.adapter.in.event.WebSocketSessionEventHandler;
-import org.example.session.application.cache.LocalSessionCache;
-import org.example.session.application.port.out.SessionLocationPort;
+import org.example.websocket.gateway.adapter.in.event.WebSocketSessionEventHandler;
+import org.example.websocket.gateway.session.application.cache.LocalSessionCache;
+import org.example.websocket.gateway.session.application.out.SessionLocationPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

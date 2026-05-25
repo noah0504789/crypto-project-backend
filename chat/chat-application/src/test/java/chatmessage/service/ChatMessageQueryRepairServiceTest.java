@@ -1,11 +1,11 @@
 package chatmessage.service;
 
-import org.example.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
-import org.example.chatmessage.domain.event.ChatMessageEventList;
-import org.example.chatmessage.application.port.out.ChatMessageCachePort;
-import org.example.chatmessage.application.port.out.ChatMessagePersistencePort;
-import org.example.chatmessage.application.service.ChatMessageQueryRepairService;
-import org.example.chatmessage.domain.model.ChatMessage;
+import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
+import org.example.chat.chatmessage.domain.event.ChatMessageEventList;
+import org.example.chat.chatmessage.application.port.out.ChatMessageCachePort;
+import org.example.chat.chatmessage.application.port.out.ChatMessagePersistencePort;
+import org.example.chat.chatmessage.application.service.ChatMessageQueryRepairService;
+import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.common.redis.lock.DistributedLockExecutor;
 import org.example.common.redis.lock.DistributedLockPolicy;
 import org.junit.jupiter.api.DisplayName;

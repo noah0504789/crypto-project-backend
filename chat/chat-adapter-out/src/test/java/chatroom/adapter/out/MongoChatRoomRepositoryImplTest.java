@@ -1,12 +1,12 @@
 package chatroom.adapter.out;
 
-import org.example.test.config.TestBootApplication;
+import org.example.common.test.config.TestBootApplication;
 import config.TestMongoConfig;
-import org.example.test.testcontainer.MongoDBTestContainerInitializer;
+import org.example.common.test.testcontainer.MongoDBTestContainerInitializer;
 import org.bson.types.ObjectId;
-import org.example.chatroom.adapter.out.persistence.MongoChatRoom;
-import org.example.chatroom.adapter.out.persistence.MongoChatRoomRepository;
-import org.example.chatroom.domain.model.ChatRoomCategory;
+import org.example.chat.chatroom.adapter.out.persistence.MongoChatRoom;
+import org.example.chat.chatroom.adapter.out.persistence.MongoChatRoomRepository;
+import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

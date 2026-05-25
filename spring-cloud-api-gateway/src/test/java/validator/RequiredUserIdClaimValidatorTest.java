@@ -1,6 +1,6 @@
 package validator;
 
-import org.example.oauth2.validator.RequiredUserIdClaimValidator;
+import org.example.gateway.oauth2.validator.RequiredUserIdClaimValidator;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;

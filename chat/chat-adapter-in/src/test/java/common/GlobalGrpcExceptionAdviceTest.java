@@ -2,15 +2,16 @@ package common;
 
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import org.example.chat.chatmessage.adapter.in.exception.ChatMessageResourceExhaustedException;
 import org.example.chat.common.exception.ChatMessageCacheException;
 import org.example.chat.common.exception.ChatMessagePersistException;
 import org.example.chat.common.exception.GlobalGrpcExceptionAdvice;
-import org.example.chatmessage.adapter.in.exception.ChatMessageGrpcCancelledException;
-import org.example.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
-import org.example.chatmessage.domain.event.ChatMessageEventList;
-import org.example.chatmessage.application.service.ChatMessageCommandService;
-import org.example.chatmessage.domain.model.ChatMessage;
-import org.example.chatroom.domain.exception.ChatRoomNotFoundException;
+import org.example.chat.chatmessage.adapter.in.exception.ChatMessageGrpcCancelledException;
+import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
+import org.example.chat.chatmessage.domain.event.ChatMessageEventList;
+import org.example.chat.chatmessage.application.service.ChatMessageCommandService;
+import org.example.chat.chatmessage.domain.model.ChatMessage;
+import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -107,8 +108,8 @@ class GlobalGrpcExceptionAdviceTest {
     @DisplayName("ResourceExhausted 예외는 RESOURCE_EXHAUSTED로 변환하고 보상 삭제는 하지 않는다")
     void handleResourceExhausted() {
         // given
-        org.example.chatmessage.adapter.in.exception.ChatMessageResourceExhaustedException exception =
-                new org.example.chatmessage.adapter.in.exception.ChatMessageResourceExhaustedException(
+        ChatMessageResourceExhaustedException exception =
+                new ChatMessageResourceExhaustedException(
                         "resource exhausted",
                         new RuntimeException("mongo resource exhausted")
                 );

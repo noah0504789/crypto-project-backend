@@ -3,10 +3,10 @@ package oauth2;
 import java.time.Instant;
 import java.util.Map;
 
-import org.example.oauth2.service.AuthorizedClientTokenService;
-import org.example.oauth2.client.CustomOAuth2AuthorizedClientService;
-import org.example.oauth2.service.token.AccessTokenService;
-import org.example.oauth2.service.token.RefreshTokenService;
+import org.example.oauth2.client.token.application.service.AuthorizedClientTokenService;
+import org.example.oauth2.client.authorizedclient.CustomOAuth2AuthorizedClientService;
+import org.example.oauth2.client.token.application.service.AccessTokenService;
+import org.example.oauth2.client.token.application.service.RefreshTokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

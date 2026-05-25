@@ -6,13 +6,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.advice.GrpcAdvice;
 import net.devh.boot.grpc.server.advice.GrpcExceptionHandler;
-import org.example.chatmessage.adapter.in.exception.ChatMessageGrpcCancelledException;
-import org.example.chatmessage.adapter.in.exception.ChatMessageGrpcException;
-import org.example.chatmessage.adapter.in.exception.ChatMessageResourceExhaustedException;
-import org.example.chatmessage.application.service.ChatMessageCommandService;
-import org.example.chatmessage.domain.model.ChatMessage;
-import org.example.chatroom.domain.exception.ChatRoomNotFoundException;
-import org.example.grpc.common.exception.BaseGrpcExceptionAdvice;
+import org.example.chat.chatmessage.adapter.in.exception.ChatMessageGrpcCancelledException;
+import org.example.chat.chatmessage.adapter.in.exception.ChatMessageGrpcException;
+import org.example.chat.chatmessage.adapter.in.exception.ChatMessageResourceExhaustedException;
+import org.example.chat.chatmessage.application.service.ChatMessageCommandService;
+import org.example.chat.chatmessage.domain.model.ChatMessage;
+import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
+import org.example.common.grpc.exception.BaseGrpcExceptionAdvice;
 
 @Slf4j
 @GrpcAdvice

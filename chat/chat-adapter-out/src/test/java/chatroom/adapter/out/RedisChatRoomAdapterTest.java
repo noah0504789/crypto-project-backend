@@ -1,11 +1,11 @@
 package chatroom.adapter.out;
 
-import org.example.test.testcontainer.RedisTestContainerInitializer;
-import org.example.test.config.TestBootApplication;
+import org.example.common.test.testcontainer.RedisTestContainerInitializer;
+import org.example.common.test.config.TestBootApplication;
 import config.TestRedisConfig;
-import org.example.chatroom.adapter.out.cache.RedisChatRoomAdapter;
-import org.example.chatroom.domain.model.ChatRoom;
-import org.example.chatroom.domain.model.ChatRoomCategory;
+import org.example.chat.chatroom.adapter.out.cache.RedisChatRoomAdapter;
+import org.example.chat.chatroom.domain.model.ChatRoom;
+import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

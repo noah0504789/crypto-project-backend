@@ -6,10 +6,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.example.common.enums.RedisKey;
-import org.example.oauth2.properties.OAuth2RegisteredClientProperties;
-import org.example.oauth2.CustomOAuth2AuthorizationService;
-import org.example.oauth2.token.port.out.AccessTokenPort;
-import org.example.oauth2.token.port.out.RefreshTokenPort;
+import org.example.oauth2.authorizationserver.authorization.application.OAuth2RegisteredClientProperties;
+import org.example.oauth2.authorizationserver.authorization.application.CustomOAuth2AuthorizationService;
+import org.example.oauth2.authorizationserver.token.application.port.out.AccessTokenPort;
+import org.example.oauth2.authorizationserver.token.application.port.out.RefreshTokenPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

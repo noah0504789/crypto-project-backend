@@ -1,6 +1,6 @@
 package config;
 
-import org.example.oauth2.user.CustomOidcUserService;
+import org.example.oauth2.client.oidc.CustomOidcUserService;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;

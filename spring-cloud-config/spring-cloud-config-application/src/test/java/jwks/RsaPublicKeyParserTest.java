@@ -1,6 +1,6 @@
 package jwks;
 
-import org.example.jwks.RsaPublicKeyParser;
+import org.example.configserver.jwks.RsaPublicKeyParser;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

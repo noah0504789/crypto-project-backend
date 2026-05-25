@@ -1,17 +1,17 @@
 package chatroom.adapter.out;
 
-import org.example.test.config.TestBootApplication;
+import org.example.chat.chatroom.adapter.out.persistence.*;
+import org.example.common.test.config.TestBootApplication;
 import config.TestMongoConfig;
-import org.example.test.testcontainer.MongoDBTestContainerInitializer;
+import org.example.common.test.testcontainer.MongoDBTestContainerInitializer;
 import org.bson.types.ObjectId;
-import org.example.chatmessage.adapter.out.persistence.MongoChatMessage;
-import org.example.chatmessage.adapter.out.persistence.MongoChatMessageRepository;
-import org.example.chatroom.application.dto.ChatRoomMembershipScore;
-import org.example.chatroom.adapter.out.persistence.*;
-import org.example.chatroom.application.service.ChatRoomActivityScore;
-import org.example.chatroom.domain.model.ChatRoom;
-import org.example.chatroom.domain.model.ChatRoomCategory;
-import org.example.chatroom.domain.exception.ChatRoomNotFoundException;
+import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessage;
+import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessageRepository;
+import org.example.chat.chatroom.application.dto.ChatRoomMembershipScore;
+import org.example.chat.chatroom.application.service.ChatRoomActivityScore;
+import org.example.chat.chatroom.domain.model.ChatRoom;
+import org.example.chat.chatroom.domain.model.ChatRoomCategory;
+import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

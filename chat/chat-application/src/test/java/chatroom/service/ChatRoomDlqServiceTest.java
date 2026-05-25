@@ -1,12 +1,12 @@
 package chatroom.service;
 
-import org.example.chatroom.domain.event.payload.ChatRoomPayload;
-import org.example.chatroom.application.port.out.ChatRoomCachePort;
-import org.example.chatroom.application.port.out.ChatRoomPersistencePort;
-import org.example.chatroom.application.service.ChatRoomDlqService;
-import org.example.chatroom.domain.event.dlq.*;
-import org.example.chatroom.domain.model.ChatRoom;
-import org.example.chatroom.domain.model.ChatRoomCategory;
+import org.example.chat.chatroom.domain.event.dlq.*;
+import org.example.chat.chatroom.domain.event.payload.ChatRoomPayload;
+import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
+import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
+import org.example.chat.chatroom.application.service.ChatRoomDlqService;
+import org.example.chat.chatroom.domain.model.ChatRoom;
+import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

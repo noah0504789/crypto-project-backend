@@ -1,7 +1,7 @@
 package config;
 
 import org.example.common.properties.JwtProperties;
-import org.example.oauth2.properties.OAuth2RegisteredClientProperties;
+import org.example.oauth2.authorizationserver.authorization.application.OAuth2RegisteredClientProperties;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;

@@ -1,9 +1,9 @@
 package user;
 
-import org.example.role.domain.model.RoleEnum;
-import org.example.role.domain.model.Role;
-import org.example.user.domain.model.User;
-import org.example.user.domain.model.UserRole;
+import org.example.user.role.domain.model.RoleEnum;
+import org.example.user.role.domain.model.Role;
+import org.example.user.account.domain.model.User;
+import org.example.user.account.domain.model.UserRole;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

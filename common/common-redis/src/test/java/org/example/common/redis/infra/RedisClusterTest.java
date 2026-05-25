@@ -1,8 +1,8 @@
 package org.example.common.redis.infra;
 
 import org.example.common.redis.config.TestRedisConfig;
-import org.example.test.config.TestBootApplication;
-import org.example.test.testcontainer.RedisTestContainerInitializer;
+import org.example.common.test.config.TestBootApplication;
+import org.example.common.test.testcontainer.RedisTestContainerInitializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;

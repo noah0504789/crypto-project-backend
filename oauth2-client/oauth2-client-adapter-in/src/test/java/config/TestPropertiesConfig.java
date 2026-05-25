@@ -1,6 +1,6 @@
 package config;
 
-import org.example.oauth2.properties.InternalAuthServerProperties;
+import org.example.oauth2.client.properties.InternalAuthServerProperties;
 import org.example.common.properties.ApiPathProperties;
 import org.example.common.properties.JwtProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

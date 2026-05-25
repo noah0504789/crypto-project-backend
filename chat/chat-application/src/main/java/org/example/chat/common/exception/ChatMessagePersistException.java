@@ -1,7 +1,7 @@
 package org.example.chat.common.exception;
 
 import lombok.Getter;
-import org.example.chatmessage.domain.model.ChatMessage;
+import org.example.chat.chatmessage.domain.model.ChatMessage;
 
 @Getter
 public class ChatMessagePersistException extends ChatPersistenceException {

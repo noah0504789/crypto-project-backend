@@ -1,6 +1,6 @@
 package sign;
 
-import org.example.sign.VaultSignatureParser;
+import org.example.configserver.sign.VaultSignatureParser;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

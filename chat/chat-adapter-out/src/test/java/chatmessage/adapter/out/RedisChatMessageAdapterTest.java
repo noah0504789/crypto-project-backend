@@ -1,12 +1,12 @@
 package chatmessage.adapter.out;
 
-import org.example.test.config.TestBootApplication;
+import org.example.common.test.config.TestBootApplication;
 import config.TestRedisConfig;
-import org.example.test.testcontainer.RedisTestContainerInitializer;
-import org.example.chatmessage.adapter.out.cache.RedisChatMessageAdapter;
-import org.example.chatmessage.domain.model.ChatMessage;
-import org.example.chatroom.application.dto.ChatRoomMembershipScore;
-import org.example.chatroom.domain.model.ChatRoomCategory;
+import org.example.common.test.testcontainer.RedisTestContainerInitializer;
+import org.example.chat.chatmessage.adapter.out.cache.RedisChatMessageAdapter;
+import org.example.chat.chatmessage.domain.model.ChatMessage;
+import org.example.chat.chatroom.application.dto.ChatRoomMembershipScore;
+import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.common.clock.Clock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

@@ -1,8 +1,8 @@
 package chatroom.validation;
 
 import jakarta.validation.ConstraintValidatorContext;
-import org.example.chatroom.application.port.in.ChatRoomQueryUseCase;
-import org.example.chatroom.application.validation.UniqueChatRoomTitleValidator;
+import org.example.chat.chatroom.application.port.in.ChatRoomQueryUseCase;
+import org.example.chat.chatroom.application.validation.UniqueChatRoomTitleValidator;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -7,7 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.metadata.ConstraintDescriptor;
 import org.example.chat.common.exception.ChatCacheException;
 import org.example.chat.common.exception.InvalidResourceRequestException;
-import org.example.chatroom.domain.exception.ChatRoomNotFoundException;
+import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
 import org.example.common.validation.ValidationResult;
 import org.example.common.exception.DistributedLockAcquireFailedException;
 import org.example.common.exception.DlqNotFoundException;

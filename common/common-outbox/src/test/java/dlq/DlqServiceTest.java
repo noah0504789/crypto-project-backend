@@ -1,13 +1,13 @@
 package dlq;
 
 import org.example.common.exception.DlqNotFoundException;
-import org.example.dlq.adapter.DlqRepository;
-import org.example.outbox.application.EventPublisherPort;
-import org.example.dlq.application.DlqService;
-import org.example.dlq.domain.Dlq;
-import org.example.dlq.domain.DlqStatus;
-import org.example.dlq.properties.DlqPollerProperties;
-import org.example.outbox.domain.OutboxDomainType;
+import org.example.common.dlq.adapter.DlqRepository;
+import org.example.common.outbox.application.EventPublisherPort;
+import org.example.common.dlq.application.DlqService;
+import org.example.common.dlq.domain.Dlq;
+import org.example.common.dlq.domain.DlqStatus;
+import org.example.common.dlq.properties.DlqPollerProperties;
+import org.example.common.outbox.domain.OutboxDomainType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

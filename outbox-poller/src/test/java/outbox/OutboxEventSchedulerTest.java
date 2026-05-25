@@ -1,9 +1,9 @@
 package outbox;
 
-import org.example.outbox.properties.OutboxPollerProperties;
-import org.example.outbox.domain.OutboxDispatchType;
-import org.example.outbox.OutboxEventScheduler;
-import org.example.outbox.application.OutboxService;
+import org.example.common.outbox.properties.OutboxPollerProperties;
+import org.example.common.outbox.domain.OutboxDispatchType;
+import org.example.outboxpoller.outbox.OutboxEventScheduler;
+import org.example.common.outbox.application.OutboxService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

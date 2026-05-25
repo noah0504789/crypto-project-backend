@@ -5,7 +5,7 @@ import java.util.List;
 
 import org.example.common.enums.RedisKey;
 import org.example.common.properties.JwtProperties;
-import org.example.oauth2.token.adapter.out.redis.RedisRefreshTokenAdapter;
+import org.example.oauth2.authorizationserver.token.adapter.out.redis.RedisRefreshTokenAdapter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

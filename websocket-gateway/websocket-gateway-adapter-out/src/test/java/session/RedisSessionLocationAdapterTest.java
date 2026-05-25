@@ -1,7 +1,7 @@
 package session;
 
 import org.example.common.redis.operation.StringRedisHashOperations;
-import org.example.session.adapter.out.RedisSessionLocationAdapter;
+import org.example.websocket.gateway.session.adapter.out.redis.RedisSessionLocationAdapter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

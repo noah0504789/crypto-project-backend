@@ -1,9 +1,9 @@
 package event;
 
-import org.example.dlq.domain.Dlq;
-import org.example.infra.event.EventPublisher;
-import org.example.infra.exception.OutboxPollerInfrastructureException;
-import org.example.outbox.domain.Outbox;
+import org.example.common.dlq.domain.Dlq;
+import org.example.outboxpoller.infra.event.EventPublisher;
+import org.example.outboxpoller.infra.exception.OutboxPollerInfrastructureException;
+import org.example.common.outbox.domain.Outbox;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

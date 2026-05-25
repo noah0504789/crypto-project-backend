@@ -1,11 +1,11 @@
 package oauth2;
 
 import jakarta.servlet.http.Cookie;
-import org.example.oauth2.port.out.AuthServerTokenClientPort;
-import org.example.oauth2.properties.InternalAuthServerProperties;
+import org.example.oauth2.client.token.application.port.out.AuthServerTokenClientPort;
+import org.example.oauth2.client.properties.InternalAuthServerProperties;
 import org.example.common.properties.JwtProperties;
-import org.example.oauth2.exception.OAuth2ClientInfrastructureException;
-import org.example.oauth2.service.token.RefreshTokenService;
+import org.example.oauth2.client.exception.OAuth2ClientInfrastructureException;
+import org.example.oauth2.client.token.application.service.RefreshTokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

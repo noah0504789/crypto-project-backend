@@ -1,9 +1,9 @@
 package config;
 
-import org.example.chatmessage.adapter.out.persistence.MongoChatMessageRepository;
-import org.example.chatroom.adapter.out.persistence.MongoChatRoomAdapter;
-import org.example.chatroom.adapter.out.persistence.MongoChatRoomMembershipRepository;
-import org.example.chatroom.adapter.out.persistence.MongoChatRoomRepository;
+import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessageRepository;
+import org.example.chat.chatroom.adapter.out.persistence.MongoChatRoomAdapter;
+import org.example.chat.chatroom.adapter.out.persistence.MongoChatRoomMembershipRepository;
+import org.example.chat.chatroom.adapter.out.persistence.MongoChatRoomRepository;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;

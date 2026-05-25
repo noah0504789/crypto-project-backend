@@ -1,13 +1,13 @@
 package outbox;
 
-import org.example.outbox.application.EventPublisherPort;
-import org.example.outbox.adapter.OutboxRepository;
-import org.example.outbox.application.OutboxService;
-import org.example.outbox.properties.OutboxPollerProperties;
-import org.example.outbox.domain.Outbox;
-import org.example.outbox.domain.OutboxDispatchType;
-import org.example.outbox.domain.OutboxDomainType;
-import org.example.outbox.domain.OutboxStatus;
+import org.example.common.outbox.application.EventPublisherPort;
+import org.example.common.outbox.adapter.OutboxRepository;
+import org.example.common.outbox.application.OutboxService;
+import org.example.common.outbox.properties.OutboxPollerProperties;
+import org.example.common.outbox.domain.Outbox;
+import org.example.common.outbox.domain.OutboxDispatchType;
+import org.example.common.outbox.domain.OutboxDomainType;
+import org.example.common.outbox.domain.OutboxStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

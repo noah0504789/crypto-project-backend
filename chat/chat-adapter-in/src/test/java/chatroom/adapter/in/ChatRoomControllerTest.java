@@ -1,17 +1,17 @@
 package chatroom.adapter.in;
 
-import org.example.chatroom.application.query.MyChatRoomSummary;
-import org.example.test.config.TestBootApplication;
+import org.example.chat.chatroom.application.query.MyChatRoomSummary;
+import org.example.common.test.config.TestBootApplication;
 import org.bson.types.ObjectId;
-import org.example.chatroom.application.dto.ChatRoomCreateRequest;
-import org.example.chatroom.adapter.in.ChatRoomController;
-import org.example.chatroom.application.port.in.ChatRoomCommandUseCase;
-import org.example.chatroom.application.port.in.ChatRoomQueryUseCase;
-import org.example.chatroom.domain.model.ChatRoom;
-import org.example.chatroom.domain.model.ChatRoomCategory;
+import org.example.chat.chatroom.application.dto.ChatRoomCreateRequest;
+import org.example.chat.chatroom.adapter.in.web.ChatRoomController;
+import org.example.chat.chatroom.application.port.in.ChatRoomCommandUseCase;
+import org.example.chat.chatroom.application.port.in.ChatRoomQueryUseCase;
+import org.example.chat.chatroom.domain.model.ChatRoom;
+import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.common.exception.GlobalExceptionHandler;
 import org.example.common.validation.NotBlankIfPresentValidator;
-import org.example.chatroom.application.validation.UniqueChatRoomTitleValidator;
+import org.example.chat.chatroom.application.validation.UniqueChatRoomTitleValidator;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

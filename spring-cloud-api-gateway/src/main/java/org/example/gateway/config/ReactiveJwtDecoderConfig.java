@@ -2,9 +2,9 @@ package org.example.gateway.config;
 
 import lombok.RequiredArgsConstructor;
 import org.example.common.properties.JwtProperties;
-import org.example.oauth2.service.BlacklistTokenService;
-import org.example.oauth2.validator.BlacklistTokenValidator;
-import org.example.oauth2.validator.RequiredUserIdClaimValidator;
+import org.example.gateway.oauth2.application.service.BlacklistTokenService;
+import org.example.gateway.oauth2.validator.BlacklistTokenValidator;
+import org.example.gateway.oauth2.validator.RequiredUserIdClaimValidator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;

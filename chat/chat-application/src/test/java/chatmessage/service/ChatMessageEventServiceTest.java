@@ -1,13 +1,13 @@
 package chatmessage.service;
 
-import org.example.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
-import org.example.chatmessage.domain.event.ChatMessageEventList;
-import org.example.chatmessage.domain.event.payload.ChatMessagePayload;
-import org.example.chatmessage.application.port.out.ChatMessagePersistencePort;
-import org.example.chatmessage.application.service.ChatMessageEventService;
-import org.example.chatmessage.domain.model.ChatMessage;
-import org.example.chatmessage.domain.event.ChatMessagePersistEvent;
-import org.example.chatroom.application.port.out.ChatRoomPersistencePort;
+import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
+import org.example.chat.chatmessage.domain.event.ChatMessageEventList;
+import org.example.chat.chatmessage.domain.event.payload.ChatMessagePayload;
+import org.example.chat.chatmessage.application.port.out.ChatMessagePersistencePort;
+import org.example.chat.chatmessage.application.service.ChatMessageEventService;
+import org.example.chat.chatmessage.domain.model.ChatMessage;
+import org.example.chat.chatmessage.domain.event.ChatMessagePersistEvent;
+import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

@@ -7,12 +7,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.example.oauth2.user.CustomOidcUser;
-import org.example.oauth2.user.CustomOidcUserService;
-import org.example.user.UserCommandService;
-import org.example.user.UserQueryService;
+import org.example.oauth2.client.oidc.CustomOidcUser;
+import org.example.oauth2.client.oidc.CustomOidcUserService;
+import org.example.oauth2.client.user.application.service.UserCommandService;
+import org.example.oauth2.client.user.application.service.UserQueryService;
 import org.example.contract.user.UserResponse;
-import org.example.user.UserRoleAuthorityMapper;
+import org.example.oauth2.client.user.application.service.UserRoleAuthorityMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

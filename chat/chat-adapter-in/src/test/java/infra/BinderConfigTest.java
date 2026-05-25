@@ -1,13 +1,13 @@
 package infra;
 
-import org.example.chatmessage.application.service.ChatMessageDlqService;
-import org.example.chatmessage.application.service.ChatMessageEventService;
-import org.example.chatroom.application.service.ChatRoomDlqService;
-import org.example.chatroom.application.service.ChatRoomEventService;
+import org.example.chat.chatmessage.application.service.ChatMessageDlqService;
+import org.example.chat.chatmessage.application.service.ChatMessageEventService;
+import org.example.chat.chatroom.application.service.ChatRoomDlqService;
+import org.example.chat.chatroom.application.service.ChatRoomEventService;
 import org.example.common.event.HandleableEvent;
 import org.example.common.event.RecoverableEvent;
-import org.example.dlq.application.DlqService;
-import org.example.infra.config.BinderConfig;
+import org.example.common.dlq.application.DlqService;
+import org.example.chat.infra.config.BinderConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

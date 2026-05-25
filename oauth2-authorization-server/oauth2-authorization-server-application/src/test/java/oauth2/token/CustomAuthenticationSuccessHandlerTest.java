@@ -17,8 +17,8 @@ import java.util.Base64;
 import java.util.Map;
 import java.util.Set;
 
-import org.example.oauth2.CustomAuthenticationSuccessHandler;
-import org.example.oauth2.token.policy.RefreshTokenPolicy;
+import org.example.oauth2.authorizationserver.authorization.application.CustomAuthenticationSuccessHandler;
+import org.example.oauth2.authorizationserver.token.application.policy.RefreshTokenPolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

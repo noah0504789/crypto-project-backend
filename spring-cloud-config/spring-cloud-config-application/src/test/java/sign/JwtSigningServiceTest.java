@@ -1,10 +1,12 @@
 package sign;
 
-import org.example.sign.*;
-import org.example.sign.dto.SignRequest;
-import org.example.sign.dto.SignResponse;
-import org.example.vault.VaultTransitSignResult;
-import org.example.vault.port.out.VaultTransitSignPort;
+import org.example.configserver.sign.JwtSigningInputDigester;
+import org.example.configserver.sign.JwtSigningService;
+import org.example.configserver.sign.VaultSignatureParser;
+import org.example.configserver.sign.dto.SignRequest;
+import org.example.configserver.sign.dto.SignResponse;
+import org.example.configserver.vault.domain.VaultTransitSignResult;
+import org.example.configserver.vault.port.out.VaultTransitSignPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

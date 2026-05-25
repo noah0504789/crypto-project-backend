@@ -1,7 +1,7 @@
 package controller;
 
-import org.example.oauth2.adapter.in.web.AuthController;
-import org.example.oauth2.service.token.RefreshTokenService;
+import org.example.oauth2.client.adapter.in.web.AuthController;
+import org.example.oauth2.client.token.application.service.RefreshTokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

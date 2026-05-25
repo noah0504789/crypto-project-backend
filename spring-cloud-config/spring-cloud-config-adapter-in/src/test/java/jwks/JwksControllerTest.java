@@ -1,11 +1,11 @@
 package jwks;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.example.jwks.adapter.in.JwksController;
-import org.example.jwks.JwksService;
-import org.example.sign.JwtSigningService;
-import org.example.sign.dto.SignRequest;
-import org.example.sign.dto.SignResponse;
+import org.example.configserver.jwks.adapter.in.JwksController;
+import org.example.configserver.jwks.JwksService;
+import org.example.configserver.sign.JwtSigningService;
+import org.example.configserver.sign.dto.SignRequest;
+import org.example.configserver.sign.dto.SignResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

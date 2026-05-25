@@ -1,11 +1,11 @@
 package chatmessage.adapter.in;
 
-import org.example.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
-import org.example.chatmessage.domain.event.ChatMessageEventList;
-import org.example.chatmessage.adapter.in.scheduler.ChatMessageScheduler;
-import org.example.chatmessage.domain.model.ChatMessage;
+import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
+import org.example.chat.chatmessage.domain.event.ChatMessageEventList;
+import org.example.chat.chatmessage.adapter.in.scheduler.ChatMessageScheduler;
+import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.common.clock.Clock;
-import org.example.infra.redis.RedisCollectionRegistry;
+import org.example.chat.infra.redis.RedisCollectionRegistry;
 import org.example.common.redis.codec.RedisValueCodec;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

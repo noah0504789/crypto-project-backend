@@ -1,12 +1,12 @@
 package chatmessage.adapter.out;
 
 import org.bson.types.ObjectId;
-import org.example.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
-import org.example.chatmessage.domain.event.ChatMessageEventList;
-import org.example.chatmessage.adapter.out.persistence.MongoChatMessage;
-import org.example.chatmessage.adapter.out.persistence.MongoChatMessageAdapter;
-import org.example.chatmessage.adapter.out.persistence.MongoChatMessageRepository;
-import org.example.chatmessage.domain.model.ChatMessage;
+import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
+import org.example.chat.chatmessage.domain.event.ChatMessageEventList;
+import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessage;
+import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessageAdapter;
+import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessageRepository;
+import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
