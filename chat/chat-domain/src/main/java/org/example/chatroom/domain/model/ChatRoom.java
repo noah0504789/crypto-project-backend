@@ -1,15 +1,13 @@
 package org.example.chatroom.domain.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.example.chatmessage.domain.model.ChatMessage;
 import org.example.chatroom.domain.event.dlq.ChatRoomDlqEventList;
 import org.example.chatroom.domain.event.payload.ChatRoomPayload;
 import org.example.chatroom.domain.event.*;
 import org.example.chatroom.domain.event.dlq.*;
 import org.example.chatroom.domain.event.ChatRoomEventList;
+import org.example.chatroom.domain.exception.ChatRoomMembershipNotFoundException;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -20,9 +18,9 @@ import java.util.Objects;
 import java.util.Set;
 
 @Getter
-@Builder
-@AllArgsConstructor
-@NoArgsConstructor
+@Builder(access = AccessLevel.PRIVATE)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class ChatRoom {
 
     private String id;
@@ -319,18 +317,24 @@ public class ChatRoom {
         return createdAt.atZone(ZoneId.systemDefault()).toInstant();
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hashCode(id);
+    public void validateWritable(String writerId) {
+        if (writerId == null || writerId.isBlank() || memberIds == null || !memberIds.contains(writerId)) {
+            throw new ChatRoomMembershipNotFoundException(id, writerId);
+        }
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (this.getClass() != o.getClass()) return false;
+        if (o == null || getClass() != o.getClass()) return false;
 
         ChatRoom that = (ChatRoom) o;
 
-        return this.getId().equals(that.getId());
+        return id != null && id.equals(that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(id);
     }
 }
