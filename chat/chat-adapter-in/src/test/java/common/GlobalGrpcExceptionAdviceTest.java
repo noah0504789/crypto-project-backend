@@ -190,8 +190,8 @@ class GlobalGrpcExceptionAdviceTest {
     }
 
     @Test
-    @DisplayName("Persist 예외가 rollback을 요구하면 hardDelete 보상 삭제 후 INTERNAL로 변환한다")
-    void handlePersistWithRollback() {
+    @DisplayName("Persist 예외는 보상 삭제 없이 INTERNAL로 변환한다")
+    void handlePersist() {
         // given
         ChatMessage rollbackTarget = chatMessage();
 
@@ -205,9 +205,10 @@ class GlobalGrpcExceptionAdviceTest {
 
         // then
         assertThat(result.getStatus().getCode()).isEqualTo(Status.Code.INTERNAL);
-        assertThat(result.getStatus().getDescription()).isEqualTo("chat message core save failed");
+        assertThat(result.getStatus().getDescription())
+                .isEqualTo("chat message event publish failed");
 
-        verify(chatMessageCommandService).hardDelete(messageId, roomId);
+        verify(chatMessageCommandService, never()).hardDelete(anyString(), anyString());
     }
 
     @Test

@@ -42,12 +42,15 @@ public class GlobalGrpcExceptionAdvice extends BaseGrpcExceptionAdvice {
 
     @GrpcExceptionHandler(ChatMessagePersistException.class)
     public StatusRuntimeException handlePersist(ChatMessagePersistException e) {
-        compensateIfNeeded(e.getRollbackTarget());
-
-        log.error("grpc INTERNAL(core): {}", e.getMessage(), e);
+        log.error(
+                "grpc INTERNAL(outbox): failed to persist chat message outbox events. messageId={}, roomId={}",
+                e.getRollbackTarget() != null ? e.getRollbackTarget().getId() : "N/A",
+                e.getRollbackTarget() != null ? e.getRollbackTarget().getRoomId() : "N/A",
+                e
+        );
 
         return Status.INTERNAL
-                .withDescription("chat message core save failed")
+                .withDescription("chat message event publish failed")
                 .asRuntimeException();
     }
 
