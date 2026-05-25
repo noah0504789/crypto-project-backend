@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.example.common.jpa.BaseEntity;
 import org.example.common.id.annotation.SnowflakeId;
+import org.example.role.domain.model.Role;
 
 @Entity
 @Table(
@@ -38,11 +39,19 @@ public class UserRole extends BaseEntity {
         this.role = role;
     }
 
-    public static UserRole ofUserAndRole(User user, Role role) {
+    public static UserRole of(User user, Role role) {
         return new UserRole(user, role);
     }
 
     public String getRoleName() {
         return role.getName().getName();
+    }
+
+    public boolean hasRole(Role role) {
+        if (role == null || this.role == null) {
+            return false;
+        }
+
+        return this.role.getName() == role.getName();
     }
 }

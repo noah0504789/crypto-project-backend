@@ -6,8 +6,8 @@ import org.example.user.adapter.in.web.dto.UserResponse;
 import org.example.user.adapter.in.web.UserController;
 import org.example.user.application.service.LocalUserSignUpService;
 import org.example.user.application.service.UserQueryService;
-import org.example.user.domain.model.RoleEnum;
-import org.example.user.domain.model.Role;
+import org.example.role.domain.model.RoleEnum;
+import org.example.role.domain.model.Role;
 import org.example.user.domain.model.User;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -86,7 +86,6 @@ class UserControllerTest {
 
         UserResponse body = response.getBody();
 
-        // UserResponse 필드명에 맞춰 조정
         assertThat(body.id()).isEqualTo(publicId);
         assertThat(body.email()).isEqualTo("local@test.com");
         assertThat(body.nickname()).isEqualTo("local-user");
@@ -134,7 +133,6 @@ class UserControllerTest {
 
         UserResponse body = response.getBody();
 
-        // UserResponse 필드명에 맞춰 조정
         assertThat(body.id()).isEqualTo(publicId);
         assertThat(body.email()).isEqualTo("other@test.com");
         assertThat(body.nickname()).isEqualTo("other-user");
@@ -162,9 +160,10 @@ class UserControllerTest {
         User user = User.ofLocal(
                 email,
                 nickname,
-                "encoded-password",
-                role
+                "encoded-password"
         );
+
+        user.addRole(role);
 
         ReflectionTestUtils.setField(user, "publicId", publicId);
         ReflectionTestUtils.setField(user, "createdAt", LocalDateTime.now());

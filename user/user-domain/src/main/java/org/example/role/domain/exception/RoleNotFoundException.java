@@ -1,7 +1,7 @@
-package org.example.user.domain.exception;
+package org.example.role.domain.exception;
 
 import org.example.common.exception.ResourceNotFoundException;
-import org.example.user.domain.model.RoleEnum;
+import org.example.role.domain.model.RoleEnum;
 
 public class RoleNotFoundException extends ResourceNotFoundException {
 

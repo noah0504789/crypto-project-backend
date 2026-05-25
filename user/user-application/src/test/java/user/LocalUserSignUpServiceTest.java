@@ -1,11 +1,12 @@
 package user;
 
+import org.example.role.application.service.RoleQueryService;
 import org.example.user.application.service.LocalUserSignUpService;
 import org.example.user.application.service.UserCommandService;
 import org.example.user.application.service.UserQueryService;
-import org.example.user.domain.exception.RoleNotFoundException;
-import org.example.user.domain.model.RoleEnum;
-import org.example.user.domain.model.Role;
+import org.example.role.domain.exception.RoleNotFoundException;
+import org.example.role.domain.model.RoleEnum;
+import org.example.role.domain.model.Role;
 import org.example.user.domain.model.User;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,7 +28,7 @@ import static org.mockito.Mockito.*;
 class LocalUserSignUpServiceTest {
 
     @Mock
-    private UserQueryService userQueryService;
+    private RoleQueryService roleQueryService;
 
     @Mock
     private UserCommandService userCommandService;
@@ -44,7 +45,7 @@ class LocalUserSignUpServiceTest {
         // given
         Role existingRole = Role.ofName(RoleEnum.USER);
 
-        when(userQueryService.findRoleByName(RoleEnum.USER))
+        when(roleQueryService.findByName(RoleEnum.USER))
                 .thenReturn(Optional.of(existingRole));
 
         when(passwordEncoder.encode("raw-password"))
@@ -56,7 +57,7 @@ class LocalUserSignUpServiceTest {
         sut.signUp("noah@test.com", "noah", "raw-password");
 
         // then
-        verify(userQueryService).findRoleByName(RoleEnum.USER);
+        verify(roleQueryService).findByName(RoleEnum.USER);
         verify(passwordEncoder).encode("raw-password");
         verify(userCommandService).save(userCaptor.capture());
 
@@ -72,14 +73,14 @@ class LocalUserSignUpServiceTest {
     @DisplayName("기본 Role이 없으면 RoleNotFoundException을 던지고 User를 저장하지 않는다")
     void signUp_whenDefaultRoleDoesNotExist_throwsRoleNotFoundException() {
         // given
-        when(userQueryService.findRoleByName(RoleEnum.USER))
+        when(roleQueryService.findByName(RoleEnum.USER))
                 .thenReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> sut.signUp("test@test.com", "test", "raw-password"))
                 .isInstanceOf(RoleNotFoundException.class);
 
-        verify(userQueryService).findRoleByName(RoleEnum.USER);
+        verify(roleQueryService).findByName(RoleEnum.USER);
         verify(passwordEncoder, never()).encode(anyString());
         verify(userCommandService, never()).save(any(User.class));
     }
@@ -90,7 +91,7 @@ class LocalUserSignUpServiceTest {
         // given
         Role role = Role.ofName(RoleEnum.USER);
 
-        when(userQueryService.findRoleByName(RoleEnum.USER))
+        when(roleQueryService.findByName(RoleEnum.USER))
                 .thenReturn(Optional.of(role));
 
         when(passwordEncoder.encode("password123"))
@@ -102,6 +103,8 @@ class LocalUserSignUpServiceTest {
         sut.signUp("member@test.com", "member", "password123");
 
         // then
+        verify(roleQueryService).findByName(RoleEnum.USER);
+        verify(passwordEncoder).encode("password123");
         verify(userCommandService).save(userCaptor.capture());
 
         User savedUser = userCaptor.getValue();

@@ -1,4 +1,4 @@
-package org.example.user.adapter.out.config;
+package org.example.config;
 
 import com.zaxxer.hikari.HikariDataSource;
 import org.example.common.jpa.datasource.DataSourceType;

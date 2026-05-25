@@ -1,4 +1,4 @@
-package org.example.user.domain.model;
+package org.example.role.domain.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

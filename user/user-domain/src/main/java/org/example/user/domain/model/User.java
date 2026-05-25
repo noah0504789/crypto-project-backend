@@ -10,6 +10,8 @@ import jakarta.persistence.Table;
 import lombok.*;
 import org.example.common.jpa.BaseEntity;
 import org.example.common.id.annotation.SnowflakeId;
+import org.example.role.domain.model.Role;
+import org.example.role.domain.model.RoleEnum;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -61,30 +63,22 @@ public class User extends BaseEntity {
         }
     }
 
-    public static User ofLocal(String email, String nickname, String encodedPassword, Role role) {
-        User user = User.builder()
+    public static User ofLocal(String email, String nickname, String encodedPassword) {
+        return User.builder()
                 .email(email)
                 .nickname(nickname)
                 .password(encodedPassword)
                 .roles(new HashSet<>())
                 .build();
-
-        user.roles.add(UserRole.ofUserAndRole(user, role));
-
-        return user;
     }
 
-    public static User ofOAuth2(String sub, String email, String nickname, Role role) {
-        User user = User.builder()
+    public static User ofOAuth2(String sub, String email, String nickname) {
+        return User.builder()
                 .sub(sub)
                 .email(email)
                 .nickname(nickname)
                 .roles(new HashSet<>())
                 .build();
-
-        user.roles.add(UserRole.ofUserAndRole(user, role));
-
-        return user;
     }
 
     public static RoleEnum getDefaultRole() {
@@ -95,6 +89,30 @@ public class User extends BaseEntity {
         return roles.stream()
                 .map(UserRole::getRoleName)
                 .toList();
+    }
+
+    public boolean hasRole(Role role) {
+        if (role == null || roles == null) {
+            return false;
+        }
+
+        return roles.stream().anyMatch(userRole -> userRole.hasRole(role));
+    }
+
+    public void addRole(Role role) {
+        if (role == null) {
+            throw new IllegalArgumentException("role must not be null");
+        }
+
+        if (this.roles == null) {
+            this.roles = new HashSet<>();
+        }
+
+        if (hasRole(role)) {
+            return;
+        }
+
+        this.roles.add(UserRole.of(this, role));
     }
 
     public Instant toInstant() {

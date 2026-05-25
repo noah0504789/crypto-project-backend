@@ -1,4 +1,4 @@
-package org.example.user.adapter.out.persistence;
+package org.example.user.adapter.out;
 
 import org.example.user.application.port.out.UserPersistencePort;
 import org.example.user.domain.model.User;
@@ -9,7 +9,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface UserPersistence extends JpaRepository<User, Long>, UserPersistencePort {
+public interface UserPersistenceAdapter extends JpaRepository<User, Long>, UserPersistencePort {
 
     Optional<User> findByPublicId(UUID publicId);
 

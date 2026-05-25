@@ -1,9 +1,10 @@
 package org.example.user.application.service;
 
 import lombok.RequiredArgsConstructor;
-import org.example.user.domain.exception.RoleNotFoundException;
-import org.example.user.domain.model.RoleEnum;
-import org.example.user.domain.model.Role;
+import org.example.role.application.service.RoleQueryService;
+import org.example.role.domain.exception.RoleNotFoundException;
+import org.example.role.domain.model.RoleEnum;
+import org.example.role.domain.model.Role;
 import org.example.user.domain.model.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -13,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class LocalUserSignUpService {
 
-    private final UserQueryService userQueryService;
+    private final RoleQueryService roleQueryService;
     private final UserCommandService userCommandService;
     private final PasswordEncoder passwordEncoder;
 
@@ -21,12 +22,13 @@ public class LocalUserSignUpService {
     public void signUp(String email, String nickname, String password) {
         RoleEnum defaultRole = User.getDefaultRole();
 
-        Role role = userQueryService.findRoleByName(defaultRole)
+        Role role = roleQueryService.findByName(defaultRole)
                 .orElseThrow(() -> new RoleNotFoundException(defaultRole));
 
         String encodedPassword = passwordEncoder.encode(password);
 
-        User user = User.ofLocal(email, nickname, encodedPassword, role);
+        User user = User.ofLocal(email, nickname, encodedPassword);
+        user.addRole(role);
 
         userCommandService.save(user);
     }
