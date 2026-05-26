@@ -16,7 +16,7 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class ChatMessageBroadcastEventConsumer {
+public class ChatMessageBroadcastEventHandler {
 
     @Value("${spring.cloud.stream.instance-index:unknown}")
     private String instanceIndex;

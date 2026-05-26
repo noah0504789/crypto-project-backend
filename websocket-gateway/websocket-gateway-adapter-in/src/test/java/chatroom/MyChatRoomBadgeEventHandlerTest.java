@@ -3,7 +3,7 @@ package chatroom;
 import org.example.common.enums.StompTopic;
 import org.example.contract.chatroom.MyChatRoomBadgeEvent;
 import org.example.contract.chatroom.MyChatRoomPayload;
-import org.example.websocket.gateway.adapter.in.event.chatroom.MyChatRoomBadgeEventConsumer;
+import org.example.websocket.gateway.adapter.in.event.chatroom.MyChatRoomBadgeEventHandler;
 import org.example.websocket.gateway.adapter.in.event.chatroom.dto.MyChatRoomResponse;
 import org.example.websocket.gateway.session.application.cache.LocalSessionCache;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,7 +27,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class MyChatRoomBadgeEventConsumerTest {
+class MyChatRoomBadgeEventHandlerTest {
 
     @Mock
     private SimpMessagingTemplate stompTemplate;
@@ -36,7 +36,7 @@ class MyChatRoomBadgeEventConsumerTest {
     private LocalSessionCache localSessionCache;
 
     @InjectMocks
-    private MyChatRoomBadgeEventConsumer sut;
+    private MyChatRoomBadgeEventHandler sut;
 
     private final String instanceIndex = "instance-1";
     private final String txId = "tx-1";

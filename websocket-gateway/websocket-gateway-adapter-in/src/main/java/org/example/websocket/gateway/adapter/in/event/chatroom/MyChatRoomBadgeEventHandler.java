@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class MyChatRoomBadgeEventConsumer {
+public class MyChatRoomBadgeEventHandler {
 
     @Value("${spring.cloud.stream.instance-index:unknown}")
     private String instanceIndex;

@@ -3,7 +3,7 @@ package event;
 import org.example.common.enums.StompTopic;
 import org.example.common.event.notification.WebNotificationEvent;
 import org.example.common.event.notification.WebNotificationPayload;
-import org.example.websocket.gateway.adapter.in.event.notification.WebNotificationEventConsumer;
+import org.example.websocket.gateway.adapter.in.event.notification.WebNotificationEventHandler;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,13 +17,13 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("WebNotificationEventService")
-class WebNotificationEventConsumerTest {
+class WebNotificationEventHandlerTest {
 
     @Mock
     private SimpMessagingTemplate stompTemplate;
 
     @InjectMocks
-    private WebNotificationEventConsumer sut;
+    private WebNotificationEventHandler sut;
 
     private final String txId = "tx-1";
     private final String eventType = "WEB_NOTIFICATION";

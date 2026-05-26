@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class WebNotificationEventConsumer {
+public class WebNotificationEventHandler {
 
     private final SimpMessagingTemplate stompTemplate;
 

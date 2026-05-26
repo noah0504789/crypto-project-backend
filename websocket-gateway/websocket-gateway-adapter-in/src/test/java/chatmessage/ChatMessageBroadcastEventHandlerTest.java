@@ -3,7 +3,7 @@ package chatmessage;
 import org.example.common.enums.StompTopic;
 import org.example.contract.chatmessage.ChatMessageBroadcastEvent;
 import org.example.contract.chatmessage.ChatMessagePayload;
-import org.example.websocket.gateway.adapter.in.event.chatmessage.ChatMessageBroadcastEventConsumer;
+import org.example.websocket.gateway.adapter.in.event.chatmessage.ChatMessageBroadcastEventHandler;
 import org.example.websocket.gateway.adapter.in.event.chatmessage.dto.ChatMessageResponse;
 import org.example.websocket.gateway.session.application.cache.LocalSessionCache;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,7 +27,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class ChatMessageBroadcastEventConsumerTest {
+class ChatMessageBroadcastEventHandlerTest {
 
     @Mock
     private SimpMessagingTemplate stompTemplate;
@@ -36,7 +36,7 @@ class ChatMessageBroadcastEventConsumerTest {
     private LocalSessionCache localSessionCache;
 
     @InjectMocks
-    private ChatMessageBroadcastEventConsumer sut;
+    private ChatMessageBroadcastEventHandler sut;
 
     private final String txId = "tx-1";
     private final String roomId = "000000000000000000000001";
