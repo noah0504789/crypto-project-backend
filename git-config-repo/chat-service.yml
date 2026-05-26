@@ -24,6 +24,9 @@ api-path:
     room-messages: /room/{roomId}/messages
 
 spring:
+  messages:
+    basename: messages,common-validation-messages
+    encoding: UTF-8
   jpa:
 #    show-sql: true
     properties:
