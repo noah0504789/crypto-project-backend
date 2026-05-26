@@ -2,8 +2,6 @@ plugins {
     id 'crypto-domain'
 }
 
-
 dependencies {
     api project(':common:common-core')
-
 }
