@@ -42,13 +42,13 @@ public class StompConfig implements WebSocketMessageBrokerConfigurer {
             @Qualifier("stompBrokerExecutor") ThreadPoolTaskExecutor stompBrokerExecutor,
             @Qualifier("stompInboundExecutor") ThreadPoolTaskExecutor stompInboundExecutor,
             @Qualifier("stompOutboundExecutor") ThreadPoolTaskExecutor stompOutboundExecutor,
-            @Qualifier("stompObjectMapper") ObjectMapper stompObjectMapper,
+            ObjectMapper objectMapper,
             ApiPathProperties apiPathProperties
             ) {
         this.stompBrokerExecutor = stompBrokerExecutor;
         this.stompInboundExecutor = stompInboundExecutor;
         this.stompOutboundExecutor = stompOutboundExecutor;
-        this.stompObjectMapper = stompObjectMapper;
+        this.stompObjectMapper = objectMapper;
         this.apiPathProperties = apiPathProperties;
     }
 
