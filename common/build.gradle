@@ -2,7 +2,6 @@ plugins {
     id 'crypto-common-library'
 }
 
-
 dependencies {
     api project(':common:common-core')
     api project(':common:common-jpa')
@@ -12,6 +11,7 @@ dependencies {
     api project(':common:common-id')
     api project(':common:common-outbox')
     api project(':common:common-redis')
+    api project(':common:common-redisson')
     api project(':common:common-util')
     api project(':common:common-mongo')
 }

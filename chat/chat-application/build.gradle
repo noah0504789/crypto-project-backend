@@ -5,6 +5,7 @@ plugins {
 dependencies {
     api project(':common:common-core')
     api project(':common:common-redis')
+    api project(':common:common-redisson')
     api project(':chat:chat-domain')
     api project(':chat:chat-contract')
 
