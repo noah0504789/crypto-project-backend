@@ -56,7 +56,7 @@ spring-cloud-starter-stream-kafka  = { group = "org.springframework.cloud", name
 spring-cloud-stream-binder-kafka   = { group = "org.springframework.cloud", name = "spring-cloud-stream-binder-kafka" }
 spring-cloud-stream-binder-kafka-streams   = { group = "org.springframework.cloud", name = "spring-cloud-stream-binder-kafka-streams" }
 spring-integration-core        = { group = "org.springframework.integration", name = "spring-integration-core" }
-spring-vault-core = { group = "org.springframework.vault", name = "spring-vault-core", version.ref = "spring-vault" }
+spring-vault-core = { group = "org.springframework.vault", name = "spring-vault-core" }
 
 micrometer-registry-prometheus = { group = "io.micrometer", name = "micrometer-registry-prometheus" }
 otel-javaagent = { module = "io.opentelemetry.javaagent:opentelemetry-javaagent", version.ref = "otel-agent" }
