@@ -6,9 +6,9 @@ dependencies {
     api project(':common:common-core')
     api project(':user:user-contract')
 
-    api(libs.spring.boot.starter.web)
     api(libs.spring.security.oauth2.authorization.server)
 
+    implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.boot.starter.validation)
 
     testImplementation(libs.spring.security.test)

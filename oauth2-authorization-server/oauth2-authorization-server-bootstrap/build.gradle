@@ -2,32 +2,16 @@ plugins {
     id 'crypto-bootstrap'
 }
 
-
 dependencies {
-
-    implementation project(':common')
     implementation project(':oauth2-authorization-server:oauth2-authorization-server-application')
     implementation project(':oauth2-authorization-server:oauth2-authorization-server-adapter-in')
     implementation project(':oauth2-authorization-server:oauth2-authorization-server-adapter-out')
-    implementation project(':protobuf')
 
-    implementation(platform(libs.grpc.bom))
-    implementation(libs.grpc.netty)
-    implementation(libs.grpc.protobuf)
-    implementation(libs.grpc.stub)
-    implementation(libs.grpc.client.spring.boot.starter)
-    implementation(libs.grpc.server.spring.boot.starter)
-    implementation(libs.protobuf.java)
-    implementation(libs.protobuf.util)
-
-    implementation(libs.micrometer.registry.prometheus)
-    implementation(libs.caffeine)
-    implementation(libs.spring.integration.core)
-    implementation(libs.spring.boot.starter.actuator)
-    implementation(libs.spring.boot.starter.data.redis)
-    implementation(libs.spring.security.oauth2.authorization.server)
     implementation(libs.spring.cloud.config.client)
     implementation(libs.spring.cloud.eureka.client)
+
+    implementation(libs.spring.boot.starter.actuator)
+    implementation(libs.micrometer.registry.prometheus)
 
     testImplementation(libs.spring.security.test)
 }

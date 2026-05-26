@@ -11,9 +11,8 @@ dependencies {
     implementation platform(libs.grpc.bom)
     implementation(libs.grpc.stub)
     implementation(libs.grpc.client.spring.boot.starter)
-    implementation(libs.spring.boot.starter.data.redis)
+
     implementation(libs.spring.security.oauth2.authorization.server)
-    implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.boot.starter.actuator)
     implementation(libs.micrometer.registry.prometheus)
     implementation(libs.caffeine)
