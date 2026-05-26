@@ -5,8 +5,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
-@SpringBootApplication(exclude = DataSourceAutoConfiguration.class)
-@ConfigurationPropertiesScan
+@SpringBootApplication(scanBasePackages = "org.example")
+@ConfigurationPropertiesScan(basePackages = "org.example")
 public class Main {
     public static void main(String[] args) {
         SpringApplication.run(Main.class, args);
