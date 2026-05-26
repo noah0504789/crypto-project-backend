@@ -15,7 +15,6 @@ dependencies {
     implementation(libs.grpc.protobuf)
     implementation(libs.grpc.stub)
     implementation(libs.grpc.client.spring.boot.starter)
-    implementation(libs.spring.boot.starter.data.redis)
     implementation(libs.spring.boot.starter.actuator)
     implementation(libs.protobuf.java)
 }

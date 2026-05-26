@@ -2,7 +2,6 @@ plugins {
     id 'crypto-bootstrap'
 }
 
-
 configurations {
     otelAgent
 }
@@ -14,34 +13,16 @@ tasks.register('copyOtelAgent', Copy) {
 }
 
 dependencies {
-
-    implementation project(':common')
     implementation project(':websocket-gateway:websocket-gateway-domain')
     implementation project(':websocket-gateway:websocket-gateway-application')
     implementation project(':websocket-gateway:websocket-gateway-adapter-in')
     implementation project(':websocket-gateway:websocket-gateway-adapter-out')
-    implementation project(':chat:chat-contract')
-    implementation project(':protobuf')
 
     otelAgent(libs.otel.javaagent)
 
-    implementation(platform(libs.grpc.bom))
-    implementation(libs.grpc.netty)
-    implementation(libs.grpc.protobuf)
-    implementation(libs.grpc.stub)
-    implementation(libs.grpc.client.spring.boot.starter)
-    implementation(libs.protobuf.java)
-    implementation(libs.protobuf.util)
-
-    implementation(libs.micrometer.registry.prometheus)
-    implementation(libs.caffeine)
-    implementation 'org.mongodb:bson:5.1.0'
-
-    implementation(libs.spring.boot.starter.actuator)
-    implementation(libs.spring.boot.starter.websocket)
-    implementation(libs.spring.boot.starter.data.redis)
-    implementation(libs.spring.cloud.stream.binder.kafka)
     implementation(libs.spring.cloud.config.client)
     implementation(libs.spring.cloud.eureka.client)
 
+    implementation(libs.spring.boot.starter.actuator)
+    implementation(libs.micrometer.registry.prometheus)
 }
