@@ -15,7 +15,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 @Configuration
 @EnableJpaRepositories(
-        basePackages = {"org.example.outbox", "org.example.dlq"},
+        basePackages = {"org.example"},
         entityManagerFactoryRef = "entityManagerFactory",
         transactionManagerRef = "transactionManager")
 public class DatasourceConfig {
@@ -39,7 +39,7 @@ public class DatasourceConfig {
     public LocalContainerEntityManagerFactoryBean entityManagerFactory(EntityManagerFactoryBuilder builder) {
         return builder
                 .dataSource(dataSource())
-                .packages("org.example.outbox", "org.example.dlq")
+                .packages("org.example")
                 .persistenceUnit("common")
                 .build();
     }

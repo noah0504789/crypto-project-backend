@@ -31,7 +31,7 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 @EnableMongoRepositories(
-    basePackages = {"org.example.chatroom", "org.example.chatmessage", "org.example.outbox"},
+    basePackages = {"org.example"},
     mongoTemplateRef = "mongoTemplate"
 )
 @Configuration
