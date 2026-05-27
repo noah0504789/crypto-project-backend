@@ -6,6 +6,4 @@ dependencies {
     api project(':common:common-core')
     api project(':common:common-jpa')
     api project(':common:common-id')
-
-    api libs.spring.boot.starter.data.jpa
 }

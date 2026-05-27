@@ -1,18 +1,3 @@
 plugins {
     id 'crypto-common-library'
 }
-
-
-dependencies {
-
-    implementation project(':common')
-    implementation project(':user:user-contract')
-    implementation project(':user:user-client')
-    implementation project(':user:user-domain')
-    implementation project(':user:user-application')
-    implementation project(':user:user-adapter-in')
-    implementation project(':user:user-adapter-out')
-    implementation project(':user:user-bootstrap')
-    implementation project(':protobuf')
-
-}

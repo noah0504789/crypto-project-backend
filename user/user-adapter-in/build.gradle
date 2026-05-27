@@ -10,10 +10,9 @@ dependencies {
     implementation project(':protobuf')
 
     implementation platform(libs.grpc.bom)
-    implementation libs.grpc.stub
-    implementation libs.grpc.server.spring.boot.starter
-    implementation libs.spring.boot.starter.web
-    implementation libs.spring.boot.starter.security
-    implementation libs.protobuf.java
-    implementation libs.protobuf.util
+    implementation(libs.grpc.stub)
+    implementation(libs.grpc.server.spring.boot.starter)
+
+    implementation(libs.protobuf.java)
+    implementation(libs.protobuf.util)
 }
