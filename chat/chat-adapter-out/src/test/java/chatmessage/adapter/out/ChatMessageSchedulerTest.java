@@ -1,8 +1,8 @@
-package chatmessage.adapter.in;
+package chatmessage.adapter.out;
 
 import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
 import org.example.chat.chatmessage.domain.event.ChatMessageEventList;
-import org.example.chat.chatmessage.adapter.in.scheduler.ChatMessageScheduler;
+import org.example.chat.chatmessage.adapter.out.scheduler.ChatMessageScheduler;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.common.clock.Clock;
 import org.example.chat.infra.redis.RedisCollectionRegistry;

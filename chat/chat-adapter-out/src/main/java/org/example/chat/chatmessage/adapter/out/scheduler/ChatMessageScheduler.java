@@ -1,6 +1,5 @@
-package org.example.chat.chatmessage.adapter.in.scheduler;
+package org.example.chat.chatmessage.adapter.out.scheduler;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.common.exception.ChatCacheException;
@@ -25,22 +24,29 @@ import static org.example.common.enums.RedisKey.ACCESS_CHAT_MESSAGE_BY_ROOM;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class ChatMessageScheduler {
 
     private final RedisCollectionRegistry registry;
     private final RedisTemplate<String, String> redisTemplate;
-
-    private final Clock clock;
-
-    @Qualifier("redisChatMessageCodec")
+    private final Clock clockService;
     private final RedisValueCodec<ChatMessage> redisChatMessageCodec;
+
+    public ChatMessageScheduler(
+            RedisCollectionRegistry registry,
+            RedisTemplate<String, String> redisTemplate,
+            Clock clockService,
+            @Qualifier("redisChatMessageCodec") RedisValueCodec<ChatMessage> redisChatMessageCodec) {
+        this.registry = registry;
+        this.redisTemplate = redisTemplate;
+        this.clockService = clockService;
+        this.redisChatMessageCodec = redisChatMessageCodec;
+    }
 
     @Scheduled(cron = "0 0 3 * * *")
     public void removeExpiringMessages() {
         long ttlMillis = Duration.ofDays(7).toMillis();
 
-        Instant now = clock.now();
+        Instant now = clockService.now();
         long cutoff = now.toEpochMilli() - ttlMillis;
 
         String messageAccessKeyPattern = ACCESS_CHAT_MESSAGE_BY_ROOM.keyFor("*");
