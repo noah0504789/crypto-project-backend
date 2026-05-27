@@ -6,9 +6,9 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.scheduling.annotation.EnableScheduling;
 //TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
 // click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "org.example")
+@ConfigurationPropertiesScan(basePackages = "org.example")
 @EnableScheduling
-@ConfigurationPropertiesScan
 public class Main {
     public static void main(String[] args) {
         new SpringApplication(Main.class).run(args);

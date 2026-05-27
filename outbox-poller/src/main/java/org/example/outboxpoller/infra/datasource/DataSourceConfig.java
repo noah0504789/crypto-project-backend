@@ -16,7 +16,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import javax.sql.DataSource;
 
 @Configuration
-@EnableJpaRepositories(basePackages = {"org.example.outbox", "org.example.dlq"})
+@EnableJpaRepositories(basePackages = {"org.example"})
 public class DataSourceConfig {
 
     @Bean
@@ -38,7 +38,7 @@ public class DataSourceConfig {
     public LocalContainerEntityManagerFactoryBean entityManagerFactory(EntityManagerFactoryBuilder builder, DataSource dataSource) {
         return builder
                 .dataSource(dataSource)
-                .packages("org.example.outbox", "org.example.dlq")
+                .packages("org.example")
                 .persistenceUnit("event")
                 .build();
     }
