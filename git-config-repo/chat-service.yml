@@ -69,7 +69,6 @@ spring:
         binder:
           consumer-properties:
             spring.json.trusted.packages: "*"
-            spring.json.type.mapping: org.example.event.chatmessage.ChatMessagePersistEvent:org.example.chatmessage.domain.model.event.ChatMessagePersistEvent
         bindings:
           chatRoomEventConsumer-in-0:
             consumer:
