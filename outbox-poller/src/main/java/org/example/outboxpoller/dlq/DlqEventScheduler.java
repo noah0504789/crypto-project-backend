@@ -12,7 +12,7 @@ public class DlqEventScheduler {
     private final DlqService dlqService;
     private final DlqPollerState dlqPollerState;
 
-    @Scheduled(fixedDelayString = "#{@dlqPollerProperties.fixedDelayMs}")
+    @Scheduled(fixedDelayString = "${poller.dlq.fixed-delay-ms}")
     public void poll() {
         if (!dlqPollerState.isEnabled()) return;
 

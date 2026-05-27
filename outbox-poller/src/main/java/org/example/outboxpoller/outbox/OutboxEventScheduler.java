@@ -14,14 +14,14 @@ public class OutboxEventScheduler {
     private final OutboxService outboxPollerService;
     private final OutboxPollerProperties outboxPollerProperties;
 
-    @Scheduled(fixedDelayString = "#{@outboxPollerProperties.general.fixedDelayMs}")
+    @Scheduled(fixedDelayString = "${poller.outbox.general.fixed-delay-ms}")
     public void pollGeneral() {
         if (!outboxPollerProperties.general().enabled()) return;
 
         outboxPollerService.publishPending(OutboxDispatchType.GENERAL);
     }
 
-    @Scheduled(fixedDelayString = "#{@outboxPollerProperties.broadcast.fixedDelayMs}")
+    @Scheduled(fixedDelayString = "${poller.outbox.broadcast.fixed-delay-ms}")
     public void pollBroadcast() {
         if (!outboxPollerProperties.broadcast().enabled()) return;
 
