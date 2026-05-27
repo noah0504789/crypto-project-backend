@@ -4,7 +4,6 @@ plugins {
 
 dependencies {
     api project(':user:user-contract')
-
     implementation project(':protobuf')
 
     implementation platform(libs.grpc.bom)

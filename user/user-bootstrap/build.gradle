@@ -8,7 +8,9 @@ dependencies {
     implementation project(':user:user-adapter-in')
     implementation project(':user:user-adapter-out')
 
-    runtimeOnly(libs.mysql.connector.j)
+    runtimeOnly(libs.mysql.connector.j) {
+        exclude group: 'com.google.protobuf', module: 'protobuf-java'
+    }
 
     implementation(libs.spring.cloud.config.client)
     implementation(libs.spring.cloud.eureka.client)
