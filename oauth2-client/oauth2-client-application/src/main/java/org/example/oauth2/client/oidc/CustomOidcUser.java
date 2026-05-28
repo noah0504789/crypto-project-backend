@@ -57,6 +57,7 @@ public record CustomOidcUser(
     public CustomOidcUser {
         Objects.requireNonNull(delegate, "delegate must not be null");
         Objects.requireNonNull(userId, "userId must not be null");
+        Objects.requireNonNull(sub, "sub must not be null");
         Objects.requireNonNull(email, "email must not be null");
         Objects.requireNonNull(clientRegistrationId, "clientRegistrationId must not be null");
         Objects.requireNonNull(authorities, "authorities must not be null");
@@ -91,9 +92,15 @@ public record CustomOidcUser(
         return authorities;
     }
 
+    /**
+     * Spring Security principalName.
+     *
+     * OAuth2AuthorizedClientService 저장/삭제 기준으로 사용될 수 있으므로
+     * 로그아웃 기준과 동일하게 email을 반환한다.
+     */
     @Override
     public String getName() {
-        return userId;
+        return email;
     }
 
     private static Map<String, Object> mergeAttributes(
@@ -108,6 +115,7 @@ public record CustomOidcUser(
         Map<String, Object> merged = new HashMap<>(delegate.getAttributes());
 
         merged.put("id", userId);
+        merged.put("userId", userId);
         merged.put("sub", sub);
         merged.put("email", email);
         merged.put("nickname", nickname);
