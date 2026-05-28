@@ -1,379 +1,471 @@
-# crypto-project Codex Workflow
+# CODEX_WORKFLOW.md
 
-## 1. Codex 사용 목적
+이 문서는 Codex/AI 코딩 에이전트가 `crypto-project-backend`에서 분석, 수정, 테스트, 문서화를 수행하는 절차를 정의한다.
 
-Codex는 `crypto-project` 전체 코드를 읽고, 반복되는 컨벤션을 정리하며, 작은 단위의 리팩토링과 테스트 작성을 보조하는 코딩 에이전트로 사용한다.
+## 1. 기본 작업 철학
 
-목표:
-
-- 프로젝트 코드 철학 문서화
-- 서비스별 컨벤션 일관화
-- 테스트 보강
-- `GlobalExceptionHandler` 정리
-- 정적 상수, enum, properties 관리 개선
-- Lombok 생성자 및 builder access level 정리
-- Outbox/DLQ와 read replica 구조 보존
-- 멀티모듈 전환 준비
-
-## 2. 기본 원칙
-
-Codex는 바로 수정하지 않고 먼저 근거를 수집한다.
+Codex는 빠르게 코드를 고치는 도구가 아니라, 기존 구조를 읽고 안전한 변경 단위를 제안한 뒤 필요한 만큼만 수정하는 보조자다.
 
 기본 순서:
 
-1. 전체 구조 확인
-2. 관련 서비스 범위 식별
-3. 같은 패턴 전체 검색
-4. 문제점과 영향 범위 정리
-5. 최소 수정 계획 제시
-6. 코드 수정
-7. 서비스 단위 테스트 실행
-8. 변경 요약과 남은 TODO 정리
+```text
+요청 이해
+  -> 현재 구조 확인
+  -> 관련 코드와 유사 패턴 검색
+  -> 영향 범위 판단
+  -> 최소 변경 계획
+  -> 코드/문서 수정
+  -> 테스트/검증
+  -> 결과 요약
+```
 
-단, 사용자가 명확히 "수정해줘", "문서화해줘", "테스트 추가해줘"라고 요청하면 분석 후 바로 구현까지 진행한다.
+사용자가 “바로 수정해줘”, “완성본 줘”, “테스트 짜줘”라고 명확히 요청한 경우에는 분석 후 구현까지 진행한다. 그래도 외부 계약이나 대규모 리팩토링은 먼저 경고한다.
 
-## 3. 작업 시작 체크리스트
+## 2. 작업 시작 체크리스트
 
-작업 전 확인:
+루트 확인:
 
 ```bash
 pwd
-find . -maxdepth 2 -type f -name 'settings.gradle' -o -name 'build.gradle'
-find . -maxdepth 2 -type d | sort
+./gradlew projects
+find . -maxdepth 2 -name settings.gradle -o -name build.gradle | sort
 ```
 
-서비스별 Git 상태 확인:
+Git 상태 확인:
+
+```bash
+git status --short
+```
+
+하위 경로가 별도 Git repo 성격이면 추가 확인:
 
 ```bash
 git -C chat status --short
 git -C user status --short
-git -C outbox-poller status --short
+git -C oauth2-client status --short
+git -C oauth2-authorization-server status --short
+git -C websocket-gateway status --short
+git -C spring-cloud-config status --short
+git -C git-config-repo status --short
 ```
 
-주의:
+수정 전 원칙:
 
-- 이 작업 디렉토리는 여러 독립 Git 저장소를 포함한다.
-- 기존 변경이 있으면 사용자가 만든 변경으로 보고 되돌리지 않는다.
-- 특정 서비스 수정 전 해당 서비스의 `git status --short`를 확인한다.
+- 사용자 변경사항은 되돌리지 않는다.
+- build 산출물, `.idea`, `.gradle`, secret 파일을 수정 대상으로 삼지 않는다.
+- 검색 결과가 많으면 관련 모듈부터 좁힌다.
 
-## 4. 분석 요청 처리 방식
+## 3. 분석 요청 처리
 
-분석 요청을 받으면 코드를 수정하지 않는다.
+분석만 요청받으면 코드를 수정하지 않는다.
 
-출력 형식:
+응답 형식:
 
-- 발견한 패턴
-- 문제점
-- 추천 컨벤션
-- 적용 우선순위
-- 바로 수정하면 위험한 항목
-- 테스트/검증 방법
+```text
+요약
+- ...
+
+발견한 패턴
+- ...
+
+문제점/위험
+- ...
+
+추천 방향
+- ...
+
+검증 방법
+- ...
+
+바로 수정하면 위험한 항목
+- ...
+```
 
 분석 기준:
 
-- 추측하지 않고 실제 코드에서 발견한 파일/패턴만 근거로 삼는다.
-- 관련 서비스 하나만 보지 않고 전체 서비스에서 같은 문자열/패턴을 검색한다.
-- 큰 변경은 작은 PR 단위로 쪼갠다.
+- 실제 코드에서 확인한 것만 근거로 삼는다.
+- 같은 문자열/패턴을 전체 검색한다.
+- 한 파일만 보고 결론 내리지 않는다.
+- 외부 계약 변경 여부를 먼저 판단한다.
 
-## 5. 수정 요청 처리 방식
+유용한 검색:
+
+```bash
+grep -R "문자열" -n --include='*.java' .
+grep -R "@ReadReplica\|DataSourceContextHolder" -n --include='*.java' .
+grep -R "transaction_id\|dlq_id\|__TypeId__" -n --include='*.java' .
+grep -R "@GrpcService\|@RestController\|@MessageMapping" -n --include='*.java' .
+```
+
+## 4. 수정 요청 처리
 
 수정 요청을 받으면 다음 순서로 진행한다.
 
-1. 관련 파일과 유사 패턴을 읽는다.
-2. 변경 범위를 좁힌다.
-3. 기존 public API와 외부 계약 변경 여부를 판단한다.
-4. 필요한 파일만 수정한다.
-5. 테스트를 추가하거나 기존 테스트를 보강한다.
-6. 서비스 단위 테스트를 실행한다.
-7. 결과를 한국어로 요약한다.
+1. 관련 파일을 읽는다.
+2. 동일 패턴을 검색한다.
+3. 변경 범위를 service/module 단위로 제한한다.
+4. 외부 계약 변경 여부를 판단한다.
+5. 코드를 수정한다.
+6. 단위 테스트 또는 통합 테스트를 보강한다.
+7. 가능한 최소 테스트 명령을 실행한다.
+8. 결과를 요약한다.
 
-최종 응답에는 다음을 포함한다.
+수정 후 응답 형식:
 
-- 변경 요약
-- 실행한 테스트
-- 실패/미실행 테스트가 있다면 이유
-- 남은 TODO 또는 후속 후보
+```text
+변경 요약
+- ...
 
-## 6. 코드 리뷰 요청 처리 방식
+검증
+- 실행: ...
+- 미실행: ...
 
-리뷰 요청을 받으면 수정하지 않고 finding 중심으로 답한다.
+영향 범위
+- ...
+
+후속 TODO
+- ...
+```
+
+## 5. 코드 리뷰 요청 처리
+
+리뷰 요청은 finding 중심으로 답한다. 먼저 수정하지 않는다.
 
 우선순위:
 
-1. 버그
-2. 장애/데이터 정합성 위험
-3. 외부 계약 깨짐
-4. 테스트 누락
-5. 컨벤션 이탈
+1. 실제 버그
+2. 데이터 정합성/장애 위험
+3. 보안/인증 위험
+4. 외부 계약 깨짐
+5. 테스트 누락
+6. 컨벤션/가독성
 
 형식:
 
-- 심각도순 finding
-- 파일/라인 근거
-- 영향
-- 최소 수정 제안
-- 질문/가정
-
-문제가 없으면 "특별한 문제를 찾지 못했다"고 명확히 말하고 남은 리스크를 적는다.
-
-## 7. 서비스별 테스트 명령
-
-전체 테스트는 비용이 클 수 있으므로 가능한 서비스 단위로 실행한다.
-
-```bash
-cd chat
-./gradlew test
+```text
+[심각도] 파일:라인
+문제
+영향
+수정 제안
 ```
 
-```bash
-cd user
-./gradlew test
-```
+문제를 찾지 못했으면 “특별한 문제를 찾지 못했다”고 명확히 말하고 남은 리스크를 적는다.
 
-```bash
-cd outbox-poller
-./gradlew test
-```
+## 6. 문서화 요청 처리
 
-```bash
-cd websocket-gateway
-./gradlew test
-```
+문서화 요청을 받으면 다음을 반영한다.
 
-```bash
-cd oauth2-client
-./gradlew test
-```
-
-```bash
-cd oauth2-authorization-server
-./gradlew test
-```
-
-```bash
-cd spring-cloud-api-gateway
-./gradlew test
-```
-
-```bash
-cd spring-cloud-config
-./gradlew test
-```
-
-```bash
-cd market-detection
-./gradlew test
-```
-
-특정 테스트만 실행:
-
-```bash
-cd chat
-./gradlew test --tests ChatRoomCommandServiceTest
-```
-
-## 8. 문서화 작업 기준
-
-문서화 요청을 받으면 다음을 포함한다.
-
-- 실제 서비스 구조
+- 실제 모듈 구조
 - 현재 구현된 패턴
-- 권장 컨벤션
-- 예외 또는 아직 정리되지 않은 부분
-- 바꾸면 위험한 계약
-- 앞으로 리팩토링할 우선순위
+- 지켜야 하는 외부 계약
+- 아직 정리되지 않은 예외/주의사항
+- 추천 컨벤션
+- 테스트/검증 방법
 
-문서는 한국어로 작성한다.
+문서가 코드보다 앞서가면 안 된다. 이상적인 구조는 `목표`, `후보`, `권장 방향`으로 표시한다.
 
-문서가 코드보다 앞서가면 안 된다. 아직 구현되지 않은 이상적인 구조는 "목표" 또는 "후보"로 명확히 표시한다.
+문서 수정 시 우선순위:
 
-## 9. 상수화 작업 기준
+1. `AGENTS.md`: 에이전트 작업 규칙
+2. `ARCHITECTURE.md`: 서비스 구조/흐름/계약
+3. `CODE_STYLE.md`: 코드/테스트 스타일
+4. `CODEX_WORKFLOW.md`: 작업 절차/명령어
 
-상수화 요청 처리 순서:
+## 7. 테스트 명령
 
-1. 같은 문자열이 쓰이는 위치 검색
-2. 외부 계약인지 내부 구현인지 구분
-3. enum/constants/properties 중 위치 결정
-4. 단일 서비스 내부 정리부터 진행
-5. 테스트 수정
-6. 멀티서비스 공통화는 별도 단계로 제안
-
-검색 후보:
+전체 테스트:
 
 ```bash
-grep -R 'transaction_id\|dlq_id\|__TypeId__' -n --include='*.java' .
-grep -R 'X-User-Id' -n --include='*.java' .
-grep -R 'chatMongoTransactionManager\|transactionManager' -n --include='*.java' .
+./gradlew test
 ```
 
-바로 공통 모듈로 이동하지 않는다. 먼저 서비스 내부 constants로 안정화한다.
-
-## 10. 예외 처리 작업 기준
-
-GlobalExceptionHandler 정리 순서:
-
-1. Controller 목록 확인
-2. custom exception 목록 확인
-3. 현재 예외 응답 형태 확인
-4. validation 응답 형식 확인
-5. status mapping 제안
-6. handler와 테스트 추가
-
-검색:
+서비스 단위 테스트:
 
 ```bash
-find . -path '*/src/main/java/*Controller.java' -o -path '*/src/main/java/*GrpcService.java'
-find . -path '*/src/main/java/*Exception.java'
-grep -R '@RestControllerAdvice\|@GrpcAdvice' -n --include='*.java' .
+./gradlew :chat:test
+./gradlew :user:test
+./gradlew :oauth2-client:test
+./gradlew :oauth2-authorization-server:test
+./gradlew :websocket-gateway:test
+./gradlew :spring-cloud-api-gateway:test
+./gradlew :spring-cloud-config:test
+./gradlew :outbox-poller:test
+./gradlew :market-detection:test
 ```
 
-주의:
-
-- OAuth2/Security filter chain의 실패 응답은 Spring Security 흐름과 충돌하지 않게 검토한다.
-- gRPC 예외는 REST handler가 아니라 `@GrpcAdvice`에서 처리한다.
-
-## 11. Outbox/DLQ 작업 기준
-
-수정 전 확인:
+서브모듈 단위 테스트:
 
 ```bash
-grep -R 'Outbox\|Dlq\|transaction_id\|dlq_id' -n --include='*.java' chat outbox-poller
+./gradlew :common:common-jpa:test
+./gradlew :common:common-id:test
+./gradlew :oauth2-client:oauth2-client-application:test
+./gradlew :user:user-application:test
+./gradlew :chat:chat-application:test
 ```
 
-규칙:
-
-- `@Transactional("transactionManager")` 제거 금지
-- status 직접 대입 대신 도메인 메서드 사용
-- retry count 직접 변경 대신 `increaseRetryCnt` 사용
-- Publisher/Repository/StreamBridge는 단위 테스트에서 mock
-- Kafka header 변경은 외부 계약 변경으로 취급
-
-권장 작업 단위:
-
-1. header constants 정리
-2. outbox entity builder access 정리
-3. DLQ 상태 전이 테스트 보강
-4. retry 대상 exception 구체화
-
-## 12. Read Replica 작업 기준
-
-수정 전 확인:
+특정 테스트:
 
 ```bash
-grep -R 'ReadReplica\|DataSourceContextHolder\|ReplicationRoutingDataSource' -n --include='*.java' user
+./gradlew :oauth2-client:oauth2-client-application:test --tests CustomOidcUserServiceTest
+./gradlew :common:common-jpa:test --tests ReadReplicaRoutingIntegrationTest
 ```
 
-규칙:
-
-- `@ReadReplica`가 라우팅의 명시적 신호이다.
-- `@Transactional(readOnly = true)`만으로 READ 라우팅되게 바꾸지 않는다.
-- `DataSourceContextHolder`의 depth 기반 scope는 유지한다.
-- 통합테스트에서는 Spring Cloud Config와 Eureka 의존을 끊는다.
-
-필수 검증:
+bootJar:
 
 ```bash
-cd user
-./gradlew test --tests ReadReplicaRoutingIntegrationTest
+./gradlew :oauth2-client:oauth2-client-bootstrap:bootJar
+./gradlew :user:user-bootstrap:bootJar
+./gradlew :chat:chat-bootstrap:bootJar
+./gradlew :websocket-gateway:websocket-gateway-bootstrap:bootJar
 ```
 
-## 13. 멀티모듈 전환 작업 기준
+루트 aggregate task가 설정되어 있으면 다음도 가능하다.
 
-멀티모듈 전환 요청을 받으면 바로 파일을 이동하지 않는다.
+```bash
+./gradlew :oauth2-client:bootJar
+```
 
-먼저 제시할 것:
+단, 실패하면 실제 bootstrap 모듈 task를 확인한다.
 
-- 대상 서비스
-- 현재 패키지 구조
-- 모듈 후보
-- 의존 방향
-- 이동 파일 목록
-- build.gradle 변경 범위
-- import 변경 범위
-- 실행할 테스트
-- rollback 방법
+```bash
+./gradlew :oauth2-client:tasks --all | grep bootJar
+```
 
-권장 순서:
+## 8. 기능별 작업 절차
 
-1. `protobuf` 유지/정리
-2. 단일 서비스 내부 패키지 정리
-3. 공통 test support 후보 분리
-4. event contract constants 후보 분리
-5. common exception/validation 후보 분리
+### 8.1 OAuth2/OIDC 수정
 
-금지:
+확인 파일:
 
-- 한 번에 모든 서비스 이동
-- 순환 의존이 생기는 모듈 구조
-- domain이 infra에 의존하는 구조 강화
+```bash
+find oauth2-client -path '*src/main/java*' -type f | sort
+grep -R "CustomOidcUser\|OidcProviderProfile\|AuthorizedClient\|Logout" -n oauth2-client oauth2-authorization-server --include='*.java'
+```
 
-## 14. 커밋/브랜치 작업 기준
+체크:
 
-서비스별 독립 Git 저장소이므로 커밋 요청 시 대상 저장소를 명확히 한다.
+- `CustomOidcUser#getName()` 의미가 principal name인지 확인한다.
+- email/userId/providerSub 혼동 여부를 확인한다.
+- OAuth2AuthorizedClient 저장 기준과 logout 삭제 기준이 일치하는지 확인한다.
+- provider별 claim parsing은 extractor/resolver에 둔다.
+- auth server registered client id/secret config/Vault가 양쪽에 존재하는지 확인한다.
+
+검증:
+
+```bash
+./gradlew :oauth2-client:oauth2-client-application:test
+./gradlew :oauth2-client:oauth2-client-adapter-in:test
+./gradlew :oauth2-authorization-server:test
+```
+
+### 8.2 Gateway/JWT 수정
 
 확인:
 
 ```bash
-git -C chat status --short
-git -C chat branch --show-current
+grep -R "SecurityWebFilterChain\|ReactiveJwtDecoder\|JwtGrantedAuthoritiesConverter" -n spring-cloud-api-gateway --include='*.java'
+grep -R "api-path\|routes\|jwt" -n git-config-repo spring-cloud-api-gateway --include='*.yml' --include='*.java'
 ```
 
-규칙:
+체크:
 
-- 사용자가 만든 변경은 되돌리지 않는다.
-- 관련 없는 dirty file은 커밋에 포함하지 않는다.
-- 여러 서비스 변경은 서비스별 커밋을 우선한다.
-- 커밋 메시지는 변경 의도와 범위를 드러낸다.
+- issuer/audience/key id가 auth server와 맞는지 확인한다.
+- roles claim prefix(`ROLE_`)와 hasRole/hasAuthority 사용을 구분한다.
+- permitAll path가 더 구체적인 보호 path보다 뒤에 와서 우회되지 않는지 확인한다.
+- 401/403/CORS 응답이 브라우저에서 해석 가능한지 확인한다.
 
-## 15. 자주 쓰는 분석 프롬프트
+### 8.3 Read replica 수정
 
-### 15.1 전체 구조 분석
+확인:
+
+```bash
+grep -R "ReadReplica\|DataSourceContextHolder\|ReplicationRoutingDataSource" -n common user --include='*.java'
+```
+
+체크:
+
+- write transaction active 상태에서는 read context를 켜지 않는다.
+- `@Transactional(readOnly = true)`만으로 read 라우팅하지 않는다.
+- `LazyConnectionDataSourceProxy`가 routing datasource 앞에 있는지 확인한다.
+- 통합 테스트는 test method transaction을 끄거나 의도적으로 분리한다.
+
+검증:
+
+```bash
+./gradlew :common:common-jpa:test --tests ReadReplicaAspectTest
+./gradlew :common:common-jpa:test --tests ReadReplicaRoutingIntegrationTest
+```
+
+### 8.4 Outbox/DLQ 수정
+
+확인:
+
+```bash
+grep -R "Outbox\|Dlq\|transaction_id\|dlq_id\|StreamBridge" -n common chat outbox-poller --include='*.java'
+```
+
+체크:
+
+- domain event가 Outbox/DLQ listener로 저장되는지 확인한다.
+- entity 상태 변경이 도메인 메서드로 수행되는지 확인한다.
+- Kafka header가 producer/consumer에서 일치하는지 확인한다.
+- retry exhausted 이후 상태 전이가 명확한지 확인한다.
+
+검증:
+
+```bash
+./gradlew :common:common-outbox:test
+./gradlew :outbox-poller:test
+./gradlew :chat:chat-application:test
+```
+
+### 8.5 Redis/cache 수정
+
+확인:
+
+```bash
+grep -R "RedisKey\|CacheFailOpen\|StringRedisTemplate\|RedisTemplate\|Lua" -n common chat oauth2-authorization-server websocket-gateway --include='*.java'
+```
+
+체크:
+
+- key pattern 인자 수가 맞는지 확인한다.
+- cluster hash tag가 유지되는지 확인한다.
+- 조회 실패와 command 실패 정책이 구분되는지 확인한다.
+- 삭제/복구 이벤트가 idempotent한지 확인한다.
+
+### 8.6 gRPC/protobuf 수정
+
+확인:
+
+```bash
+find protobuf/src/main/proto -type f -print
+grep -R "Grpc.*Client\|@GrpcService\|deadline\|withDeadline" -n . --include='*.java'
+```
+
+체크:
+
+- proto field number 재사용 금지.
+- server와 client 모두 재생성/재빌드 필요.
+- deadline/cancel/error mapping 영향 확인.
+- gateway/websocket/oauth2/user 간 client dependency 확인.
+
+검증:
+
+```bash
+./gradlew :protobuf:build
+./gradlew :user:test
+./gradlew :chat:test
+./gradlew :oauth2-client:test
+./gradlew :spring-cloud-api-gateway:test
+```
+
+### 8.7 WebSocket 성능/동작 수정
+
+확인:
+
+```bash
+grep -R "Stomp\|MessageMapping\|SimpMessagingTemplate\|Kafka.*Consumer\|ack" -n websocket-gateway --include='*.java'
+ls websocket-gateway/k6
+```
+
+체크:
+
+- STOMP destination 변경 여부.
+- ack timeout과 gRPC deadline 관계.
+- broadcast collect window와 topic destination.
+- user queue와 room topic이 프론트 코드와 맞는지 확인한다.
+
+검증 예:
+
+```bash
+./gradlew :websocket-gateway:test
+k6 run websocket-gateway/k6/light_message_200x60_10s.js
+```
+
+## 9. Docker/로컬 검증 절차
+
+bootJar 후 서비스 컨테이너 재빌드:
+
+```bash
+./gradlew :oauth2-client:oauth2-client-bootstrap:bootJar
+docker compose build oauth2-client
+docker compose up -d oauth2-client
+```
+
+로그 확인:
+
+```bash
+docker logs -f oauth2-client
+docker logs -f user-service
+docker logs -f oauth2-authorization-server
+```
+
+Redis cluster auth key 확인:
+
+```bash
+docker exec -it redis-0 redis-cli -p 7100 --scan --pattern '{auth}:*'
+docker exec -it redis-1 redis-cli -p 7101 --scan --pattern '{auth}:*'
+docker exec -it redis-2 redis-cli -p 7102 --scan --pattern '{auth}:*'
+```
+
+slot 확인:
+
+```bash
+docker exec -it redis-0 redis-cli -p 7100 cluster keyslot '{auth}:test'
+```
+
+Vault 확인은 root token/secret을 응답에 노출하지 않는다.
+
+## 10. PR 단위 쪼개기 기준
+
+큰 작업은 다음처럼 나눈다.
+
+1. 테스트 추가만.
+2. 내부 리팩토링만.
+3. 외부 계약 변경.
+4. 설정 변경.
+5. Docker/운영 스크립트 변경.
+6. 문서 변경.
+
+예: OAuth2 logout Redis key 정리는 다음처럼 나눈다.
 
 ```text
-crypto-project 전체 구조를 분석해줘.
-바로 수정하지 말고, 서비스별 역할과 반복되는 패턴을 정리해줘.
+PR1: 현재 Redis key 저장/삭제 기준 테스트 추가
+PR2: CustomOidcUser principal name 정리
+PR3: logout handler 삭제 기준 보강
+PR4: docs 업데이트
 ```
 
-### 15.2 컨벤션 분석
+## 11. 실패 처리
+
+테스트/빌드가 실패하면 다음 순서로 보고한다.
 
 ```text
-이 서비스의 코드 컨벤션을 분석해줘.
-정적 상수, enum, Lombok, Entity, 테스트, 예외 처리 기준으로 봐줘.
-바로 수정하지 말고 후보와 우선순위를 제시해줘.
+실패 명령
+실패 메시지 핵심
+가능한 원인
+수정 후보
+재실행 명령
 ```
 
-### 15.3 안전한 리팩토링
+원인 확정 전에는 “해결됐다”고 말하지 않는다.
+
+## 12. 최종 응답 템플릿
 
 ```text
-이 후보를 최소 범위로 리팩토링해줘.
-외부 계약은 바꾸지 말고 테스트도 같이 보강해줘.
+완료했어.
+
+변경 파일
+- ...
+
+핵심 변경
+- ...
+
+검증
+- 실행: ...
+- 결과: ...
+
+주의/후속
+- ...
 ```
-
-### 15.4 테스트 실패 분석
-
-```text
-이 테스트 실패 원인을 분석해줘.
-root cause와 최소 수정안을 먼저 말하고, 필요한 경우에만 수정해줘.
-```
-
-## 16. 현재 알려진 정리 후보
-
-우선순위 높은 후보:
-
-1. Kafka header constants: `transaction_id`, `dlq_id`, `__TypeId__`
-2. gateway/downstream identity header: `X-User-Id`
-3. transaction manager name constants
-4. `chat`의 retry target exception 구체화
-5. REST `GlobalExceptionHandler`가 없는 서비스 정리
-6. JUnit4 assertion import 제거
-7. `websocket-gateway` RedisKey 인자 검증 강화
-8. OAuth2 redirect/path/cookie 관련 properties 정리
-
-바로 수정하면 위험한 후보:
-
-- Kafka topic/header 이름 변경
-- Redis key pattern 변경
-- gRPC proto 변경
-- API response의 `items=null` 정책 변경
-- read replica routing semantics 변경
-- Outbox/DLQ transaction manager 변경
