@@ -42,6 +42,7 @@ redisson-spring-boot-starter = { group = "org.redisson", name = "redisson-spring
 spring-boot-starter-data-mongodb   = { group = "org.springframework.boot",  name = "spring-boot-starter-data-mongodb" }
 spring-boot-starter-security = { group = "org.springframework.boot", name = "spring-boot-starter-security", version.ref = "spring-boot" }
 spring-boot-starter-oauth2-client = { group = "org.springframework.boot", name = "spring-boot-starter-oauth2-client" }
+spring-security-crypto = { group = "org.springframework.security", name = "spring-security-crypto" }
 spring-security-oauth2-jose  = { group = "org.springframework.security", name = "spring-security-oauth2-jose" }
 spring-security-oauth2-authorization-server = { group = "org.springframework.security", name = "spring-security-oauth2-authorization-server" }
 spring-security-oauth2-resource-server    = { group = "org.springframework.security", name = "spring-security-oauth2-resource-server" }
