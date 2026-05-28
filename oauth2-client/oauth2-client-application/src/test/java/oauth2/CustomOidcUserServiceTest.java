@@ -9,6 +9,8 @@ import java.util.Optional;
 
 import org.example.oauth2.client.oidc.CustomOidcUser;
 import org.example.oauth2.client.oidc.CustomOidcUserService;
+import org.example.oauth2.client.oidc.profile.OidcProviderProfile;
+import org.example.oauth2.client.oidc.profile.OidcProviderProfileResolver;
 import org.example.oauth2.client.user.application.service.UserCommandService;
 import org.example.oauth2.client.user.application.service.UserQueryService;
 import org.example.contract.user.UserResponse;
@@ -48,6 +50,9 @@ class CustomOidcUserServiceTest {
     private OidcUserService delegate;
 
     @Mock
+    private OidcProviderProfileResolver profileResolver;
+
+    @Mock
     private UserQueryService userQueryService;
 
     @Mock
@@ -61,6 +66,7 @@ class CustomOidcUserServiceTest {
     void setUp() {
         sut = new CustomOidcUserService(
                 delegate,
+                profileResolver,
                 userQueryService,
                 userCommandService,
                 userRoleAuthorityMapper
@@ -71,22 +77,28 @@ class CustomOidcUserServiceTest {
     @DisplayName("기존 회원이면 회원가입하지 않고 CustomOidcUser를 반환한다")
     void loadUser_shouldReturnCustomOidcUser_whenUserExists() {
         // given
-        OidcUserRequest userRequest = oidcUserRequest(REGISTRATION_ID, claims(
-                PROVIDER_SUB,
-                EMAIL,
-                NICKNAME
+        OidcUserRequest userRequest = oidcUserRequest(claims(
         ));
 
         OidcUser oidcUser = oidcUser(claims(
+        ));
+
+        OidcProviderProfile profile = new OidcProviderProfile(
                 PROVIDER_SUB,
                 EMAIL,
                 NICKNAME
-        ));
+        );
 
         UserResponse userResponse = userResponse();
 
         given(delegate.loadUser(userRequest))
                 .willReturn(oidcUser);
+
+        given(profileResolver.resolve(
+                REGISTRATION_ID,
+                userRequest.getIdToken(),
+                oidcUser
+        )).willReturn(profile);
 
         given(userQueryService.findByEmail(EMAIL))
                 .willReturn(Optional.of(userResponse));
@@ -96,10 +108,14 @@ class CustomOidcUserServiceTest {
 
         // then
         assertThat(result).isInstanceOf(CustomOidcUser.class);
-        assertThat(result.getName()).isEqualTo(userResponse.id());
-        assertThat((String) result.getAttribute("email")).isEqualTo(EMAIL);
-        assertThat((String) result.getAttribute("nickname")).isEqualTo(NICKNAME);
-        assertThat((String) result.getAttribute("clientRegistrationId")).isEqualTo(REGISTRATION_ID);
+
+        assertThat(result.getName()).isEqualTo(EMAIL);
+        assertThat(result.<String>getAttribute("id")).isEqualTo(userResponse.id());
+        assertThat(result.<String>getAttribute("userId")).isEqualTo(userResponse.id());
+        assertThat(result.<String>getAttribute("sub")).isEqualTo(userResponse.sub());
+        assertThat(result.<String>getAttribute("email")).isEqualTo(EMAIL);
+        assertThat(result.<String>getAttribute("nickname")).isEqualTo(NICKNAME);
+        assertThat(result.<String>getAttribute("clientRegistrationId")).isEqualTo(REGISTRATION_ID);
 
         assertThat(result.getAuthorities())
                 .extracting(GrantedAuthority::getAuthority)
@@ -113,22 +129,28 @@ class CustomOidcUserServiceTest {
     @DisplayName("신규 회원이면 OAuth2 회원가입 후 CustomOidcUser를 반환한다")
     void loadUser_shouldSignUpAndReturnCustomOidcUser_whenUserDoesNotExist() {
         // given
-        OidcUserRequest userRequest = oidcUserRequest(REGISTRATION_ID, claims(
-                PROVIDER_SUB,
-                EMAIL,
-                NICKNAME
+        OidcUserRequest userRequest = oidcUserRequest(claims(
         ));
 
         OidcUser oidcUser = oidcUser(claims(
+        ));
+
+        OidcProviderProfile profile = new OidcProviderProfile(
                 PROVIDER_SUB,
                 EMAIL,
                 NICKNAME
-        ));
+        );
 
         UserResponse userResponse = userResponse();
 
         given(delegate.loadUser(userRequest))
                 .willReturn(oidcUser);
+
+        given(profileResolver.resolve(
+                REGISTRATION_ID,
+                userRequest.getIdToken(),
+                oidcUser
+        )).willReturn(profile);
 
         given(userQueryService.findByEmail(EMAIL))
                 .willReturn(Optional.empty());
@@ -141,8 +163,14 @@ class CustomOidcUserServiceTest {
 
         // then
         assertThat(result).isInstanceOf(CustomOidcUser.class);
-        assertThat(result.getName()).isEqualTo(userResponse.id());
-        assertThat((String) result.getAttribute("email")).isEqualTo(EMAIL);
+
+        assertThat(result.getName()).isEqualTo(EMAIL);
+        assertThat(result.<String>getAttribute("id")).isEqualTo(userResponse.id());
+        assertThat(result.<String>getAttribute("userId")).isEqualTo(userResponse.id());
+        assertThat(result.<String>getAttribute("sub")).isEqualTo(userResponse.sub());
+        assertThat(result.<String>getAttribute("email")).isEqualTo(EMAIL);
+        assertThat(result.<String>getAttribute("nickname")).isEqualTo(NICKNAME);
+        assertThat(result.<String>getAttribute("clientRegistrationId")).isEqualTo(REGISTRATION_ID);
 
         assertThat(result.getAuthorities())
                 .extracting(GrantedAuthority::getAuthority)
@@ -154,113 +182,31 @@ class CustomOidcUserServiceTest {
     }
 
     @Test
-    @DisplayName("idToken에 email이 없으면 oidcUser의 email을 사용한다")
-    void loadUser_shouldUseOidcUserEmail_whenIdTokenEmailMissing() {
+    @DisplayName("roles에 ROLE_ prefix가 없으면 ROLE_을 붙여 권한을 생성한다")
+    void loadUser_shouldAddRolePrefix_whenRoleDoesNotHavePrefix() {
         // given
-        Map<String, Object> idTokenClaims = new HashMap<>();
-        idTokenClaims.put(IdTokenClaimNames.SUB, PROVIDER_SUB);
+        OidcUserRequest userRequest = oidcUserRequest(claims(
+        ));
 
-        Map<String, Object> userClaims = claims(
+        OidcUser oidcUser = oidcUser(claims(
+        ));
+
+        OidcProviderProfile profile = new OidcProviderProfile(
                 PROVIDER_SUB,
                 EMAIL,
                 NICKNAME
         );
 
-        OidcUserRequest userRequest =
-                oidcUserRequest(REGISTRATION_ID, idTokenClaims);
-
-        OidcUser oidcUser =
-                oidcUser(userClaims);
-
-        given(delegate.loadUser(userRequest))
-                .willReturn(oidcUser);
-
-        given(userQueryService.findByEmail(EMAIL))
-                .willReturn(Optional.of(userResponse()));
-
-        // when
-        OidcUser result = sut.loadUser(userRequest);
-
-        // then
-        assertThat((String) result.getAttribute("email")).isEqualTo(EMAIL);
-    }
-
-    @Test
-    @DisplayName("email이 없으면 예외를 던진다")
-    void loadUser_shouldThrowException_whenEmailMissing() {
-        // given
-        Map<String, Object> idTokenClaims = new HashMap<>();
-        idTokenClaims.put(IdTokenClaimNames.SUB, PROVIDER_SUB);
-
-        OidcUserRequest userRequest =
-                oidcUserRequest(REGISTRATION_ID, idTokenClaims);
-
-        OidcUser oidcUser =
-                oidcUser(idTokenClaims);
-
-        given(delegate.loadUser(userRequest))
-                .willReturn(oidcUser);
-
-        // when & then
-        assertThatThrownBy(() -> sut.loadUser(userRequest))
-                .isInstanceOf(OAuth2AuthenticationException.class)
-                .hasMessageContaining("OIDC email claim is missing");
-
-        then(userQueryService)
-                .shouldHaveNoInteractions();
-
-        then(userCommandService)
-                .shouldHaveNoInteractions();
-    }
-
-    @Test
-    @DisplayName("sub가 없으면 예외를 던진다")
-    void loadUser_shouldThrowException_whenSubMissing() {
-        // given
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("email", EMAIL);
-
-        OidcUserRequest userRequest =
-                oidcUserRequest(REGISTRATION_ID, claims);
-
-        OidcUser oidcUser =
-                oidcUser(claims);
-
-        given(delegate.loadUser(userRequest))
-                .willReturn(oidcUser);
-
-        // when & then
-        assertThatThrownBy(() -> sut.loadUser(userRequest))
-                .isInstanceOf(OAuth2AuthenticationException.class)
-                .hasMessageContaining("OIDC subject claim is missing");
-
-        then(userQueryService)
-                .shouldHaveNoInteractions();
-
-        then(userCommandService)
-                .shouldHaveNoInteractions();
-    }
-
-    @Test
-    @DisplayName("roles에 ROLE_ prefix가 없으면 ROLE_을 붙여 권한을 생성한다")
-    void loadUser_shouldAddRolePrefix_whenRoleDoesNotHavePrefix() {
-        // given
-        OidcUserRequest userRequest = oidcUserRequest(REGISTRATION_ID, claims(
-                PROVIDER_SUB,
-                EMAIL,
-                NICKNAME
-        ));
-
-        OidcUser oidcUser = oidcUser(claims(
-                PROVIDER_SUB,
-                EMAIL,
-                NICKNAME
-        ));
-
         UserResponse userResponse = userResponse(List.of("USER", "ADMIN"));
 
         given(delegate.loadUser(userRequest))
                 .willReturn(oidcUser);
+
+        given(profileResolver.resolve(
+                REGISTRATION_ID,
+                userRequest.getIdToken(),
+                oidcUser
+        )).willReturn(profile);
 
         given(userQueryService.findByEmail(EMAIL))
                 .willReturn(Optional.of(userResponse));
@@ -278,22 +224,28 @@ class CustomOidcUserServiceTest {
     @DisplayName("roles가 비어 있으면 기본 권한 ROLE_USER를 사용한다")
     void loadUser_shouldUseDefaultRole_whenRolesEmpty() {
         // given
-        OidcUserRequest userRequest = oidcUserRequest(REGISTRATION_ID, claims(
-                PROVIDER_SUB,
-                EMAIL,
-                NICKNAME
+        OidcUserRequest userRequest = oidcUserRequest(claims(
         ));
 
         OidcUser oidcUser = oidcUser(claims(
+        ));
+
+        OidcProviderProfile profile = new OidcProviderProfile(
                 PROVIDER_SUB,
                 EMAIL,
                 NICKNAME
-        ));
+        );
 
         UserResponse userResponse = userResponse(List.of());
 
         given(delegate.loadUser(userRequest))
                 .willReturn(oidcUser);
+
+        given(profileResolver.resolve(
+                REGISTRATION_ID,
+                userRequest.getIdToken(),
+                oidcUser
+        )).willReturn(profile);
 
         given(userQueryService.findByEmail(EMAIL))
                 .willReturn(Optional.of(userResponse));
@@ -307,25 +259,57 @@ class CustomOidcUserServiceTest {
                 .containsExactly("ROLE_USER");
     }
 
-    private OidcUserRequest oidcUserRequest(String registrationId, Map<String, Object> claims) {
-        ClientRegistration clientRegistration =
-                clientRegistration(registrationId);
+    @Test
+    @DisplayName("profileResolver가 예외를 던지면 회원 조회와 회원가입을 수행하지 않는다")
+    void loadUser_shouldNotQueryOrSignUp_whenProfileResolveFails() {
+        // given
+        OidcUserRequest userRequest = oidcUserRequest(claims(
+        ));
 
-        OidcIdToken idToken =
-                new OidcIdToken(
-                        "id-token",
-                        Instant.now(),
-                        Instant.now().plusSeconds(3600),
-                        claims
-                );
+        OidcUser oidcUser = oidcUser(claims(
+        ));
 
-        OAuth2AccessToken accessToken =
-                new OAuth2AccessToken(
-                        OAuth2AccessToken.TokenType.BEARER,
-                        "access-token",
-                        Instant.now(),
-                        Instant.now().plusSeconds(3600)
-                );
+        OAuth2AuthenticationException exception = new OAuth2AuthenticationException(
+                new OAuth2Error("missing_email"),
+                "OIDC email claim is missing"
+        );
+
+        given(delegate.loadUser(userRequest))
+                .willReturn(oidcUser);
+
+        given(profileResolver.resolve(
+                REGISTRATION_ID,
+                userRequest.getIdToken(),
+                oidcUser
+        )).willThrow(exception);
+
+        // when & then
+        assertThatThrownBy(() -> sut.loadUser(userRequest))
+                .isSameAs(exception);
+
+        then(userQueryService)
+                .shouldHaveNoInteractions();
+
+        then(userCommandService)
+                .shouldHaveNoInteractions();
+    }
+
+    private OidcUserRequest oidcUserRequest(Map<String, Object> claims) {
+        ClientRegistration clientRegistration = clientRegistration();
+
+        OidcIdToken idToken = new OidcIdToken(
+                "id-token",
+                Instant.now(),
+                Instant.now().plusSeconds(3600),
+                claims
+        );
+
+        OAuth2AccessToken accessToken = new OAuth2AccessToken(
+                OAuth2AccessToken.TokenType.BEARER,
+                "access-token",
+                Instant.now(),
+                Instant.now().plusSeconds(3600)
+        );
 
         return new OidcUserRequest(
                 clientRegistration,
@@ -335,20 +319,18 @@ class CustomOidcUserServiceTest {
     }
 
     private OidcUser oidcUser(Map<String, Object> claims) {
-        OidcIdToken idToken =
-                new OidcIdToken(
-                        "id-token",
-                        Instant.now(),
-                        Instant.now().plusSeconds(3600),
-                        claims
-                );
+        OidcIdToken idToken = new OidcIdToken(
+                "id-token",
+                Instant.now(),
+                Instant.now().plusSeconds(3600),
+                claims
+        );
 
         OidcUserInfo userInfo = new OidcUserInfo(claims);
 
-        String userNameAttributeName =
-                claims.containsKey(IdTokenClaimNames.SUB)
-                        ? IdTokenClaimNames.SUB
-                        : "email";
+        String userNameAttributeName = claims.containsKey(IdTokenClaimNames.SUB)
+                ? IdTokenClaimNames.SUB
+                : "email";
 
         return new DefaultOidcUser(
                 List.of(new SimpleGrantedAuthority("SCOPE_openid")),
@@ -358,9 +340,9 @@ class CustomOidcUserServiceTest {
         );
     }
 
-    private ClientRegistration clientRegistration(String registrationId) {
-        return ClientRegistration.withRegistrationId(registrationId)
-                .clientId(registrationId + "-client-id")
+    private ClientRegistration clientRegistration() {
+        return ClientRegistration.withRegistrationId(CustomOidcUserServiceTest.REGISTRATION_ID)
+                .clientId(CustomOidcUserServiceTest.REGISTRATION_ID + "-client-id")
                 .clientSecret("client-secret")
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
@@ -371,16 +353,16 @@ class CustomOidcUserServiceTest {
                 .userInfoUri("https://example.com/userinfo")
                 .userNameAttributeName(IdTokenClaimNames.SUB)
                 .scope("openid", "profile", "email")
-                .clientName(registrationId)
+                .clientName(CustomOidcUserServiceTest.REGISTRATION_ID)
                 .build();
     }
 
-    private Map<String, Object> claims(String sub, String email, String nickname) {
+    private Map<String, Object> claims() {
         Map<String, Object> claims = new HashMap<>();
-        claims.put(IdTokenClaimNames.SUB, sub);
-        claims.put("email", email);
-        claims.put("name", nickname);
-        claims.put("nickname", nickname);
+        claims.put(IdTokenClaimNames.SUB, CustomOidcUserServiceTest.PROVIDER_SUB);
+        claims.put("email", CustomOidcUserServiceTest.EMAIL);
+        claims.put("name", CustomOidcUserServiceTest.NICKNAME);
+        claims.put("nickname", CustomOidcUserServiceTest.NICKNAME);
         return claims;
     }
 

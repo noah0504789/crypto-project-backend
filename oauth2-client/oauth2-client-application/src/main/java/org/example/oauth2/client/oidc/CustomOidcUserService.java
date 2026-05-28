@@ -1,6 +1,8 @@
 package org.example.oauth2.client.oidc;
 
 import lombok.RequiredArgsConstructor;
+import org.example.oauth2.client.oidc.profile.OidcProviderProfile;
+import org.example.oauth2.client.oidc.profile.OidcProviderProfileResolver;
 import org.example.oauth2.client.user.application.service.UserCommandService;
 import org.example.oauth2.client.user.application.service.UserQueryService;
 import org.example.contract.user.UserResponse;
@@ -11,11 +13,8 @@ import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
-import org.springframework.security.oauth2.core.OAuth2Error;
-import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.util.Collection;
 
@@ -24,6 +23,7 @@ import java.util.Collection;
 public class CustomOidcUserService implements OAuth2UserService<OidcUserRequest, OidcUser> {
 
     private final OidcUserService delegate;
+    private final OidcProviderProfileResolver profileResolver;
     private final UserQueryService userQueryService;
     private final UserCommandService userCommandService;
     private final UserRoleAuthorityMapper userRoleAuthorityMapper;
@@ -35,13 +35,9 @@ public class CustomOidcUserService implements OAuth2UserService<OidcUserRequest,
         ClientRegistration clientRegistration = userRequest.getClientRegistration();
         String clientRegistrationId = clientRegistration.getRegistrationId();
 
-        OidcIdToken idToken = userRequest.getIdToken();
-        String providerSub = resolveSub(idToken);
-        String email = resolveEmail(idToken, oidcUser);
-        String nickname = resolveNickname(oidcUser, clientRegistrationId);
-
-        UserResponse userResponse = userQueryService.findByEmail(email)
-                .orElseGet(() -> userCommandService.signUpOauth2(providerSub, email, nickname));
+        OidcProviderProfile profile = profileResolver.resolve(clientRegistrationId, userRequest.getIdToken(), oidcUser);
+        UserResponse userResponse = userQueryService.findByEmail(profile.email())
+                .orElseGet(() -> userCommandService.signUpOauth2(profile.providerSub(), profile.email(), profile.nickname()));
 
         Collection<? extends GrantedAuthority> authorities = userRoleAuthorityMapper.toAuthorities(userResponse.roles());
 
@@ -55,61 +51,5 @@ public class CustomOidcUserService implements OAuth2UserService<OidcUserRequest,
                 userResponse.createdAt(),
                 authorities
         );
-    }
-
-    private String resolveSub(OidcIdToken idToken) {
-        String sub = idToken.getSubject();
-
-        if (!StringUtils.hasText(sub)) {
-            throw new OAuth2AuthenticationException(
-                    new OAuth2Error("missing_sub"),
-                    "OIDC subject claim is missing"
-            );
-        }
-
-        return sub;
-    }
-
-    private String resolveEmail(OidcIdToken idToken, OidcUser oidcUser) {
-        String email = idToken.getEmail();
-
-        if (!StringUtils.hasText(email)) {
-            email = oidcUser.getEmail();
-        }
-
-        if (!StringUtils.hasText(email)) {
-            throw new OAuth2AuthenticationException(
-                    new OAuth2Error("missing_email"),
-                    "OIDC email claim is missing"
-            );
-        }
-
-        return email;
-    }
-
-    private String resolveNickname(OidcUser oidcUser, String clientRegistrationId) {
-        if ("kakao".equals(clientRegistrationId)) {
-            String nickname = oidcUser.getClaimAsString("nickname");
-
-            if (StringUtils.hasText(nickname)) {
-                return nickname;
-            }
-        }
-
-        if ("google".equals(clientRegistrationId)) {
-            String fullName = oidcUser.getFullName();
-
-            if (StringUtils.hasText(fullName)) {
-                return fullName;
-            }
-
-            String name = oidcUser.getClaimAsString("name");
-
-            if (StringUtils.hasText(name)) {
-                return name;
-            }
-        }
-
-        return oidcUser.getName();
     }
 }
