@@ -13,10 +13,11 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.*;
+
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("ReadReplicaAspect 단위 테스트")
 class ReadReplicaAspectTest {
 
     @Mock
@@ -64,6 +65,50 @@ class ReadReplicaAspectTest {
         assertThatThrownBy(() -> sut.routeToReadReplica(joinPoint))
                 .isSameAs(exception);
 
+        assertThat(DataSourceContextHolder.isRead()).isFalse();
+
+        verify(joinPoint).proceed();
+    }
+
+    @Test
+    @DisplayName("이미 WRITE 트랜잭션이 열려 있으면 @ReadReplica여도 READ context를 켜지 않는다")
+    void routeToReadReplica_doesNotRouteToReadWhenWriteTransactionIsActive() throws Throwable {
+        // given
+        TransactionSynchronizationManager.setActualTransactionActive(true);
+        TransactionSynchronizationManager.setCurrentTransactionReadOnly(false);
+
+        when(joinPoint.proceed()).thenAnswer(invocation -> {
+            assertThat(DataSourceContextHolder.isRead()).isFalse();
+            return "result";
+        });
+
+        // when
+        Object result = sut.routeToReadReplica(joinPoint);
+
+        // then
+        assertThat(result).isEqualTo("result");
+        assertThat(DataSourceContextHolder.isRead()).isFalse();
+
+        verify(joinPoint).proceed();
+    }
+
+    @Test
+    @DisplayName("READ ONLY 트랜잭션이면 @ReadReplica가 READ context를 켠다")
+    void routeToReadReplica_routesToReadWhenReadOnlyTransactionIsActive() throws Throwable {
+        // given
+        TransactionSynchronizationManager.setActualTransactionActive(true);
+        TransactionSynchronizationManager.setCurrentTransactionReadOnly(true);
+
+        when(joinPoint.proceed()).thenAnswer(invocation -> {
+            assertThat(DataSourceContextHolder.isRead()).isTrue();
+            return "result";
+        });
+
+        // when
+        Object result = sut.routeToReadReplica(joinPoint);
+
+        // then
+        assertThat(result).isEqualTo("result");
         assertThat(DataSourceContextHolder.isRead()).isFalse();
 
         verify(joinPoint).proceed();

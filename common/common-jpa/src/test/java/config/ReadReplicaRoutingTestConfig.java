@@ -85,39 +85,77 @@ public class ReadReplicaRoutingTestConfig {
     }
 
     @Bean
-    public RoutingMarkerQueryService routingMarkerQueryService(JdbcTemplate jdbcTemplate) {
-        return new RoutingMarkerQueryService(jdbcTemplate);
+    public RoutingMarkerRepository routingMarkerRepository(JdbcTemplate jdbcTemplate) {
+        return new RoutingMarkerRepository(jdbcTemplate);
+    }
+
+    @Bean
+    public ReadReplicaMarkerQueryService readReplicaMarkerQueryService(RoutingMarkerRepository repository) {
+        return new ReadReplicaMarkerQueryService(repository);
+    }
+
+    @Bean
+    public RoutingMarkerQueryService routingMarkerQueryService(RoutingMarkerRepository repository, ReadReplicaMarkerQueryService readReplicaMarkerQueryService) {
+        return new RoutingMarkerQueryService(repository, readReplicaMarkerQueryService);
     }
 
     public static class RoutingMarkerQueryService {
 
-        private final JdbcTemplate jdbcTemplate;
+        private final RoutingMarkerRepository repository;
+        private final ReadReplicaMarkerQueryService readReplicaMarkerQueryService;
 
-        public RoutingMarkerQueryService(JdbcTemplate jdbcTemplate) {
-            this.jdbcTemplate = jdbcTemplate;
+        public RoutingMarkerQueryService(
+                RoutingMarkerRepository repository,
+                ReadReplicaMarkerQueryService readReplicaMarkerQueryService
+        ) {
+            this.repository = repository;
+            this.readReplicaMarkerQueryService = readReplicaMarkerQueryService;
         }
 
         public String findWithoutReadReplica() {
-            return findMarker();
-        }
-
-        @ReadReplica
-        public String findWithReadReplica() {
-            return findMarker();
+            return repository.findMarker();
         }
 
         @Transactional(readOnly = true)
         public String findWithReadOnlyTransactionOnly() {
-            return findMarker();
+            return repository.findMarker();
+        }
+
+        @Transactional
+        public String findWithReadReplicaInsideWriteTransaction() {
+            return readReplicaMarkerQueryService.findWithReadReplicaAndReadOnlyTransaction();
+        }
+    }
+
+    public static class ReadReplicaMarkerQueryService {
+
+        private final RoutingMarkerRepository repository;
+
+        public ReadReplicaMarkerQueryService(RoutingMarkerRepository repository) {
+            this.repository = repository;
+        }
+
+        @ReadReplica
+        public String findWithReadReplica() {
+            return repository.findMarker();
         }
 
         @ReadReplica
         @Transactional(readOnly = true)
         public String findWithReadReplicaAndReadOnlyTransaction() {
-            return findMarker();
+            return repository.findMarker();
+        }
+    }
+
+    public static class RoutingMarkerRepository {
+
+        private final JdbcTemplate jdbcTemplate;
+
+        public RoutingMarkerRepository(JdbcTemplate jdbcTemplate) {
+            this.jdbcTemplate = jdbcTemplate;
         }
 
-        private String findMarker() {
+        public String findMarker() {
             return jdbcTemplate.queryForObject(
                     "select marker from routing_marker where id = 1",
                     String.class

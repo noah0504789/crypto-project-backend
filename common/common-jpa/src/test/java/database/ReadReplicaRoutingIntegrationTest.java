@@ -31,6 +31,9 @@ class ReadReplicaRoutingIntegrationTest {
     @Autowired
     private ReadReplicaRoutingTestConfig.RoutingMarkerQueryService queryService;
 
+    @Autowired
+    private ReadReplicaRoutingTestConfig.ReadReplicaMarkerQueryService readReplicaQueryService;
+
     @BeforeEach
     void setUp() throws Exception {
         initializeMarkerTable(
@@ -51,36 +54,59 @@ class ReadReplicaRoutingIntegrationTest {
     @Test
     @DisplayName("@ReadReplica가 없으면 WRITE DB로 라우팅된다")
     void withoutReadReplica_routesToWrite() {
+        // when
         String result = queryService.findWithoutReadReplica();
 
+        // then
         assertThat(result).isEqualTo("WRITE_DB");
     }
 
     @Test
     @DisplayName("@ReadReplica가 있으면 READ DB로 라우팅된다")
     void withReadReplica_routesToRead() {
-        String result = queryService.findWithReadReplica();
+        // when
+        String result = readReplicaQueryService.findWithReadReplica();
 
+        // then
         assertThat(result).isEqualTo("READ_DB");
     }
 
     @Test
     @DisplayName("@Transactional(readOnly = true)만 있으면 WRITE DB로 라우팅된다")
     void readOnlyTransactionOnly_routesToWrite() {
+        // when
         String result = queryService.findWithReadOnlyTransactionOnly();
 
+        // then
         assertThat(result).isEqualTo("WRITE_DB");
     }
 
     @Test
     @DisplayName("@ReadReplica와 @Transactional(readOnly = true)가 같이 있으면 READ DB로 라우팅된다")
     void readReplicaAndReadOnlyTransaction_routesToRead() {
-        String result = queryService.findWithReadReplicaAndReadOnlyTransaction();
+        // when
+        String result = readReplicaQueryService.findWithReadReplicaAndReadOnlyTransaction();
 
+        // then
         assertThat(result).isEqualTo("READ_DB");
     }
 
-    private static void initializeMarkerTable(String jdbcUrl, String username, String password, String markerValue) throws Exception {
+    @Test
+    @DisplayName("WRITE 트랜잭션 안에서 @ReadReplica를 호출하면 WRITE DB로 라우팅된다")
+    void readReplicaInsideWriteTransaction_routesToWrite() {
+        // when
+        String result = queryService.findWithReadReplicaInsideWriteTransaction();
+
+        // then
+        assertThat(result).isEqualTo("WRITE_DB");
+    }
+
+    private static void initializeMarkerTable(
+            String jdbcUrl,
+            String username,
+            String password,
+            String markerValue
+    ) throws Exception {
         try (
                 Connection connection = DriverManager.getConnection(jdbcUrl, username, password);
                 Statement statement = connection.createStatement()
