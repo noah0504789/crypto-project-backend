@@ -28,10 +28,21 @@ jobs:
           java-version: '17'
           cache: gradle
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Grant execute permission
         run: |
           chmod +x ./gradlew
           chmod +x ./scripts/ci/affected_modules.py
+
+      - name: Test CI scripts
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest
+          pytest scripts/ci
 
       - name: Calculate affected Gradle tasks
         id: affected
