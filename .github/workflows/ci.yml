@@ -30,3 +30,12 @@ jobs:
 
       - name: Build and test
         run: ./gradlew clean build
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            **/build/reports/tests/test/
+            **/build/test-results/test/
