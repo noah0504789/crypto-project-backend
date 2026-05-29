@@ -1,3 +1,148 @@
 plugins {
     id 'base'
 }
+
+tasks.register("serviceCi") {
+    group = "verification"
+    description = "Runs CI checks for all service modules"
+
+    dependsOn(
+            "chatCi",
+            "websocketGatewayCi",
+            "userCi",
+            "oauth2AuthorizationServerCi",
+            "oauth2ClientCi",
+            "springCloudConfigCi",
+            "gatewayCi",
+            "marketDetectionCi",
+            "outboxPollerCi",
+            "eurekaServerCi"
+    )
+}
+
+tasks.register("springCloudConfigCi") {
+    group = "verification"
+    description = "Runs build and tests for spring cloud config modules"
+
+    dependsOn(
+            ":spring-cloud-config:spring-cloud-config-domain:build",
+            ":spring-cloud-config:spring-cloud-config-application:build",
+            ":spring-cloud-config:spring-cloud-config-adapter-in:build",
+            ":spring-cloud-config:spring-cloud-config-adapter-out:build",
+            ":spring-cloud-config:spring-cloud-config-bootstrap:build",
+            ":common:common-arch-test:test"
+    )
+}
+
+tasks.register("eurekaServerCi") {
+    group = "verification"
+    description = "Runs build for eureka server"
+
+    dependsOn(
+            ":spring-cloud-eureka-server:build",
+            ":common:common-arch-test:test"
+    )
+}
+
+tasks.register("gatewayCi") {
+    group = "verification"
+    description = "Runs build and tests for spring cloud api gateway"
+
+    dependsOn(
+            ":spring-cloud-api-gateway:build",
+            ":common:common-arch-test:test"
+    )
+}
+
+tasks.register("websocketGatewayCi") {
+    group = "verification"
+    description = "Runs build and tests for websocket gateway modules"
+
+    dependsOn(
+            ":websocket-gateway:websocket-gateway-domain:build",
+            ":websocket-gateway:websocket-gateway-application:build",
+            ":websocket-gateway:websocket-gateway-adapter-in:build",
+            ":websocket-gateway:websocket-gateway-adapter-out:build",
+            ":websocket-gateway:websocket-gateway-bootstrap:build",
+            ":common:common-arch-test:test"
+    )
+}
+
+tasks.register("oauth2AuthorizationServerCi") {
+    group = "verification"
+    description = "Runs build and tests for oauth2 authorization server modules"
+
+    dependsOn(
+            ":oauth2-authorization-server:oauth2-authorization-server-client:build",
+            ":oauth2-authorization-server:oauth2-authorization-server-application:build",
+            ":oauth2-authorization-server:oauth2-authorization-server-adapter-in:build",
+            ":oauth2-authorization-server:oauth2-authorization-server-adapter-out:build",
+            ":oauth2-authorization-server:oauth2-authorization-server-bootstrap:build",
+            ":common:common-arch-test:test"
+    )
+}
+
+tasks.register("oauth2ClientCi") {
+    group = "verification"
+    description = "Runs build and tests for oauth2 client modules"
+
+    dependsOn(
+            ":oauth2-client:oauth2-client-application:build",
+            ":oauth2-client:oauth2-client-adapter-in:build",
+            ":oauth2-client:oauth2-client-adapter-out:build",
+            ":oauth2-client:oauth2-client-bootstrap:build",
+            ":common:common-arch-test:test"
+    )
+}
+
+tasks.register("userCi") {
+    group = "verification"
+    description = "Runs build and tests for user service modules"
+
+    dependsOn(
+            ":user:user-contract:build",
+            ":user:user-client:build",
+            ":user:user-domain:build",
+            ":user:user-application:build",
+            ":user:user-adapter-in:build",
+            ":user:user-adapter-out:build",
+            ":user:user-bootstrap:build",
+            ":common:common-arch-test:test"
+    )
+}
+
+tasks.register("chatCi") {
+    group = "verification"
+    description = "Runs build and tests for chat service modules"
+
+    dependsOn(
+            ":chat:chat-contract:build",
+            ":chat:chat-client:build",
+            ":chat:chat-domain:build",
+            ":chat:chat-application:build",
+            ":chat:chat-adapter-in:build",
+            ":chat:chat-adapter-out:build",
+            ":chat:chat-bootstrap:build",
+            ":common:common-arch-test:test"
+    )
+}
+
+tasks.register("marketDetectionCi") {
+    group = "verification"
+    description = "Runs build and tests for market detection"
+
+    dependsOn(
+            ":market-detection:build",
+            ":common:common-arch-test:test"
+    )
+}
+
+tasks.register("outboxPollerCi") {
+    group = "verification"
+    description = "Runs build and tests for outbox poller"
+
+    dependsOn(
+            ":outbox-poller:build",
+            ":common:common-arch-test:test"
+    )
+}

@@ -9,3 +9,12 @@ out/
 *.lock
 .DS_Store
 property*/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/

@@ -8,15 +8,18 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
-  build:
-    name: Build and test
+  affected-ci:
+    name: Affected module CI
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -25,17 +28,47 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      - name: Grant execute permission for Gradle
-        run: chmod +x ./gradlew
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
-      - name: Build and test
-        run: ./gradlew clean build
+      - name: Grant execute permission
+        run: |
+          chmod +x ./gradlew
+          chmod +x ./scripts/ci/affected_modules.py
+
+      - name: Test CI scripts
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest
+          pytest scripts/ci
+
+      - name: Calculate affected Gradle tasks
+        id: affected
+        run: |
+          TASKS=$(./scripts/ci/affected_modules.py \
+            --base origin/main \
+            --head HEAD \
+            --mode build \
+            --include-arch-test)
+
+          echo "tasks=$TASKS" >> "$GITHUB_OUTPUT"
+          echo "Affected tasks: $TASKS"
+
+      - name: Run affected module CI
+        if: steps.affected.outputs.tasks != ''
+        run: ./gradlew clean ${{ steps.affected.outputs.tasks }}
+
+      - name: Skip backend CI
+        if: steps.affected.outputs.tasks == ''
+        run: echo "No affected backend modules."
 
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports
+          name: test-reports-affected-ci
           path: |
             **/build/reports/tests/test/
             **/build/test-results/test/
