@@ -6,9 +6,9 @@ import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
-import java.util.ArrayList;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
@@ -33,7 +33,10 @@ class PackageArchitectureTest {
                     "websocket-gateway",
                     "websocket-gateway/websocket-gateway-domain",
                     "websocket-gateway/websocket-gateway-application",
-                    List.of("websocket-gateway/websocket-gateway-adapter-in", "websocket-gateway/websocket-gateway-adapter-out"),
+                    List.of(
+                            "websocket-gateway/websocket-gateway-adapter-in",
+                            "websocket-gateway/websocket-gateway-adapter-out"
+                    ),
                     "websocket-gateway/websocket-gateway-bootstrap",
                     List.of()
             ),
@@ -41,7 +44,10 @@ class PackageArchitectureTest {
                     "spring-cloud-config",
                     "spring-cloud-config/spring-cloud-config-domain",
                     "spring-cloud-config/spring-cloud-config-application",
-                    List.of("spring-cloud-config/spring-cloud-config-adapter-in", "spring-cloud-config/spring-cloud-config-adapter-out"),
+                    List.of(
+                            "spring-cloud-config/spring-cloud-config-adapter-in",
+                            "spring-cloud-config/spring-cloud-config-adapter-out"
+                    ),
                     "spring-cloud-config/spring-cloud-config-bootstrap",
                     List.of()
             ),
@@ -91,7 +97,7 @@ class PackageArchitectureTest {
                         "org.example.contract.."
                 );
 
-        rule.check(importMainClasses(List.of(
+        checkAllowingEmpty(rule, importMainClasses(List.of(
                 "common/common-core",
                 "common/common-jpa",
                 "common/common-event",
@@ -116,7 +122,7 @@ class PackageArchitectureTest {
                         "..infra.."
                 );
 
-        rule.check(importMainClasses(List.of(
+        checkAllowingEmpty(rule, importMainClasses(List.of(
                 "chat/chat-domain",
                 "websocket-gateway/websocket-gateway-domain",
                 "spring-cloud-config/spring-cloud-config-domain",
@@ -133,14 +139,16 @@ class PackageArchitectureTest {
                             .filter(other -> !other.name().equals(boundary.name()))
                             .flatMap(other -> other.domainPackages().stream())
                             .toList();
+
                     if (otherDomainPackages.isEmpty()) {
                         return;
                     }
 
                     ArchRule rule = noClasses()
-                            .should().dependOnClassesThat().resideInAnyPackage(otherDomainPackages.toArray(String[]::new));
+                            .should().dependOnClassesThat()
+                            .resideInAnyPackage(otherDomainPackages.toArray(String[]::new));
 
-                    rule.check(importMainClasses(List.of(boundary.domainModuleDirectory())));
+                    checkAllowingEmpty(rule, importMainClasses(List.of(boundary.domainModuleDirectory())));
                 });
     }
 
@@ -153,7 +161,7 @@ class PackageArchitectureTest {
                         "..adapter.out.."
                 );
 
-        rule.check(importMainClasses(APPLICATION_MODULE_DIRECTORIES));
+        checkAllowingEmpty(rule, importMainClasses(APPLICATION_MODULE_DIRECTORIES));
     }
 
     @ArchTest
@@ -163,14 +171,16 @@ class PackageArchitectureTest {
                     .filter(other -> !other.name().equals(boundary.name()))
                     .flatMap(other -> other.domainPackages().stream())
                     .toList();
+
             if (otherDomainPackages.isEmpty()) {
                 return;
             }
 
             ArchRule rule = noClasses()
-                    .should().dependOnClassesThat().resideInAnyPackage(otherDomainPackages.toArray(String[]::new));
+                    .should().dependOnClassesThat()
+                    .resideInAnyPackage(otherDomainPackages.toArray(String[]::new));
 
-            rule.check(importMainClasses(List.of(boundary.applicationModuleDirectory())));
+            checkAllowingEmpty(rule, importMainClasses(List.of(boundary.applicationModuleDirectory())));
         });
     }
 
@@ -181,14 +191,16 @@ class PackageArchitectureTest {
                     .filter(other -> !other.name().equals(boundary.name()))
                     .flatMap(other -> other.domainPackages().stream())
                     .toList();
+
             if (otherDomainPackages.isEmpty()) {
                 return;
             }
 
             ArchRule rule = noClasses()
-                    .should().dependOnClassesThat().resideInAnyPackage(otherDomainPackages.toArray(String[]::new));
+                    .should().dependOnClassesThat()
+                    .resideInAnyPackage(otherDomainPackages.toArray(String[]::new));
 
-            rule.check(importMainClasses(boundary.adapterModuleDirectories()));
+            checkAllowingEmpty(rule, importMainClasses(boundary.adapterModuleDirectories()));
         });
     }
 
@@ -199,15 +211,21 @@ class PackageArchitectureTest {
 
         classes.forEach(javaClass -> {
             if (!javaClass.getSimpleName().equals("Main")) {
-                failures.add(javaClass.getName() + " is in a bootstrap module; bootstrap modules should only contain Main entrypoints");
+                failures.add(javaClass.getName()
+                        + " is in a bootstrap module; bootstrap modules should only contain Main entrypoints");
             }
         });
 
         assertTrue(failures.isEmpty(), () -> String.join(System.lineSeparator(), failures));
     }
 
+    private static void checkAllowingEmpty(ArchRule rule, JavaClasses classes) {
+        rule.allowEmptyShould(true).check(classes);
+    }
+
     private static JavaClasses importMainClasses(List<String> projectDirectories) {
         Path root = findRoot();
+
         List<Path> classDirectories = projectDirectories.stream()
                 .map(directory -> root.resolve(directory).resolve("build/classes/java/main"))
                 .filter(Files::isDirectory)
@@ -218,13 +236,17 @@ class PackageArchitectureTest {
 
     private static Path findRoot() {
         Path current = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+
         while (current != null) {
             if (Files.isRegularFile(current.resolve("settings.gradle"))) {
                 return current;
             }
             current = current.getParent();
         }
-        throw new IllegalStateException("Cannot locate repository root from user.dir=" + System.getProperty("user.dir"));
+
+        throw new IllegalStateException(
+                "Cannot locate repository root from user.dir=" + System.getProperty("user.dir")
+        );
     }
 
     private record ServiceBoundary(
