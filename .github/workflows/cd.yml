@@ -1,0 +1,45 @@
+name: Backend CD
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Deploy target service"
+        required: true
+        type: choice
+        options:
+          - crypto-chat-service
+          - crypto-websocket-gateway
+          - crypto-user-service
+          - crypto-oauth2-authorization-server
+          - crypto-oauth2-client
+          - crypto-outbox-poller
+      image_tag:
+        description: "Docker image tag to deploy"
+        required: true
+        default: "latest"
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy backend service
+    runs-on: [self-hosted, local, backend]
+    environment: production
+
+    steps:
+      - name: Print deploy inputs
+        run: |
+          echo "Production CD approved"
+          echo "Runner hostname: $(hostname)"
+          echo "Runner user: $(whoami)"
+          echo "Target service: ${{ inputs.service }}"
+          echo "Image tag: ${{ inputs.image_tag }}"
+          echo "Working directory: $(pwd)"
+          date
+
+      - name: Validate Docker access
+        run: |
+          docker --version
+          docker compose version
