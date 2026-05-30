@@ -1,0 +1,23 @@
+name: Self-hosted Runner Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  echo:
+    name: Echo on local self-hosted runner
+    runs-on: [self-hosted, local, backend]
+
+    steps:
+      - name: Print runner info
+        run: |
+          echo "Hello from self-hosted runner"
+          hostname
+          whoami
+          pwd
+          uname -a
+          docker --version || true
+          docker compose version || true
