@@ -19,6 +19,7 @@ GLOBAL_PATH_PREFIXES = (
     "gradle/",
     "build-logic/",
     ".github/workflows/",
+    "scripts/ci/",
 )
 
 GLOBAL_FILES = {
