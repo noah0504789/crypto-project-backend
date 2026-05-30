@@ -3,3 +3,7 @@ management:
   endpoint.health:
     show-details: always
     show-components: always
+
+deployment:
+  control:
+    token: ${deployment.control-token}
