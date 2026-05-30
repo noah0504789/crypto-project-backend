@@ -5,4 +5,3 @@ spring:
     config:
       name: websocket-gateway,eureka-client,kafka,redis,monitoring
       label: main
-    stream.instance-index: ${SPRING_CLOUD_STREAM_INSTANCE_INDEX}

@@ -14,3 +14,6 @@ management:
 deployment:
   control:
     token: ${deployment.control-token}
+
+app:
+  instance-id: ${APP_INSTANCE_ID:${HOSTNAME:${random.uuid}}}
