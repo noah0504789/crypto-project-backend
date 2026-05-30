@@ -27,5 +27,5 @@ spring:
         secret-id: ${VAULT_SECRET_ID}
       backend: secret
       kvVersion: 2
-      applicationName: mysql,mongo,oauth2,deployment
+      applicationName: mysql,mongo,oauth2-client,monitoring
       order: 1
