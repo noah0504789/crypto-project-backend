@@ -1,8 +1,6 @@
 from pathlib import Path
 
-import pytest
-
-import affected_modules as am
+import affected_modules_core as am
 
 
 def write(path: Path, content: str) -> None:
@@ -34,6 +32,7 @@ def create_fake_project(root: Path) -> None:
 
         include 'websocket-gateway'
         include 'websocket-gateway:websocket-gateway-application'
+        include 'websocket-gateway:websocket-gateway-adapter-in'
         include 'websocket-gateway:websocket-gateway-adapter-out'
         include 'websocket-gateway:websocket-gateway-bootstrap'
 
@@ -89,6 +88,11 @@ def create_fake_project(root: Path) -> None:
                 api project(':protobuf')
             }
         """,
+        "websocket-gateway/websocket-gateway-adapter-in/build.gradle": """
+            dependencies {
+                implementation project(':websocket-gateway:websocket-gateway-application')
+            }
+        """,
         "websocket-gateway/websocket-gateway-adapter-out/build.gradle": """
             dependencies {
                 implementation project(':chat:chat-client')
@@ -100,6 +104,7 @@ def create_fake_project(root: Path) -> None:
 
             dependencies {
                 implementation project(':websocket-gateway:websocket-gateway-application')
+                implementation project(':websocket-gateway:websocket-gateway-adapter-in')
                 implementation project(':websocket-gateway:websocket-gateway-adapter-out')
                 implementation project(':common:common-actuator-webmvc')
             }
@@ -137,6 +142,9 @@ def create_fake_project(root: Path) -> None:
         "common/common-actuator-webmvc/src/main/java/DeploymentReadinessController.java": "class DeploymentReadinessController {}",
         "protobuf/src/main/proto/chat.proto": "syntax = 'proto3';",
         "chat/chat-domain/src/main/java/Chat.java": "class Chat {}",
+        "websocket-gateway/websocket-gateway-adapter-in/src/main/java/Handler.java": "class Handler {}",
+        "websocket-gateway/websocket-gateway-adapter-in/src/test/java/HandlerTest.java": "class HandlerTest {}",
+        "websocket-gateway/websocket-gateway-adapter-out/src/main/java/GrpcAdapter.java": "class GrpcAdapter {}",
         "docs/README.md": "# docs",
         "chat/chat-bootstrap/Dockerfile": "FROM eclipse-temurin:17-jre",
         "websocket-gateway/websocket-gateway-bootstrap/Dockerfile": "FROM eclipse-temurin:17-jre",
@@ -168,6 +176,7 @@ def test_global_change_detection():
         ".github/workflows/ci.yml",
         "gradle/libs.versions.toml",
         "scripts/ci/affected_modules.py",
+        "scripts/ci/affected_modules_core.py",
         "scripts/ci/test_affected_modules.py",
     ]
 
@@ -185,6 +194,31 @@ def test_global_change_detection():
         assert not am.is_global_change(file_path)
 
 
+def test_test_change_detection():
+    assert am.is_test_change("websocket-gateway/websocket-gateway-adapter-in/src/test/java/HandlerTest.java")
+    assert not am.is_test_change("websocket-gateway/websocket-gateway-adapter-in/src/main/java/Handler.java")
+
+
+def test_docker_relevant_change_detection():
+    docker_relevant_changes = [
+        "chat/chat-domain/src/main/java/Chat.java",
+        "chat/chat-bootstrap/src/main/resources/application.yml",
+        "chat/chat-bootstrap/build.gradle",
+        "chat/chat-bootstrap/Dockerfile",
+    ]
+
+    docker_irrelevant_changes = [
+        "chat/chat-domain/src/test/java/ChatTest.java",
+        "docs/README.md",
+    ]
+
+    for file_path in docker_relevant_changes:
+        assert am.is_docker_relevant_change(file_path)
+
+    for file_path in docker_irrelevant_changes:
+        assert not am.is_docker_relevant_change(file_path)
+
+
 def test_read_projects_from_settings_gradle(tmp_path):
     create_fake_project(tmp_path)
 
@@ -192,8 +226,11 @@ def test_read_projects_from_settings_gradle(tmp_path):
 
     assert ":common:common-core" in projects
     assert ":common:common-redis" in projects
+    assert ":common:common-actuator-core" in projects
+    assert ":common:common-actuator-webmvc" in projects
     assert ":protobuf" in projects
     assert ":chat:chat-domain" in projects
+    assert ":websocket-gateway:websocket-gateway-adapter-in" in projects
     assert ":websocket-gateway:websocket-gateway-bootstrap" in projects
     assert ":spring-cloud-eureka-server" in projects
     assert ":outbox-poller" in projects
@@ -367,31 +404,6 @@ def test_aggregate_project_change_expands_to_child_modules(tmp_path):
     assert ":chat:chat-bootstrap" in affected
 
 
-def test_global_change_detection():
-    global_changes = [
-        "settings.gradle",
-        "build.gradle",
-        "gradlew",
-        "gradlew.bat",
-        "build-logic/src/main/java/Test.java",
-        ".github/workflows/ci.yml",
-        "gradle/libs.versions.toml",
-    ]
-
-    non_global_changes = [
-        "common/common-core/src/main/java/A.java",
-        "protobuf/src/main/proto/chat.proto",
-        "chat/chat-domain/src/main/java/A.java",
-        "docs/README.md",
-    ]
-
-    for file_path in global_changes:
-        assert am.is_global_change(file_path)
-
-    for file_path in non_global_changes:
-        assert not am.is_global_change(file_path)
-
-
 def test_to_gradle_tasks_with_arch_test():
     tasks = am.to_gradle_tasks(
         {":chat:chat-domain", ":chat:chat-application"},
@@ -426,22 +438,6 @@ def test_read_docker_image_name(tmp_path):
     assert image_name == "crypto-chat-service"
 
 
-def test_docker_service_entry_requires_docker_image_name(tmp_path):
-    create_fake_project(tmp_path)
-
-    write(
-        tmp_path / "broken-service/build.gradle",
-        "dependencies {}",
-        )
-    write(
-        tmp_path / "broken-service/Dockerfile",
-        "FROM eclipse-temurin:17-jre",
-        )
-
-    with pytest.raises(ValueError, match="dockerImageName is required"):
-        am.docker_service_entry(tmp_path, tmp_path / "broken-service")
-
-
 def test_to_docker_services_returns_only_projects_with_dockerfile_and_image_name(tmp_path):
     create_fake_project(tmp_path)
 
@@ -462,6 +458,33 @@ def test_to_docker_services_returns_only_projects_with_dockerfile_and_image_name
         "chat/chat-bootstrap=crypto-chat-service",
         "websocket-gateway/websocket-gateway-bootstrap=crypto-websocket-gateway",
     ]
+
+
+def test_to_docker_services_skips_project_without_docker_image_name(tmp_path):
+    create_fake_project(tmp_path)
+
+    write(
+        tmp_path / "settings.gradle",
+        (tmp_path / "settings.gradle").read_text() + "include 'broken-service'\n",
+        )
+    write(
+        tmp_path / "broken-service/build.gradle",
+        "dependencies {}",
+        )
+    write(
+        tmp_path / "broken-service/Dockerfile",
+        "FROM eclipse-temurin:17-jre",
+        )
+
+    projects = am.read_projects(tmp_path)
+
+    services = am.to_docker_services(
+        root=tmp_path,
+        projects={":broken-service"},
+        project_directories=projects,
+    )
+
+    assert services == []
 
 
 def test_all_docker_services_returns_all_non_aggregate_projects_with_dockerfile(tmp_path):
@@ -532,6 +555,24 @@ def test_calculate_output_for_chat_domain_change(tmp_path):
     ]
 
 
+def test_calculate_output_for_websocket_adapter_in_test_change(tmp_path):
+    create_fake_project(tmp_path)
+
+    tasks = am.calculate_output(
+        root=tmp_path,
+        files=["websocket-gateway/websocket-gateway-adapter-in/src/test/java/HandlerTest.java"],
+        mode="build",
+        include_arch_test=True,
+        fallback_task="serviceCi",
+    )
+
+    assert tasks == [
+        ":websocket-gateway:websocket-gateway-adapter-in:build",
+        ":websocket-gateway:websocket-gateway-bootstrap:build",
+        ":common:common-arch-test:test",
+    ]
+
+
 def test_calculate_output_for_protobuf_change(tmp_path):
     create_fake_project(tmp_path)
 
@@ -567,19 +608,25 @@ def test_calculate_output_docker_for_chat_domain_change(tmp_path):
     assert services == ["chat/chat-bootstrap=crypto-chat-service"]
 
 
-def test_calculate_output_docker_for_protobuf_change(tmp_path):
+def test_calculate_output_for_protobuf_change(tmp_path):
     create_fake_project(tmp_path)
 
-    services = am.calculate_output(
+    tasks = am.calculate_output(
         root=tmp_path,
         files=["protobuf/src/main/proto/chat.proto"],
-        mode="docker",
-        include_arch_test=False,
+        mode="build",
+        include_arch_test=True,
         fallback_task="serviceCi",
     )
 
-    assert services == [
-        "websocket-gateway/websocket-gateway-bootstrap=crypto-websocket-gateway"
+    assert tasks == [
+        ":chat:chat-client:build",
+        ":protobuf:build",
+        ":websocket-gateway:websocket-gateway-adapter-in:build",
+        ":websocket-gateway:websocket-gateway-adapter-out:build",
+        ":websocket-gateway:websocket-gateway-application:build",
+        ":websocket-gateway:websocket-gateway-bootstrap:build",
+        ":common:common-arch-test:test",
     ]
 
 
@@ -595,6 +642,20 @@ def test_calculate_output_docker_for_single_execution_module_change(tmp_path):
     )
 
     assert services == ["outbox-poller=crypto-outbox-poller"]
+
+
+def test_calculate_output_docker_returns_empty_for_test_only_change(tmp_path):
+    create_fake_project(tmp_path)
+
+    services = am.calculate_output(
+        root=tmp_path,
+        files=["websocket-gateway/websocket-gateway-adapter-in/src/test/java/HandlerTest.java"],
+        mode="docker",
+        include_arch_test=False,
+        fallback_task="serviceCi",
+    )
+
+    assert services == []
 
 
 def test_calculate_output_docker_for_global_change_returns_all_docker_services(tmp_path):
