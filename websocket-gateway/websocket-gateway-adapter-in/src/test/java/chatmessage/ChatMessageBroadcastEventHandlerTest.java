@@ -38,6 +38,7 @@ class ChatMessageBroadcastEventHandlerTest {
     @InjectMocks
     private ChatMessageBroadcastEventHandler sut;
 
+    private final String instanceId = "instance-1";
     private final String txId = "tx-1";
     private final String roomId = "000000000000000000000001";
     private final String messageId = "100000000000000000000001";
@@ -52,21 +53,18 @@ class ChatMessageBroadcastEventHandlerTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(sut, "instanceIndex", "instance-1");
+        ReflectionTestUtils.setField(sut, "instanceId", instanceId);
     }
 
     @Test
     @DisplayName("로컬 서버에 접속 중인 멤버가 있으면 STOMP destination으로 메시지를 전송한다")
     void handleBroadcastWhenAnyLocalMemberExists() {
-        // given
         ChatMessageBroadcastEvent event = event(Set.of(localMemberId));
 
         given(localSessionCache.hasUser(localMemberId)).willReturn(true);
 
-        // when
         sut.handle(event, txId);
 
-        // then
         String destination = StompTopic.CHAT_ROOM.destination(roomId);
 
         ArgumentCaptor<ChatMessageResponse> responseCaptor =
@@ -86,13 +84,10 @@ class ChatMessageBroadcastEventHandlerTest {
     @Test
     @DisplayName("memberIds가 null이면 STOMP 전송을 하지 않는다")
     void handleSkipWhenMemberIdsIsNull() {
-        // given
         ChatMessageBroadcastEvent event = event(null);
 
-        // when
         sut.handle(event, txId);
 
-        // then
         verifyNoInteractions(localSessionCache);
         verifyNoInteractions(stompTemplate);
     }
@@ -100,13 +95,10 @@ class ChatMessageBroadcastEventHandlerTest {
     @Test
     @DisplayName("memberIds가 비어 있으면 STOMP 전송을 하지 않는다")
     void handleSkipWhenMemberIdsIsEmpty() {
-        // given
         ChatMessageBroadcastEvent event = event(Set.of());
 
-        // when
         sut.handle(event, txId);
 
-        // then
         verifyNoInteractions(localSessionCache);
         verifyNoInteractions(stompTemplate);
     }
@@ -114,15 +106,12 @@ class ChatMessageBroadcastEventHandlerTest {
     @Test
     @DisplayName("로컬 서버에 접속 중인 멤버가 없으면 STOMP 전송을 하지 않는다")
     void handleSkipWhenNoLocalMemberExists() {
-        // given
         ChatMessageBroadcastEvent event = event(Set.of(remoteMemberId));
 
         given(localSessionCache.hasUser(remoteMemberId)).willReturn(false);
 
-        // when
         sut.handle(event, txId);
 
-        // then
         verify(localSessionCache).hasUser(remoteMemberId);
         verifyNoInteractions(stompTemplate);
     }
@@ -130,7 +119,6 @@ class ChatMessageBroadcastEventHandlerTest {
     @Test
     @DisplayName("STOMP 전송 중 예외가 발생해도 예외를 밖으로 던지지 않는다")
     void handleDoesNotThrowWhenStompSendFails() {
-        // given
         ChatMessageBroadcastEvent event = event(Set.of(localMemberId));
 
         given(localSessionCache.hasUser(localMemberId)).willReturn(true);
@@ -139,7 +127,6 @@ class ChatMessageBroadcastEventHandlerTest {
                 .when(stompTemplate)
                 .convertAndSend(anyString(), any(ChatMessageResponse.class));
 
-        // when & then
         assertDoesNotThrow(() -> sut.handle(event, txId));
 
         verify(localSessionCache).hasUser(localMemberId);
