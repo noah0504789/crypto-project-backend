@@ -14,6 +14,7 @@ spring:
   cloud.config.server:
     git:
       uri: ${CONFIG_REPO_URI}
+      search-paths: ${CONFIG_REPO_SEARCH_PATHS:git-config-repo}
       default-label: main
       order: 2
     vault:
@@ -26,5 +27,5 @@ spring:
         secret-id: ${VAULT_SECRET_ID}
       backend: secret
       kvVersion: 2
-      applicationName: mysql,mongo,oauth2
+      applicationName: mysql,mongo,oauth2-client,monitoring
       order: 1
