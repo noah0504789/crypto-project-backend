@@ -1,0 +1,22 @@
+name: Production Environment Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-approval-test:
+    name: Production approval test
+    runs-on: [self-hosted, local, backend]
+    environment: production
+
+    steps:
+      - name: Print deployment info
+        run: |
+          echo "Approved production environment job"
+          echo "runner: $(hostname)"
+          echo "user: $(whoami)"
+          echo "environment: production"
+          date
