@@ -2,6 +2,8 @@ plugins {
     id 'crypto-bootstrap'
 }
 
+ext.dockerImageName = "crypto-user-service"
+
 dependencies {
     implementation project(':user:user-domain')
     implementation project(':user:user-application')
