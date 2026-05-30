@@ -28,9 +28,9 @@ dep-mgmt    = { id = "io.spring.dependency-management", version.ref = "dependenc
 java        = { id = "java" }
 
 [libraries]
-spring-boot-starter-actuator = { group = "org.springframework.boot", name = "spring-boot-starter-actuator", version.ref = "spring-boot" }
-spring-boot-gradle-plugin = { group = "org.springframework.boot", name = "spring-boot-gradle-plugin", version.ref = "spring-boot" }
 dependency-management-gradle-plugin = { group = "io.spring.gradle", name = "dependency-management-plugin", version.ref = "dependency-management" }
+
+spring-boot-starter-actuator = { group = "org.springframework.boot", name = "spring-boot-starter-actuator", version.ref = "spring-boot" }
 spring-boot-starter-aop      = { group = "org.springframework.boot",  name = "spring-boot-starter-aop" }
 spring-boot-starter-validation      = { group = "org.springframework.boot",  name = "spring-boot-starter-validation" }
 spring-boot-starter-web      = { group = "org.springframework.boot",  name = "spring-boot-starter-web" }
@@ -38,10 +38,13 @@ spring-boot-starter-webflux  = { group = "org.springframework.boot", name = "spr
 spring-boot-starter-websocket  = { group = "org.springframework.boot", name = "spring-boot-starter-websocket", version.ref = "spring-boot" }
 spring-boot-starter-data-jpa = { group = "org.springframework.boot", name = "spring-boot-starter-data-jpa" }
 spring-boot-starter-data-redis = { group = "org.springframework.boot", name = "spring-boot-starter-data-redis" }
-redisson-spring-boot-starter = { group = "org.redisson", name = "redisson-spring-boot-starter", version.ref = "redisson" }
 spring-boot-starter-data-mongodb   = { group = "org.springframework.boot",  name = "spring-boot-starter-data-mongodb" }
 spring-boot-starter-security = { group = "org.springframework.boot", name = "spring-boot-starter-security", version.ref = "spring-boot" }
 spring-boot-starter-oauth2-client = { group = "org.springframework.boot", name = "spring-boot-starter-oauth2-client" }
+spring-boot-gradle-plugin = { group = "org.springframework.boot", name = "spring-boot-gradle-plugin", version.ref = "spring-boot" }
+spring-boot-actuator-autoconfigure = { group = "org.springframework.boot", name = "spring-boot-actuator-autoconfigure" }
+redisson-spring-boot-starter = { group = "org.redisson", name = "redisson-spring-boot-starter", version.ref = "redisson" }
+
 spring-security-crypto = { group = "org.springframework.security", name = "spring-security-crypto" }
 spring-security-oauth2-jose  = { group = "org.springframework.security", name = "spring-security-oauth2-jose" }
 spring-security-oauth2-authorization-server = { group = "org.springframework.security", name = "spring-security-oauth2-authorization-server" }
@@ -59,6 +62,7 @@ spring-cloud-stream-binder-kafka-streams   = { group = "org.springframework.clou
 spring-integration-core        = { group = "org.springframework.integration", name = "spring-integration-core" }
 spring-vault-core = { group = "org.springframework.vault", name = "spring-vault-core" }
 
+micrometer-core = { group = "io.micrometer", name = "micrometer-core" }
 micrometer-registry-prometheus = { group = "io.micrometer", name = "micrometer-registry-prometheus" }
 otel-javaagent = { module = "io.opentelemetry.javaagent:opentelemetry-javaagent", version.ref = "otel-agent" }
 ulid-creator = { group = "com.github.f4b6a3", name = "ulid-creator", version.ref = "ulid-creator" }

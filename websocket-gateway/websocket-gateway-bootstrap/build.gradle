@@ -16,15 +16,14 @@ tasks.register('copyOtelAgent', Copy) {
 
 dependencies {
     implementation project(':websocket-gateway:websocket-gateway-domain')
-    implementation project(':websocket-gateway:websocket-gateway-application')
     implementation project(':websocket-gateway:websocket-gateway-adapter-in')
     implementation project(':websocket-gateway:websocket-gateway-adapter-out')
-
-    otelAgent(libs.otel.javaagent)
+    implementation project(':websocket-gateway:websocket-gateway-application')
+    implementation project(':common:common-actuator-webmvc')
 
     implementation(libs.spring.cloud.config.client)
     implementation(libs.spring.cloud.eureka.client)
-
-    implementation(libs.spring.boot.starter.actuator)
     implementation(libs.micrometer.registry.prometheus)
+
+    otelAgent(libs.otel.javaagent)
 }

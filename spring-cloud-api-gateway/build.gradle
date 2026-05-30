@@ -6,8 +6,9 @@ ext.dockerImageName = "crypto-spring-cloud-api-gateway"
 
 dependencies {
     implementation project(':common:common-core')
-    implementation project(':oauth2-authorization-server:oauth2-authorization-server-client')
+    implementation project(':common:common-actuator-webmvc')
     implementation project(':protobuf')
+    implementation project(':oauth2-authorization-server:oauth2-authorization-server-client')
 
     implementation(platform(libs.grpc.bom))
     implementation(libs.grpc.netty)
@@ -18,7 +19,6 @@ dependencies {
     implementation(libs.protobuf.java)
     implementation(libs.protobuf.util)
 
-    implementation(libs.spring.boot.starter.actuator)
     implementation(libs.spring.boot.starter.webflux)
     implementation(libs.spring.boot.starter.security)
     implementation(libs.spring.security.oauth2.jose)

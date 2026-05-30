@@ -9,6 +9,7 @@ dependencies {
         exclude group: 'com.google.protobuf', module: 'protobuf-java'
     }
 
+    implementation project(':common:common-actuator-webmvc')
     implementation project(':chat:chat-domain')
     implementation project(':chat:chat-application')
     implementation project(':chat:chat-adapter-in')
@@ -16,7 +17,5 @@ dependencies {
 
     implementation(libs.spring.cloud.config.client)
     implementation(libs.spring.cloud.eureka.client)
-
-    implementation(libs.spring.boot.starter.actuator)
     implementation(libs.micrometer.registry.prometheus)
 }
