@@ -3,18 +3,20 @@ plugins {
 }
 
 dependencies {
+    compileOnly (libs.spring.boot.actuator.autoconfigure)
+
     implementation project(':common:common-core')
     implementation project(':common:common-redis')
-    implementation project(':chat:chat-client')
+    implementation project(':protobuf')
     implementation project(':websocket-gateway:websocket-gateway-application')
     implementation project(':websocket-gateway:websocket-gateway-domain')
-    implementation project(':protobuf')
+    implementation project(':chat:chat-client')
 
     implementation platform(libs.grpc.bom)
     implementation(libs.grpc.netty)
     implementation(libs.grpc.protobuf)
     implementation(libs.grpc.stub)
     implementation(libs.grpc.client.spring.boot.starter)
-    implementation(libs.spring.boot.starter.actuator)
     implementation(libs.protobuf.java)
+    implementation(libs.micrometer.core)
 }

@@ -3,6 +3,6 @@ spring:
   config.import: configserver:http://crypto-spring-cloud-config:8888
   cloud:
     config:
-      name: websocket-gateway,eureka-client,monitoring,kafka,redis
+      name: websocket-gateway,eureka-client,kafka,redis,monitoring
       label: main
     stream.instance-index: ${SPRING_CLOUD_STREAM_INSTANCE_INDEX}

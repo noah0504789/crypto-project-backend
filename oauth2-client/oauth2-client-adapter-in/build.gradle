@@ -9,7 +9,6 @@ dependencies {
 
     implementation(libs.spring.boot.starter.oauth2.client)
     implementation(libs.spring.boot.starter.web)
-    implementation(libs.spring.boot.starter.actuator)
 
     testImplementation project(':oauth2-client:oauth2-client-adapter-out')
     testImplementation project(':oauth2-authorization-server:oauth2-authorization-server-adapter-in')

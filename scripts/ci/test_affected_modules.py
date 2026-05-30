@@ -20,6 +20,8 @@ def create_fake_project(root: Path) -> None:
         include 'common:common-core'
         include 'common:common-redis'
         include 'common:common-test'
+        include 'common:common-actuator-core'
+        include 'common:common-actuator-webmvc'
 
         include 'protobuf'
 
@@ -48,6 +50,14 @@ def create_fake_project(root: Path) -> None:
                 testImplementation project(':common:common-test')
             }
         """,
+        "common/common-actuator-core/build.gradle": """
+            dependencies {}
+        """,
+        "common/common-actuator-webmvc/build.gradle": """
+            dependencies {
+                api project(':common:common-actuator-core')
+            }
+        """,
         "chat/chat-client/build.gradle": """
             dependencies {
                 api project(':protobuf')
@@ -71,6 +81,7 @@ def create_fake_project(root: Path) -> None:
             dependencies {
                 implementation project(':chat:chat-domain')
                 implementation project(':chat:chat-application')
+                implementation project(':common:common-actuator-webmvc')
             }
         """,
         "websocket-gateway/websocket-gateway-application/build.gradle": """
@@ -90,19 +101,29 @@ def create_fake_project(root: Path) -> None:
             dependencies {
                 implementation project(':websocket-gateway:websocket-gateway-application')
                 implementation project(':websocket-gateway:websocket-gateway-adapter-out')
+                implementation project(':common:common-actuator-webmvc')
             }
         """,
         "spring-cloud-eureka-server/build.gradle": """
             ext.dockerImageName = "crypto-spring-cloud-eureka-server"
-            dependencies {}
+
+            dependencies {
+                implementation project(':common:common-actuator-webmvc')
+            }
         """,
         "spring-cloud-api-gateway/build.gradle": """
             ext.dockerImageName = "crypto-spring-cloud-api-gateway"
-            dependencies {}
+
+            dependencies {
+                implementation project(':common:common-actuator-webmvc')
+            }
         """,
         "outbox-poller/build.gradle": """
             ext.dockerImageName = "crypto-outbox-poller"
-            dependencies {}
+
+            dependencies {
+                implementation project(':common:common-actuator-webmvc')
+            }
         """,
         "chat/build.gradle": "dependencies {}",
     }
@@ -112,6 +133,8 @@ def create_fake_project(root: Path) -> None:
 
     files = {
         "common/common-core/src/main/java/Dummy.java": "class Dummy {}",
+        "common/common-actuator-core/src/main/java/DeploymentReadiness.java": "class DeploymentReadiness {}",
+        "common/common-actuator-webmvc/src/main/java/DeploymentReadinessController.java": "class DeploymentReadinessController {}",
         "protobuf/src/main/proto/chat.proto": "syntax = 'proto3';",
         "chat/chat-domain/src/main/java/Chat.java": "class Chat {}",
         "docs/README.md": "# docs",
@@ -258,6 +281,51 @@ def test_common_core_change_affects_dependents_transitively(tmp_path):
     assert ":chat:chat-domain" in affected
     assert ":chat:chat-application" in affected
     assert ":chat:chat-bootstrap" in affected
+
+
+def test_common_actuator_core_change_affects_webmvc_and_execution_modules(tmp_path):
+    create_fake_project(tmp_path)
+
+    tasks = am.calculate_output(
+        root=tmp_path,
+        files=["common/common-actuator-core/src/main/java/DeploymentReadiness.java"],
+        mode="build",
+        include_arch_test=True,
+        fallback_task="serviceCi",
+    )
+
+    assert tasks == [
+        ":chat:chat-bootstrap:build",
+        ":common:common-actuator-core:build",
+        ":common:common-actuator-webmvc:build",
+        ":outbox-poller:build",
+        ":spring-cloud-api-gateway:build",
+        ":spring-cloud-eureka-server:build",
+        ":websocket-gateway:websocket-gateway-bootstrap:build",
+        ":common:common-arch-test:test",
+    ]
+
+
+def test_common_actuator_webmvc_change_affects_execution_modules(tmp_path):
+    create_fake_project(tmp_path)
+
+    tasks = am.calculate_output(
+        root=tmp_path,
+        files=["common/common-actuator-webmvc/src/main/java/DeploymentReadinessController.java"],
+        mode="build",
+        include_arch_test=True,
+        fallback_task="serviceCi",
+    )
+
+    assert tasks == [
+        ":chat:chat-bootstrap:build",
+        ":common:common-actuator-webmvc:build",
+        ":outbox-poller:build",
+        ":spring-cloud-api-gateway:build",
+        ":spring-cloud-eureka-server:build",
+        ":websocket-gateway:websocket-gateway-bootstrap:build",
+        ":common:common-arch-test:test",
+    ]
 
 
 def test_protobuf_change_affects_protobuf_dependents_transitively(tmp_path):
