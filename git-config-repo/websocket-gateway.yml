@@ -31,7 +31,7 @@ spring:
         chatRoomBroadcastEventConsumer-in-0:
           destination: chatroom-broadcast-event
           contentType: application/json
-          group: chat-broadcast-${spring.cloud.stream.instance-index}
+          group: chat-broadcast-${app.instance-id}
           consumer:
             concurrency: 2
         chatMessageBroadcastEventConsumer-in-0:
@@ -43,7 +43,7 @@ spring:
         webNotificationEventConsumer-in-0:
           destination: notification-broadcast-event
           contentType: application/json
-          group: notification-broadcast-${spring.cloud.stream.instance-index}
+          group: notification-broadcast-${app.instance-id}
           consumer:
             concurrency: 2
       kafka:

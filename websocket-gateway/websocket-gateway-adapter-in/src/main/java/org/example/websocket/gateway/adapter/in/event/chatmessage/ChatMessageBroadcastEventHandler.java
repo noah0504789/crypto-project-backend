@@ -18,8 +18,8 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class ChatMessageBroadcastEventHandler {
 
-    @Value("${spring.cloud.stream.instance-index:unknown}")
-    private String instanceIndex;
+    @Value("${app.instance-id:unknown}")
+    private String instanceId;
 
     private final SimpMessagingTemplate stompTemplate;
     private final LocalSessionCache localSessionCache;
@@ -28,13 +28,13 @@ public class ChatMessageBroadcastEventHandler {
         ChatMessagePayload payload = event.payload();
 
         if (!hasAnyLocalMember(event.memberIds())) {
-            log.debug("STOMP skip. no local member session. txId={}, roomId={}, serverId={}", txId, payload.roomId(), instanceIndex);
+            log.debug("STOMP skip. no local member session. txId={}, roomId={}, serverId={}", txId, payload.roomId(), instanceId);
             return;
         }
 
         sendChatMessage(payload, event.clientMessageId(), txId);
 
-        log.debug("✅ STOMP 성공: txId={}, roomId={}, serverId={}", txId, payload.roomId(), instanceIndex);
+        log.debug("✅ STOMP 성공: txId={}, roomId={}, serverId={}", txId, payload.roomId(), instanceId);
     }
 
     private boolean hasAnyLocalMember(Set<String> memberIds) {
@@ -50,7 +50,7 @@ public class ChatMessageBroadcastEventHandler {
         try {
             stompTemplate.convertAndSend(destination, response);
         } catch (Exception e) {
-            log.error("❌ STOMP 실패: txId={}, roomId={}, destination={}, serverId={}, error={}", txId, payload.roomId(), destination, instanceIndex, e.getMessage(), e);
+            log.error("❌ STOMP 실패: txId={}, roomId={}, destination={}, serverId={}, error={}", txId, payload.roomId(), destination, instanceId, e.getMessage(), e);
         }
     }
 }

@@ -19,8 +19,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Component
 public class WebSocketSessionEventHandler {
 
-    @Value("${spring.cloud.stream.instance-index:unknown}")
-    private String instanceIndex;
+    @Value("${app.instance-id:unknown}")
+    private String instanceId;
 
     private final AtomicInteger activeSessions = new AtomicInteger(0);
     private final LocalSessionCache localSessionCache;
@@ -43,20 +43,20 @@ public class WebSocketSessionEventHandler {
         String userId = accessor.getUser() != null ? accessor.getUser().getName() : null;
 
         if (sessionId == null || userId == null) {
-            log.warn("ws connect ignored. instance-index={}, userId={}, sessionId={}", instanceIndex, userId, sessionId);
+            log.warn("ws connect ignored. instance-index={}, userId={}, sessionId={}", instanceId, userId, sessionId);
             return;
         }
 
         boolean isNewSession = localSessionCache.findUserId(sessionId) == null;
 
         localSessionCache.register(sessionId, userId);
-        sessionLocationPort.save(userId, sessionId, instanceIndex);
+        sessionLocationPort.save(userId, sessionId, instanceId);
 
         if (isNewSession) {
             activeSessions.incrementAndGet();
         }
 
-        log.info("ws connected instance-index={}, userId={}, sessionId={}, newSession={}, activeSessions={}", instanceIndex, userId, sessionId, isNewSession, activeSessions.get());
+        log.info("ws connected instance-index={}, userId={}, sessionId={}, newSession={}, activeSessions={}", instanceId, userId, sessionId, isNewSession, activeSessions.get());
     }
 
     @EventListener
@@ -71,7 +71,7 @@ public class WebSocketSessionEventHandler {
 
         sessionLocationPort.refreshTtl(userId);
 
-        log.debug("ws ttl refreshed by subscribe. instance-index={}, userId={}, sessionId={}", instanceIndex, userId, sessionId);
+        log.debug("ws ttl refreshed by subscribe. instance-index={}, userId={}, sessionId={}", instanceId, userId, sessionId);
     }
 
     @EventListener
@@ -80,18 +80,18 @@ public class WebSocketSessionEventHandler {
 
         String sessionId = accessor.getSessionId();
         if (sessionId == null) {
-            log.warn("ws disconnect ignored. instance-index={}, reason=sessionId-null", instanceIndex);
+            log.warn("ws disconnect ignored. instance-index={}, reason=sessionId-null", instanceId);
             return;
         }
 
         String userId = localSessionCache.findUserId(sessionId);
 
         if (userId != null) {
-            sessionLocationPort.deleteIfServerMatches(userId, sessionId, instanceIndex);
+            sessionLocationPort.deleteIfServerMatches(userId, sessionId, instanceId);
             localSessionCache.remove(sessionId);
             activeSessions.updateAndGet(v -> Math.max(0, v - 1));
         }
 
-        log.info("ws disconnected instance-index={}, userId={}, sessionId={}, activeSessions={}", instanceIndex, userId != null ? userId : "unknown", sessionId, activeSessions.get());
+        log.info("ws disconnected instance-index={}, userId={}, sessionId={}, activeSessions={}", instanceId, userId != null ? userId : "unknown", sessionId, activeSessions.get());
     }
 }

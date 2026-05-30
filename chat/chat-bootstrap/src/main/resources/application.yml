@@ -5,4 +5,3 @@ spring:
     config:
       name: chat-service,eureka-client,mysql,mongo,redis,kafka,monitoring
       label: main
-    stream.instance-index: ${SPRING_CLOUD_STREAM_INSTANCE_INDEX}

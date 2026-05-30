@@ -10,11 +10,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class InstanceInfoLogger implements ApplicationRunner {
 
-    @Value("${spring.cloud.stream.instance-index:unknown}")
-    private String instanceIndex;
+    @Value("${app.instance-id:unknown}")
+    private String instanceId;
 
     @Override
     public void run(ApplicationArguments args) {
-        log.info("websocket-gateway instance-index={}", instanceIndex);
+        log.info("websocket-gateway instance-id={}", instanceId);
     }
 }

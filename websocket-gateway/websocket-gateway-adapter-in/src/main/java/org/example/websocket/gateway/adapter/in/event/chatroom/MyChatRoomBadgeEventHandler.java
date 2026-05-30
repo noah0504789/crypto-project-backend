@@ -16,8 +16,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class MyChatRoomBadgeEventHandler {
 
-    @Value("${spring.cloud.stream.instance-index:unknown}")
-    private String instanceIndex;
+    @Value("${app.instance-id:unknown}")
+    private String instanceId;
 
     private final SimpMessagingTemplate stompTemplate;
     private final LocalSessionCache localSessionCache;
@@ -28,11 +28,11 @@ public class MyChatRoomBadgeEventHandler {
         boolean sent = broadcastBadge(payload, txId);
 
         if (sent) {
-            log.debug("✅ STOMP 처리 완료: txId={}, serverId={}", txId, instanceIndex);
+            log.debug("✅ STOMP 처리 완료: txId={}, serverId={}", txId, instanceId);
             return;
         }
 
-        log.debug("STOMP 전체 skip: txId={}, serverId={}", txId, instanceIndex);
+        log.debug("STOMP 전체 skip: txId={}, serverId={}", txId, instanceId);
     }
 
     private boolean broadcastBadge(MyChatRoomPayload payload, String txId) {
@@ -43,7 +43,7 @@ public class MyChatRoomBadgeEventHandler {
 
         for (String memberId : payload.memberIds()) {
             if (!localSessionCache.hasUser(memberId)) {
-                log.debug("STOMP skip. no local session. txId={}, memberId={}, serverId={}", txId, memberId, instanceIndex);
+                log.debug("STOMP skip. no local session. txId={}, memberId={}, serverId={}", txId, memberId, instanceId);
                 continue;
             }
 
@@ -59,11 +59,11 @@ public class MyChatRoomBadgeEventHandler {
         try {
             stompTemplate.convertAndSendToUser(memberId, destination, response);
 
-            log.debug("STOMP sent. txId={}, memberId={}, destination={}, serverId={}", txId, memberId, destination, instanceIndex);
+            log.debug("STOMP sent. txId={}, memberId={}, destination={}, serverId={}", txId, memberId, destination, instanceId);
 
             return true;
         } catch (Exception e) {
-            log.error("❌ STOMP 실패: txId={}, memberId={}, destination={}, serverId={}, error={}", txId, memberId, destination, instanceIndex, e.getMessage(), e);
+            log.error("❌ STOMP 실패: txId={}, memberId={}, destination={}, serverId={}, error={}", txId, memberId, destination, instanceId, e.getMessage(), e);
 
             return false;
         }
