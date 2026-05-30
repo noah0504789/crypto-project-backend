@@ -44,12 +44,29 @@ jobs:
           python -m pip install pytest
           pytest scripts/ci
 
+      - name: Resolve diff range
+        id: diff
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="origin/${{ github.base_ref }}"
+          else
+            BASE="${{ github.event.before }}"
+          fi
+
+          HEAD="${{ github.sha }}"
+
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          echo "head=$HEAD" >> "$GITHUB_OUTPUT"
+
+          echo "Diff base: $BASE"
+          echo "Diff head: $HEAD"
+
       - name: Calculate affected Gradle tasks
         id: affected
         run: |
           TASKS=$(./scripts/ci/affected_modules.py \
-            --base origin/main \
-            --head HEAD \
+            --base "${{ steps.diff.outputs.base }}" \
+            --head "${{ steps.diff.outputs.head }}" \
             --mode build \
             --include-arch-test)
 
@@ -68,8 +85,8 @@ jobs:
         id: docker
         run: |
           SERVICES=$(./scripts/ci/affected_modules.py \
-            --base origin/main \
-            --head HEAD \
+            --base "${{ steps.diff.outputs.base }}" \
+            --head "${{ steps.diff.outputs.head }}" \
             --mode docker)
 
           echo "services=$SERVICES" >> "$GITHUB_OUTPUT"
@@ -121,6 +138,7 @@ jobs:
               -t "$SHA_TAG" \
               "$SERVICE_PATH"
           done
+
       - name: Push Docker images
         if: github.event_name == 'push' && steps.docker.outputs.services != ''
         run: |
@@ -142,6 +160,7 @@ jobs:
             echo "Pushing $LATEST_TAG"
             docker push "$LATEST_TAG"
           done
+
       - name: Skip Docker build
         if: steps.docker.outputs.services == ''
         run: echo "No affected Docker services."
