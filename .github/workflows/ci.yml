@@ -64,6 +64,87 @@ jobs:
         if: steps.affected.outputs.tasks == ''
         run: echo "No affected backend modules."
 
+      - name: Calculate affected Docker services
+        id: docker
+        run: |
+          SERVICES=$(./scripts/ci/affected_modules.py \
+            --base origin/main \
+            --head HEAD \
+            --mode docker)
+
+          echo "services=$SERVICES" >> "$GITHUB_OUTPUT"
+          echo "Affected Docker services: $SERVICES"
+
+      - name: Set Docker metadata
+        id: docker_meta
+        if: steps.docker.outputs.services != ''
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        if: steps.docker.outputs.services != ''
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        if: github.event_name == 'push' && steps.docker.outputs.services != ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build Docker images
+        if: steps.docker.outputs.services != ''
+        run: |
+          set -euo pipefail
+
+          for ITEM in ${{ steps.docker.outputs.services }}; do
+            SERVICE_PATH="${ITEM%%=*}"
+            IMAGE_NAME="${ITEM#*=}"
+
+            DOCKERFILE="$SERVICE_PATH/Dockerfile"
+
+            if [ ! -f "$DOCKERFILE" ]; then
+              echo "Dockerfile not found: $DOCKERFILE"
+              exit 1
+            fi
+
+            IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME"
+            SHA_TAG="${IMAGE}:${{ steps.docker_meta.outputs.short_sha }}"
+
+            echo "Building Docker image: $SHA_TAG"
+            echo "Dockerfile: $DOCKERFILE"
+
+            docker build \
+              -f "$DOCKERFILE" \
+              -t "$SHA_TAG" \
+              .
+          done
+      - name: Push Docker images
+        if: github.event_name == 'push' && steps.docker.outputs.services != ''
+        run: |
+          set -euo pipefail
+
+          for ITEM in ${{ steps.docker.outputs.services }}; do
+            IMAGE_NAME="${ITEM#*=}"
+
+            IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME"
+            SHA_TAG="${IMAGE}:${{ steps.docker_meta.outputs.short_sha }}"
+            LATEST_TAG="${IMAGE}:latest"
+
+            echo "Tagging $SHA_TAG as $LATEST_TAG"
+            docker tag "$SHA_TAG" "$LATEST_TAG"
+
+            echo "Pushing $SHA_TAG"
+            docker push "$SHA_TAG"
+
+            echo "Pushing $LATEST_TAG"
+            docker push "$LATEST_TAG"
+          done
+      - name: Skip Docker build
+        if: steps.docker.outputs.services == ''
+        run: echo "No affected Docker services."
+
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4

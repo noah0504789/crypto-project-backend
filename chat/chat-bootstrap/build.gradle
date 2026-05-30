@@ -2,6 +2,8 @@ plugins {
     id 'crypto-bootstrap'
 }
 
+ext.dockerImageName = "crypto-chat-service"
+
 dependencies {
     runtimeOnly(libs.mysql.connector.j) {
         exclude group: 'com.google.protobuf', module: 'protobuf-java'

@@ -2,6 +2,8 @@ plugins {
     id 'crypto-bootstrap'
 }
 
+ext.dockerImageName = "crypto-outbox-poller"
+
 dependencies {
     runtimeOnly(libs.mysql.connector.j) {
         exclude group: 'com.google.protobuf', module: 'protobuf-java'

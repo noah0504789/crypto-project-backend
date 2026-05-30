@@ -11,6 +11,9 @@ INCLUDED_PROJECT_PATTERN = re.compile(r"""'([^']+)'|"([^"]+)\"""")
 PROJECT_DEPENDENCY_PATTERN = re.compile(
     r"""^\s*(\w+)\s+project\(['"](:[^'"]+)['"]\)"""
 )
+DOCKER_IMAGE_NAME_PATTERN = re.compile(
+    r"""dockerImageName\s*=\s*['"]([^'"]+)['"]"""
+)
 
 GLOBAL_PATH_PREFIXES = (
     "gradle/",
@@ -82,8 +85,6 @@ def read_dependencies(projects: dict[str, Path]) -> dict[str, set[str]]:
             configuration = match.group(1)
             target_project = match.group(2)
 
-            # CI 영향도 계산은 production 의존성 기준으로만 본다.
-            # testImplementation/testRuntimeOnly 등은 제외한다.
             if configuration.startswith("test"):
                 continue
 
@@ -92,9 +93,7 @@ def read_dependencies(projects: dict[str, Path]) -> dict[str, set[str]]:
     return dependencies
 
 
-def reverse_dependencies(
-        dependencies: dict[str, set[str]]
-) -> dict[str, set[str]]:
+def reverse_dependencies(dependencies: dict[str, set[str]]) -> dict[str, set[str]]:
     reversed_graph: dict[str, set[str]] = defaultdict(set)
 
     for source_project, target_projects in dependencies.items():
@@ -129,7 +128,6 @@ def find_project_for_file(
         file_path: str
 ) -> str | None:
     absolute_file_path = (root / file_path).resolve()
-
     candidates: list[tuple[str, int]] = []
 
     for project_path, project_directory in projects.items():
@@ -142,8 +140,6 @@ def find_project_for_file(
     if not candidates:
         return None
 
-    # aggregate project와 하위 project가 동시에 매칭될 수 있으므로
-    # 가장 깊은 project directory를 선택한다.
     candidates.sort(key=lambda item: item[1], reverse=True)
     return candidates[0][0]
 
@@ -175,13 +171,7 @@ def find_affected_projects(
     queue: deque[str] = deque()
 
     for changed_project in changed_projects:
-        expanded_projects = expand_aggregate_project(
-            changed_project,
-            projects,
-            aggregates
-        )
-
-        for expanded_project in expanded_projects:
+        for expanded_project in expand_aggregate_project(changed_project, projects, aggregates):
             affected_projects.add(expanded_project)
             queue.append(expanded_project)
 
@@ -189,13 +179,7 @@ def find_affected_projects(
         current_project = queue.popleft()
 
         for dependent_project in reversed_graph.get(current_project, set()):
-            expanded_dependents = expand_aggregate_project(
-                dependent_project,
-                projects,
-                aggregates
-            )
-
-            for expanded_dependent in expanded_dependents:
+            for expanded_dependent in expand_aggregate_project(dependent_project, projects, aggregates):
                 if expanded_dependent not in affected_projects:
                     affected_projects.add(expanded_dependent)
                     queue.append(expanded_dependent)
@@ -221,21 +205,81 @@ def to_gradle_tasks(
     return tasks
 
 
-def calculate_affected_tasks(
+def read_docker_image_name(project_directory: Path) -> str | None:
+    build_file = project_directory / "build.gradle"
+
+    if not build_file.is_file():
+        return None
+
+    for line in build_file.read_text().splitlines():
+        match = DOCKER_IMAGE_NAME_PATTERN.search(line)
+
+        if match:
+            return match.group(1)
+
+    return None
+
+
+def docker_service_entry(root: Path, project_directory: Path) -> str | None:
+    dockerfile = project_directory / "Dockerfile"
+
+    if not dockerfile.is_file():
+        return None
+
+    image_name = read_docker_image_name(project_directory)
+
+    if not image_name:
+        raise ValueError(
+            f"dockerImageName is required in {project_directory / 'build.gradle'}"
+        )
+
+    service_path = project_directory.relative_to(root).as_posix()
+
+    return f"{service_path}={image_name}"
+
+
+def to_docker_services(
+        root: Path,
+        projects: set[str],
+        project_directories: dict[str, Path]
+) -> list[str]:
+    services: list[str] = []
+
+    for project in sorted(projects):
+        entry = docker_service_entry(root, project_directories[project])
+
+        if entry:
+            services.append(entry)
+
+    return services
+
+
+def all_docker_services(
+        root: Path,
+        projects: dict[str, Path],
+        aggregates: set[str]
+) -> list[str]:
+    services: list[str] = []
+
+    for project, project_directory in sorted(projects.items()):
+        if project in aggregates:
+            continue
+
+        entry = docker_service_entry(root, project_directory)
+
+        if entry:
+            services.append(entry)
+
+    return services
+
+
+def calculate_affected_projects_from_files(
         root: Path,
         files: list[str],
-        mode: str,
-        include_arch_test: bool,
-        fallback_task: str
-) -> list[str]:
-    projects = read_projects(root)
-    aggregates = find_aggregate_projects(projects)
-    dependencies = read_dependencies(projects)
-    reversed_graph = reverse_dependencies(dependencies)
-
-    if any(is_global_change(file_path) for file_path in files):
-        return [fallback_task]
-
+        projects: dict[str, Path],
+        aggregates: set[str],
+        reversed_graph: dict[str, set[str]]
+) -> set[str]:
     changed_projects: set[str] = set()
 
     for file_path in files:
@@ -251,14 +295,48 @@ def calculate_affected_tasks(
         reversed_graph
     )
 
-    affected_projects = {
+    return {
         project
         for project in affected_projects
         if project in projects and project not in aggregates
     }
 
+
+def calculate_output(
+        root: Path,
+        files: list[str],
+        mode: str,
+        include_arch_test: bool,
+        fallback_task: str
+) -> list[str]:
+    projects = read_projects(root)
+    aggregates = find_aggregate_projects(projects)
+    dependencies = read_dependencies(projects)
+    reversed_graph = reverse_dependencies(dependencies)
+
+    if any(is_global_change(file_path) for file_path in files):
+        if mode == "docker":
+            return all_docker_services(root, projects, aggregates)
+
+        return [fallback_task]
+
+    affected_projects = calculate_affected_projects_from_files(
+        root=root,
+        files=files,
+        projects=projects,
+        aggregates=aggregates,
+        reversed_graph=reversed_graph
+    )
+
     if not affected_projects:
         return []
+
+    if mode == "docker":
+        return to_docker_services(
+            root=root,
+            projects=affected_projects,
+            project_directories=projects
+        )
 
     return to_gradle_tasks(
         affected_projects,
@@ -271,7 +349,11 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base", default="origin/main")
     parser.add_argument("--head", default="HEAD")
-    parser.add_argument("--mode", choices=["assemble", "build"], default="build")
+    parser.add_argument(
+        "--mode",
+        choices=["assemble", "build", "docker"],
+        default="build"
+    )
     parser.add_argument("--include-arch-test", action="store_true")
     parser.add_argument("--fallback-task", default="serviceCi")
 
@@ -280,7 +362,7 @@ def main() -> None:
     root = Path.cwd()
     files = changed_files(args.base, args.head)
 
-    tasks = calculate_affected_tasks(
+    output = calculate_output(
         root=root,
         files=files,
         mode=args.mode,
@@ -288,7 +370,7 @@ def main() -> None:
         fallback_task=args.fallback_task
     )
 
-    print(" ".join(tasks))
+    print(" ".join(output))
 
 
 if __name__ == "__main__":
