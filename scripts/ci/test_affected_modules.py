@@ -135,6 +135,33 @@ def load_graph(root: Path):
     return projects, aggregates, dependencies, reversed_graph
 
 
+def test_global_change_detection():
+    global_changes = [
+        "settings.gradle",
+        "build.gradle",
+        "gradlew",
+        "gradlew.bat",
+        "build-logic/src/main/java/Test.java",
+        ".github/workflows/ci.yml",
+        "gradle/libs.versions.toml",
+        "scripts/ci/affected_modules.py",
+        "scripts/ci/test_affected_modules.py",
+    ]
+
+    non_global_changes = [
+        "common/common-core/src/main/java/A.java",
+        "protobuf/src/main/proto/chat.proto",
+        "chat/chat-domain/src/main/java/A.java",
+        "docs/README.md",
+    ]
+
+    for file_path in global_changes:
+        assert am.is_global_change(file_path)
+
+    for file_path in non_global_changes:
+        assert not am.is_global_change(file_path)
+
+
 def test_read_projects_from_settings_gradle(tmp_path):
     create_fake_project(tmp_path)
 

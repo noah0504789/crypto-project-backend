@@ -114,11 +114,12 @@ jobs:
 
             echo "Building Docker image: $SHA_TAG"
             echo "Dockerfile: $DOCKERFILE"
+            echo "Build context: $SERVICE_PATH"
 
             docker build \
               -f "$DOCKERFILE" \
               -t "$SHA_TAG" \
-              .
+              "$SERVICE_PATH"
           done
       - name: Push Docker images
         if: github.event_name == 'push' && steps.docker.outputs.services != ''
