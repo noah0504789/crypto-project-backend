@@ -45,13 +45,13 @@ class WebSocketSessionEventHandlerTest {
     @InjectMocks
     private WebSocketSessionEventHandler sut;
 
-    private final String instanceIndex = "instance-1";
+    private final String instanceId = "instance-1";
     private final String userId = "user-1";
     private final String sessionId = "session-1";
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(sut, "instanceIndex", instanceIndex);
+        ReflectionTestUtils.setField(sut, "instanceId", instanceId);
     }
 
     @Nested
@@ -61,21 +61,18 @@ class WebSocketSessionEventHandlerTest {
         @Test
         @DisplayName("새 WebSocket 세션이면 로컬 캐시와 Redis 위치를 저장하고 activeSessions를 증가시킨다")
         void handleConnectNewSession() {
-            // given
             SessionConnectEvent event = connectEvent(sessionId, userId);
 
             given(localSessionCache.findUserId(sessionId))
                     .willReturn(null);
 
-            // when
             sut.handleConnect(event);
 
-            // then
             InOrder inOrder = inOrder(localSessionCache, sessionLocationPort);
 
             inOrder.verify(localSessionCache).findUserId(sessionId);
             inOrder.verify(localSessionCache).register(sessionId, userId);
-            inOrder.verify(sessionLocationPort).save(userId, sessionId, instanceIndex);
+            inOrder.verify(sessionLocationPort).save(userId, sessionId, instanceId);
 
             assertThat(activeSessionGauge()).isEqualTo(1.0);
         }
@@ -83,19 +80,16 @@ class WebSocketSessionEventHandlerTest {
         @Test
         @DisplayName("이미 등록된 WebSocket 세션이면 activeSessions를 증가시키지 않는다")
         void handleConnectExistingSession() {
-            // given
             SessionConnectEvent event = connectEvent(sessionId, userId);
 
             given(localSessionCache.findUserId(sessionId))
                     .willReturn(userId);
 
-            // when
             sut.handleConnect(event);
 
-            // then
             verify(localSessionCache).findUserId(sessionId);
             verify(localSessionCache).register(sessionId, userId);
-            verify(sessionLocationPort).save(userId, sessionId, instanceIndex);
+            verify(sessionLocationPort).save(userId, sessionId, instanceId);
 
             assertThat(activeSessionGauge()).isEqualTo(0.0);
         }
@@ -103,13 +97,10 @@ class WebSocketSessionEventHandlerTest {
         @Test
         @DisplayName("sessionId가 없으면 연결 처리를 무시한다")
         void handleConnectWithoutSessionId() {
-            // given
             SessionConnectEvent event = connectEvent(null, userId);
 
-            // when
             sut.handleConnect(event);
 
-            // then
             verifyNoInteractions(localSessionCache, sessionLocationPort);
             assertThat(activeSessionGauge()).isEqualTo(0.0);
         }
@@ -117,13 +108,10 @@ class WebSocketSessionEventHandlerTest {
         @Test
         @DisplayName("userId가 없으면 연결 처리를 무시한다")
         void handleConnectWithoutUserId() {
-            // given
             SessionConnectEvent event = connectEvent(sessionId, null);
 
-            // when
             sut.handleConnect(event);
 
-            // then
             verifyNoInteractions(localSessionCache, sessionLocationPort);
             assertThat(activeSessionGauge()).isEqualTo(0.0);
         }
@@ -136,16 +124,13 @@ class WebSocketSessionEventHandlerTest {
         @Test
         @DisplayName("구독 이벤트가 발생하면 세션의 userId를 찾아 Redis TTL을 갱신한다")
         void handleSubscribe() {
-            // given
             SessionSubscribeEvent event = subscribeEvent(sessionId);
 
             given(localSessionCache.findUserId(sessionId))
                     .willReturn(userId);
 
-            // when
             sut.handleSubscribe(event);
 
-            // then
             verify(localSessionCache).findUserId(sessionId);
             verify(sessionLocationPort).refreshTtl(userId);
         }
@@ -153,29 +138,23 @@ class WebSocketSessionEventHandlerTest {
         @Test
         @DisplayName("sessionId가 없으면 TTL 갱신을 하지 않는다")
         void handleSubscribeWithoutSessionId() {
-            // given
             SessionSubscribeEvent event = subscribeEvent(null);
 
-            // when
             sut.handleSubscribe(event);
 
-            // then
             verifyNoInteractions(localSessionCache, sessionLocationPort);
         }
 
         @Test
         @DisplayName("로컬 캐시에 userId가 없으면 TTL 갱신을 하지 않는다")
         void handleSubscribeWithoutCachedUserId() {
-            // given
             SessionSubscribeEvent event = subscribeEvent(sessionId);
 
             given(localSessionCache.findUserId(sessionId))
                     .willReturn(null);
 
-            // when
             sut.handleSubscribe(event);
 
-            // then
             verify(localSessionCache).findUserId(sessionId);
             verify(sessionLocationPort, never()).refreshTtl(anyString());
         }
@@ -188,7 +167,6 @@ class WebSocketSessionEventHandlerTest {
         @Test
         @DisplayName("연결 해제 시 Redis 위치를 삭제하고 로컬 캐시를 제거하며 activeSessions를 감소시킨다")
         void handleDisconnect() {
-            // given
             SessionConnectEvent connectEvent = connectEvent(sessionId, userId);
             SessionDisconnectEvent disconnectEvent = disconnectEvent(sessionId);
 
@@ -199,11 +177,9 @@ class WebSocketSessionEventHandlerTest {
             sut.handleConnect(connectEvent);
             assertThat(activeSessionGauge()).isEqualTo(1.0);
 
-            // when
             sut.handleDisconnect(disconnectEvent);
 
-            // then
-            verify(sessionLocationPort).deleteIfServerMatches(userId, sessionId, instanceIndex);
+            verify(sessionLocationPort).deleteIfServerMatches(userId, sessionId, instanceId);
             verify(localSessionCache).remove(sessionId);
 
             assertThat(activeSessionGauge()).isEqualTo(0.0);
@@ -212,13 +188,10 @@ class WebSocketSessionEventHandlerTest {
         @Test
         @DisplayName("연결 해제 시 sessionId가 없으면 아무 작업도 하지 않는다")
         void handleDisconnectWithoutSessionId() {
-            // given
             SessionDisconnectEvent event = disconnectEvent(null);
 
-            // when
             sut.handleDisconnect(event);
 
-            // then
             verifyNoInteractions(localSessionCache, sessionLocationPort);
             assertThat(activeSessionGauge()).isEqualTo(0.0);
         }
@@ -226,16 +199,13 @@ class WebSocketSessionEventHandlerTest {
         @Test
         @DisplayName("연결 해제 시 로컬 캐시에 userId가 없으면 Redis 삭제와 로컬 제거를 하지 않는다")
         void handleDisconnectWithoutCachedUserId() {
-            // given
             SessionDisconnectEvent event = disconnectEvent(sessionId);
 
             given(localSessionCache.findUserId(sessionId))
                     .willReturn(null);
 
-            // when
             sut.handleDisconnect(event);
 
-            // then
             verify(localSessionCache).findUserId(sessionId);
             verify(localSessionCache, never()).remove(anyString());
             verify(sessionLocationPort, never())
@@ -247,17 +217,14 @@ class WebSocketSessionEventHandlerTest {
         @Test
         @DisplayName("activeSessions가 0일 때 연결 해제가 발생해도 음수가 되지 않는다")
         void handleDisconnectDoesNotGoBelowZero() {
-            // given
             SessionDisconnectEvent event = disconnectEvent(sessionId);
 
             given(localSessionCache.findUserId(sessionId))
                     .willReturn(userId);
 
-            // when
             sut.handleDisconnect(event);
 
-            // then
-            verify(sessionLocationPort).deleteIfServerMatches(userId, sessionId, instanceIndex);
+            verify(sessionLocationPort).deleteIfServerMatches(userId, sessionId, instanceId);
             verify(localSessionCache).remove(sessionId);
 
             assertThat(activeSessionGauge()).isEqualTo(0.0);
