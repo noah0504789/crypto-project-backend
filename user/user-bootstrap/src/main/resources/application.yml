@@ -3,5 +3,5 @@ spring:
   config.import: configserver:http://crypto-spring-cloud-config:8888
   cloud:
     config:
-      name: user-service,eureka-client,idgen,mysql
+      name: user-service,eureka-client,idgen,mysql,monitoring
       label: main
