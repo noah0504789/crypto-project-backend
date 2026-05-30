@@ -108,7 +108,9 @@ class PackageArchitectureTest {
                 "common/common-redis",
                 "common/common-util",
                 "common/common-mongo",
-                "common/common-test"
+                "common/common-test",
+                "common/common-actuator-core",
+                "common/common-actuator-webmvc"
         )));
     }
 
