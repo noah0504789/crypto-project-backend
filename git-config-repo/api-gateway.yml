@@ -1,10 +1,11 @@
 server:
   port: 8000
-  http2.enabled: true
+  http2:
+    enabled: true
   ssl:
     enabled: true
     key-store-type: PKCS12
-    key-store: classpath:keystore.p12
+    key-store: file:/certs/keystore.p12
     key-store-password: ${ssl.key-store-password}
     key-password: ${ssl.key-password}
     key-alias: localhost
