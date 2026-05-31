@@ -31,13 +31,13 @@ spring:
         chatRoomBroadcastEventConsumer-in-0:
           destination: chatroom-broadcast-event
           contentType: application/json
-          group: chat-broadcast-${app.instance-id}
+          group: chatroom-broadcast-${app.instance-id}
           consumer:
             concurrency: 2
         chatMessageBroadcastEventConsumer-in-0:
           destination: chatmessage-broadcast-event
           contentType: application/json
-          group: chat-broadcast-${app.instance-id}
+          group: chatmessage-broadcast-${app.instance-id}
           consumer:
             concurrency: 2
         webNotificationEventConsumer-in-0:
