@@ -20,6 +20,7 @@ include 'common:common-test'
 include 'common:common-arch-test'
 include 'common:common-actuator-core'
 include 'common:common-actuator-webmvc'
+include 'common:common-actuator-webflux'
 
 include 'protobuf'
 
