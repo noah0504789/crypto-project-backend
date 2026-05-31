@@ -37,7 +37,7 @@ spring:
         chatMessageBroadcastEventConsumer-in-0:
           destination: chatmessage-broadcast-event
           contentType: application/json
-          group: chat-broadcast-${spring.cloud.stream.instance-index}
+          group: chat-broadcast-${app.instance-id}
           consumer:
             concurrency: 2
         webNotificationEventConsumer-in-0:
