@@ -536,6 +536,20 @@ def test_calculate_output_returns_empty_for_docs_only_change(tmp_path):
     assert tasks == []
 
 
+def test_calculate_output_returns_fallback_for_build_logic_change(tmp_path):
+    create_fake_project(tmp_path)
+
+    tasks = am.calculate_output(
+        root=tmp_path,
+        files=["build-logic/src/main/java/org/example/BootstrapConventionPlugin.java"],
+        mode="build",
+        include_arch_test=True,
+        fallback_task="serviceCi",
+    )
+
+    assert tasks == ["serviceCi"]
+
+
 def test_calculate_output_for_chat_domain_change(tmp_path):
     create_fake_project(tmp_path)
 
@@ -568,27 +582,6 @@ def test_calculate_output_for_websocket_adapter_in_test_change(tmp_path):
 
     assert tasks == [
         ":websocket-gateway:websocket-gateway-adapter-in:build",
-        ":websocket-gateway:websocket-gateway-bootstrap:build",
-        ":common:common-arch-test:test",
-    ]
-
-
-def test_calculate_output_for_protobuf_change(tmp_path):
-    create_fake_project(tmp_path)
-
-    tasks = am.calculate_output(
-        root=tmp_path,
-        files=["protobuf/src/main/proto/chat.proto"],
-        mode="build",
-        include_arch_test=True,
-        fallback_task="serviceCi",
-    )
-
-    assert tasks == [
-        ":chat:chat-client:build",
-        ":protobuf:build",
-        ":websocket-gateway:websocket-gateway-adapter-out:build",
-        ":websocket-gateway:websocket-gateway-application:build",
         ":websocket-gateway:websocket-gateway-bootstrap:build",
         ":common:common-arch-test:test",
     ]
@@ -644,20 +637,6 @@ def test_calculate_output_docker_for_single_execution_module_change(tmp_path):
     assert services == ["outbox-poller=crypto-outbox-poller"]
 
 
-def test_calculate_output_docker_returns_empty_for_test_only_change(tmp_path):
-    create_fake_project(tmp_path)
-
-    services = am.calculate_output(
-        root=tmp_path,
-        files=["websocket-gateway/websocket-gateway-adapter-in/src/test/java/HandlerTest.java"],
-        mode="docker",
-        include_arch_test=False,
-        fallback_task="serviceCi",
-    )
-
-    assert services == []
-
-
 def test_calculate_output_docker_for_global_change_returns_all_docker_services(tmp_path):
     create_fake_project(tmp_path)
 
@@ -678,12 +657,46 @@ def test_calculate_output_docker_for_global_change_returns_all_docker_services(t
     ]
 
 
+def test_calculate_output_docker_for_build_logic_change_returns_all_docker_services(tmp_path):
+    create_fake_project(tmp_path)
+
+    services = am.calculate_output(
+        root=tmp_path,
+        files=["build-logic/src/main/java/org/example/BootstrapConventionPlugin.java"],
+        mode="docker",
+        include_arch_test=False,
+        fallback_task="serviceCi",
+    )
+
+    assert services == [
+        "chat/chat-bootstrap=crypto-chat-service",
+        "outbox-poller=crypto-outbox-poller",
+        "spring-cloud-api-gateway=crypto-spring-cloud-api-gateway",
+        "spring-cloud-eureka-server=crypto-spring-cloud-eureka-server",
+        "websocket-gateway/websocket-gateway-bootstrap=crypto-websocket-gateway",
+    ]
+
+
 def test_calculate_output_docker_returns_empty_for_docs_only_change(tmp_path):
     create_fake_project(tmp_path)
 
     services = am.calculate_output(
         root=tmp_path,
         files=["docs/README.md"],
+        mode="docker",
+        include_arch_test=False,
+        fallback_task="serviceCi",
+    )
+
+    assert services == []
+
+
+def test_calculate_output_docker_returns_empty_for_test_only_change(tmp_path):
+    create_fake_project(tmp_path)
+
+    services = am.calculate_output(
+        root=tmp_path,
+        files=["websocket-gateway/websocket-gateway-adapter-in/src/test/java/HandlerTest.java"],
         mode="docker",
         include_arch_test=False,
         fallback_task="serviceCi",

@@ -29,18 +29,22 @@ configurations {
 }
 
 dependencies {
-    compileOnly libs.lombok
-    annotationProcessor libs.lombok
-    testImplementation libs.spring.boot.starter.test
+    compileOnly(libs.lombok)
+    annotationProcessor(libs.lombok)
+    testImplementation(libs.spring.boot.starter.test)
 }
 
 springBoot {
     buildInfo()
 }
 
-tasks.named('bootJar') {
-    if (project.name.endsWith('-bootstrap') && project.parent != null) {
-        destinationDirectory = file("${project.projectDir}/../build/libs")
+if (project.name.endsWith('-bootstrap')) {
+    tasks.named('jar') {
+        enabled = false
+    }
+
+    tasks.named('bootJar') {
+        enabled = true
     }
 }
 
