@@ -8,11 +8,12 @@ on:
         required: true
         type: choice
         options:
-          - crypto-chat-service
+          - crypto-spring-cloud-api-gateway
           - crypto-websocket-gateway
-          - crypto-user-service
           - crypto-oauth2-authorization-server
           - crypto-oauth2-client
+          - crypto-chat-service
+          - crypto-user-service
           - crypto-outbox-poller
       image_tag:
         description: "Docker image tag to deploy"
