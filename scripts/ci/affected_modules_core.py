@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import re
 import subprocess
 from collections import defaultdict, deque
@@ -15,6 +16,8 @@ PROJECT_DEPENDENCY_PATTERN = re.compile(
 DOCKER_IMAGE_NAME_PATTERN = re.compile(
     r"""^\s*ext\.dockerImageName\s*=\s*['"]([^'"]+)['"]"""
 )
+
+ARCH_TEST_TASK = ":common:common-arch-test:test"
 
 GLOBAL_PATH_PREFIXES = (
     "gradle/",
@@ -97,9 +100,7 @@ def read_dependencies(projects: dict[str, Path]) -> dict[str, set[str]]:
     return dependencies
 
 
-def reverse_dependencies(
-        dependencies: dict[str, set[str]]
-) -> dict[str, set[str]]:
+def reverse_dependencies(dependencies: dict[str, set[str]]) -> dict[str, set[str]]:
     reversed_graph: dict[str, set[str]] = defaultdict(set)
 
     for source_project, target_projects in dependencies.items():
@@ -142,6 +143,26 @@ def is_docker_relevant_change(file_path: str) -> bool:
             or file_path.endswith("build.gradle.kts")
             or file_path.endswith("Dockerfile")
     )
+
+
+def is_arch_test_project(project: str) -> bool:
+    return project == ":common:common-arch-test"
+
+
+def should_run_arch_test(files: list[str], affected_projects: set[str]) -> bool:
+    if any(file_path == "settings.gradle" for file_path in files):
+        return True
+
+    if any(file_path.endswith("build.gradle") or file_path.endswith("build.gradle.kts") for file_path in files):
+        return True
+
+    if any(file_path.startswith("common/") for file_path in files):
+        return True
+
+    if any(project.startswith(":common:") for project in affected_projects):
+        return True
+
+    return False
 
 
 def find_project_for_file(
@@ -231,13 +252,17 @@ def to_gradle_tasks(
 ) -> list[str]:
     task_name = "assemble" if mode == "assemble" else "build"
 
-    tasks = [
-        f"{project}:{task_name}"
-        for project in sorted(projects)
-    ]
+    tasks: list[str] = []
 
-    if include_arch_test:
-        tasks.append(":common:common-arch-test:test")
+    for project in sorted(projects):
+        if is_arch_test_project(project):
+            tasks.append(ARCH_TEST_TASK)
+            continue
+
+        tasks.append(f"{project}:{task_name}")
+
+    if include_arch_test and ARCH_TEST_TASK not in tasks:
+        tasks.append(ARCH_TEST_TASK)
 
     return tasks
 
@@ -378,6 +403,11 @@ def calculate_output(
     if not affected_projects:
         return []
 
+    effective_include_arch_test = include_arch_test or should_run_arch_test(
+        files=files,
+        affected_projects=affected_projects
+    )
+
     if mode == "docker":
         return to_docker_services(
             root=root,
@@ -386,7 +416,59 @@ def calculate_output(
         )
 
     return to_gradle_tasks(
-        affected_projects,
+        projects=affected_projects,
         mode=mode,
-        include_arch_test=include_arch_test
+        include_arch_test=effective_include_arch_test
     )
+
+
+def find_root() -> Path:
+    current = Path.cwd().resolve()
+
+    while current is not None:
+        if (current / "settings.gradle").is_file():
+            return current
+
+        current = current.parent
+
+    raise RuntimeError("Cannot locate repository root")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Calculate affected Gradle tasks or Docker services.")
+    parser.add_argument("--base", required=True)
+    parser.add_argument("--head", required=True)
+    parser.add_argument(
+        "--mode",
+        choices=("build", "assemble", "docker"),
+        default="build"
+    )
+    parser.add_argument(
+        "--include-arch-test",
+        action="store_true",
+        help="Always include common architecture test task."
+    )
+    parser.add_argument(
+        "--fallback-task",
+        default="build",
+        help="Task used when a global change is detected."
+    )
+
+    args = parser.parse_args()
+
+    root = find_root()
+    files = changed_files(args.base, args.head)
+
+    output = calculate_output(
+        root=root,
+        files=files,
+        mode=args.mode,
+        include_arch_test=args.include_arch_test,
+        fallback_task=args.fallback_task
+    )
+
+    print(" ".join(output))
+
+
+if __name__ == "__main__":
+    main()

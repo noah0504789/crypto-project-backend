@@ -110,7 +110,8 @@ class PackageArchitectureTest {
                 "common/common-mongo",
                 "common/common-test",
                 "common/common-actuator-core",
-                "common/common-actuator-webmvc"
+                "common/common-actuator-webmvc",
+                "common/common-actuator-webflux"
         )));
     }
 

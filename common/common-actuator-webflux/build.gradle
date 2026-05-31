@@ -1,0 +1,9 @@
+plugins {
+    id 'crypto-common-library'
+}
+
+dependencies {
+    api project(':common:common-actuator-core')
+
+    implementation(libs.spring.boot.starter.webflux)
+}
