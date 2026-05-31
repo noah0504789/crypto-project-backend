@@ -20,6 +20,7 @@ def create_fake_project(root: Path) -> None:
         include 'common:common-test'
         include 'common:common-actuator-core'
         include 'common:common-actuator-webmvc'
+        include 'common:common-actuator-webflux'
 
         include 'protobuf'
 
@@ -53,6 +54,11 @@ def create_fake_project(root: Path) -> None:
             dependencies {}
         """,
         "common/common-actuator-webmvc/build.gradle": """
+            dependencies {
+                api project(':common:common-actuator-core')
+            }
+        """,
+        "common/common-actuator-webflux/build.gradle": """
             dependencies {
                 api project(':common:common-actuator-core')
             }
@@ -120,7 +126,7 @@ def create_fake_project(root: Path) -> None:
             ext.dockerImageName = "crypto-spring-cloud-api-gateway"
 
             dependencies {
-                implementation project(':common:common-actuator-webmvc')
+                implementation project(':common:common-actuator-webflux')
             }
         """,
         "outbox-poller/build.gradle": """
@@ -140,6 +146,7 @@ def create_fake_project(root: Path) -> None:
         "common/common-core/src/main/java/Dummy.java": "class Dummy {}",
         "common/common-actuator-core/src/main/java/DeploymentReadiness.java": "class DeploymentReadiness {}",
         "common/common-actuator-webmvc/src/main/java/DeploymentReadinessController.java": "class DeploymentReadinessController {}",
+        "common/common-actuator-webflux/src/main/java/DeploymentReadinessWebFluxController.java": "class DeploymentReadinessWebFluxController {}",
         "protobuf/src/main/proto/chat.proto": "syntax = 'proto3';",
         "chat/chat-domain/src/main/java/Chat.java": "class Chat {}",
         "websocket-gateway/websocket-gateway-adapter-in/src/main/java/Handler.java": "class Handler {}",
@@ -228,11 +235,13 @@ def test_read_projects_from_settings_gradle(tmp_path):
     assert ":common:common-redis" in projects
     assert ":common:common-actuator-core" in projects
     assert ":common:common-actuator-webmvc" in projects
+    assert ":common:common-actuator-webflux" in projects
     assert ":protobuf" in projects
     assert ":chat:chat-domain" in projects
     assert ":websocket-gateway:websocket-gateway-adapter-in" in projects
     assert ":websocket-gateway:websocket-gateway-bootstrap" in projects
     assert ":spring-cloud-eureka-server" in projects
+    assert ":spring-cloud-api-gateway" in projects
     assert ":outbox-poller" in projects
     assert projects[":chat:chat-domain"] == tmp_path / "chat/chat-domain"
 
@@ -320,7 +329,7 @@ def test_common_core_change_affects_dependents_transitively(tmp_path):
     assert ":chat:chat-bootstrap" in affected
 
 
-def test_common_actuator_core_change_affects_webmvc_and_execution_modules(tmp_path):
+def test_common_actuator_core_change_affects_webmvc_webflux_and_execution_modules(tmp_path):
     create_fake_project(tmp_path)
 
     tasks = am.calculate_output(
@@ -334,6 +343,7 @@ def test_common_actuator_core_change_affects_webmvc_and_execution_modules(tmp_pa
     assert tasks == [
         ":chat:chat-bootstrap:build",
         ":common:common-actuator-core:build",
+        ":common:common-actuator-webflux:build",
         ":common:common-actuator-webmvc:build",
         ":outbox-poller:build",
         ":spring-cloud-api-gateway:build",
@@ -343,7 +353,7 @@ def test_common_actuator_core_change_affects_webmvc_and_execution_modules(tmp_pa
     ]
 
 
-def test_common_actuator_webmvc_change_affects_execution_modules(tmp_path):
+def test_common_actuator_webmvc_change_affects_servlet_execution_modules(tmp_path):
     create_fake_project(tmp_path)
 
     tasks = am.calculate_output(
@@ -358,9 +368,26 @@ def test_common_actuator_webmvc_change_affects_execution_modules(tmp_path):
         ":chat:chat-bootstrap:build",
         ":common:common-actuator-webmvc:build",
         ":outbox-poller:build",
-        ":spring-cloud-api-gateway:build",
         ":spring-cloud-eureka-server:build",
         ":websocket-gateway:websocket-gateway-bootstrap:build",
+        ":common:common-arch-test:test",
+    ]
+
+
+def test_common_actuator_webflux_change_affects_api_gateway_only(tmp_path):
+    create_fake_project(tmp_path)
+
+    tasks = am.calculate_output(
+        root=tmp_path,
+        files=["common/common-actuator-webflux/src/main/java/DeploymentReadinessWebFluxController.java"],
+        mode="build",
+        include_arch_test=True,
+        fallback_task="serviceCi",
+    )
+
+    assert tasks == [
+        ":common:common-actuator-webflux:build",
+        ":spring-cloud-api-gateway:build",
         ":common:common-arch-test:test",
     ]
 
@@ -635,6 +662,61 @@ def test_calculate_output_docker_for_single_execution_module_change(tmp_path):
     )
 
     assert services == ["outbox-poller=crypto-outbox-poller"]
+
+
+def test_calculate_output_docker_for_common_actuator_webflux_change_affects_api_gateway(tmp_path):
+    create_fake_project(tmp_path)
+
+    services = am.calculate_output(
+        root=tmp_path,
+        files=["common/common-actuator-webflux/src/main/java/DeploymentReadinessWebFluxController.java"],
+        mode="docker",
+        include_arch_test=False,
+        fallback_task="serviceCi",
+    )
+
+    assert services == [
+        "spring-cloud-api-gateway=crypto-spring-cloud-api-gateway",
+    ]
+
+
+def test_calculate_output_docker_for_common_actuator_webmvc_change_affects_servlet_execution_modules(tmp_path):
+    create_fake_project(tmp_path)
+
+    services = am.calculate_output(
+        root=tmp_path,
+        files=["common/common-actuator-webmvc/src/main/java/DeploymentReadinessController.java"],
+        mode="docker",
+        include_arch_test=False,
+        fallback_task="serviceCi",
+    )
+
+    assert services == [
+        "chat/chat-bootstrap=crypto-chat-service",
+        "outbox-poller=crypto-outbox-poller",
+        "spring-cloud-eureka-server=crypto-spring-cloud-eureka-server",
+        "websocket-gateway/websocket-gateway-bootstrap=crypto-websocket-gateway",
+    ]
+
+
+def test_calculate_output_docker_for_common_actuator_core_change_affects_webmvc_webflux_execution_modules(tmp_path):
+    create_fake_project(tmp_path)
+
+    services = am.calculate_output(
+        root=tmp_path,
+        files=["common/common-actuator-core/src/main/java/DeploymentReadiness.java"],
+        mode="docker",
+        include_arch_test=False,
+        fallback_task="serviceCi",
+    )
+
+    assert services == [
+        "chat/chat-bootstrap=crypto-chat-service",
+        "outbox-poller=crypto-outbox-poller",
+        "spring-cloud-api-gateway=crypto-spring-cloud-api-gateway",
+        "spring-cloud-eureka-server=crypto-spring-cloud-eureka-server",
+        "websocket-gateway/websocket-gateway-bootstrap=crypto-websocket-gateway",
+    ]
 
 
 def test_calculate_output_docker_for_global_change_returns_all_docker_services(tmp_path):
