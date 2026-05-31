@@ -4,7 +4,7 @@ import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.stereotype.Component;
 
-@Component("deploymentReadiness")
+@Component
 public class DeploymentReadinessHealthIndicator implements HealthIndicator {
 
     private final DeploymentReadiness readiness;
