@@ -47,7 +47,7 @@ public class RedisAuthorizedClientAdapter implements AuthorizedClientPort {
         String accessTokenKey = RedisKey.ACCESS_TOKEN.keyFor(clientRegistrationId, email);
 
         if (redisAccessTokenAdapter.existsByTokenKey(accessTokenKey)) {
-            return false;
+            remove(email);
         }
 
         List<String> keys = new ArrayList<>();
