@@ -120,6 +120,11 @@ jobs:
               ./scripts/deploy/deploy-outbox-poller-safe.sh "$IMAGE_TAG"
               ;;
 
+            crypto-spring-cloud-api-gateway)
+              echo "Scale input is ignored for API Gateway validated recreate deployment."
+              ./scripts/deploy/deploy-api-gateway-validated-recreate.sh "$IMAGE_TAG"
+              ;;
+
             crypto-user-service)
               ./scripts/deploy/deploy-user-service-bluegreen.sh "$IMAGE_TAG"
               ;;
@@ -138,12 +143,6 @@ jobs:
 
             crypto-chat-service)
               ./scripts/deploy/deploy-chat-service-bluegreen.sh "$IMAGE_TAG"
-              ;;
-
-            crypto-spring-cloud-api-gateway)
-              echo "Blue/green deploy is not implemented yet for $TARGET_SERVICE"
-              echo "Reason: API Gateway is the external entrypoint and needs a front proxy or port-switching strategy."
-              exit 1
               ;;
 
             *)
