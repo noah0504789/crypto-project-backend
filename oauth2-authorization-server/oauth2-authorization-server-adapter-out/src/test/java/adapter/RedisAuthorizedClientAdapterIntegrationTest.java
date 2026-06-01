@@ -119,38 +119,91 @@ class RedisAuthorizedClientAdapterIntegrationTest {
     }
 
     @Test
-    @DisplayName("이미 access token key가 존재하면 저장하지 않고 false를 반환한다")
-    void save_shouldReturnFalse_whenAccessTokenAlreadyExists() {
+    @DisplayName("이미 access token key가 존재하면 기존 토큰을 삭제하고 새 토큰으로 교체한다")
+    void save_shouldReplaceExistingTokens_whenAccessTokenAlreadyExists() {
         // given
         String clientRegistrationId = "my-authorization-server";
         String email = "user@test.com";
 
-        Map<String, String> claims = new LinkedHashMap<>();
-        claims.put("sub", email);
-        claims.put("email", email);
-        claims.put("iat", "1778736600");
-        claims.put("exp", "1778740200");
+        String oldAccessToken = "old-access-token-value";
+        String oldRefreshToken = "old-refresh-token-value";
+
+        String newAccessToken = "new-access-token-value";
+        String newRefreshToken = "new-refresh-token-value";
+
+        Map<String, String> oldClaims = new LinkedHashMap<>();
+        oldClaims.put("sub", email);
+        oldClaims.put("email", email);
+        oldClaims.put("iat", "1778736600");
+        oldClaims.put("exp", "1778740200");
+
+        Map<String, String> newClaims = new LinkedHashMap<>();
+        newClaims.put("sub", email);
+        newClaims.put("email", email);
+        newClaims.put("iat", "1778740300");
+        newClaims.put("exp", "1778743900");
+
+        String oldClaimKey = RedisKey.ACCESS_CLAIMS.keyFor(oldAccessToken);
+        String oldRefreshEmailKey = RedisKey.REFRESH_TOKEN.keyFor(clientRegistrationId, oldRefreshToken);
+
+        String newClaimKey = RedisKey.ACCESS_CLAIMS.keyFor(newAccessToken);
+        String accessTokenKey = RedisKey.ACCESS_TOKEN.keyFor(clientRegistrationId, email);
+        String newRefreshEmailKey = RedisKey.REFRESH_TOKEN.keyFor(clientRegistrationId, newRefreshToken);
+        String refreshTokenKey = RedisKey.REFRESH_TOKEN.keyFor(clientRegistrationId, email);
+        String tokensSetKey = RedisKey.TOKENS_SET.keyFor(email);
 
         boolean firstResult = redisAuthorizedClientAdapter.save(
                 clientRegistrationId,
                 email,
-                "access-token-value",
-                "refresh-token-value",
-                claims
+                oldAccessToken,
+                oldRefreshToken,
+                oldClaims
         );
 
         // when
         boolean secondResult = redisAuthorizedClientAdapter.save(
                 clientRegistrationId,
                 email,
-                "another-access-token-value",
-                "another-refresh-token-value",
-                claims
+                newAccessToken,
+                newRefreshToken,
+                newClaims
         );
 
         // then
         assertThat(firstResult).isTrue();
-        assertThat(secondResult).isFalse();
+        assertThat(secondResult).isTrue();
+
+        assertThat(stringRedisTemplate.hasKey(oldClaimKey)).isFalse();
+        assertThat(stringRedisTemplate.hasKey(oldRefreshEmailKey)).isFalse();
+
+        assertThat(stringRedisTemplate.opsForHash().entries(newClaimKey))
+                .containsEntry("sub", email)
+                .containsEntry("email", email)
+                .containsEntry("iat", "1778740300")
+                .containsEntry("exp", "1778743900");
+
+        assertThat(stringRedisTemplate.opsForValue().get(accessTokenKey))
+                .isEqualTo(newAccessToken);
+
+        assertThat(stringRedisTemplate.opsForValue().get(newRefreshEmailKey))
+                .isEqualTo(email);
+
+        assertThat(stringRedisTemplate.opsForValue().get(refreshTokenKey))
+                .isEqualTo(newRefreshToken);
+
+        assertThat(stringRedisTemplate.opsForSet().members(tokensSetKey))
+                .containsExactlyInAnyOrder(
+                        newClaimKey,
+                        accessTokenKey,
+                        newRefreshEmailKey,
+                        refreshTokenKey
+                );
+
+        assertThat(stringRedisTemplate.opsForSet().members(tokensSetKey))
+                .doesNotContain(
+                        oldClaimKey,
+                        oldRefreshEmailKey
+                );
     }
 
     @Test

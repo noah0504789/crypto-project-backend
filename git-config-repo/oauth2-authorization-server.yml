@@ -23,7 +23,7 @@ mysql:
   password: ${mysql.user.password} # userpass
   db: ${mysql.user.db} # user
 
-logging:
-  level:
-    org.springframework.security.oauth2.server.authorization: DEBUG
-    org.springframework.security.oauth2: DEBUG
+#logging:
+#  level:
+#    org.springframework.security.oauth2.server.authorization: DEBUG
+#    org.springframework.security.oauth2: DEBUG

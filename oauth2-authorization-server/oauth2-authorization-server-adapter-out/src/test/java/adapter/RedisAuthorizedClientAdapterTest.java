@@ -59,17 +59,24 @@ class RedisAuthorizedClientAdapterTest {
     }
 
     @Test
-    @DisplayName("access token key가 이미 존재하면 false를 반환하고 Lua를 실행하지 않는다")
-    void save_shouldReturnFalseAndNotExecuteLua_whenAccessTokenAlreadyExists() {
+    @DisplayName("access token key가 이미 존재하면 기존 토큰을 삭제한 뒤 새 토큰을 저장한다")
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void save_shouldRemoveExistingTokensAndStoreNewTokens_whenAccessTokenAlreadyExists() {
         // given
         String clientRegistrationId = "my-authorization-server";
         String email = "user@test.com";
-        String accessToken = "access-token";
-        String refreshToken = "refresh-token";
+        String accessToken = "new-access-token";
+        String refreshToken = "new-refresh-token";
 
         String accessTokenKey = RedisKey.ACCESS_TOKEN.keyFor(clientRegistrationId, email);
 
-        Map<String, String> claims = Map.of(
+        Map<String, String> claims = new LinkedHashMap<>();
+        claims.put("sub", email);
+        claims.put("email", email);
+        claims.put("iat", "1778736600");
+        claims.put("exp", "1778740200");
+
+        List<String> claimsFlat = List.of(
                 "sub", email,
                 "email", email,
                 "iat", "1778736600",
@@ -78,6 +85,24 @@ class RedisAuthorizedClientAdapterTest {
 
         given(redisAccessTokenAdapter.existsByTokenKey(accessTokenKey))
                 .willReturn(true);
+
+        given(redisAccessTokenAdapter.getTTL())
+                .willReturn(Duration.ofSeconds(3600));
+
+        given(redisRefreshTokenAdapter.getTTL())
+                .willReturn(Duration.ofSeconds(604800));
+
+        given(redisAccessTokenAdapter.getClaimFlattenMap(claims))
+                .willReturn(claimsFlat);
+
+        ArgumentCaptor<List<String>> deleteKeysCaptor =
+                ArgumentCaptor.forClass(List.class);
+
+        ArgumentCaptor<List<String>> storeKeysCaptor =
+                ArgumentCaptor.forClass(List.class);
+
+        ArgumentCaptor<Object[]> storeArgsCaptor =
+                ArgumentCaptor.forClass(Object[].class);
 
         // when
         boolean result = sut.save(
@@ -89,19 +114,48 @@ class RedisAuthorizedClientAdapterTest {
         );
 
         // then
-        assertThat(result).isFalse();
+        assertThat(result).isTrue();
 
         then(stringRedisTemplate)
-                .should(never())
-                .execute(any(RedisScript.class), anyList(), any(Object[].class));
+                .should()
+                .execute(
+                        eq(deleteTokensLua),
+                        deleteKeysCaptor.capture()
+                );
 
-        then(redisAccessTokenAdapter)
-                .should(never())
-                .getTTL();
+        assertThat(deleteKeysCaptor.getValue())
+                .containsExactly(RedisKey.TOKENS_SET.keyFor(email));
 
-        then(redisRefreshTokenAdapter)
-                .should(never())
-                .getTTL();
+        then(stringRedisTemplate)
+                .should()
+                .execute(
+                        eq(storeTokensLua),
+                        storeKeysCaptor.capture(),
+                        storeArgsCaptor.capture()
+                );
+
+        assertThat(storeKeysCaptor.getValue())
+                .containsExactly(
+                        RedisKey.ACCESS_CLAIMS.keyFor(accessToken),
+                        RedisKey.ACCESS_TOKEN.keyFor(clientRegistrationId, email),
+                        RedisKey.REFRESH_TOKEN.keyFor(clientRegistrationId, refreshToken),
+                        RedisKey.REFRESH_TOKEN.keyFor(clientRegistrationId, email),
+                        RedisKey.TOKENS_SET.keyFor(email)
+                );
+
+        assertThat(storeArgsCaptor.getValue())
+                .containsExactly(
+                        "3600",
+                        "604800",
+                        "4",
+                        "sub", email,
+                        "email", email,
+                        "iat", "1778736600",
+                        "exp", "1778740200",
+                        accessToken,
+                        refreshToken,
+                        email
+                );
     }
 
     @Test
