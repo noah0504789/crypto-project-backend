@@ -8,11 +8,12 @@ on:
         required: true
         type: choice
         options:
-          - crypto-chat-service
+          - crypto-spring-cloud-api-gateway
           - crypto-websocket-gateway
-          - crypto-user-service
           - crypto-oauth2-authorization-server
           - crypto-oauth2-client
+          - crypto-chat-service
+          - crypto-user-service
           - crypto-outbox-poller
       image_tag:
         description: "Docker image tag to deploy"
@@ -36,10 +37,60 @@ jobs:
           echo "Runner user: $(whoami)"
           echo "Target service: ${{ inputs.service }}"
           echo "Image tag: ${{ inputs.image_tag }}"
-          echo "Working directory: $(pwd)"
           date
 
       - name: Validate Docker access
         run: |
           docker --version
           docker compose version
+
+      - name: Update infra repository
+        env:
+          INFRA_REPO_DIR: ${{ vars.INFRA_REPO_DIR }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${INFRA_REPO_DIR:-}" ]; then
+            echo "ERROR: INFRA_REPO_DIR variable is empty."
+            exit 1
+          fi
+
+          cd "$INFRA_REPO_DIR"
+          git pull --ff-only
+
+      - name: Deploy selected service
+        env:
+          INFRA_REPO_DIR: ${{ vars.INFRA_REPO_DIR }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          TARGET_SERVICE: ${{ inputs.service }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${INFRA_REPO_DIR:-}" ]; then
+            echo "ERROR: INFRA_REPO_DIR variable is empty."
+            exit 1
+          fi
+
+          if [ -z "${DOCKERHUB_USERNAME:-}" ]; then
+            echo "ERROR: DOCKERHUB_USERNAME secret is empty."
+            exit 1
+          fi
+
+          cd "$INFRA_REPO_DIR/service"
+
+          case "$TARGET_SERVICE" in
+            crypto-outbox-poller)
+              ./scripts/deploy/deploy-outbox-poller-safe.sh "$IMAGE_TAG"
+              ;;
+
+            crypto-spring-cloud-api-gateway|crypto-websocket-gateway|crypto-oauth2-authorization-server|crypto-oauth2-client|crypto-chat-service|crypto-user-service)
+              echo "Blue/green deploy is not implemented yet for $TARGET_SERVICE"
+              exit 1
+              ;;
+
+            *)
+              echo "Unknown service: $TARGET_SERVICE"
+              exit 1
+              ;;
+          esac
