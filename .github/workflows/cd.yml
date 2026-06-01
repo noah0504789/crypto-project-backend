@@ -79,12 +79,22 @@ jobs:
 
           cd "$INFRA_REPO_DIR/service"
 
+          if [ -f .env ]; then
+            set -a
+            . ./.env
+            set +a
+          fi
+
           case "$TARGET_SERVICE" in
             crypto-outbox-poller)
               ./scripts/deploy/deploy-outbox-poller-safe.sh "$IMAGE_TAG"
               ;;
 
-            crypto-spring-cloud-api-gateway|crypto-websocket-gateway|crypto-oauth2-authorization-server|crypto-oauth2-client|crypto-chat-service|crypto-user-service)
+            crypto-user-service)
+              ./scripts/deploy/deploy-user-service-bluegreen.sh "$IMAGE_TAG"
+              ;;
+
+            crypto-spring-cloud-api-gateway|crypto-websocket-gateway|crypto-oauth2-authorization-server|crypto-oauth2-client|crypto-chat-service)
               echo "Blue/green deploy is not implemented yet for $TARGET_SERVICE"
               exit 1
               ;;
