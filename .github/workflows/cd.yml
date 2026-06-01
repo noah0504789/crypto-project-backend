@@ -75,6 +75,7 @@ jobs:
         env:
           INFRA_REPO_DIR: ${{ vars.INFRA_REPO_DIR }}
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
           TARGET_SERVICE: ${{ inputs.service }}
           IMAGE_TAG: ${{ inputs.image_tag }}
           TARGET_SCALE: ${{ inputs.scale }}
@@ -125,16 +126,18 @@ jobs:
               ./scripts/deploy/deploy-api-gateway-validated-recreate.sh "$IMAGE_TAG"
               ;;
 
-            crypto-user-service)
-              ./scripts/deploy/deploy-user-service-bluegreen.sh "$IMAGE_TAG"
+            crypto-oauth2-authorization-server)
+              echo "Scale input is ignored for OAuth2 Authorization Server validated recreate deployment."
+              ./scripts/deploy/deploy-oauth2-authorization-server-validated-recreate.sh "$IMAGE_TAG"
               ;;
 
             crypto-oauth2-client)
-              ./scripts/deploy/deploy-oauth2-client-bluegreen.sh "$IMAGE_TAG"
+              echo "Scale input is ignored for OAuth2 Client validated recreate deployment."
+              ./scripts/deploy/deploy-oauth2-client-validated-recreate.sh "$IMAGE_TAG"
               ;;
 
-            crypto-oauth2-authorization-server)
-              ./scripts/deploy/deploy-oauth2-authorization-server-bluegreen.sh "$IMAGE_TAG"
+            crypto-user-service)
+              ./scripts/deploy/deploy-user-service-bluegreen.sh "$IMAGE_TAG"
               ;;
 
             crypto-websocket-gateway)
