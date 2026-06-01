@@ -124,8 +124,25 @@ jobs:
               ./scripts/deploy/deploy-user-service-bluegreen.sh "$IMAGE_TAG"
               ;;
 
-            crypto-spring-cloud-api-gateway|crypto-websocket-gateway|crypto-oauth2-authorization-server|crypto-oauth2-client|crypto-chat-service)
+            crypto-oauth2-client)
+              ./scripts/deploy/deploy-oauth2-client-bluegreen.sh "$IMAGE_TAG"
+              ;;
+
+            crypto-oauth2-authorization-server)
+              ./scripts/deploy/deploy-oauth2-authorization-server-bluegreen.sh "$IMAGE_TAG"
+              ;;
+
+            crypto-websocket-gateway)
+              ./scripts/deploy/deploy-websocket-gateway-bluegreen.sh "$IMAGE_TAG"
+              ;;
+
+            crypto-chat-service)
+              ./scripts/deploy/deploy-chat-service-bluegreen.sh "$IMAGE_TAG"
+              ;;
+
+            crypto-spring-cloud-api-gateway)
               echo "Blue/green deploy is not implemented yet for $TARGET_SERVICE"
+              echo "Reason: API Gateway is the external entrypoint and needs a front proxy or port-switching strategy."
               exit 1
               ;;
 
