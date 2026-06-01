@@ -50,6 +50,11 @@ public class ReactiveSecurityConfig {
                 ))
                 .authorizeExchange(authz -> authz
                         .pathMatchers(HttpMethod.OPTIONS, apiPathProperties.optionsPattern()).permitAll()
+
+                        // Deployment control endpoint
+                        // JWT 인증은 우회시키고, 실제 배포 토큰 검증은 DeploymentController/Filter에서 처리
+                        .pathMatchers(HttpMethod.POST, "/internal/deployment/**").permitAll()
+
                         .pathMatchers(apiPathProperties.oauth2().pattern(), apiPathProperties.oauth2().loginCallbackPattern()).permitAll()
                         .pathMatchers(HttpMethod.GET, apiPathProperties.websocket().infoPattern()).permitAll()
                         .pathMatchers(apiPathProperties.websocket().msgPattern()).permitAll()
