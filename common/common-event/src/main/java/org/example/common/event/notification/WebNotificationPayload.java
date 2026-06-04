@@ -1,5 +1,7 @@
 package org.example.common.event.notification;
 
+import org.example.common.event.TypedPayload;
+
 import java.util.Map;
 
 public record WebNotificationPayload(
@@ -12,18 +14,19 @@ public record WebNotificationPayload(
         Map<String, Object> data
 ) {
 
-    public WebNotificationPayload(
-            String type,
-            String title,
-            String body,
-            long createdAt,
-            String targetType,
-            String targetId
-    ) {
-        this(type, title, body, createdAt, targetType, targetId, Map.of());
+    public WebNotificationPayload {
+        data = data == null ? Map.of() : Map.copyOf(data);
     }
 
-    public static WebNotificationPayload fromData(Map<String, Object> data) {
-        return new WebNotificationPayload(null, null, null, 0L, null, null, Map.copyOf(data));
+    public static WebNotificationPayload fromTypedPayload(TypedPayload payload) {
+        return new WebNotificationPayload(
+                null,
+                null,
+                null,
+                0L,
+                null,
+                null,
+                payload.toMap()
+        );
     }
 }

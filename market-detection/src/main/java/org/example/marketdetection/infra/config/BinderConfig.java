@@ -39,9 +39,9 @@ public class BinderConfig {
     }
 
     @Bean
-    public Consumer<KStream<String, UpbitTickerEvent>> upbitTickerWatcherEventConsumer(StreamBridge streamBridge, ObjectMapper objectMapper) {
+    public Consumer<KStream<String, UpbitTickerEvent>> upbitTickerWatcherEventConsumer(StreamBridge streamBridge) {
         return input -> input.process(
-                () -> new UpbitTickerProcessor(streamBridge, objectMapper, properties),
+                () -> new UpbitTickerProcessor(streamBridge, properties),
                 Named.as("upbit-ticker-watcher"),
                 properties.store().ticker().name()
         );

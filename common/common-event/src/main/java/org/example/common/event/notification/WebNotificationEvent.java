@@ -3,6 +3,8 @@ package org.example.common.event.notification;
 import org.example.common.enums.KafkaTopic;
 import org.example.common.event.KafkaEvent;
 import org.example.common.event.ProducibleEvent;
+import org.example.common.event.TypedKey;
+import org.example.common.event.TypedPayload;
 
 import java.util.Map;
 
@@ -11,37 +13,34 @@ import static org.example.common.enums.KafkaTopic.NOTIFICATION_WEB;
 public record WebNotificationEvent(
         String eventType,
         WebNotificationPayload payload,
-        String partitionKey,
-        String partitionKeyField
+        String partitionKey
 ) implements KafkaEvent, ProducibleEvent {
 
-    public WebNotificationEvent(String eventType, WebNotificationPayload payload, String partitionKey) {
-        this(eventType, payload, partitionKey, null);
+    public WebNotificationEvent(String eventType, TypedPayload payload, TypedKey<?> partitionKey) {
+        this(
+                eventType,
+                WebNotificationPayload.fromTypedPayload(payload),
+                resolvePartitionKey(payload, partitionKey)
+        );
     }
 
-    public WebNotificationEvent(String eventType, Map<String, Object> payload, String partitionKeyField) {
-        this(eventType, WebNotificationPayload.fromData(payload), null, partitionKeyField);
+    private static String resolvePartitionKey(TypedPayload payload, TypedKey<?> partitionKey) {
+        Object value = payload.get(partitionKey);
+
+        if (value == null) {
+            throw new IllegalStateException("Notification partition key is missing. field=" + partitionKey.name());
+        }
+
+        return value.toString();
     }
 
     @Override
     public String getPartitionKey() {
-        if (partitionKey != null && !partitionKey.isBlank()) {
-            return partitionKey;
-        }
-
-        if (partitionKeyField == null || partitionKeyField.isBlank()) {
+        if (partitionKey == null || partitionKey.isBlank()) {
             throw new IllegalStateException("Notification partition key is missing.");
         }
 
-        Object payloadPartitionKey = payload.data().get(partitionKeyField);
-
-        if (payloadPartitionKey == null) {
-            throw new IllegalStateException(
-                    "Notification partition key field is missing. field=" + partitionKeyField
-            );
-        }
-
-        return payloadPartitionKey.toString();
+        return partitionKey;
     }
 
     @Override

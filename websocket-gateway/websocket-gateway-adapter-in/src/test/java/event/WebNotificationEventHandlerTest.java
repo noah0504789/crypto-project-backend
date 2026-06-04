@@ -12,6 +12,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Mockito.*;
 
@@ -34,7 +36,8 @@ class WebNotificationEventHandlerTest {
             "새 메시지가 도착했습니다.",
             1_767_225_600_000L,
             "CHAT_ROOM",
-            "room-1"
+            "room-1",
+            Map.of()
     );
 
     @Test

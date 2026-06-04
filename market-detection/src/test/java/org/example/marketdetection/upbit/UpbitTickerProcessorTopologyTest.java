@@ -1,6 +1,5 @@
 package org.example.marketdetection.upbit;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.common.test.config.TestBootApplication;
 import config.TestPropertiesConfig;
 import config.TestUpbitExternalDependencyConfig;
@@ -56,9 +55,7 @@ class UpbitTickerProcessorTopologyTest {
     @Autowired
     private UpbitProperties properties;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
     private StreamBridge streamBridge;
-
     private TopologyTestDriver testDriver;
     private TestInputTopic<String, UpbitTickerEvent> inputTopic;
 
@@ -244,7 +241,7 @@ class UpbitTickerProcessorTopologyTest {
         );
 
         stream.process(
-                () -> new UpbitTickerProcessor(streamBridge, objectMapper, properties),
+                () -> new UpbitTickerProcessor(streamBridge, properties),
                 Named.as("upbit-ticker-watcher"),
                 storeName
         );

@@ -1,15 +1,15 @@
 package org.example.marketdetection.upbit;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
 import org.apache.kafka.streams.state.WindowStore;
 import org.apache.kafka.streams.state.WindowStoreIterator;
+import org.example.common.event.TypedPayload;
 import org.example.common.event.notification.WebNotificationEvent;
 import org.example.marketdetection.upbit.event.UpbitTickerAlertEvent;
+import org.example.marketdetection.upbit.event.UpbitTickerAlertPayloadKeys;
 import org.example.marketdetection.upbit.event.UpbitTickerEvent;
 import org.example.marketdetection.upbit.event.UpbitTickerValue;
 import org.example.marketdetection.infra.properties.UpbitProperties;
@@ -17,13 +17,11 @@ import org.springframework.cloud.stream.function.StreamBridge;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 @RequiredArgsConstructor
 public class UpbitTickerProcessor implements Processor<String, UpbitTickerEvent, Void, Void> {
 
     private final StreamBridge streamBridge;
-    private final ObjectMapper objectMapper;
     private final UpbitProperties properties;
 
     private WindowStore<String, UpbitTickerValue> upbitTickerStore;
@@ -128,15 +126,10 @@ public class UpbitTickerProcessor implements Processor<String, UpbitTickerEvent,
     }
 
     private void publishNotification(UpbitTickerAlertEvent event) {
-        Map<String, Object> payload = objectMapper.convertValue(
-                event,
-                new TypeReference<Map<String, Object>>() {}
-        );
-
         WebNotificationEvent notification = new WebNotificationEvent(
                 event.getClass().getSimpleName(),
-                payload,
-                "code"
+                event.toNotificationData(),
+                UpbitTickerAlertPayloadKeys.CODE
         );
 
         streamBridge.send(
