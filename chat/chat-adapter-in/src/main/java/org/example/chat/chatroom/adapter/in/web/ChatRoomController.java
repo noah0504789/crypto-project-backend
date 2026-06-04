@@ -3,10 +3,7 @@ package org.example.chat.chatroom.adapter.in.web;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
-import org.example.chat.chatroom.application.dto.ChatRoomCreateRequest;
-import org.example.chat.chatroom.application.dto.ChatRoomCursor;
-import org.example.chat.chatroom.application.dto.ChatRoomUpdateRequest;
-import org.example.chat.chatroom.application.dto.MyChatRoomCursor;
+import org.example.chat.chatroom.application.dto.*;
 import org.example.chat.common.dto.CursorPage;
 import org.example.chat.chatroom.adapter.in.dto.ChatRoomResponse;
 import org.example.chat.chatroom.adapter.in.dto.MyChatRoomResponse;
@@ -157,13 +154,13 @@ public class ChatRoomController {
             @PathVariable("roomId") @NotBlank String roomId,
             @RequestBody @Valid ChatRoomUpdateRequest request
     ) {
-        Map<String, Object> updated = request.toUpdateMap();
+        ChatRoomUpdateCommand command = request.toCommand();
 
-        if (updated.isEmpty()) {
+        if (command.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
 
-        chatRoomCommandUseCase.update(roomId, updated);
+        chatRoomCommandUseCase.update(roomId, command);
 
         return ResponseEntity.noContent().build();
     }

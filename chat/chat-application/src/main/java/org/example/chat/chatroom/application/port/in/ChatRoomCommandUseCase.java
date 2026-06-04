@@ -1,9 +1,8 @@
 package org.example.chat.chatroom.application.port.in;
 
 import org.example.chat.chatroom.application.dto.ChatRoomCreateRequest;
+import org.example.chat.chatroom.application.dto.ChatRoomUpdateCommand;
 import org.example.chat.chatroom.domain.model.ChatRoom;
-
-import java.util.Map;
 
 public interface ChatRoomCommandUseCase {
 
@@ -11,7 +10,7 @@ public interface ChatRoomCommandUseCase {
 
     void save(String hostId, ChatRoomCreateRequest request);
 
-    void update(String roomId, Map<String, Object> updated);
+    void update(String roomId, ChatRoomUpdateCommand command);
 
     boolean join(String roomId, String memberId);
 
