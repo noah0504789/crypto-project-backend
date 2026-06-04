@@ -1,6 +1,5 @@
 package org.example.marketdetection.upbit;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
@@ -34,6 +33,7 @@ class UpbitTickerProcessorTest {
     private static final String STORE_NAME = "upbit-ticker-store";
     private static final String CODE = "KRW-BTC";
     private static final long TIMESTAMP = 1_000_000L;
+    private final UpbitProperties properties = createProperties();
 
     @Mock
     private StreamBridge streamBridge;
@@ -44,8 +44,6 @@ class UpbitTickerProcessorTest {
     @Mock
     private WindowStore<String, UpbitTickerValue> upbitTickerStore;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
-    private final UpbitProperties properties = createProperties();
     private UpbitTickerProcessor sut;
 
     @BeforeEach
@@ -54,7 +52,6 @@ class UpbitTickerProcessorTest {
 
         sut = new UpbitTickerProcessor(
                 streamBridge,
-                objectMapper,
                 properties
         );
 
