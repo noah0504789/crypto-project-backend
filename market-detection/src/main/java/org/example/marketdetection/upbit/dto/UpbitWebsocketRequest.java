@@ -20,6 +20,10 @@ public record UpbitWebsocketRequest(
         List<Object> payload
 ) {
 
+    public UpbitWebsocketRequest {
+        payload = List.copyOf(payload);
+    }
+
     public static Builder builder(String ticket) {
         return new Builder(ticket);
     }
@@ -29,7 +33,7 @@ public record UpbitWebsocketRequest(
         private final String ticket;
         private final List<TypeField> typeFields = new ArrayList<>();
 
-        public Builder(String ticket) {
+        private Builder(String ticket) {
             this.ticket = ticket;
         }
 
@@ -43,7 +47,7 @@ public record UpbitWebsocketRequest(
             result.add(new TicketField(ticket));
             result.addAll(typeFields);
 
-            return new UpbitWebsocketRequest(List.copyOf(result));
+            return new UpbitWebsocketRequest(result);
         }
     }
 
@@ -58,5 +62,9 @@ public record UpbitWebsocketRequest(
 
             @JsonProperty("is_only_realtime")
             Boolean isOnlyRealtime
-    ) { }
+    ) {
+        private TypeField {
+            codes = List.copyOf(codes);
+        }
+    }
 }
