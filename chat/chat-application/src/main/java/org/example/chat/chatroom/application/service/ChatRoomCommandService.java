@@ -8,6 +8,7 @@ import org.example.chat.chatroom.application.dto.ChatRoomUpdateCommand;
 import org.example.chat.chatroom.application.port.in.ChatRoomCommandUseCase;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
+import org.example.chat.chatroom.domain.event.payload.ChatRoomUpdatedPayload;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
@@ -51,12 +52,11 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
 
         String oldTitle = domain.getTitle();
 
-        Map<String, Object> updated = command.toUpdateMap();
-
-        domain.update(updated);
+        ChatRoomUpdatedPayload payload = command.toPayload();
+        domain.update(payload);
 
         try {
-            cache.update(domain.getId(), updated, oldTitle);
+            cache.update(domain.getId(), payload.toUpdateMap(), oldTitle);
         } catch (RuntimeException e) {
             log.warn("[cache] chatroom update failed. roomId={}", domain.getId(), e);
 

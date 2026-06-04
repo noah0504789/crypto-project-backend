@@ -5,6 +5,7 @@ import org.example.chat.chatroom.domain.event.payload.ChatRoomPayload;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.application.service.ChatRoomEventService;
+import org.example.chat.chatroom.domain.event.payload.ChatRoomUpdatedPayload;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.junit.jupiter.api.DisplayName;
@@ -90,9 +91,10 @@ class ChatRoomEventServiceTest {
             // given
             ChatRoomUpdatedEvent event = mock(ChatRoomUpdatedEvent.class);
 
-            Map<String, Object> updated = Map.of(
-                    "title", "수정된 제목",
-                    "description", "수정된 설명"
+            ChatRoomUpdatedPayload updated = new ChatRoomUpdatedPayload(
+                    "수정된 제목",
+                    "수정된 설명",
+                    null
             );
 
             when(event.getId()).thenReturn(ROOM_ID);
@@ -102,7 +104,7 @@ class ChatRoomEventServiceTest {
             service.handle(event, TX_ID);
 
             // then
-            verify(persistence).updateAndReturn(ROOM_ID, updated);
+            verify(persistence).updateAndReturn(ROOM_ID, updated.toUpdateMap());
             verifyNoInteractions(cache);
         }
 

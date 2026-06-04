@@ -1,8 +1,10 @@
 package chatroom.service;
 
+import org.example.chat.chatroom.application.dto.ChatRoomUpdateCommand;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.application.service.ChatRoomCommandService;
+import org.example.chat.chatroom.domain.event.payload.ChatRoomUpdatedPayload;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
@@ -45,8 +47,6 @@ class ChatRoomCommandServiceTest {
     private final Long lastMsgMs = 100L;
     private final String oldTitle = "old-title";
     private final String newTitle = "new-title";
-    private final String field = "title";
-    private final String value = "updated";
 
     @Nested
     @DisplayName("save")
@@ -226,21 +226,29 @@ class ChatRoomCommandServiceTest {
         void update_should_find_domain_then_update_domain_and_cache() {
             // given
             ChatRoom domain = mock(ChatRoom.class);
-            Map<String, Object> updated = Map.of(field, value);
+
+            ChatRoomUpdateCommand command = new ChatRoomUpdateCommand(
+                    "수정된 제목",
+                    "수정된 설명",
+                    ChatRoomCategory.FREE
+            );
+
+            ChatRoomUpdatedPayload payload = command.toPayload();
+            Map<String, Object> updated = payload.toUpdateMap();
 
             when(persistence.findById(id)).thenReturn(Optional.of(domain));
             when(domain.getId()).thenReturn(id);
             when(domain.getTitle()).thenReturn(oldTitle);
 
             // when
-            sut.update(id, updated);
+            sut.update(id, command);
 
             // then
             InOrder inOrder = inOrder(persistence, domain, cache);
 
             inOrder.verify(persistence).findById(id);
             inOrder.verify(domain).getTitle();
-            inOrder.verify(domain).update(updated);
+            inOrder.verify(domain).update(payload);
             inOrder.verify(domain).getId();
             inOrder.verify(cache).update(id, updated, oldTitle);
 
@@ -252,7 +260,15 @@ class ChatRoomCommandServiceTest {
         void update_should_not_throw_even_if_cache_update_fails() {
             // given
             ChatRoom domain = mock(ChatRoom.class);
-            Map<String, Object> updated = Map.of(field, value);
+
+            ChatRoomUpdateCommand command = new ChatRoomUpdateCommand(
+                    "수정된 제목",
+                    "수정된 설명",
+                    ChatRoomCategory.FREE
+            );
+
+            ChatRoomUpdatedPayload payload = command.toPayload();
+            Map<String, Object> updated = payload.toUpdateMap();
 
             when(persistence.findById(id)).thenReturn(Optional.of(domain));
             when(domain.getId()).thenReturn(id);
@@ -263,11 +279,11 @@ class ChatRoomCommandServiceTest {
                     .update(id, updated, oldTitle);
 
             // when & then
-            assertDoesNotThrow(() -> sut.update(id, updated));
+            assertDoesNotThrow(() -> sut.update(id, command));
 
             verify(persistence).findById(id);
             verify(domain).getTitle();
-            verify(domain).update(updated);
+            verify(domain).update(payload);
             verify(cache).update(id, updated, oldTitle);
             verify(domain).cacheUpdate(oldTitle);
         }
@@ -276,12 +292,16 @@ class ChatRoomCommandServiceTest {
         @DisplayName("수정할 채팅방이 없으면 ChatRoomNotFoundException을 던지고 캐시를 갱신하지 않는다")
         void update_should_throw_if_domain_not_found() {
             // given
-            Map<String, Object> updated = Map.of(field, value);
+            ChatRoomUpdateCommand command = new ChatRoomUpdateCommand(
+                    "수정된 제목",
+                    "수정된 설명",
+                    ChatRoomCategory.FREE
+            );
 
             when(persistence.findById(id)).thenReturn(Optional.empty());
 
             // when & then
-            assertThrows(ChatRoomNotFoundException.class, () -> sut.update(id, updated));
+            assertThrows(ChatRoomNotFoundException.class, () -> sut.update(id, command));
 
             verify(persistence).findById(id);
             verify(cache, never()).update(anyString(), anyMap(), anyString());
@@ -292,22 +312,34 @@ class ChatRoomCommandServiceTest {
         void update_should_throw_if_domain_update_fails() {
             // given
             ChatRoom domain = mock(ChatRoom.class);
-            Map<String, Object> updated = Map.of(field, value);
+
+            ChatRoomUpdateCommand command = new ChatRoomUpdateCommand(
+                    "수정된 제목",
+                    "수정된 설명",
+                    ChatRoomCategory.FREE
+            );
+
+            ChatRoomUpdatedPayload payload = command.toPayload();
 
             when(persistence.findById(id)).thenReturn(Optional.of(domain));
             when(domain.getTitle()).thenReturn(oldTitle);
 
             doThrow(new RuntimeException("domain update failed"))
                     .when(domain)
-                    .update(updated);
+                    .update(payload);
 
             // when & then
-            assertThrows(RuntimeException.class, () -> sut.update(id, updated));
+            assertThrows(RuntimeException.class, () -> sut.update(id, command));
 
-            verify(persistence).findById(id);
-            verify(domain).getTitle();
-            verify(domain).update(updated);
+            InOrder inOrder = inOrder(persistence, domain);
+
+            inOrder.verify(persistence).findById(id);
+            inOrder.verify(domain).getTitle();
+            inOrder.verify(domain).update(payload);
+
+            verify(domain, never()).getId();
             verify(cache, never()).update(anyString(), anyMap(), anyString());
+            verify(domain, never()).cacheUpdate(anyString());
         }
     }
 

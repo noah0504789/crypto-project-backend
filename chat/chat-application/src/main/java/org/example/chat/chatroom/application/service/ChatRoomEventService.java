@@ -42,7 +42,7 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
     )
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomUpdatedEvent event, String txId) {
-        persistence.updateAndReturn(event.getId(), event.getUpdated());
+        persistence.updateAndReturn(event.getId(), event.getUpdated().toUpdateMap());
     }
 
     @Retryable(
