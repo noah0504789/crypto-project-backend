@@ -1,5 +1,6 @@
 package org.example.common.mongo.converter;
 
+import org.example.common.time.ServiceZoneUtils;
 import org.springframework.core.convert.converter.Converter;
 
 import java.time.LocalDateTime;
@@ -10,6 +11,6 @@ public class DateToLocalDateTimeConverter implements Converter<Date, LocalDateTi
 
     @Override
     public LocalDateTime convert(Date source) {
-        return LocalDateTime.ofInstant(source.toInstant(), ZoneId.systemDefault());
+        return LocalDateTime.ofInstant(source.toInstant(), ServiceZoneUtils.ZONE_ID);
     }
 }

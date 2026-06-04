@@ -15,6 +15,7 @@ import org.example.chat.chatroom.domain.exception.ChatRoomMembershipNotFoundExce
 import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
+import org.example.common.time.ServiceZoneUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -392,7 +393,7 @@ class ChatMessageCommandServiceTest {
                 .roomId(roomId)
                 .writerId(writerId)
                 .content(content)
-                .createdAt(LocalDateTime.ofInstant(createdAt, ZoneId.systemDefault()))
+                .createdAt(LocalDateTime.ofInstant(createdAt, ServiceZoneUtils.ZONE_ID))
                 .eventList(new ChatMessageEventList())
                 .dlqEventList(new ChatMessageDlqEventList())
                 .build();

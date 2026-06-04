@@ -36,6 +36,6 @@ public record MyChatRoomPayload(
     }
 
 //    public LocalDateTime toLocalDateTime() {
-//        return LocalDateTime.ofInstant(createdAt, ZoneId.systemDefault());
+//        return LocalDateTime.ofInstant(createdAt, ServiceZoneUtils.ZONE_ID);
 //    }
 }

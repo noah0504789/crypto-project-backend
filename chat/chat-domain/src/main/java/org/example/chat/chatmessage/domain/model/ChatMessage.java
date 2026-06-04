@@ -12,6 +12,7 @@ import org.example.chat.chatmessage.domain.event.dlq.ChatMessagePersistDlqEvent;
 import org.example.chat.chatmessage.domain.event.ChatMessagePersistEvent;
 import org.example.chat.chatroom.domain.event.payload.MyChatRoomPayload;
 import org.example.chat.chatroom.domain.event.MyChatRoomBadgeEvent;
+import org.example.common.time.ServiceZoneUtils;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -50,7 +51,7 @@ public class ChatMessage {
                 .roomId(roomId)
                 .writerId(writerId)
                 .content(content)
-                .createdAt(LocalDateTime.ofInstant(createdAt, ZoneId.systemDefault()))
+                .createdAt(LocalDateTime.ofInstant(createdAt, ServiceZoneUtils.ZONE_ID))
                 .eventList(new ChatMessageEventList())
                 .dlqEventList(new ChatMessageDlqEventList())
                 .build();
@@ -62,7 +63,7 @@ public class ChatMessage {
                 .roomId(payload.roomId())
                 .writerId(payload.writerId())
                 .content(payload.content())
-                .createdAt(LocalDateTime.ofInstant(payload.createdAt(), ZoneId.systemDefault()))
+                .createdAt(LocalDateTime.ofInstant(payload.createdAt(), ServiceZoneUtils.ZONE_ID))
                 .eventList(new ChatMessageEventList())
                 .dlqEventList(new ChatMessageDlqEventList())
                 .build();
@@ -84,7 +85,7 @@ public class ChatMessage {
     }
 
     public Instant toInstant() {
-        return createdAt.atZone(ZoneId.systemDefault()).toInstant();
+        return createdAt.atZone(ServiceZoneUtils.ZONE_ID).toInstant();
     }
 
     public long toEpochMillis() {
