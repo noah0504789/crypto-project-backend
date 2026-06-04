@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.ToString;
+import org.example.chat.chatroom.domain.event.payload.ChatRoomUpdatedPayload;
 import org.example.chat.chatroom.domain.port.ChatRoomDlqHandler;
 import org.example.common.enums.KafkaTopic;
 import org.example.common.event.RecoverableEvent;
@@ -17,12 +18,12 @@ import java.util.Map;
 public class ChatRoomUpdatedDlqEvent extends AbstractDlqEvent implements RecoverableEvent<ChatRoomDlqHandler> {
 
     private final String id;
-    private final Map<String, Object> updated;
+    private final ChatRoomUpdatedPayload updated;
 
     @JsonCreator
     public ChatRoomUpdatedDlqEvent(
             @JsonProperty("id") String id,
-            @JsonProperty("updated") Map<String, Object> updated,
+            @JsonProperty("updated") ChatRoomUpdatedPayload updated,
             @JsonProperty("errorMessage") String errorMessage) {
         super(
                 id,

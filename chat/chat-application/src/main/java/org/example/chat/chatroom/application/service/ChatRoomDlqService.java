@@ -27,7 +27,7 @@ public class ChatRoomDlqService implements ChatRoomDlqHandler {
 
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomUpdatedDlqEvent event) {
-        persistence.updateAndReturn(event.getId(), event.getUpdated());
+        persistence.updateAndReturn(event.getId(), event.getUpdated().toUpdateMap());
     }
 
     @Transactional("chatMongoTransactionManager")

@@ -4,9 +4,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.example.chat.chatroom.application.dto.ChatRoomCreateRequest;
+import org.example.chat.chatroom.application.dto.ChatRoomUpdateCommand;
 import org.example.chat.chatroom.application.port.in.ChatRoomCommandUseCase;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
+import org.example.chat.chatroom.domain.event.payload.ChatRoomUpdatedPayload;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
@@ -44,14 +46,17 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
         activity(domain.getId(), domain.getHostId(), 0L, 0L);
     }
 
-    public void update(String id, Map<String, Object> updated) {
-        ChatRoom domain = persistence.findById(id).orElseThrow(() -> new ChatRoomNotFoundException(id));
+    public void update(String id, ChatRoomUpdateCommand command) {
+        ChatRoom domain = persistence.findById(id)
+                .orElseThrow(() -> new ChatRoomNotFoundException(id));
 
         String oldTitle = domain.getTitle();
-        domain.update(updated);
+
+        ChatRoomUpdatedPayload payload = command.toPayload();
+        domain.update(payload);
 
         try {
-            cache.update(domain.getId(), updated, oldTitle);
+            cache.update(domain.getId(), payload.toUpdateMap(), oldTitle);
         } catch (RuntimeException e) {
             log.warn("[cache] chatroom update failed. roomId={}", domain.getId(), e);
 

@@ -5,6 +5,7 @@ import org.example.chat.chatroom.domain.event.payload.ChatRoomPayload;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.application.service.ChatRoomDlqService;
+import org.example.chat.chatroom.domain.event.payload.ChatRoomUpdatedPayload;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.junit.jupiter.api.DisplayName;
@@ -86,9 +87,10 @@ class ChatRoomDlqServiceTest {
         @DisplayName("채팅방 수정 DLQ 이벤트를 처리하면 persistence.updateAndReturn을 호출한다")
         void handleUpdatedDlqEvent() {
             // given
-            Map<String, Object> updated = Map.of(
-                    "title", "수정된 제목",
-                    "description", "수정된 설명"
+            ChatRoomUpdatedPayload updated = new ChatRoomUpdatedPayload(
+                    "수정된 제목",
+                    "수정된 설명",
+                    null
             );
 
             ChatRoomUpdatedDlqEvent event = mock(ChatRoomUpdatedDlqEvent.class);
@@ -99,7 +101,7 @@ class ChatRoomDlqServiceTest {
             service.handle(event);
 
             // then
-            verify(persistence).updateAndReturn(ROOM_ID, updated);
+            verify(persistence).updateAndReturn(ROOM_ID, updated.toUpdateMap());
             verifyNoInteractions(cache);
         }
 

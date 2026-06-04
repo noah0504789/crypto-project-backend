@@ -5,13 +5,13 @@ import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.chatroom.domain.event.*;
 import org.example.chat.chatroom.domain.event.dlq.*;
 import org.example.chat.chatroom.domain.event.payload.ChatRoomPayload;
+import org.example.chat.chatroom.domain.event.payload.ChatRoomUpdatedPayload;
 import org.example.chat.chatroom.domain.exception.ChatRoomMembershipNotFoundException;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -171,7 +171,7 @@ public class ChatRoom {
         this.eventList.publish();
     }
 
-    public void update(Map<String, Object> updated) {
+    public void update(ChatRoomUpdatedPayload updated) {
         this.eventList.addEvent(new ChatRoomUpdatedEvent(id, updated));
         this.eventList.publish();
     }
