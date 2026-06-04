@@ -4,6 +4,7 @@ import io.grpc.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.client.inject.GrpcClient;
+import org.example.common.time.ServiceZoneUtils;
 import org.example.contract.user.UserResponse;
 import org.example.grpc.user.FindByEmailGrpcRequest;
 import org.example.grpc.user.FindByEmailGrpcResponse;
@@ -64,7 +65,7 @@ public class GrpcUserClient implements UserClient {
                 .createdAt(user.hasCreatedAt()
                         ? LocalDateTime.ofInstant(
                                 Instant.ofEpochSecond(user.getCreatedAt().getSeconds(), user.getCreatedAt().getNanos()),
-                                ZoneId.systemDefault()
+                                ServiceZoneUtils.ZONE_ID
                         )
                         : null)
                 .build();

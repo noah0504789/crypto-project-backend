@@ -7,6 +7,7 @@ import org.example.chat.chatroom.domain.event.dlq.*;
 import org.example.chat.chatroom.domain.event.payload.ChatRoomPayload;
 import org.example.chat.chatroom.domain.event.payload.ChatRoomUpdatedPayload;
 import org.example.chat.chatroom.domain.exception.ChatRoomMembershipNotFoundException;
+import org.example.common.time.ServiceZoneUtils;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -312,7 +313,7 @@ public class ChatRoom {
     }
 
     public Instant toInstant() {
-        return createdAt.atZone(ZoneId.systemDefault()).toInstant();
+        return createdAt.atZone(ServiceZoneUtils.ZONE_ID).toInstant();
     }
 
     public void validateWritable(String writerId) {

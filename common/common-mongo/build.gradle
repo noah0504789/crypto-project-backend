@@ -4,4 +4,5 @@ plugins {
 
 dependencies {
     api(libs.spring.boot.starter.data.mongodb)
+    implementation project(':common:common-core')
 }

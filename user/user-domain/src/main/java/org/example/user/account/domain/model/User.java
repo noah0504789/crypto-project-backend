@@ -10,6 +10,7 @@ import jakarta.persistence.Table;
 import lombok.*;
 import org.example.common.jpa.BaseEntity;
 import org.example.common.id.annotation.SnowflakeId;
+import org.example.common.time.ServiceZoneUtils;
 import org.example.user.role.domain.model.Role;
 import org.example.user.role.domain.model.RoleEnum;
 
@@ -116,6 +117,6 @@ public class User extends BaseEntity {
     }
 
     public Instant toInstant() {
-        return createdAt.atZone(ZoneId.systemDefault()).toInstant();
+        return createdAt.atZone(ServiceZoneUtils.ZONE_ID).toInstant();
     }
 }

@@ -5,6 +5,7 @@ import org.example.chat.chatroom.domain.event.payload.ChatRoomPayload;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.chat.chatroom.domain.event.ChatRoomEventList;
+import org.example.common.time.ServiceZoneUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -454,7 +455,7 @@ class ChatRoomTest {
             Instant result = room.toInstant();
 
             // then
-            assertThat(result).isEqualTo(createdAt.atZone(java.time.ZoneId.systemDefault()).toInstant());
+            assertThat(result).isEqualTo(createdAt.atZone(ServiceZoneUtils.ZONE_ID).toInstant());
         }
     }
 

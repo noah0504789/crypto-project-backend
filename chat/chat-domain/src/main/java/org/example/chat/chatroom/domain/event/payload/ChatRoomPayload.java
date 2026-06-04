@@ -3,6 +3,7 @@ package org.example.chat.chatroom.domain.event.payload;
 import lombok.Builder;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
+import org.example.common.time.ServiceZoneUtils;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -36,6 +37,6 @@ public record ChatRoomPayload(
     }
 
     public LocalDateTime toLocalDateTime() {
-        return LocalDateTime.ofInstant(createdAt, ZoneId.systemDefault());
+        return LocalDateTime.ofInstant(createdAt, ServiceZoneUtils.ZONE_ID);
     }
 }
