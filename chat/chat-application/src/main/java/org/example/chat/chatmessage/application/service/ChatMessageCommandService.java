@@ -61,7 +61,6 @@ public class ChatMessageCommandService  {
 
     @Retryable(
             retryFor = {
-                    DataIntegrityViolationException.class,
                     TransientDataAccessException.class,
                     MongoTransactionException.class
             },
@@ -93,17 +92,6 @@ public class ChatMessageCommandService  {
     }
 
     @Recover
-    public void recover(DataIntegrityViolationException e, String messageId, String roomId) {
-        log.error(
-                "[chat message] hardDelete retry exhausted. messageId={}, roomId={}, error={}",
-                messageId,
-                roomId,
-                e.getMessage(),
-                e
-        );
-    }
-
-    @Recover
     public void recover(TransientDataAccessException e, String messageId, String roomId) {
         log.error(
                 "[chat message] hardDelete retry exhausted. messageId={}, roomId={}, error={}",
@@ -116,17 +104,6 @@ public class ChatMessageCommandService  {
 
     @Recover
     public void recover(MongoTransactionException e, String messageId, String roomId) {
-        log.error(
-                "[chat message] hardDelete retry exhausted. messageId={}, roomId={}, error={}",
-                messageId,
-                roomId,
-                e.getMessage(),
-                e
-        );
-    }
-
-    @Recover
-    public void recover(RuntimeException e, String messageId, String roomId) {
         log.error(
                 "[chat message] hardDelete retry exhausted. messageId={}, roomId={}, error={}",
                 messageId,
