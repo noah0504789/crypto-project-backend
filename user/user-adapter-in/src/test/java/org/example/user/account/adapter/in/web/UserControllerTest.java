@@ -1,9 +1,10 @@
-package user;
+package org.example.user.account.adapter.in.web;
 
+import org.example.user.account.adapter.in.web.dto.UserProfileUpdateRequest;
+import org.example.user.account.application.service.UserCommandService;
 import org.example.user.account.domain.exception.UserNotFoundException;
 import org.example.user.account.adapter.in.web.dto.UserCreateRequest;
 import org.example.user.account.adapter.in.web.dto.UserResponse;
-import org.example.user.account.adapter.in.web.UserController;
 import org.example.user.account.application.service.LocalUserSignUpService;
 import org.example.user.account.application.service.UserQueryService;
 import org.example.user.role.domain.model.RoleEnum;
@@ -36,6 +37,9 @@ class UserControllerTest {
     @Mock
     private LocalUserSignUpService localUserSignUpService;
 
+    @Mock
+    private UserCommandService userCommandService;
+
     @InjectMocks
     private UserController sut;
 
@@ -50,14 +54,18 @@ class UserControllerTest {
         );
 
         // when
-        ResponseEntity<?> response = sut.signUp(request);
+        ResponseEntity<Void> response = sut.signUp(request);
 
         // then
-        verify(localUserSignUpService).signUp("test@test.com", "test", "raw-password");
+        verify(localUserSignUpService)
+                .signUp("test@test.com", "test", "raw-password");
 
         assertThat(response.getStatusCode().value()).isEqualTo(201);
-        assertThat(response.getHeaders().getLocation()).isEqualTo(URI.create("/home"));
+        assertThat(response.getHeaders().getLocation()).isEqualTo(URI.create("/"));
         assertThat(response.getBody()).isNull();
+
+        verifyNoInteractions(userQueryService);
+        verifyNoInteractions(userCommandService);
     }
 
     @Test
@@ -79,7 +87,8 @@ class UserControllerTest {
         ResponseEntity<UserResponse> response = sut.myProfile(publicId);
 
         // then
-        verify(userQueryService).findByPublicId(publicId);
+        verify(userQueryService)
+                .findByPublicId(publicId);
 
         assertThat(response.getStatusCode().value()).isEqualTo(200);
         assertThat(response.getBody()).isNotNull();
@@ -89,6 +98,9 @@ class UserControllerTest {
         assertThat(body.id()).isEqualTo(publicId);
         assertThat(body.email()).isEqualTo("local@test.com");
         assertThat(body.nickname()).isEqualTo("local-user");
+
+        verifyNoInteractions(localUserSignUpService);
+        verifyNoInteractions(userCommandService);
     }
 
     @Test
@@ -104,7 +116,11 @@ class UserControllerTest {
         assertThatThrownBy(() -> sut.myProfile(publicId))
                 .isInstanceOf(UserNotFoundException.class);
 
-        verify(userQueryService).findByPublicId(publicId);
+        verify(userQueryService)
+                .findByPublicId(publicId);
+
+        verifyNoInteractions(localUserSignUpService);
+        verifyNoInteractions(userCommandService);
     }
 
     @Test
@@ -126,7 +142,8 @@ class UserControllerTest {
         ResponseEntity<UserResponse> response = sut.otherProfile(publicId);
 
         // then
-        verify(userQueryService).findByPublicId(publicId);
+        verify(userQueryService)
+                .findByPublicId(publicId);
 
         assertThat(response.getStatusCode().value()).isEqualTo(200);
         assertThat(response.getBody()).isNotNull();
@@ -136,6 +153,9 @@ class UserControllerTest {
         assertThat(body.id()).isEqualTo(publicId);
         assertThat(body.email()).isEqualTo("other@test.com");
         assertThat(body.nickname()).isEqualTo("other-user");
+
+        verifyNoInteractions(localUserSignUpService);
+        verifyNoInteractions(userCommandService);
     }
 
     @Test
@@ -151,7 +171,55 @@ class UserControllerTest {
         assertThatThrownBy(() -> sut.otherProfile(publicId))
                 .isInstanceOf(UserNotFoundException.class);
 
-        verify(userQueryService).findByPublicId(publicId);
+        verify(userQueryService)
+                .findByPublicId(publicId);
+
+        verifyNoInteractions(localUserSignUpService);
+        verifyNoInteractions(userCommandService);
+    }
+
+    @Test
+    @DisplayName("프로필 수정 요청 시 UserCommandService를 호출하고 204 No Content를 반환한다")
+    void updateProfile() {
+        // given
+        UUID publicId = UUID.randomUUID();
+
+        UserProfileUpdateRequest request = new UserProfileUpdateRequest(
+                "updated-user"
+        );
+
+        // when
+        ResponseEntity<Void> response = sut.updateProfile(publicId, request);
+
+        // then
+        verify(userCommandService)
+                .updateProfile(publicId, "updated-user");
+
+        assertThat(response.getStatusCode().value()).isEqualTo(204);
+        assertThat(response.getBody()).isNull();
+
+        verifyNoInteractions(userQueryService);
+        verifyNoInteractions(localUserSignUpService);
+    }
+
+    @Test
+    @DisplayName("프로필 수정 요청이 비어 있으면 400 Bad Request를 반환하고 UserCommandService를 호출하지 않는다")
+    void updateProfile_whenRequestIsEmpty_returnsBadRequest() {
+        // given
+        UUID publicId = UUID.randomUUID();
+
+        UserProfileUpdateRequest request = new UserProfileUpdateRequest(null);
+
+        // when
+        ResponseEntity<Void> response = sut.updateProfile(publicId, request);
+
+        // then
+        assertThat(response.getStatusCode().value()).isEqualTo(400);
+        assertThat(response.getBody()).isNull();
+
+        verifyNoInteractions(userCommandService);
+        verifyNoInteractions(userQueryService);
+        verifyNoInteractions(localUserSignUpService);
     }
 
     private User createUser(UUID publicId, String email, String nickname) {

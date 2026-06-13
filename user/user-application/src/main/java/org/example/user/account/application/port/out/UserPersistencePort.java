@@ -12,4 +12,6 @@ public interface UserPersistencePort {
     Optional<User> findByPublicId(UUID publicId);
 
     Optional<User> findByEmailWithRoles(String email);
+
+    boolean existsByNickname(String nickname);
 }

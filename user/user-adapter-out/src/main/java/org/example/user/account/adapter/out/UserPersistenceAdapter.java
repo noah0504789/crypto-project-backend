@@ -21,4 +21,6 @@ public interface UserPersistenceAdapter extends JpaRepository<User, Long>, UserP
         where u.email = :email
     """)
     Optional<User> findByEmailWithRoles(@Param("email") String email);
+
+    boolean existsByNickname(String nickname);
 }

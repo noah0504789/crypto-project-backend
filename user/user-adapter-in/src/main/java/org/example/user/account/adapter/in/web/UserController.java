@@ -27,7 +27,7 @@ public class UserController {
     private final UserCommandService userCommandService;
 
     @PostMapping("${api-path.user.sign-up}")
-    public ResponseEntity<?> signUp(@RequestBody @Valid UserCreateRequest request) {
+    public ResponseEntity<Void> signUp(@RequestBody @Valid UserCreateRequest request) {
         localUserSignUpService.signUp(
                 request.email(),
                 request.nickname(),
@@ -41,7 +41,7 @@ public class UserController {
     public ResponseEntity<UserResponse> myProfile(@RequestHeader(HttpHeaderKey.USER_ID_VALUE) UUID publicId) {
         User entity = userQueryService.findByPublicId(publicId).orElseThrow(() -> new UserNotFoundException(publicId));
 
-        return ResponseEntity.ok().body(UserResponse.fromEntity(entity));
+        return ResponseEntity.ok(UserResponse.fromEntity(entity));
     }
 
     @GetMapping("${api-path.user.profile}")
@@ -52,7 +52,7 @@ public class UserController {
     }
 
     @PatchMapping("${api-path.user.me}")
-    public ResponseEntity<UserResponse> updateProfile(
+    public ResponseEntity<Void> updateProfile(
             @RequestHeader(HttpHeaderKey.USER_ID_VALUE) UUID publicId,
             @RequestBody @Valid UserProfileUpdateRequest request
     ) {

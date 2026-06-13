@@ -15,4 +15,6 @@ dependencies {
 
     implementation(libs.protobuf.java)
     implementation(libs.protobuf.util)
+
+    testImplementation project(':common:common-test')
 }
