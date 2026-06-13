@@ -75,7 +75,7 @@ class WebsocketHandshakeAuthWebFilterTest {
                         "/chat/room/*/activity",
                         "/chat/room/*/messages"
                 ),
-                new ApiPathProperties.User("/user/**", "/user/me", "/user/*/profile"),
+                new ApiPathProperties.User("/user", "/sign-up", "/me/profile", "/{publicId}/profile"),
                 new ApiPathProperties.Route("v1", "v1"),
                 "/**",
                 "/actuator/**"
