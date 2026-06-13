@@ -3,6 +3,7 @@ package org.example.oauth2.client.handler;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.example.common.properties.FrontendProperties;
 import org.example.oauth2.client.properties.InternalAuthServerProperties;
 import org.example.oauth2.client.token.application.service.RefreshTokenService;
 import org.springframework.http.HttpHeaders;
@@ -28,12 +29,12 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class CustomOAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
-    private final String REDIRECT_URI = "http://localhost:5500/login-success.html";
     private final OAuth2AccessTokenResponseClient<TokenExchangeGrantRequest> tokenExchangeResponseClient;
     private final ClientRegistrationRepository clientRegistrationRepository;
     private final OAuth2AuthorizedClientService oAuth2AuthorizedClientService;
     private final RefreshTokenService refreshTokenService;
     private final InternalAuthServerProperties internalAuthServerProperties;
+    private final FrontendProperties frontendProperties;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException {
@@ -65,15 +66,14 @@ public class CustomOAuth2LoginSuccessHandler implements AuthenticationSuccessHan
             return;
         }
 
-        ResponseCookie refreshTokenCookie = refreshTokenService.getResponseCookie(refreshToken.getTokenValue());
-
         String spaRedirectUri =
                 UriComponentsBuilder
-                        .fromUriString(REDIRECT_URI)
+                        .fromUriString(frontendProperties.successRedirectUri())
                         .queryParam("accessToken", accessToken.getTokenValue())
                         .build()
                         .toUriString();
 
+        ResponseCookie refreshTokenCookie = refreshTokenService.getResponseCookie(refreshToken.getTokenValue());
         response.setHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
         response.sendRedirect(spaRedirectUri);
     }

@@ -1,6 +1,7 @@
 package oauth2;
 
 import jakarta.servlet.http.HttpServletResponse;
+import org.example.common.properties.FrontendProperties;
 import org.example.oauth2.client.properties.InternalAuthServerProperties;
 import org.example.oauth2.client.handler.CustomOAuth2LoginSuccessHandler;
 import org.example.oauth2.client.token.application.service.RefreshTokenService;
@@ -50,7 +51,11 @@ class CustomOAuth2LoginSuccessHandlerTest {
     private static final String PROVIDER_ACCESS_TOKEN = "provider-access-token";
     private static final String INTERNAL_ACCESS_TOKEN = "internal-access-token";
     private static final String INTERNAL_REFRESH_TOKEN = "internal-refresh-token";
-    private static final String REDIRECT_URI = "http://localhost:5500/login-success.html";
+
+    private static final String FRONTEND_ORIGIN = "http://localhost:5500";
+    private static final String SUCCESS_REDIRECT_PATH = "/login-success.html";
+    private static final String FAILURE_REDIRECT_PATH = "/login-failure.html";
+    private static final String REDIRECT_URI = FRONTEND_ORIGIN + SUCCESS_REDIRECT_PATH;
 
     @Mock
     private OAuth2AccessTokenResponseClient<TokenExchangeGrantRequest> tokenExchangeResponseClient;
@@ -64,19 +69,27 @@ class CustomOAuth2LoginSuccessHandlerTest {
     @Mock
     private RefreshTokenService refreshTokenService;
 
-    @Mock
-    private InternalAuthServerProperties internalAuthServerProperties;
-
     private CustomOAuth2LoginSuccessHandler sut;
 
     @BeforeEach
     void setUp() {
+        InternalAuthServerProperties internalAuthServerProperties = new InternalAuthServerProperties(INTERNAL_CLIENT_REGISTRATION_ID);
+
+        FrontendProperties frontendProperties = new FrontendProperties(
+                FRONTEND_ORIGIN,
+                new FrontendProperties.OAuth2(
+                        SUCCESS_REDIRECT_PATH,
+                        FAILURE_REDIRECT_PATH
+                )
+        );
+
         sut = new CustomOAuth2LoginSuccessHandler(
                 tokenExchangeResponseClient,
                 clientRegistrationRepository,
                 oAuth2AuthorizedClientService,
                 refreshTokenService,
-                internalAuthServerProperties
+                internalAuthServerProperties,
+                frontendProperties
         );
     }
 
@@ -111,9 +124,6 @@ class CustomOAuth2LoginSuccessHandlerTest {
                 PROVIDER_REGISTRATION_ID,
                 PRINCIPAL_NAME
         )).willReturn(providerAuthorizedClient);
-
-        given(internalAuthServerProperties.clientRegistrationId())
-                .willReturn(INTERNAL_CLIENT_REGISTRATION_ID);
 
         given(clientRegistrationRepository.findByRegistrationId(INTERNAL_CLIENT_REGISTRATION_ID))
                 .willReturn(internalClientRegistration);
@@ -177,9 +187,14 @@ class CustomOAuth2LoginSuccessHandlerTest {
         assertThat(response.getContentAsString())
                 .isEqualTo("authorized client not found");
 
-        then(tokenExchangeResponseClient).shouldHaveNoInteractions();
-        then(refreshTokenService).shouldHaveNoInteractions();
-        then(clientRegistrationRepository).shouldHaveNoInteractions();
+        then(tokenExchangeResponseClient)
+                .shouldHaveNoInteractions();
+
+        then(refreshTokenService)
+                .shouldHaveNoInteractions();
+
+        then(clientRegistrationRepository)
+                .shouldHaveNoInteractions();
     }
 
     @Test
@@ -196,9 +211,6 @@ class CustomOAuth2LoginSuccessHandlerTest {
                 PRINCIPAL_NAME
         )).willReturn(providerAuthorizedClient());
 
-        given(internalAuthServerProperties.clientRegistrationId())
-                .willReturn(INTERNAL_CLIENT_REGISTRATION_ID);
-
         given(clientRegistrationRepository.findByRegistrationId(INTERNAL_CLIENT_REGISTRATION_ID))
                 .willReturn(null);
 
@@ -212,8 +224,11 @@ class CustomOAuth2LoginSuccessHandlerTest {
         assertThat(response.getContentAsString())
                 .isEqualTo("internal client registration not found");
 
-        then(tokenExchangeResponseClient).shouldHaveNoInteractions();
-        then(refreshTokenService).shouldHaveNoInteractions();
+        then(tokenExchangeResponseClient)
+                .shouldHaveNoInteractions();
+
+        then(refreshTokenService)
+                .shouldHaveNoInteractions();
     }
 
     @Test
@@ -236,9 +251,6 @@ class CustomOAuth2LoginSuccessHandlerTest {
                 PRINCIPAL_NAME
         )).willReturn(providerAuthorizedClient());
 
-        given(internalAuthServerProperties.clientRegistrationId())
-                .willReturn(INTERNAL_CLIENT_REGISTRATION_ID);
-
         given(clientRegistrationRepository.findByRegistrationId(INTERNAL_CLIENT_REGISTRATION_ID))
                 .willReturn(internalClientRegistration());
 
@@ -255,7 +267,8 @@ class CustomOAuth2LoginSuccessHandlerTest {
         assertThat(response.getContentAsString())
                 .isEqualTo("refresh token not issued");
 
-        then(refreshTokenService).shouldHaveNoInteractions();
+        then(refreshTokenService)
+                .shouldHaveNoInteractions();
     }
 
     private OAuth2AuthenticationToken oauth2AuthenticationToken() {
