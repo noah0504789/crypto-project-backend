@@ -1,7 +1,7 @@
 package user;
 
 import org.example.user.account.domain.exception.UserNotFoundException;
-import org.example.user.account.adapter.in.web.dto.UserRequest;
+import org.example.user.account.adapter.in.web.dto.UserCreateRequest;
 import org.example.user.account.adapter.in.web.dto.UserResponse;
 import org.example.user.account.adapter.in.web.UserController;
 import org.example.user.account.application.service.LocalUserSignUpService;
@@ -43,7 +43,7 @@ class UserControllerTest {
     @DisplayName("회원가입 요청 시 LocalUserSignUpService를 호출하고 201 Created를 반환한다")
     void signUp() {
         // given
-        UserRequest request = new UserRequest(
+        UserCreateRequest request = new UserCreateRequest(
                 "test@test.com",
                 "test",
                 "raw-password"
