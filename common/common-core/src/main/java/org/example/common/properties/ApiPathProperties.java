@@ -51,9 +51,10 @@ public record ApiPathProperties(
             String roomMessagesPattern
     ) {}
     public record User(
-            String pattern,
+            String base,
+            String signUp,
             String me,
-            String profilePattern
+            String profile
     ) {}
     public record Route(
             String userApiVersion,

@@ -35,14 +35,12 @@ public class User extends BaseEntity {
 
     @Column(name = "public_id", nullable = false, unique = true, updatable = false)
     private UUID publicId;
-
     private String sub;
 
     @Column(nullable = false)
     private String email;
 
     private String nickname;
-
     private String password;
 
     @Builder.Default
@@ -114,6 +112,10 @@ public class User extends BaseEntity {
         }
 
         this.roles.add(UserRole.of(this, role));
+    }
+
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
     }
 
     public Instant toInstant() {

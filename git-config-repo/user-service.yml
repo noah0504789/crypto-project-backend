@@ -15,7 +15,7 @@ api-path:
   user:
     base: /user
     sign-up: /sign-up
-    me: /me
+    me: /me/profile
     profile: /{publicId}/profile
 
 spring:
