@@ -29,7 +29,6 @@ api-path:
     authorization-pattern: /oauth2/**
     login-callback-pattern: /login/oauth2/code/**
     login-callback-base-uri: /login/oauth2/code/*
-    login-failure-redirect-uri: http://localhost:5500/login-failure.html
 
 spring:
   security:

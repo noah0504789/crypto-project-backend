@@ -1,5 +1,7 @@
 package org.example.apigateway.config;
 
+import lombok.RequiredArgsConstructor;
+import org.example.common.properties.FrontendProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -9,13 +11,15 @@ import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
 @Configuration
+@RequiredArgsConstructor
 public class CorsConfig {
+
+    private final FrontendProperties frontendProperties;
 
     @Bean
     public CorsConfiguration corsConfiguration() {
         CorsConfiguration config = new CorsConfiguration();
-        config.addAllowedOrigin("http://localhost:5500");
-        config.addAllowedOrigin("https://localhost:5500");
+        config.addAllowedOrigin(frontendProperties.origin());
         config.addAllowedMethod(HttpMethod.OPTIONS);
         config.addAllowedMethod(HttpMethod.GET);
         config.addAllowedMethod(HttpMethod.POST);
