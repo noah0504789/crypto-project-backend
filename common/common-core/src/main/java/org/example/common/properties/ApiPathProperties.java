@@ -55,7 +55,28 @@ public record ApiPathProperties(
             String signUp,
             String me,
             String profile
-    ) {}
+    ) {
+
+        public String signUpPath() {
+            return base + signUp;
+        }
+
+        public String mePath() {
+            return base + me;
+        }
+
+        public String profilePath() {
+            return base + profile;
+        }
+
+        public String profilePattern() {
+            return base + "/*/profile";
+        }
+
+        public String pattern() {
+            return base + "/**";
+        }
+    }
     public record Route(
             String userApiVersion,
             String chatApiVersion
