@@ -1,0 +1,8 @@
+plugins {
+    id 'crypto-domain'
+}
+
+dependencies {
+    api project(':common:common-core')
+    api project(':common:common-jpa')
+}
