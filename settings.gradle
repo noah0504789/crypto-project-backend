@@ -71,6 +71,10 @@ include 'user:user-adapter-in'
 include 'user:user-adapter-out'
 include 'user:user-bootstrap'
 
+include 'market'
+include 'market:market-domain'
+include 'market:market-bootstrap'
+
 include 'outbox-poller'
 include 'market-detection'
 include 'spring-cloud-eureka-server'

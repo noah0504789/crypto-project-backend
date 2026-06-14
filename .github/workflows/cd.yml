@@ -14,6 +14,7 @@ on:
           - crypto-oauth2-client
           - crypto-chat-service
           - crypto-user-service
+          - crypto-market-service
           - crypto-outbox-poller
       image_tag:
         description: "Docker image tag to deploy"
@@ -138,6 +139,10 @@ jobs:
 
             crypto-user-service)
               ./scripts/deploy/deploy-user-service-bluegreen.sh "$IMAGE_TAG"
+              ;;
+
+            crypto-market-service)
+              ./scripts/deploy/deploy-market-service-bluegreen.sh "$IMAGE_TAG"
               ;;
 
             crypto-websocket-gateway)

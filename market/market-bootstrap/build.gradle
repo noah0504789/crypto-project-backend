@@ -1,0 +1,18 @@
+plugins {
+    id 'crypto-bootstrap'
+}
+
+ext.dockerImageName = "crypto-market-service"
+
+dependencies {
+    runtimeOnly(libs.mysql.connector.j) {
+        exclude group: 'com.google.protobuf', module: 'protobuf-java'
+    }
+
+    implementation project(':common:common-actuator-webmvc')
+    implementation project(':market:market-domain')
+
+    implementation(libs.spring.cloud.config.client)
+    implementation(libs.spring.cloud.eureka.client)
+    implementation(libs.micrometer.registry.prometheus)
+}

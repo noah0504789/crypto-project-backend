@@ -37,6 +37,10 @@ def create_fake_project(root: Path) -> None:
         include 'websocket-gateway:websocket-gateway-adapter-out'
         include 'websocket-gateway:websocket-gateway-bootstrap'
 
+        include 'market'
+        include 'market:market-domain'
+        include 'market:market-bootstrap'
+
         include 'spring-cloud-eureka-server'
         include 'spring-cloud-api-gateway'
         include 'outbox-poller'
@@ -115,6 +119,22 @@ def create_fake_project(root: Path) -> None:
                 implementation project(':common:common-actuator-webmvc')
             }
         """,
+        "market/build.gradle": """
+            dependencies {}
+        """,
+        "market/market-domain/build.gradle": """
+            dependencies {
+                api project(':common:common-core')
+            }
+        """,
+        "market/market-bootstrap/build.gradle": """
+            ext.dockerImageName = "crypto-market-service"
+
+            dependencies {
+                implementation project(':market:market-domain')
+                implementation project(':common:common-actuator-webmvc')
+            }
+        """,
         "spring-cloud-eureka-server/build.gradle": """
             ext.dockerImageName = "crypto-spring-cloud-eureka-server"
 
@@ -152,9 +172,12 @@ def create_fake_project(root: Path) -> None:
         "websocket-gateway/websocket-gateway-adapter-in/src/main/java/Handler.java": "class Handler {}",
         "websocket-gateway/websocket-gateway-adapter-in/src/test/java/HandlerTest.java": "class HandlerTest {}",
         "websocket-gateway/websocket-gateway-adapter-out/src/main/java/GrpcAdapter.java": "class GrpcAdapter {}",
+        "market/market-domain/src/main/java/Market.java": "class Market {}",
+        "market/market-bootstrap/src/main/resources/application.yml": "spring.application.name=market-service",
         "docs/README.md": "# docs",
         "chat/chat-bootstrap/Dockerfile": "FROM eclipse-temurin:17-jre",
         "websocket-gateway/websocket-gateway-bootstrap/Dockerfile": "FROM eclipse-temurin:17-jre",
+        "market/market-bootstrap/Dockerfile": "FROM eclipse-temurin:17-jre",
         "spring-cloud-eureka-server/Dockerfile": "FROM eclipse-temurin:17-jre",
         "spring-cloud-api-gateway/Dockerfile": "FROM eclipse-temurin:17-jre",
         "outbox-poller/Dockerfile": "FROM eclipse-temurin:17-jre",
@@ -169,7 +192,6 @@ def load_graph(root: Path):
     aggregates = am.find_aggregate_projects(projects)
     dependencies = am.read_dependencies(projects)
     reversed_graph = am.reverse_dependencies(dependencies)
-
     return projects, aggregates, dependencies, reversed_graph
 
 
@@ -202,8 +224,12 @@ def test_global_change_detection():
 
 
 def test_test_change_detection():
-    assert am.is_test_change("websocket-gateway/websocket-gateway-adapter-in/src/test/java/HandlerTest.java")
-    assert not am.is_test_change("websocket-gateway/websocket-gateway-adapter-in/src/main/java/Handler.java")
+    assert am.is_test_change(
+        "websocket-gateway/websocket-gateway-adapter-in/src/test/java/HandlerTest.java"
+    )
+    assert not am.is_test_change(
+        "websocket-gateway/websocket-gateway-adapter-in/src/main/java/Handler.java"
+    )
 
 
 def test_docker_relevant_change_detection():
@@ -240,10 +266,14 @@ def test_read_projects_from_settings_gradle(tmp_path):
     assert ":chat:chat-domain" in projects
     assert ":websocket-gateway:websocket-gateway-adapter-in" in projects
     assert ":websocket-gateway:websocket-gateway-bootstrap" in projects
+    assert ":market" in projects
+    assert ":market:market-domain" in projects
+    assert ":market:market-bootstrap" in projects
     assert ":spring-cloud-eureka-server" in projects
     assert ":spring-cloud-api-gateway" in projects
     assert ":outbox-poller" in projects
     assert projects[":chat:chat-domain"] == tmp_path / "chat/chat-domain"
+    assert projects[":market:market-domain"] == tmp_path / "market/market-domain"
 
 
 def test_find_aggregate_projects(tmp_path):
@@ -255,9 +285,11 @@ def test_find_aggregate_projects(tmp_path):
     assert ":common" in aggregates
     assert ":chat" in aggregates
     assert ":websocket-gateway" in aggregates
+    assert ":market" in aggregates
     assert ":protobuf" not in aggregates
     assert ":spring-cloud-eureka-server" not in aggregates
     assert ":chat:chat-domain" not in aggregates
+    assert ":market:market-domain" not in aggregates
 
 
 def test_read_dependencies_excludes_test_dependencies(tmp_path):
@@ -280,16 +312,16 @@ def test_reverse_dependencies(tmp_path):
     assert ":chat:chat-domain" in reversed_graph[":common:common-core"]
     assert ":chat:chat-application" in reversed_graph[":chat:chat-domain"]
     assert ":chat:chat-bootstrap" in reversed_graph[":chat:chat-application"]
+    assert ":market:market-domain" in reversed_graph[":common:common-core"]
+    assert ":market:market-bootstrap" in reversed_graph[":market:market-domain"]
 
 
 def test_find_project_for_file_chooses_deepest_module(tmp_path):
     create_fake_project(tmp_path)
 
-    projects = am.read_projects(tmp_path)
-
     project = am.find_project_for_file(
         tmp_path,
-        projects,
+        am.read_projects(tmp_path),
         "chat/chat-domain/src/main/java/Chat.java",
     )
 
@@ -299,11 +331,9 @@ def test_find_project_for_file_chooses_deepest_module(tmp_path):
 def test_find_project_for_file_returns_none_for_non_project_file(tmp_path):
     create_fake_project(tmp_path)
 
-    projects = am.read_projects(tmp_path)
-
     project = am.find_project_for_file(
         tmp_path,
-        projects,
+        am.read_projects(tmp_path),
         "docs/README.md",
     )
 
@@ -327,6 +357,8 @@ def test_common_core_change_affects_dependents_transitively(tmp_path):
     assert ":chat:chat-domain" in affected
     assert ":chat:chat-application" in affected
     assert ":chat:chat-bootstrap" in affected
+    assert ":market:market-domain" in affected
+    assert ":market:market-bootstrap" in affected
 
 
 def test_common_actuator_core_change_affects_webmvc_webflux_and_execution_modules(tmp_path):
@@ -345,6 +377,7 @@ def test_common_actuator_core_change_affects_webmvc_webflux_and_execution_module
         ":common:common-actuator-core:build",
         ":common:common-actuator-webflux:build",
         ":common:common-actuator-webmvc:build",
+        ":market:market-bootstrap:build",
         ":outbox-poller:build",
         ":spring-cloud-api-gateway:build",
         ":spring-cloud-eureka-server:build",
@@ -367,6 +400,7 @@ def test_common_actuator_webmvc_change_affects_servlet_execution_modules(tmp_pat
     assert tasks == [
         ":chat:chat-bootstrap:build",
         ":common:common-actuator-webmvc:build",
+        ":market:market-bootstrap:build",
         ":outbox-poller:build",
         ":spring-cloud-eureka-server:build",
         ":websocket-gateway:websocket-gateway-bootstrap:build",
@@ -431,6 +465,22 @@ def test_aggregate_project_change_expands_to_child_modules(tmp_path):
     assert ":chat:chat-bootstrap" in affected
 
 
+def test_market_aggregate_project_change_expands_to_child_modules(tmp_path):
+    create_fake_project(tmp_path)
+
+    projects, aggregates, _, reversed_graph = load_graph(tmp_path)
+
+    affected = am.find_affected_projects(
+        changed_projects={":market"},
+        projects=projects,
+        aggregates=aggregates,
+        reversed_graph=reversed_graph,
+    )
+
+    assert ":market:market-domain" in affected
+    assert ":market:market-bootstrap" in affected
+
+
 def test_to_gradle_tasks_with_arch_test():
     tasks = am.to_gradle_tasks(
         {":chat:chat-domain", ":chat:chat-application"},
@@ -477,12 +527,15 @@ def test_to_docker_services_returns_only_projects_with_dockerfile_and_image_name
             ":chat:chat-application",
             ":chat:chat-bootstrap",
             ":websocket-gateway:websocket-gateway-bootstrap",
+            ":market:market-domain",
+            ":market:market-bootstrap",
         },
         project_directories=projects,
     )
 
     assert services == [
         "chat/chat-bootstrap=crypto-chat-service",
+        "market/market-bootstrap=crypto-market-service",
         "websocket-gateway/websocket-gateway-bootstrap=crypto-websocket-gateway",
     ]
 
@@ -528,6 +581,7 @@ def test_all_docker_services_returns_all_non_aggregate_projects_with_dockerfile(
 
     assert services == [
         "chat/chat-bootstrap=crypto-chat-service",
+        "market/market-bootstrap=crypto-market-service",
         "outbox-poller=crypto-outbox-poller",
         "spring-cloud-api-gateway=crypto-spring-cloud-api-gateway",
         "spring-cloud-eureka-server=crypto-spring-cloud-eureka-server",
@@ -596,6 +650,41 @@ def test_calculate_output_for_chat_domain_change(tmp_path):
     ]
 
 
+def test_calculate_output_for_market_domain_change(tmp_path):
+    create_fake_project(tmp_path)
+
+    tasks = am.calculate_output(
+        root=tmp_path,
+        files=["market/market-domain/src/main/java/Market.java"],
+        mode="build",
+        include_arch_test=True,
+        fallback_task="serviceCi",
+    )
+
+    assert tasks == [
+        ":market:market-bootstrap:build",
+        ":market:market-domain:build",
+        ":common:common-arch-test:test",
+    ]
+
+
+def test_calculate_output_for_market_bootstrap_application_change(tmp_path):
+    create_fake_project(tmp_path)
+
+    tasks = am.calculate_output(
+        root=tmp_path,
+        files=["market/market-bootstrap/src/main/resources/application.yml"],
+        mode="build",
+        include_arch_test=True,
+        fallback_task="serviceCi",
+    )
+
+    assert tasks == [
+        ":market:market-bootstrap:build",
+        ":common:common-arch-test:test",
+    ]
+
+
 def test_calculate_output_for_websocket_adapter_in_test_change(tmp_path):
     create_fake_project(tmp_path)
 
@@ -626,6 +715,20 @@ def test_calculate_output_docker_for_chat_domain_change(tmp_path):
     )
 
     assert services == ["chat/chat-bootstrap=crypto-chat-service"]
+
+
+def test_calculate_output_docker_for_market_domain_change(tmp_path):
+    create_fake_project(tmp_path)
+
+    services = am.calculate_output(
+        root=tmp_path,
+        files=["market/market-domain/src/main/java/Market.java"],
+        mode="docker",
+        include_arch_test=False,
+        fallback_task="serviceCi",
+    )
+
+    assert services == ["market/market-bootstrap=crypto-market-service"]
 
 
 def test_calculate_output_for_protobuf_change(tmp_path):
@@ -693,6 +796,7 @@ def test_calculate_output_docker_for_common_actuator_webmvc_change_affects_servl
 
     assert services == [
         "chat/chat-bootstrap=crypto-chat-service",
+        "market/market-bootstrap=crypto-market-service",
         "outbox-poller=crypto-outbox-poller",
         "spring-cloud-eureka-server=crypto-spring-cloud-eureka-server",
         "websocket-gateway/websocket-gateway-bootstrap=crypto-websocket-gateway",
@@ -712,6 +816,7 @@ def test_calculate_output_docker_for_common_actuator_core_change_affects_webmvc_
 
     assert services == [
         "chat/chat-bootstrap=crypto-chat-service",
+        "market/market-bootstrap=crypto-market-service",
         "outbox-poller=crypto-outbox-poller",
         "spring-cloud-api-gateway=crypto-spring-cloud-api-gateway",
         "spring-cloud-eureka-server=crypto-spring-cloud-eureka-server",
@@ -732,6 +837,7 @@ def test_calculate_output_docker_for_global_change_returns_all_docker_services(t
 
     assert services == [
         "chat/chat-bootstrap=crypto-chat-service",
+        "market/market-bootstrap=crypto-market-service",
         "outbox-poller=crypto-outbox-poller",
         "spring-cloud-api-gateway=crypto-spring-cloud-api-gateway",
         "spring-cloud-eureka-server=crypto-spring-cloud-eureka-server",
@@ -752,6 +858,7 @@ def test_calculate_output_docker_for_build_logic_change_returns_all_docker_servi
 
     assert services == [
         "chat/chat-bootstrap=crypto-chat-service",
+        "market/market-bootstrap=crypto-market-service",
         "outbox-poller=crypto-outbox-poller",
         "spring-cloud-api-gateway=crypto-spring-cloud-api-gateway",
         "spring-cloud-eureka-server=crypto-spring-cloud-eureka-server",

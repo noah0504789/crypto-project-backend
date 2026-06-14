@@ -57,7 +57,18 @@ class PackageArchitectureTest {
                     "user/user-application",
                     List.of("user/user-adapter-in", "user/user-adapter-out"),
                     "user/user-bootstrap",
-                    List.of("org.example.user.model.domain..")
+                    List.of(
+                            "org.example.user.account.domain..",
+                            "org.example.user.role.domain.."
+                    )
+            ),
+            new ServiceBoundary(
+                    "market",
+                    "market/market-domain",
+                    "market/market-application",
+                    List.of("market/market-adapter-in", "market/market-adapter-out"),
+                    "market/market-bootstrap",
+                    List.of("org.example.market.domain..")
             )
     );
 
@@ -80,7 +91,8 @@ class PackageArchitectureTest {
             "spring-cloud-api-gateway/spring-cloud-api-gateway-bootstrap",
             "spring-cloud-config/spring-cloud-config-bootstrap",
             "user/user-bootstrap",
-            "outbox-poller/outbox-poller-bootstrap"
+            "outbox-poller/outbox-poller-bootstrap",
+            "market/market-bootstrap"
     );
 
     @ArchTest
@@ -129,7 +141,8 @@ class PackageArchitectureTest {
                 "chat/chat-domain",
                 "websocket-gateway/websocket-gateway-domain",
                 "spring-cloud-config/spring-cloud-config-domain",
-                "user/user-domain"
+                "user/user-domain",
+                "market/market-domain"
         )));
     }
 
