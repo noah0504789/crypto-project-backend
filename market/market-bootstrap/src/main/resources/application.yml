@@ -1,0 +1,7 @@
+spring:
+  application.name: market-service
+  config.import: configserver:http://crypto-spring-cloud-config:8888
+  cloud:
+    config:
+      name: market-service,eureka-client,mysql,monitoring
+      label: main
