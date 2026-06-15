@@ -1,8 +1,9 @@
-package org.example.common.outbox.application;
+package org.example.common.outbox.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.common.outbox.adapter.OutboxRepository;
+import org.example.common.outbox.adapter.out.OutboxRepository;
+import org.example.common.outbox.application.port.out.EventPublisherPort;
 import org.example.common.outbox.properties.OutboxPollerProperties;
 import org.example.common.outbox.domain.Outbox;
 import org.example.common.outbox.domain.OutboxDispatchType;

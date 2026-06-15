@@ -6,7 +6,7 @@ import org.example.common.exception.DlqNotFoundException;
 import org.example.common.dlq.domain.DlqStatus;
 import org.example.common.dlq.adapter.DlqRepository;
 import org.example.common.dlq.domain.Dlq;
-import org.example.common.outbox.application.EventPublisherPort;
+import org.example.common.outbox.application.port.out.EventPublisherPort;
 import org.example.common.dlq.properties.DlqPollerProperties;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.PageRequest;

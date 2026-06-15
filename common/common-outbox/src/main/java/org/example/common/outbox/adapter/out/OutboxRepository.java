@@ -1,4 +1,4 @@
-package org.example.common.outbox.adapter;
+package org.example.common.outbox.adapter.out;
 
 import org.example.common.outbox.domain.Outbox;
 import org.example.common.outbox.domain.OutboxDispatchType;

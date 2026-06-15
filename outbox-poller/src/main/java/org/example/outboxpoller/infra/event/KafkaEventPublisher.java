@@ -1,7 +1,7 @@
 package org.example.outboxpoller.infra.event;
 
 import lombok.RequiredArgsConstructor;
-import org.example.common.outbox.application.EventPublisherPort;
+import org.example.common.outbox.application.port.out.EventPublisherPort;
 import org.example.common.enums.KafkaHeaderKey;
 import org.example.common.dlq.domain.Dlq;
 import org.example.common.outbox.domain.Outbox;
@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class EventPublisher implements EventPublisherPort {
+public class KafkaEventPublisher implements EventPublisherPort {
 
     private final StreamBridge streamBridge;
 
