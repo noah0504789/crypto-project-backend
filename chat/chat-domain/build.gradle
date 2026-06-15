@@ -7,6 +7,4 @@ dependencies {
     api project(':common:common-event')
     api project(':common:common-outbox')
     api project(':chat:chat-contract')
-
-    api(libs.spring.boot.starter.validation)
 }

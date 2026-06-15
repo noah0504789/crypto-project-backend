@@ -3,19 +3,13 @@ plugins {
 }
 
 dependencies {
-    implementation project(':common:common-core')
+    implementation project(':common:common-web')
     implementation project(':common:common-redis')
     implementation project(':common:common-mongo')
-    implementation project(':chat:chat-application')
-    implementation project(':chat:chat-domain')
     implementation project(':protobuf')
+    implementation project(':chat:chat-application')
 
     implementation(libs.spring.boot.starter.aop)
-    implementation(libs.spring.boot.starter.data.jpa)
-    implementation(libs.spring.boot.starter.data.redis)
-    implementation(libs.spring.boot.starter.data.mongodb)
-    implementation(libs.spring.cloud.starter.stream.kafka)
-    implementation(libs.spring.cloud.stream.binder.kafka)
     implementation(libs.spring.integration.core)
     implementation(libs.caffeine)
 
