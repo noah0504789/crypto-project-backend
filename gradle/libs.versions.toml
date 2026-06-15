@@ -41,6 +41,7 @@ spring-boot-starter-data-redis = { group = "org.springframework.boot", name = "s
 spring-boot-starter-data-mongodb   = { group = "org.springframework.boot",  name = "spring-boot-starter-data-mongodb" }
 spring-boot-starter-security = { group = "org.springframework.boot", name = "spring-boot-starter-security", version.ref = "spring-boot" }
 spring-boot-starter-oauth2-client = { group = "org.springframework.boot", name = "spring-boot-starter-oauth2-client" }
+spring-boot-starter-cache = { group = "org.springframework.boot", name = "spring-boot-starter-cache" }
 spring-boot-gradle-plugin = { group = "org.springframework.boot", name = "spring-boot-gradle-plugin", version.ref = "spring-boot" }
 spring-boot-actuator-autoconfigure = { group = "org.springframework.boot", name = "spring-boot-actuator-autoconfigure" }
 redisson-spring-boot-starter = { group = "org.redisson", name = "redisson-spring-boot-starter", version.ref = "redisson" }
