@@ -33,4 +33,34 @@ public class Market extends BaseEntity {
 
     @Column(nullable = false)
     private boolean enabled;
+
+    public static Market create(
+            String marketCode,
+            String symbol,
+            String koreanName,
+            String englishName,
+            boolean enabled
+    ) {
+        return Market.builder()
+                .marketCode(marketCode)
+                .symbol(symbol)
+                .koreanName(koreanName)
+                .englishName(englishName)
+                .enabled(enabled)
+                .build();
+    }
+
+    public void change(
+            String marketCode,
+            String symbol,
+            String koreanName,
+            String englishName,
+            boolean enabled
+    ) {
+        this.marketCode = marketCode;
+        this.symbol = symbol;
+        this.koreanName = koreanName;
+        this.englishName = englishName;
+        this.enabled = enabled;
+    }
 }
