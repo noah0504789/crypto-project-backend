@@ -11,6 +11,9 @@ dependencies {
 
     implementation project(':common:common-actuator-webmvc')
     implementation project(':market:market-domain')
+    implementation project(':market:market-application')
+    implementation project(':market:market-adapter-in')
+    implementation project(':market:market-adapter-out')
 
     implementation(libs.spring.cloud.config.client)
     implementation(libs.spring.cloud.eureka.client)

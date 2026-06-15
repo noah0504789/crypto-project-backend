@@ -73,6 +73,9 @@ include 'user:user-bootstrap'
 
 include 'market'
 include 'market:market-domain'
+include 'market:market-application'
+include 'market:market-adapter-in'
+include 'market:market-adapter-out'
 include 'market:market-bootstrap'
 
 include 'outbox-poller'
