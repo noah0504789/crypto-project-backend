@@ -24,6 +24,25 @@ spring:
     jpa:
       repositories:
         bootstrap-mode: deferred
+  cloud:
+    function:
+      definition: marketEventConsumer
+    stream:
+      bindings:
+        marketEventConsumer-in-0:
+          destination: market-broadcast-event
+          contentType: application/json
+          group: market-broadcast-${app.instance-id}
+      kafka:
+        binder:
+          consumer-properties:
+            spring.json.trusted.packages: "*"
+        bindings:
+          marketEventConsumer-in-0:
+            consumer:
+              reset-offsets: false
+              start-offset: latest
+              ack-mode: record
 
 mysql:
   username: ${mysql.user.username} # user

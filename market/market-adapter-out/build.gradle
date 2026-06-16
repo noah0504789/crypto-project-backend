@@ -1,0 +1,11 @@
+plugins {
+    id 'crypto-domain'
+}
+
+dependencies {
+    runtimeOnly(libs.mysql.connector.j) {
+        exclude group: 'com.google.protobuf', module: 'protobuf-java'
+    }
+
+    implementation project(':market:market-application')
+}

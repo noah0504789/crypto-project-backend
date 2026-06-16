@@ -1,0 +1,10 @@
+plugins {
+    id 'crypto-domain'
+}
+
+dependencies {
+    api project(':market:market-domain')
+
+    implementation(libs.caffeine)
+    implementation(libs.spring.boot.starter.cache)
+}
