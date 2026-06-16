@@ -12,11 +12,20 @@ redis.call("SADD", titleIndexKey, title)
 
 -- room info 복원
 local argIndex = 5
+
 for i = 1, infoPairCount do
     local field = ARGV[argIndex]
     local value = ARGV[argIndex + 1]
+
     redis.call("HSET", roomInfoKey, field, value)
+
     argIndex = argIndex + 2
+end
+
+local ttlSeconds = tonumber(ARGV[argIndex])
+
+if ttlSeconds ~= nil and ttlSeconds > 0 then
+    redis.call("EXPIRE", roomInfoKey, ttlSeconds)
 end
 
 -- popularity 복원

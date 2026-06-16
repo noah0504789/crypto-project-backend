@@ -1,6 +1,7 @@
 package org.example.chat.chatroom.adapter.out.cache;
 
 import org.example.chat.chatmessage.domain.model.ChatMessage;
+import org.example.chat.chatroom.application.dto.ChatRoomCacheLookupResult;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
@@ -16,6 +17,7 @@ import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Repository;
 
+import java.time.Duration;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -24,6 +26,7 @@ import static org.example.common.enums.RedisKey.*;
 @Repository
 public class RedisChatRoomAdapter implements ChatRoomCachePort {
 
+    private static final String CHAT_ROOM_CACHE_TTL_SECONDS = String.valueOf(Duration.ofDays(7).toSeconds());
     private final RedisTemplate<String, String> masterHashRedisTemplate;
     private final RedisTemplate<String, String> replicaHashRedisTemplate;
     private final StringRedisHashOperations hash;
@@ -79,19 +82,19 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
 
     @Override
     @CacheFailOpen
-    public List<ChatRoom> listMostPopular(ChatRoomCategory category, int limit) {
+    public ChatRoomCacheLookupResult listMostPopular(ChatRoomCategory category, int limit) {
         String popularKey = POPULAR_CHAT_ROOM_BY_CATEGORY_INDEX.keyFor(category.name());
 
-        return registry.getReplicaZSet(popularKey).reverseRange(0, limit - 1).stream()
+        List<String> orderedIds = registry.getReplicaZSet(popularKey).reverseRange(0, limit - 1).stream()
                 .filter(Objects::nonNull)
-                .map(this::findById)
-                .flatMap(Optional::stream)
                 .toList();
+
+        return lookupByOrderedIds(orderedIds);
     }
 
     @Override
     @CacheFailOpen
-    public List<ChatRoom> listNextPopular(ChatRoomCategory category, String lastId, Long lastPopularity, int limit) {
+    public ChatRoomCacheLookupResult listNextPopular(ChatRoomCategory category, String lastId, Long lastPopularity, int limit) {
         ZSetOperations<String, String> zOps = replicaHashRedisTemplate.opsForZSet();
 
         String popularKey = POPULAR_CHAT_ROOM_BY_CATEGORY_INDEX.keyFor(category.name());
@@ -115,29 +118,29 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
                 .map(ZSetOperations.TypedTuple::getValue).filter(Objects::nonNull)
                 .filter(roomId -> roomId.compareTo(lastId) < 0);
 
-        return Stream.concat(s2, s1)
+        List<String> orderedIds = Stream.concat(s2, s1)
                 .filter(Objects::nonNull)
-                .map(this::findById)
-                .flatMap(Optional::stream)
                 .limit(limit)
                 .toList();
+
+        return lookupByOrderedIds(orderedIds);
     }
 
     @Override
     @CacheFailOpen
-    public List<ChatRoom> listLatestActive(String memberId, int limit) {
+    public ChatRoomCacheLookupResult listLatestActive(String memberId, int limit) {
         String recentRoomKey = RECENT_CHAT_ROOM_BY_MEMBER_INDEX.keyFor(memberId);
 
-        return registry.getMasterZSet(recentRoomKey).reverseRange(0, limit - 1).stream()
+        List<String> orderedIds = registry.getMasterZSet(recentRoomKey).reverseRange(0, limit - 1).stream()
                 .filter(Objects::nonNull)
-                .map(this::findById)
-                .flatMap(Optional::stream)
                 .toList();
+
+        return lookupByOrderedIds(orderedIds);
     }
 
     @Override
     @CacheFailOpen
-    public List<ChatRoom> listActiveBefore(String memberId, String lastId, Long lastScore, int limit) {
+    public ChatRoomCacheLookupResult listActiveBefore(String memberId, String lastId, Long lastScore, int limit) {
         ZSetOperations<String, String> zOps = masterHashRedisTemplate.opsForZSet();
 
         String recentRoomKey = RECENT_CHAT_ROOM_BY_MEMBER_INDEX.keyFor(memberId);
@@ -161,12 +164,12 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
                 .map(ZSetOperations.TypedTuple::getValue).filter(Objects::nonNull)
                 .filter(roomId -> roomId.compareTo(lastId) < 0);
 
-        return Stream.concat(s2, s1)
+        List<String> orderedIds = Stream.concat(s2, s1)
                 .filter(Objects::nonNull)
-                .map(this::findById)
-                .flatMap(Optional::stream)
                 .limit(limit)
                 .toList();
+
+        return lookupByOrderedIds(orderedIds);
     }
 
     @Override
@@ -233,6 +236,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
         args.add("0");
         args.add(String.valueOf(domain.getMemberIds().size()));
         args.addAll(domain.getMemberIds());
+        args.add(CHAT_ROOM_CACHE_TTL_SECONDS);
 
         if (!masterHashRedisTemplate.execute(storeChatRoom_lua, keys, args.toArray())) {
             throw new ChatCacheException("[redis] chatroom save() failed!");
@@ -257,9 +261,9 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
         List<String> infoArgs = toRoomInfoArgs(domain);
         args.add(String.valueOf(infoArgs.size() / 2));
         args.addAll(infoArgs);
+        args.add(CHAT_ROOM_CACHE_TTL_SECONDS);
 
-        Boolean ok = masterHashRedisTemplate.execute(warmUpChatRoom_lua, keys, args.toArray());
-        if (!Boolean.TRUE.equals(ok)) {
+        if (!masterHashRedisTemplate.execute(warmUpChatRoom_lua, keys, args.toArray())) {
             throw new ChatCacheException("[redis] chatroom warmUp() failed!");
         }
     }
@@ -287,10 +291,10 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
             List<String> infoArgs = toRoomInfoArgs(domain);
             args.add(String.valueOf(infoArgs.size() / 2));
             args.addAll(infoArgs);
+            args.add(CHAT_ROOM_CACHE_TTL_SECONDS);
         }
 
-        Boolean ok = masterHashRedisTemplate.execute(warmUpChatRoomList_lua, keys, args.toArray());
-        if (!Boolean.TRUE.equals(ok)) {
+        if (!masterHashRedisTemplate.execute(warmUpChatRoomList_lua, keys, args.toArray())) {
             throw new ChatCacheException("[redis] chatroom warmUpList() failed!");
         }
     }
@@ -322,6 +326,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
 
         args.add(String.valueOf(updatedArgs.size() / 2));
         args.addAll(updatedArgs);
+        args.add(CHAT_ROOM_CACHE_TTL_SECONDS);
 
         if (!masterHashRedisTemplate.execute(updateChatRoom_lua, keys, args.toArray())) throw new ChatCacheException("[redis] chatroom update() failed!");
     }
@@ -402,6 +407,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
         List<String> infoArgs = toRoomInfoArgs(chatRoom);
         args.add(String.valueOf(infoArgs.size() / 2));
         args.addAll(infoArgs);
+        args.add(CHAT_ROOM_CACHE_TTL_SECONDS);
 
         if (!masterHashRedisTemplate.execute(recoverUpdateChatRoom_lua, keys, args.toArray())) {
             throw new ChatCacheException("[redis] chatroom recoverUpdate() failed!");
@@ -441,6 +447,27 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
                 .stream()
                 .findFirst()
                 .map(redisChatMessageCodec::read);
+    }
+
+    private ChatRoomCacheLookupResult lookupByOrderedIds(List<String> orderedIds) {
+        List<ChatRoom> hits = new ArrayList<>();
+        List<String> misses = new ArrayList<>();
+
+        for (String roomId : orderedIds) {
+            Optional<ChatRoom> chatRoom = findById(roomId);
+
+            if (chatRoom.isPresent()) {
+                hits.add(chatRoom.get());
+            } else {
+                misses.add(roomId);
+            }
+        }
+
+        return new ChatRoomCacheLookupResult(
+                orderedIds,
+                hits,
+                misses
+        );
     }
 
     private List<String> toRoomInfoArgs(ChatRoom domain) {

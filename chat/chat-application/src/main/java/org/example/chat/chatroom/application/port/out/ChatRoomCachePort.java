@@ -1,5 +1,6 @@
 package org.example.chat.chatroom.application.port.out;
 
+import org.example.chat.chatroom.application.dto.ChatRoomCacheLookupResult;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 
@@ -30,13 +31,23 @@ public interface ChatRoomCachePort {
 
     Optional<Boolean> existsByTitle(String title);
 
-    List<ChatRoom> listMostPopular(ChatRoomCategory category, int limit);
+    ChatRoomCacheLookupResult listMostPopular(ChatRoomCategory category, int limit);
 
-    List<ChatRoom> listNextPopular(ChatRoomCategory category, String lastId, Long lastPopularity, int limit);
+    ChatRoomCacheLookupResult listNextPopular(
+            ChatRoomCategory category,
+            String lastId,
+            Long lastPopularity,
+            int limit
+    );
 
-    List<ChatRoom> listLatestActive(String memberId, int limit);
+    ChatRoomCacheLookupResult listLatestActive(String memberId, int limit);
 
-    List<ChatRoom> listActiveBefore(String memberId, String lastId, Long score, int limit);
+    ChatRoomCacheLookupResult listActiveBefore(
+            String memberId,
+            String lastId,
+            Long score,
+            int limit
+    );
 
     void updateLastRead(String id, String memberId, Long lastMsgSeq);
 

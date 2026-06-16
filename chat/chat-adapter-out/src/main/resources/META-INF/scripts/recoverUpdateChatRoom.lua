@@ -17,11 +17,20 @@ if newTitle ~= "" then
 end
 
 local argIndex = 6
+
 for i = 1, pairCount do
     local field = ARGV[argIndex]
     local value = ARGV[argIndex + 1]
+
     redis.call("HSET", roomInfoKey, field, value)
+
     argIndex = argIndex + 2
+end
+
+local ttlSeconds = tonumber(ARGV[argIndex])
+
+if ttlSeconds ~= nil and ttlSeconds > 0 then
+    redis.call("EXPIRE", roomInfoKey, ttlSeconds)
 end
 
 redis.call("ZADD", popularKey, popularity, roomId)
