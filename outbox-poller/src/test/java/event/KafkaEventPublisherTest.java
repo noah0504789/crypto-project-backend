@@ -1,7 +1,7 @@
 package event;
 
 import org.example.common.dlq.domain.Dlq;
-import org.example.outboxpoller.infra.event.EventPublisher;
+import org.example.outboxpoller.infra.event.KafkaEventPublisher;
 import org.example.outboxpoller.infra.exception.OutboxPollerInfrastructureException;
 import org.example.common.outbox.domain.Outbox;
 import org.junit.jupiter.api.DisplayName;
@@ -20,13 +20,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class EventPublisherTest {
+class KafkaEventPublisherTest {
 
     @Mock
     private StreamBridge streamBridge;
 
     @InjectMocks
-    private EventPublisher sut;
+    private KafkaEventPublisher sut;
 
     @Test
     @DisplayName("Outbox를 publish하면 destination으로 payload와 headers를 담은 메시지를 전송한다")

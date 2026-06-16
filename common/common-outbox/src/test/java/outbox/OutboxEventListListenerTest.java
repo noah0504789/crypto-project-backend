@@ -2,10 +2,10 @@ package outbox;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.example.common.outbox.adapter.OutboxEventListListener;
+import org.example.common.outbox.adapter.in.OutboxEventListListener;
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 import org.example.common.outbox.domain.Outbox;
-import org.example.common.outbox.application.OutboxService;
+import org.example.common.outbox.application.service.OutboxService;
 import org.example.common.outbox.domain.event.AbstractOutboxEventList;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

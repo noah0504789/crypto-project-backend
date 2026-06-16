@@ -1,7 +1,7 @@
 package org.example.outboxpoller.outbox;
 
 import lombok.RequiredArgsConstructor;
-import org.example.common.outbox.application.OutboxService;
+import org.example.common.outbox.application.service.OutboxService;
 import org.example.common.outbox.properties.OutboxPollerProperties;
 import org.example.common.outbox.domain.OutboxDispatchType;
 import org.springframework.scheduling.annotation.Scheduled;

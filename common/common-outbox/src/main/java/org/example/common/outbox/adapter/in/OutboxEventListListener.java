@@ -1,10 +1,10 @@
-package org.example.common.outbox.adapter;
+package org.example.common.outbox.adapter.in;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.common.outbox.application.OutboxService;
+import org.example.common.outbox.application.service.OutboxService;
 import org.example.common.outbox.domain.Outbox;
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 import org.example.common.outbox.domain.event.AbstractOutboxEventList;
