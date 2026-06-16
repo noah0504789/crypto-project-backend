@@ -1,5 +1,6 @@
 package chatroom.service;
 
+import org.example.chat.chatroom.application.dto.ChatRoomCacheLookupResult;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.application.service.ChatRoomQueryRepairService;
@@ -140,10 +141,63 @@ class ChatRoomQueryRepairServiceTest {
     }
 
     @Test
-    @DisplayName("repairMostPopular: 락 내부 double-check에서 캐시 히트 시 영속 저장소를 조회하지 않고 인기 채팅방 목록을 반환한다")
-    void should_return_cached_most_popular_without_persistence_when_double_check_hits() {
+    @DisplayName("repairByIds: 미스난 roomId만 repairFindById 흐름으로 복구한다")
+    void should_repair_only_missed_room_ids() {
         // given
-        List<ChatRoom> cached = List.of(room);
+        when(cache.findById("room-1"))
+                .thenReturn(Optional.empty());
+        when(persistence.findByIdWithLatest("room-1"))
+                .thenReturn(Optional.of(room));
+
+        when(cache.findById("room-2"))
+                .thenReturn(Optional.empty());
+        when(persistence.findByIdWithLatest("room-2"))
+                .thenReturn(Optional.of(room2));
+
+        // when
+        List<ChatRoom> result = sut.repairByIds(List.of("room-1", "room-2"));
+
+        // then
+        assertThat(result).containsExactly(room, room2);
+
+        verify(persistence).findByIdWithLatest("room-1");
+        verify(persistence).findByIdWithLatest("room-2");
+        verify(cache).warmUp(room);
+        verify(cache).warmUp(room2);
+    }
+
+    @Test
+    @DisplayName("repairByIds: DB에도 없는 roomId는 건너뛰고 복구 가능한 채팅방만 반환한다")
+    void should_skip_not_found_room_when_repair_by_ids() {
+        // given
+        when(cache.findById("room-1"))
+                .thenReturn(Optional.empty());
+        when(persistence.findByIdWithLatest("room-1"))
+                .thenReturn(Optional.of(room));
+
+        when(cache.findById("dead-room"))
+                .thenReturn(Optional.empty());
+        when(persistence.findByIdWithLatest("dead-room"))
+                .thenReturn(Optional.empty());
+
+        // when
+        List<ChatRoom> result = sut.repairByIds(List.of("room-1", "dead-room"));
+
+        // then
+        assertThat(result).containsExactly(room);
+
+        verify(cache).warmUp(room);
+        verify(cache, never()).warmUp(room2);
+    }
+
+    @Test
+    @DisplayName("repairMostPopular: 락 내부 double-check에서 전체 히트 시 영속 저장소를 조회하지 않고 인기 채팅방 목록을 반환한다")
+    void should_return_cached_most_popular_without_persistence_when_double_check_all_hits() {
+        // given
+        ChatRoomCacheLookupResult cached = allHit(
+                List.of("room-1"),
+                List.of(room)
+        );
 
         when(cache.listMostPopular(ChatRoomCategory.FREE, 10))
                 .thenReturn(cached);
@@ -159,8 +213,8 @@ class ChatRoomQueryRepairServiceTest {
     }
 
     @Test
-    @DisplayName("repairMostPopular: 캐시 미스 시 영속 저장소에서 인기 채팅방 목록을 조회하고 popularity score로 warm-up 한다")
-    void should_load_most_popular_from_persistence_and_warm_up_when_cache_misses() {
+    @DisplayName("repairMostPopular: 인덱스가 없으면 영속 저장소에서 인기 채팅방 목록을 조회하고 popularity score로 warm-up 한다")
+    void should_load_most_popular_from_persistence_and_warm_up_when_index_missing() {
         // given
         when(room.getId()).thenReturn("room-1");
         when(room.getPopularity()).thenReturn(10.0);
@@ -171,7 +225,7 @@ class ChatRoomQueryRepairServiceTest {
         List<ChatRoom> stored = List.of(room, room2);
 
         when(cache.listMostPopular(ChatRoomCategory.FREE, 10))
-                .thenReturn(List.of());
+                .thenReturn(noIndex());
         when(persistence.listMostPopular(ChatRoomCategory.FREE, 10))
                 .thenReturn(stored);
 
@@ -192,11 +246,43 @@ class ChatRoomQueryRepairServiceTest {
     }
 
     @Test
+    @DisplayName("repairMostPopular: 부분 미스면 미스난 roomId만 repairByIds로 복구하고 원래 순서대로 반환한다")
+    void should_repair_only_missed_rooms_when_most_popular_partially_misses() {
+        // given
+        when(room.getId()).thenReturn("room-1");
+        when(room2.getId()).thenReturn("room-2");
+
+        ChatRoomCacheLookupResult cached = new ChatRoomCacheLookupResult(
+                List.of("room-1", "room-2"),
+                List.of(room),
+                List.of("room-2")
+        );
+
+        when(cache.listMostPopular(ChatRoomCategory.FREE, 10))
+                .thenReturn(cached);
+
+        when(cache.findById("room-2"))
+                .thenReturn(Optional.empty());
+        when(persistence.findByIdWithLatest("room-2"))
+                .thenReturn(Optional.of(room2));
+
+        // when
+        List<ChatRoom> result = sut.repairMostPopular(ChatRoomCategory.FREE, 10);
+
+        // then
+        assertThat(result).containsExactly(room, room2);
+
+        verify(persistence, never()).listMostPopular(any(), anyInt());
+        verify(persistence).findByIdWithLatest("room-2");
+        verify(cache).warmUp(room2);
+    }
+
+    @Test
     @DisplayName("repairMostPopular: 영속 저장소 조회 결과가 비어 있으면 빈 목록을 반환하고 warm-up 하지 않는다")
     void should_return_empty_list_and_not_warm_up_when_most_popular_not_found() {
         // given
         when(cache.listMostPopular(ChatRoomCategory.FREE, 10))
-                .thenReturn(List.of());
+                .thenReturn(noIndex());
         when(persistence.listMostPopular(ChatRoomCategory.FREE, 10))
                 .thenReturn(List.of());
 
@@ -210,8 +296,8 @@ class ChatRoomQueryRepairServiceTest {
     }
 
     @Test
-    @DisplayName("repairNextPopular: 캐시 미스 시 영속 저장소에서 다음 인기 채팅방 목록을 조회하고 warm-up 한다")
-    void should_load_next_popular_from_persistence_and_warm_up_when_cache_misses() {
+    @DisplayName("repairNextPopular: 인덱스가 없으면 영속 저장소에서 다음 인기 채팅방 목록을 조회하고 warm-up 한다")
+    void should_load_next_popular_from_persistence_and_warm_up_when_index_missing() {
         // given
         when(room.getId()).thenReturn("room-1");
         when(room.getPopularity()).thenReturn(10.0);
@@ -222,7 +308,7 @@ class ChatRoomQueryRepairServiceTest {
         List<ChatRoom> stored = List.of(room, room2);
 
         when(cache.listNextPopular(ChatRoomCategory.FREE, "last-room", 100L, 10))
-                .thenReturn(List.of());
+                .thenReturn(noIndex());
         when(persistence.listNextPopular(ChatRoomCategory.FREE, "last-room", 100L, 10))
                 .thenReturn(stored);
 
@@ -244,10 +330,50 @@ class ChatRoomQueryRepairServiceTest {
     }
 
     @Test
-    @DisplayName("repairLatestActive: 락 내부 double-check에서 캐시 히트 시 영속 저장소를 조회하지 않고 최근 활성 채팅방 목록을 반환한다")
-    void should_return_cached_latest_active_without_persistence_when_double_check_hits() {
+    @DisplayName("repairNextPopular: 부분 미스면 미스난 roomId만 repairByIds로 복구하고 원래 순서대로 반환한다")
+    void should_repair_only_missed_rooms_when_next_popular_partially_misses() {
         // given
-        List<ChatRoom> cached = List.of(room);
+        when(room.getId()).thenReturn("room-1");
+        when(room2.getId()).thenReturn("room-2");
+
+        ChatRoomCacheLookupResult cached = new ChatRoomCacheLookupResult(
+                List.of("room-1", "room-2"),
+                List.of(room),
+                List.of("room-2")
+        );
+
+        when(cache.listNextPopular(ChatRoomCategory.FREE, "last-room", 100L, 10))
+                .thenReturn(cached);
+
+        when(cache.findById("room-2"))
+                .thenReturn(Optional.empty());
+        when(persistence.findByIdWithLatest("room-2"))
+                .thenReturn(Optional.of(room2));
+
+        // when
+        List<ChatRoom> result = sut.repairNextPopular(
+                ChatRoomCategory.FREE,
+                "last-room",
+                100L,
+                10
+        );
+
+        // then
+        assertThat(result).containsExactly(room, room2);
+
+        verify(persistence, never()).listNextPopular(any(), anyString(), anyLong(), anyInt());
+        verify(persistence).findByIdWithLatest("room-2");
+        verify(cache).warmUp(room2);
+    }
+
+    @Test
+    @DisplayName("repairLatestActive: 락 내부 double-check에서 전체 히트 시 영속 저장소를 조회하지 않고 최근 활성 채팅방 목록을 반환한다")
+    void should_return_cached_latest_active_without_persistence_when_double_check_all_hits() {
+        // given
+        ChatRoomCacheLookupResult cached = allHit(
+                List.of("room-1"),
+                List.of(room)
+        );
 
         when(cache.listLatestActive("member-1", 10))
                 .thenReturn(cached);
@@ -263,8 +389,8 @@ class ChatRoomQueryRepairServiceTest {
     }
 
     @Test
-    @DisplayName("repairLatestActive: 캐시 미스 시 영속 저장소에서 최근 활성 채팅방 목록을 조회하고 warm-up 한다")
-    void should_load_latest_active_from_persistence_and_warm_up_when_cache_misses() {
+    @DisplayName("repairLatestActive: 인덱스가 없으면 영속 저장소에서 최근 활성 채팅방 목록을 조회하고 warm-up 한다")
+    void should_load_latest_active_from_persistence_and_warm_up_when_index_missing() {
         // given
         when(room.getId()).thenReturn("room-1");
         when(room.getPopularity()).thenReturn(10.0);
@@ -275,7 +401,7 @@ class ChatRoomQueryRepairServiceTest {
         List<ChatRoom> stored = List.of(room, room2);
 
         when(cache.listLatestActive("member-1", 10))
-                .thenReturn(List.of());
+                .thenReturn(noIndex());
         when(persistence.listLatestActive("member-1", 10))
                 .thenReturn(stored);
 
@@ -290,8 +416,40 @@ class ChatRoomQueryRepairServiceTest {
     }
 
     @Test
-    @DisplayName("repairActiveBefore: 캐시 미스 시 영속 저장소에서 커서 이전 활성 채팅방 목록을 조회하고 warm-up 한다")
-    void should_load_active_before_from_persistence_and_warm_up_when_cache_misses() {
+    @DisplayName("repairLatestActive: 부분 미스면 미스난 roomId만 repairByIds로 복구하고 원래 순서대로 반환한다")
+    void should_repair_only_missed_rooms_when_latest_active_partially_misses() {
+        // given
+        when(room.getId()).thenReturn("room-1");
+        when(room2.getId()).thenReturn("room-2");
+
+        ChatRoomCacheLookupResult cached = new ChatRoomCacheLookupResult(
+                List.of("room-1", "room-2"),
+                List.of(room),
+                List.of("room-2")
+        );
+
+        when(cache.listLatestActive("member-1", 10))
+                .thenReturn(cached);
+
+        when(cache.findById("room-2"))
+                .thenReturn(Optional.empty());
+        when(persistence.findByIdWithLatest("room-2"))
+                .thenReturn(Optional.of(room2));
+
+        // when
+        List<ChatRoom> result = sut.repairLatestActive("member-1", 10);
+
+        // then
+        assertThat(result).containsExactly(room, room2);
+
+        verify(persistence, never()).listLatestActive(anyString(), anyInt());
+        verify(persistence).findByIdWithLatest("room-2");
+        verify(cache).warmUp(room2);
+    }
+
+    @Test
+    @DisplayName("repairActiveBefore: 인덱스가 없으면 영속 저장소에서 커서 이전 활성 채팅방 목록을 조회하고 warm-up 한다")
+    void should_load_active_before_from_persistence_and_warm_up_when_index_missing() {
         // given
         when(room.getId()).thenReturn("room-1");
         when(room.getPopularity()).thenReturn(10.0);
@@ -302,7 +460,7 @@ class ChatRoomQueryRepairServiceTest {
         List<ChatRoom> stored = List.of(room, room2);
 
         when(cache.listActiveBefore("member-1", "last-room", 1234L, 10))
-                .thenReturn(List.of());
+                .thenReturn(noIndex());
         when(persistence.listActiveBefore("member-1", "last-room", 1234L, 10))
                 .thenReturn(stored);
 
@@ -324,6 +482,43 @@ class ChatRoomQueryRepairServiceTest {
     }
 
     @Test
+    @DisplayName("repairActiveBefore: 부분 미스면 미스난 roomId만 repairByIds로 복구하고 원래 순서대로 반환한다")
+    void should_repair_only_missed_rooms_when_active_before_partially_misses() {
+        // given
+        when(room.getId()).thenReturn("room-1");
+        when(room2.getId()).thenReturn("room-2");
+
+        ChatRoomCacheLookupResult cached = new ChatRoomCacheLookupResult(
+                List.of("room-1", "room-2"),
+                List.of(room),
+                List.of("room-2")
+        );
+
+        when(cache.listActiveBefore("member-1", "last-room", 1234L, 10))
+                .thenReturn(cached);
+
+        when(cache.findById("room-2"))
+                .thenReturn(Optional.empty());
+        when(persistence.findByIdWithLatest("room-2"))
+                .thenReturn(Optional.of(room2));
+
+        // when
+        List<ChatRoom> result = sut.repairActiveBefore(
+                "member-1",
+                "last-room",
+                1234L,
+                10
+        );
+
+        // then
+        assertThat(result).containsExactly(room, room2);
+
+        verify(persistence, never()).listActiveBefore(anyString(), anyString(), anyLong(), anyInt());
+        verify(persistence).findByIdWithLatest("room-2");
+        verify(cache).warmUp(room2);
+    }
+
+    @Test
     @DisplayName("repairMostPopular: 목록 warm-up에 실패해도 영속 저장소에서 조회한 목록을 반환한다")
     void should_return_stored_list_even_when_warm_up_list_fails() {
         // given
@@ -336,7 +531,7 @@ class ChatRoomQueryRepairServiceTest {
         List<ChatRoom> stored = List.of(room, room2);
 
         when(cache.listMostPopular(ChatRoomCategory.FREE, 10))
-                .thenReturn(List.of());
+                .thenReturn(noIndex());
         when(persistence.listMostPopular(ChatRoomCategory.FREE, 10))
                 .thenReturn(stored);
         doThrow(new RuntimeException("redis failed"))
@@ -350,5 +545,21 @@ class ChatRoomQueryRepairServiceTest {
         assertThat(result).containsExactly(room, room2);
 
         verify(cache, times(1)).warmUpList(eq(stored), anyMap());
+    }
+
+    private ChatRoomCacheLookupResult noIndex() {
+        return new ChatRoomCacheLookupResult(
+                List.of(),
+                List.of(),
+                List.of()
+        );
+    }
+
+    private ChatRoomCacheLookupResult allHit(List<String> orderedIds, List<ChatRoom> hits) {
+        return new ChatRoomCacheLookupResult(
+                orderedIds,
+                hits,
+                List.of()
+        );
     }
 }

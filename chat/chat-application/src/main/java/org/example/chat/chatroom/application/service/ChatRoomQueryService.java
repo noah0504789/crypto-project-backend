@@ -2,6 +2,7 @@ package org.example.chat.chatroom.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.chat.chatroom.application.dto.ChatRoomCacheLookupResult;
 import org.example.chat.chatroom.application.port.in.ChatRoomQueryUseCase;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
@@ -12,6 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -40,59 +44,90 @@ public class ChatRoomQueryService implements ChatRoomQueryUseCase {
     @Override
     @Transactional(transactionManager = "chatMongoTransactionManager", readOnly = true)
     public List<ChatRoom> listMostPopular(ChatRoomCategory category, int limit) {
-        List<ChatRoom> cached = cache.listMostPopular(category, limit);
+        ChatRoomCacheLookupResult cached = cache.listMostPopular(category, limit);
 
-        if (!cached.isEmpty()) {
-            return cached;
+        if (cached.hasNoIndex()) {
+            return queryRepairService.repairMostPopular(category, limit);
         }
 
-        return queryRepairService.repairMostPopular(category, limit);
+        if (cached.isAllHit()) {
+            return cached.hits();
+        }
+
+        List<ChatRoom> repaired = queryRepairService.repairByIds(cached.misses());
+
+        return mergeByOriginalOrder(cached.orderedIds(), cached.hits(), repaired, limit);
     }
 
     @Override
     @Transactional(transactionManager = "chatMongoTransactionManager", readOnly = true)
     public List<ChatRoom> listNextPopular(ChatRoomCategory category, String lastId, Long lastPopularity, int limit) {
-        List<ChatRoom> cached = cache.listNextPopular(category, lastId, lastPopularity, limit);
+        ChatRoomCacheLookupResult cached = cache.listNextPopular(category, lastId, lastPopularity, limit);
 
-        if (!cached.isEmpty()) {
-            return cached;
+        if (cached.hasNoIndex()) {
+            return queryRepairService.repairNextPopular(category, lastId, lastPopularity, limit);
         }
 
-        return queryRepairService.repairNextPopular(category, lastId, lastPopularity, limit);
+        if (cached.isAllHit()) {
+            return cached.hits();
+        }
+
+        List<ChatRoom> repaired = queryRepairService.repairByIds(cached.misses());
+
+        return mergeByOriginalOrder(cached.orderedIds(), cached.hits(), repaired, limit);
     }
 
     @Override
     @Transactional(transactionManager = "chatMongoTransactionManager", readOnly = true)
     public List<MyChatRoomSummary> listLatestActive(String memberId, int limit) {
-        List<ChatRoom> cached = cache.listLatestActive(memberId, limit);
+        ChatRoomCacheLookupResult cached = cache.listLatestActive(memberId, limit);
 
-        if (!cached.isEmpty()) {
-            return cached.stream()
+        if (cached.hasNoIndex()) {
+            return queryRepairService.repairLatestActive(memberId, limit)
+                    .stream()
+                    .map(room -> toMyChatRoomSummaryWithPersistedLastRead(room, memberId))
+                    .toList();
+        }
+
+        if (cached.isAllHit()) {
+            return cached.hits()
+                    .stream()
                     .map(room -> toMyChatRoomSummaryWithLastRead(room, memberId))
                     .toList();
         }
 
-        return queryRepairService.repairLatestActive(memberId, limit).stream()
-                .map(room -> toMyChatRoomSummaryWithPersistedLastRead(room, memberId))
-                .toList();
+        List<ChatRoom> repaired = queryRepairService.repairByIds(cached.misses());
+
+        return mergeActiveSummaryByOriginalOrder(cached.orderedIds(), cached.hits(), repaired, memberId, limit);
     }
 
     @Override
     @Transactional(transactionManager = "chatMongoTransactionManager", readOnly = true)
     public List<MyChatRoomSummary> listActiveBefore(String memberId, String lastId, Boolean lastUnreadFlag, Long lastMsgCreatedAt, int limit) {
-        Long score = ChatRoomActivityScore.calculate(lastMsgCreatedAt == null ? 0L : lastMsgCreatedAt, Boolean.TRUE.equals(lastUnreadFlag));
+        Long score = ChatRoomActivityScore.calculate(
+                lastMsgCreatedAt == null ? 0L : lastMsgCreatedAt,
+                Boolean.TRUE.equals(lastUnreadFlag)
+        );
 
-        List<ChatRoom> cached = cache.listActiveBefore(memberId, lastId, score, limit);
+        ChatRoomCacheLookupResult cached = cache.listActiveBefore(memberId, lastId, score, limit);
 
-        if (!cached.isEmpty()) {
-            return cached.stream()
+        if (cached.hasNoIndex()) {
+            return queryRepairService.repairActiveBefore(memberId, lastId, score, limit)
+                    .stream()
+                    .map(room -> toMyChatRoomSummaryWithPersistedLastRead(room, memberId))
+                    .toList();
+        }
+
+        if (cached.isAllHit()) {
+            return cached.hits()
+                    .stream()
                     .map(room -> toMyChatRoomSummaryWithLastRead(room, memberId))
                     .toList();
         }
 
-        return queryRepairService.repairActiveBefore(memberId, lastId, score, limit).stream()
-                .map(room -> toMyChatRoomSummaryWithPersistedLastRead(room, memberId))
-                .toList();
+        List<ChatRoom> repaired = queryRepairService.repairByIds(cached.misses());
+
+        return mergeActiveSummaryByOriginalOrder(cached.orderedIds(), cached.hits(), repaired, memberId, limit);
     }
 
     @Override
@@ -132,6 +167,45 @@ public class ChatRoomQueryService implements ChatRoomQueryUseCase {
         } catch (RuntimeException e) {
             log.warn("[cache] chatroom active cache refresh failed. roomId={}, memberId={}, lastReadSeq={}", room.getId(), memberId, lastReadSeq, e);
         }
+    }
+
+    private List<ChatRoom> mergeByOriginalOrder(List<String> orderedIds, List<ChatRoom> hits, List<ChatRoom> repaired, int limit) {
+        Map<String, ChatRoom> chatRoomMap = Stream.concat(hits.stream(), repaired.stream())
+                .collect(Collectors.toMap(
+                        ChatRoom::getId,
+                        Function.identity(),
+                        (left, right) -> left
+                ));
+
+        return orderedIds.stream()
+                .map(chatRoomMap::get)
+                .filter(Objects::nonNull)
+                .limit(limit)
+                .toList();
+    }
+
+    private List<MyChatRoomSummary> mergeActiveSummaryByOriginalOrder(List<String> orderedIds, List<ChatRoom> hits, List<ChatRoom> repaired, String memberId, int limit) {
+        Map<String, MyChatRoomSummary> summaryMap = new HashMap<>();
+
+        for (ChatRoom room : hits) {
+            summaryMap.put(
+                    room.getId(),
+                    toMyChatRoomSummaryWithLastRead(room, memberId)
+            );
+        }
+
+        for (ChatRoom room : repaired) {
+            summaryMap.putIfAbsent(
+                    room.getId(),
+                    toMyChatRoomSummaryWithPersistedLastRead(room, memberId)
+            );
+        }
+
+        return orderedIds.stream()
+                .map(summaryMap::get)
+                .filter(Objects::nonNull)
+                .limit(limit)
+                .toList();
     }
 
     private record LastReadResult(Long seq, boolean cacheMiss) { }

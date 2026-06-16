@@ -2,6 +2,7 @@ package org.example.chat.chatroom.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.chat.chatroom.application.dto.ChatRoomCacheLookupResult;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.domain.model.ChatRoom;
@@ -12,6 +13,9 @@ import org.example.common.redis.lock.DistributedLockPolicy;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -31,17 +35,34 @@ public class ChatRoomQueryRepairService {
         );
     }
 
+    public List<ChatRoom> repairByIds(List<String> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+
+        return ids.stream()
+                .map(this::repairByIdSafely)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
     public List<ChatRoom> repairMostPopular(ChatRoomCategory category, int limit) {
         return distributedLockExecutor.execute(
                 "chatroom:listMostPopular:" + category.name() + ":" + limit,
                 () -> {
-                    List<ChatRoom> cached = cache.listMostPopular(category, limit);
+                    ChatRoomCacheLookupResult cached = cache.listMostPopular(category, limit);
 
-                    if (!cached.isEmpty()) {
-                        return cached;
+                    if (cached.hasNoIndex()) {
+                        return loadMostPopularAndWarmUp(category, limit);
                     }
 
-                    return loadMostPopularAndWarmUp(category, limit);
+                    if (cached.isAllHit()) {
+                        return cached.hits();
+                    }
+
+                    List<ChatRoom> repaired = repairByIds(cached.misses());
+
+                    return mergeByOriginalOrder(cached.orderedIds(), cached.hits(), repaired, limit);
                 },
                 DistributedLockPolicy.CACHE_WARM_UP
         );
@@ -51,13 +72,19 @@ public class ChatRoomQueryRepairService {
         return distributedLockExecutor.execute(
                 "chatroom:listNextPopular:" + category.name() + ":" + lastId + ":" + lastPopularity + ":" + limit,
                 () -> {
-                    List<ChatRoom> cached = cache.listNextPopular(category, lastId, lastPopularity, limit);
+                    ChatRoomCacheLookupResult cached = cache.listNextPopular(category, lastId, lastPopularity, limit);
 
-                    if (!cached.isEmpty()) {
-                        return cached;
+                    if (cached.hasNoIndex()) {
+                        return loadNextPopularAndWarmUp(category, lastId, lastPopularity, limit);
                     }
 
-                    return loadNextPopularAndWarmUp(category, lastId, lastPopularity, limit);
+                    if (cached.isAllHit()) {
+                        return cached.hits();
+                    }
+
+                    List<ChatRoom> repaired = repairByIds(cached.misses());
+
+                    return mergeByOriginalOrder(cached.orderedIds(), cached.hits(), repaired, limit);
                 },
                 DistributedLockPolicy.CACHE_WARM_UP
         );
@@ -67,13 +94,19 @@ public class ChatRoomQueryRepairService {
         return distributedLockExecutor.execute(
                 "chatroom:listLatestActive:" + memberId + ":" + limit,
                 () -> {
-                    List<ChatRoom> cached = cache.listLatestActive(memberId, limit);
+                    ChatRoomCacheLookupResult cached = cache.listLatestActive(memberId, limit);
 
-                    if (!cached.isEmpty()) {
-                        return cached;
+                    if (cached.hasNoIndex()) {
+                        return loadLatestActiveAndWarmUp(memberId, limit);
                     }
 
-                    return loadLatestActiveAndWarmUp(memberId, limit);
+                    if (cached.isAllHit()) {
+                        return cached.hits();
+                    }
+
+                    List<ChatRoom> repaired = repairByIds(cached.misses());
+
+                    return mergeByOriginalOrder(cached.orderedIds(), cached.hits(), repaired, limit);
                 },
                 DistributedLockPolicy.CACHE_WARM_UP
         );
@@ -83,13 +116,19 @@ public class ChatRoomQueryRepairService {
         return distributedLockExecutor.execute(
                 "chatroom:listActiveBefore:" + memberId + ":" + lastId + ":" + score + ":" + limit,
                 () -> {
-                    List<ChatRoom> cached = cache.listActiveBefore(memberId, lastId, score, limit);
+                    ChatRoomCacheLookupResult cached = cache.listActiveBefore(memberId, lastId, score, limit);
 
-                    if (!cached.isEmpty()) {
-                        return cached;
+                    if (cached.hasNoIndex()) {
+                        return loadActiveBeforeAndWarmUp(memberId, lastId, score, limit);
                     }
 
-                    return loadActiveBeforeAndWarmUp(memberId, lastId, score, limit);
+                    if (cached.isAllHit()) {
+                        return cached.hits();
+                    }
+
+                    List<ChatRoom> repaired = repairByIds(cached.misses());
+
+                    return mergeByOriginalOrder(cached.orderedIds(), cached.hits(), repaired, limit);
                 },
                 DistributedLockPolicy.CACHE_WARM_UP
         );
@@ -156,6 +195,15 @@ public class ChatRoomQueryRepairService {
         return stored;
     }
 
+    private ChatRoom repairByIdSafely(String id) {
+        try {
+            return repairFindById(id);
+        } catch (RuntimeException e) {
+            log.warn("[chatroom cache partial repair skipped] roomId={}, reason={}", id, e.getMessage());
+            return null;
+        }
+    }
+
     private void warmUpSafely(ChatRoom room) {
         try {
             cache.warmUp(room);
@@ -179,6 +227,22 @@ public class ChatRoomQueryRepairService {
     private Map<String, Double> popularitiesOf(List<ChatRoom> rooms) {
         Map<String, Double> popularities = new HashMap<>();
         rooms.forEach(room -> popularities.put(room.getId(), room.getPopularity()));
+
         return popularities;
+    }
+
+    private List<ChatRoom> mergeByOriginalOrder(List<String> orderedIds, List<ChatRoom> hits, List<ChatRoom> repaired, int limit) {
+        Map<String, ChatRoom> chatRoomMap = Stream.concat(hits.stream(), repaired.stream())
+                .collect(Collectors.toMap(
+                        ChatRoom::getId,
+                        Function.identity(),
+                        (left, right) -> left
+                ));
+
+        return orderedIds.stream()
+                .map(chatRoomMap::get)
+                .filter(Objects::nonNull)
+                .limit(limit)
+                .toList();
     }
 }
