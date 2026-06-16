@@ -43,6 +43,17 @@ local function initLastReads(startIndex)
 
         argIndex = argIndex + 1
     end
+
+    return argIndex
+end
+
+local function applyTtl(argIndex)
+    local ttlSeconds = tonumber(ARGV[argIndex])
+
+    if ttlSeconds ~= nil and ttlSeconds > 0 then
+        redis.call("EXPIRE", infoKey, ttlSeconds)
+        redis.call("EXPIRE", lastReadKey, ttlSeconds)
+    end
 end
 
 local added = redis.call("SADD", titleIndexKey, title)
@@ -54,7 +65,8 @@ if added == 0 then
 
         redis.call("ZADD", popularKey, score, roomId)
 
-        initLastReads(nextIndex)
+        nextIndex = initLastReads(nextIndex)
+        applyTtl(nextIndex)
 
         return true
     end
@@ -66,6 +78,7 @@ local nextIndex = storeRoomInfo(5)
 
 redis.call("ZADD", popularKey, score, roomId)
 
-initLastReads(nextIndex)
+nextIndex = initLastReads(nextIndex)
+applyTtl(nextIndex)
 
 return true
