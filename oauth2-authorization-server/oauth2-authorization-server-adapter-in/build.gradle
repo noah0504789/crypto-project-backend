@@ -9,17 +9,14 @@ dependencies {
     implementation project(':oauth2-authorization-server:oauth2-authorization-server-application')
     implementation project(':protobuf')
 
-    implementation platform(libs.grpc.bom)
-    implementation(libs.grpc.stub)
     implementation(libs.grpc.server.spring.boot.starter)
     implementation(libs.protobuf.java)
 
-    implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.security.oauth2.authorization.server)
 
-    testImplementation project(':oauth2-authorization-server:oauth2-authorization-server-adapter-out')
     testImplementation project(':common:common-test')
     testImplementation project(':common:common-redis')
+    testImplementation project(':oauth2-authorization-server:oauth2-authorization-server-adapter-out')
     testImplementation(libs.spring.security.test)
     testImplementation(libs.spring.boot.starter.data.redis)
     testImplementation(libs.caffeine)
