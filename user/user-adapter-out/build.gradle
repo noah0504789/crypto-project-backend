@@ -3,13 +3,11 @@ plugins {
 }
 
 dependencies {
-    implementation project(':user:user-application')
-
     runtimeOnly(libs.mysql.connector.j) {
         exclude group: 'com.google.protobuf', module: 'protobuf-java'
     }
 
-    implementation(libs.spring.boot.starter.data.jpa)
+    implementation project(':user:user-application')
     implementation(libs.spring.security.crypto)
 
     testImplementation project(':common:common-test')
