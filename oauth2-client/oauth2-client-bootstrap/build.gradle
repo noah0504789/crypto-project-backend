@@ -5,10 +5,10 @@ plugins {
 ext.dockerImageName = "crypto-oauth2-client"
 
 dependencies {
+    implementation project(':common:common-actuator-webmvc')
     implementation project(':oauth2-client:oauth2-client-adapter-in')
     implementation project(':oauth2-client:oauth2-client-adapter-out')
     implementation project(':oauth2-client:oauth2-client-application')
-    implementation project(':common:common-actuator-webmvc')
 
     implementation(libs.spring.cloud.config.client)
     implementation(libs.spring.cloud.eureka.client)
