@@ -14,7 +14,7 @@ dependencies {
 
     implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.boot.starter.data.jpa)
-    implementation(libs.spring.cloud.stream.binder.kafka)
+    implementation(libs.spring.cloud.starter.stream.kafka)
     implementation(libs.spring.cloud.config.client)
     implementation(libs.micrometer.registry.prometheus)
     implementation(libs.ulid.creator)
