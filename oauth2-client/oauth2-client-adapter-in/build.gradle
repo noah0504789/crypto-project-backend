@@ -7,13 +7,10 @@ dependencies {
     implementation project(':common:common-web')
     implementation project(':oauth2-client:oauth2-client-application')
 
-    implementation(libs.spring.boot.starter.oauth2.client)
-    implementation(libs.spring.boot.starter.web)
-
-    testImplementation project(':oauth2-client:oauth2-client-adapter-out')
-    testImplementation project(':oauth2-authorization-server:oauth2-authorization-server-adapter-in')
     testImplementation project(':common:common-test')
     testImplementation project(':common:common-redis')
+    testImplementation project(':oauth2-client:oauth2-client-adapter-out')
+    testImplementation project(':oauth2-authorization-server:oauth2-authorization-server-adapter-in')
     testImplementation(libs.spring.security.test)
 }
 

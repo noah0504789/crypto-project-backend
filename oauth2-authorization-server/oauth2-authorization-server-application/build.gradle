@@ -9,7 +9,6 @@ dependencies {
     api(libs.spring.security.oauth2.authorization.server)
 
     implementation(libs.spring.boot.starter.web)
-    implementation(libs.spring.boot.starter.validation)
 
     testImplementation(libs.spring.security.test)
     testImplementation project(':common:common-test')

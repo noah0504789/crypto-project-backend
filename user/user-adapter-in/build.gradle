@@ -3,15 +3,10 @@ plugins {
 }
 
 dependencies {
-    implementation project(':common:common-core')
     implementation project(':common:common-web')
     implementation project(':common:common-grpc')
-    implementation project(':user:user-application')
     implementation project(':protobuf')
-
-    implementation platform(libs.grpc.bom)
-    implementation(libs.grpc.stub)
-    implementation(libs.grpc.server.spring.boot.starter)
+    implementation project(':user:user-application')
 
     implementation(libs.protobuf.java)
     implementation(libs.protobuf.util)

@@ -3,11 +3,13 @@ plugins {
 }
 
 dependencies {
-    implementation project(':common')
     implementation project(':common:common-event')
+    implementation(libs.okhttp)
 
     implementation(libs.spring.cloud.config.client)
     implementation(libs.spring.cloud.eureka.client)
+    implementation(libs.spring.cloud.stream.binder.kafka.streams)
 
     testImplementation project(':common:common-test')
+    testImplementation(libs.kafka.streams.test.utils)
 }

@@ -9,7 +9,6 @@ dependencies {
     implementation project(':common:common-redis')
     implementation project(':protobuf')
     implementation project(':websocket-gateway:websocket-gateway-application')
-    implementation project(':websocket-gateway:websocket-gateway-domain')
     implementation project(':chat:chat-client')
 
     implementation platform(libs.grpc.bom)
