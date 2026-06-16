@@ -27,6 +27,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.hasItem;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -235,9 +236,11 @@ class UserControllerWebMvcTest {
                 )
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors").isArray())
-                .andExpect(jsonPath("$.errors[0].field").value("nickname"))
-                .andExpect(jsonPath("$.errors[0].code").value("NotBlankIfPresent"))
-                .andExpect(jsonPath("$.errors[0].message").value("닉네임은 비어 있을 수 없습니다."));
+                .andExpect(jsonPath("$.errors[*].field").value(hasItem("nickname")))
+                .andExpect(jsonPath("$.errors[*].code").value(hasItem("NotBlankIfPresent")))
+                .andExpect(jsonPath("$.errors[*].message").value(hasItem("닉네임은 비어 있을 수 없습니다.")))
+                .andExpect(jsonPath("$.errors[*].code").value(hasItem("Pattern")))
+                .andExpect(jsonPath("$.errors[*].message").value(hasItem("닉네임은 한글, 영문, 숫자, 언더스코어만 사용할 수 있습니다.")));
 
         then(userCommandService)
                 .shouldHaveNoInteractions();
@@ -315,7 +318,7 @@ class UserControllerWebMvcTest {
     }
 
     @Test
-    @DisplayName("nickname이 허용되지 않은 문자를 포함하면 GlobalExceptionHandler가 ValidationResult 형식으로 응답한다")
+    @DisplayName("nickname이 허용되지 않은 문자(한글, 영문, 숫자, 언더스코어 외 문자)를 포함하면 GlobalExceptionHandler가 ValidationResult 형식으로 응답한다")
     void updateProfile_shouldReturnValidationResult_whenNicknamePatternIsInvalid() throws Exception {
         // given
         UUID publicId = UUID.randomUUID();
