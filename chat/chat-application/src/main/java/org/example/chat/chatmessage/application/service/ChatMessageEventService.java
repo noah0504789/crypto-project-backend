@@ -7,6 +7,8 @@ import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.chatmessage.domain.event.ChatMessagePersistEvent;
 import org.example.chat.chatmessage.domain.port.ChatMessageEventHandler;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
+import org.springframework.dao.TransientDataAccessException;
+import org.springframework.data.mongodb.MongoTransactionException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
@@ -25,9 +27,15 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
     private final ChatRoomPersistencePort chatRoomPersistencePort;
 
     @Retryable(
-            value = RuntimeException.class, // TODO: exception 서브타입 지정
+            retryFor = {
+                    TransientDataAccessException.class,
+                    MongoTransactionException.class
+            },
+            noRetryFor = {
+                    DuplicateKeyException.class
+            },
             maxAttempts = 3,
-            backoff = @Backoff(delay = 100, multiplier = 2) // 100ms → 200ms → 400ms
+            backoff = @Backoff(delay = 100, multiplier = 2)
     )
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatMessagePersistEvent event, String txId) {

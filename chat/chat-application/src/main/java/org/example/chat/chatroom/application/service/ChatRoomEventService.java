@@ -8,6 +8,9 @@ import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.port.ChatRoomEventHandler;
+import org.springframework.dao.TransientDataAccessException;
+import org.springframework.data.mongodb.MongoTransactionException;
+import org.springframework.data.redis.RedisSystemException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
@@ -16,6 +19,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 
+@Retryable(
+        retryFor = {
+                TransientDataAccessException.class,
+                MongoTransactionException.class,
+                RedisSystemException.class
+        },
+        maxAttempts = 3,
+        backoff = @Backoff(delay = 100, multiplier = 2)
+)
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -24,111 +36,56 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
     private final ChatRoomPersistencePort persistence;
     private final ChatRoomCachePort cache;
 
-    @Retryable(
-            value = RuntimeException.class, // TODO: 구체 클래스
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 100, multiplier = 2)
-    )
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomPersistedEvent event, String txId) {
         ChatRoom domain = ChatRoom.fromPayload(event.getPayload());
         persistence.save(domain);
     }
 
-    @Retryable(
-            value = RuntimeException.class,
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 100, multiplier = 2)
-    )
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomUpdatedEvent event, String txId) {
         persistence.updateAndReturn(event.getId(), event.getUpdated().toUpdateMap());
     }
 
-    @Retryable(
-            value = RuntimeException.class,
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 100, multiplier = 2)
-    )
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomJoinedEvent event, String txId) {
         persistence.join(event.getId(), event.getMemberId());
     }
 
-    @Retryable(
-            value = RuntimeException.class,
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 100, multiplier = 2)
-    )
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomLeavedEvent event, String txId) {
         persistence.leave(event.getId(), event.getMemberId());
     }
 
-    @Retryable(
-            value = RuntimeException.class,
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 100, multiplier = 2)
-    )
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomDeletedEvent event, String txId) {
         persistence.deleteById(event.getId());
     }
 
-    @Retryable(
-            value = RuntimeException.class,
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 100, multiplier = 2)
-    )
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomActiveEvent event, String txId) {
         persistence.active(event.getId(), event.getMemberId(), event.getLastMsgSeq(), event.getLastMsgMs());
     }
 
-    @Retryable(
-            value = RuntimeException.class,
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 100, multiplier = 2)
-    )
     public void handle(ChatRoomCacheSaveEvent event, String txId) {
         String id = event.getId();
         persistence.findByIdWithLatest(id).ifPresent(cache::warmUp);
     }
 
-    @Retryable(
-            value = RuntimeException.class,
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 100, multiplier = 2)
-    )
     public void handle(ChatRoomCacheUpdateEvent event, String txId) {
         String id = event.getId();
         String oldTitle = event.getOldTitle();
         persistence.findByIdWithLatest(id).ifPresent(chatRoom -> cache.recoverUpdate(chatRoom, oldTitle));
     }
 
-    @Retryable(
-            value = RuntimeException.class,
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 100, multiplier = 2)
-    )
     public void handle(ChatRoomCacheDeleteEvent event, String txId) {
         cache.delete(event.getId(), event.getCategory(), event.getTitle(), event.getMemberids());
     }
 
-    @Retryable(
-            value = RuntimeException.class,
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 100, multiplier = 2)
-    )
     public void handle(ChatRoomCacheActivityInvalidateEvent event, String txId) {
         cache.invalidateActivity(event.getId(), event.getMemberId());
     }
 
-    @Retryable(
-            value = RuntimeException.class,
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 100, multiplier = 2)
-    )
     public void handle(ChatRoomCacheInfoInvalidateEvent event, String txId) {
         cache.invalidateInfo(event.getId());
     }
