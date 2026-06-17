@@ -9,6 +9,7 @@ import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.application.query.MyChatRoomSummary;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
+import org.example.chat.chatroom.domain.service.MyChatRoomScoreCalculator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -104,10 +105,10 @@ public class ChatRoomQueryService implements ChatRoomQueryUseCase {
     @Override
     @Transactional(transactionManager = "chatMongoTransactionManager", readOnly = true)
     public List<MyChatRoomSummary> listActiveBefore(String memberId, String lastId, Boolean lastUnreadFlag, Long lastMsgCreatedAt, int limit) {
-        Long score = ChatRoomActivityScore.calculate(
-                lastMsgCreatedAt == null ? 0L : lastMsgCreatedAt,
-                Boolean.TRUE.equals(lastUnreadFlag)
-        );
+        long cursorLastMsgCreatedAt = lastMsgCreatedAt == null ? 0L : lastMsgCreatedAt;
+        boolean cursorUnread = Boolean.TRUE.equals(lastUnreadFlag);
+
+        Long score = cursorUnread ? MyChatRoomScoreCalculator.unread(cursorLastMsgCreatedAt) : MyChatRoomScoreCalculator.read(cursorLastMsgCreatedAt);
 
         ChatRoomCacheLookupResult cached = cache.listActiveBefore(memberId, lastId, score, limit);
 
@@ -163,7 +164,11 @@ public class ChatRoomQueryService implements ChatRoomQueryUseCase {
     private void refreshActiveCacheSafely(ChatRoom room, String memberId, Long lastReadSeq) {
         try {
             cache.updateLastRead(room.getId(), memberId, lastReadSeq);
-            cache.updateRecentScore(room.getId(), memberId, ChatRoomActivityScore.calculate(room.getLastMsgCreatedAtMs(), room.hasUnread(lastReadSeq)));
+
+            boolean unread = room.hasUnread(lastReadSeq);
+            long score = unread ? MyChatRoomScoreCalculator.unread(room.getLastMsgCreatedAtMs()) : MyChatRoomScoreCalculator.read(room.getLastMsgCreatedAtMs());
+
+            cache.updateRecentScore(room.getId(), memberId, score);
         } catch (RuntimeException e) {
             log.warn("[cache] chatroom active cache refresh failed. roomId={}, memberId={}, lastReadSeq={}", room.getId(), memberId, lastReadSeq, e);
         }
