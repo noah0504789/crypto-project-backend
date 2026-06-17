@@ -6,11 +6,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import org.bson.types.ObjectId;
-import org.example.chat.chatroom.application.service.ChatRoomActivityScore;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.mapping.Document;
+
+import org.example.chat.chatroom.domain.service.MyChatRoomScoreCalculator;
 
 @Document("chat_room_membership")
 @CompoundIndexes({
@@ -31,30 +32,26 @@ public class MongoChatRoomMembership {
     private Long lastMsgReadSeq;
     private Long score;
 
-    public static MongoChatRoomMembership ofUnreadActivity(String roomId, String memberId, Long lastMsgCreatedAt) {
+    public static MongoChatRoomMembership ofUnreadActivity(String roomId, String memberId, Long score) {
         return MongoChatRoomMembership.builder()
                 .id(generateId(roomId, memberId))
                 .roomId(new ObjectId(roomId))
                 .memberId(memberId)
-                .score(ChatRoomActivityScore.calculate(lastMsgCreatedAt, true))
+                .score(score)
                 .build();
     }
 
-    public static MongoChatRoomMembership ofReadActivity(String roomId, String memberId, Long lastMsgReadSeq, Long lastMsgCreatedAt) {
+    public static MongoChatRoomMembership ofReadActivity(String roomId, String memberId, Long lastMsgReadSeq, Long score) {
         return MongoChatRoomMembership.builder()
                 .id(generateId(roomId, memberId))
                 .roomId(new ObjectId(roomId))
                 .memberId(memberId)
                 .lastMsgReadSeq(lastMsgReadSeq)
-                .score(ChatRoomActivityScore.calculate(lastMsgCreatedAt, false))
+                .score(score)
                 .build();
     }
 
     public static String generateId(String roomId, String memberId) {
         return roomId + "|" + memberId;
-    }
-
-    public static long rescoreKeepingUnreadState(long score, long fallbackMsgCreatedAt) {
-        return ChatRoomActivityScore.rescoreKeepingUnreadState(score, fallbackMsgCreatedAt);
     }
 }

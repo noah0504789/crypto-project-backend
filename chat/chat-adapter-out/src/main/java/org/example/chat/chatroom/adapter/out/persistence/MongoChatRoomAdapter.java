@@ -10,6 +10,7 @@ import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.chat.chatroom.domain.exception.ChatRoomMembershipNotFoundException;
 import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
+import org.example.chat.chatroom.domain.service.MyChatRoomScoreCalculator;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -43,7 +44,9 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
 
     @Override
     public void updateMembershipScores(String id, Set<String> memberIds, long lastMsgCreatedAt) {
-        memberIds.forEach(memberId -> membershipRepository.upsert(MongoChatRoomMembership.ofUnreadActivity(id, memberId, lastMsgCreatedAt)));
+        long score = MyChatRoomScoreCalculator.unread(lastMsgCreatedAt);
+
+        memberIds.forEach(memberId -> membershipRepository.upsert(MongoChatRoomMembership.ofUnreadActivity(id, memberId, score)));
     }
 
     @Override
@@ -52,7 +55,7 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
                 .stream()
                 .map(membership -> {
                     long score = membership.getScore() == null ? 0L : membership.getScore();
-                    long newScore = MongoChatRoomMembership.rescoreKeepingUnreadState(score, fallbackMsgCreatedAt);
+                    long newScore = MyChatRoomScoreCalculator.rescoreKeepingUnreadState(score, fallbackMsgCreatedAt);
                     membershipRepository.refresh(membership.getId(), newScore);
 
                     return new ChatRoomMembershipScore(membership.getMemberId(), newScore);
@@ -72,7 +75,9 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
 
     @Override
     public void active(String id, String memberId, Long lastMsgReadSeq, Long lastMsgCreatedAt) {
-        membershipRepository.save(MongoChatRoomMembership.ofReadActivity(id, memberId, lastMsgReadSeq, lastMsgCreatedAt));
+        long score = MyChatRoomScoreCalculator.read(lastMsgCreatedAt);
+
+        membershipRepository.save(MongoChatRoomMembership.ofReadActivity(id, memberId, lastMsgReadSeq, score));
     }
 
     @Override

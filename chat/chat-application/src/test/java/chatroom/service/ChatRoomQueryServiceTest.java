@@ -4,11 +4,11 @@ import org.example.chat.chatroom.application.dto.ChatRoomCacheLookupResult;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.application.query.MyChatRoomSummary;
-import org.example.chat.chatroom.application.service.ChatRoomActivityScore;
 import org.example.chat.chatroom.application.service.ChatRoomQueryRepairService;
 import org.example.chat.chatroom.application.service.ChatRoomQueryService;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
+import org.example.chat.chatroom.domain.service.MyChatRoomScoreCalculator;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -128,7 +128,7 @@ class ChatRoomQueryServiceTest {
         verify(cache, times(1)).updateRecentScore(
                 eq(ROOM_ID),
                 eq(MEMBER_ID),
-                eq(ChatRoomActivityScore.calculate(1_000L, true))
+                eq(MyChatRoomScoreCalculator.unread(1_000L))
         );
     }
 
@@ -159,7 +159,7 @@ class ChatRoomQueryServiceTest {
         verify(cache, times(1)).updateRecentScore(
                 eq(ROOM_ID),
                 eq(MEMBER_ID),
-                eq(ChatRoomActivityScore.calculate(1_000L, false))
+                eq(MyChatRoomScoreCalculator.read(1_000L))
         );
     }
 
@@ -333,6 +333,47 @@ class ChatRoomQueryServiceTest {
     }
 
     @Test
+    @DisplayName("listLatestActive: 일부 미스 시 미스난 roomId만 repairByIds로 복구하고 hit/repaired Summary를 원래 순서대로 병합한다")
+    void should_repair_only_missed_rooms_when_latest_active_partially_misses() {
+        // given
+        when(room.getId()).thenReturn("room-1");
+        when(room2.getId()).thenReturn("room-2");
+        when(room2.getLastMsgCreatedAtMs()).thenReturn(2_000L);
+        when(room2.hasUnread(2L)).thenReturn(false);
+
+        ChatRoomCacheLookupResult cached = new ChatRoomCacheLookupResult(
+                List.of("room-1", "room-2"),
+                List.of(room),
+                List.of("room-2")
+        );
+
+        when(cache.listLatestActive(MEMBER_ID, 10))
+                .thenReturn(cached);
+        when(cache.getLastMsgSeq("room-1", MEMBER_ID))
+                .thenReturn(Optional.of(1L));
+        when(queryRepairService.repairByIds(List.of("room-2")))
+                .thenReturn(List.of(room2));
+        when(persistence.getLastReadSeq("room-2", MEMBER_ID))
+                .thenReturn(2L);
+
+        // when
+        List<MyChatRoomSummary> result = sut.listLatestActive(MEMBER_ID, 10);
+
+        // then
+        assertThat(result).hasSize(2);
+
+        verify(queryRepairService, never()).repairLatestActive(anyString(), anyInt());
+        verify(queryRepairService, times(1)).repairByIds(List.of("room-2"));
+        verify(cache, never()).updateLastRead("room-1", MEMBER_ID, 1L);
+        verify(cache).updateLastRead("room-2", MEMBER_ID, 2L);
+        verify(cache).updateRecentScore(
+                "room-2",
+                MEMBER_ID,
+                MyChatRoomScoreCalculator.read(2_000L)
+        );
+    }
+
+    @Test
     @DisplayName("listLatestActive: 인덱스가 없으면 복구 조회 후 영속 저장소의 lastRead 기준으로 active 캐시를 갱신한다")
     void should_repair_latest_active_and_use_persisted_last_read_when_index_missing() {
         // given
@@ -368,58 +409,22 @@ class ChatRoomQueryServiceTest {
         verify(cache).updateRecentScore(
                 "room-1",
                 MEMBER_ID,
-                ChatRoomActivityScore.calculate(1_000L, true)
+                MyChatRoomScoreCalculator.unread(1_000L)
         );
 
         verify(cache).updateLastRead("room-2", MEMBER_ID, 2L);
         verify(cache).updateRecentScore(
                 "room-2",
                 MEMBER_ID,
-                ChatRoomActivityScore.calculate(2_000L, false)
+                MyChatRoomScoreCalculator.read(2_000L)
         );
-    }
-
-    @Test
-    @DisplayName("listLatestActive: 일부 미스 시 미스난 roomId만 repairByIds로 복구하고 hit/repaired Summary를 원래 순서대로 병합한다")
-    void should_repair_only_missed_rooms_when_latest_active_partially_misses() {
-        // given
-        when(room.getId()).thenReturn("room-1");
-        when(room2.getId()).thenReturn("room-2");
-        when(room2.getLastMsgCreatedAtMs()).thenReturn(2_000L);
-        when(room2.hasUnread(2L)).thenReturn(false);
-
-        ChatRoomCacheLookupResult cached = new ChatRoomCacheLookupResult(
-                List.of("room-1", "room-2"),
-                List.of(room),
-                List.of("room-2")
-        );
-
-        when(cache.listLatestActive(MEMBER_ID, 10))
-                .thenReturn(cached);
-        when(cache.getLastMsgSeq("room-1", MEMBER_ID))
-                .thenReturn(Optional.of(1L));
-        when(queryRepairService.repairByIds(List.of("room-2")))
-                .thenReturn(List.of(room2));
-        when(persistence.getLastReadSeq("room-2", MEMBER_ID))
-                .thenReturn(2L);
-
-        // when
-        List<MyChatRoomSummary> result = sut.listLatestActive(MEMBER_ID, 10);
-
-        // then
-        assertThat(result).hasSize(2);
-
-        verify(queryRepairService, never()).repairLatestActive(anyString(), anyInt());
-        verify(queryRepairService, times(1)).repairByIds(List.of("room-2"));
-        verify(cache, never()).updateLastRead("room-1", MEMBER_ID, 1L);
-        verify(cache).updateLastRead("room-2", MEMBER_ID, 2L);
     }
 
     @Test
     @DisplayName("listActiveBefore: 전체 히트 시 lastRead 캐시를 사용해 내 채팅방 Summary 목록을 반환한다")
     void should_return_active_before_from_cache_when_all_hit() {
         // given
-        Long score = ChatRoomActivityScore.calculate(1_000L, true);
+        Long score = MyChatRoomScoreCalculator.unread(1_000L);
 
         when(room.getId()).thenReturn("room-1");
 
@@ -450,10 +455,109 @@ class ChatRoomQueryServiceTest {
     }
 
     @Test
+    @DisplayName("listActiveBefore: 전체 히트 시 lastUnreadFlag가 false면 read score 커서로 조회한다")
+    void should_use_read_cursor_score_when_last_unread_flag_is_false() {
+        // given
+        Long score = MyChatRoomScoreCalculator.read(1_000L);
+
+        when(room.getId()).thenReturn("room-1");
+
+        ChatRoomCacheLookupResult cached = allHit(
+                List.of("room-1"),
+                List.of(room)
+        );
+
+        when(cache.listActiveBefore(MEMBER_ID, "last-room", score, 10))
+                .thenReturn(cached);
+        when(cache.getLastMsgSeq("room-1", MEMBER_ID))
+                .thenReturn(Optional.of(10L));
+
+        // when
+        List<MyChatRoomSummary> result = sut.listActiveBefore(
+                MEMBER_ID,
+                "last-room",
+                false,
+                1_000L,
+                10
+        );
+
+        // then
+        assertThat(result).hasSize(1);
+
+        verify(cache, times(1)).listActiveBefore(MEMBER_ID, "last-room", score, 10);
+    }
+
+    @Test
+    @DisplayName("listActiveBefore: lastUnreadFlag가 null이면 read score 커서로 조회한다")
+    void should_use_read_cursor_score_when_last_unread_flag_is_null() {
+        // given
+        Long score = MyChatRoomScoreCalculator.read(1_000L);
+
+        when(room.getId()).thenReturn("room-1");
+
+        ChatRoomCacheLookupResult cached = allHit(
+                List.of("room-1"),
+                List.of(room)
+        );
+
+        when(cache.listActiveBefore(MEMBER_ID, "last-room", score, 10))
+                .thenReturn(cached);
+        when(cache.getLastMsgSeq("room-1", MEMBER_ID))
+                .thenReturn(Optional.of(10L));
+
+        // when
+        List<MyChatRoomSummary> result = sut.listActiveBefore(
+                MEMBER_ID,
+                "last-room",
+                null,
+                1_000L,
+                10
+        );
+
+        // then
+        assertThat(result).hasSize(1);
+
+        verify(cache, times(1)).listActiveBefore(MEMBER_ID, "last-room", score, 10);
+    }
+
+    @Test
+    @DisplayName("listActiveBefore: lastMsgCreatedAt이 null이면 0을 기준으로 커서 score를 계산한다")
+    void should_use_zero_cursor_score_when_last_msg_created_at_is_null() {
+        // given
+        Long score = MyChatRoomScoreCalculator.unread(0L);
+
+        when(room.getId()).thenReturn("room-1");
+
+        ChatRoomCacheLookupResult cached = allHit(
+                List.of("room-1"),
+                List.of(room)
+        );
+
+        when(cache.listActiveBefore(MEMBER_ID, "last-room", score, 10))
+                .thenReturn(cached);
+        when(cache.getLastMsgSeq("room-1", MEMBER_ID))
+                .thenReturn(Optional.of(10L));
+
+        // when
+        List<MyChatRoomSummary> result = sut.listActiveBefore(
+                MEMBER_ID,
+                "last-room",
+                true,
+                null,
+                10
+        );
+
+        // then
+        assertThat(result).hasSize(1);
+
+        verify(cache, times(1)).listActiveBefore(MEMBER_ID, "last-room", score, 10);
+    }
+
+    @Test
     @DisplayName("listActiveBefore: 인덱스가 없으면 repairActiveBefore로 복구 조회하고 lastRead 기준으로 active 캐시를 갱신한다")
     void should_repair_active_before_when_index_missing() {
         // given
-        Long score = ChatRoomActivityScore.calculate(1_000L, true);
+        Long score = MyChatRoomScoreCalculator.unread(1_000L);
 
         when(room.getId()).thenReturn("room-1");
         when(room.getLastMsgCreatedAtMs()).thenReturn(1_000L);
@@ -482,13 +586,18 @@ class ChatRoomQueryServiceTest {
                 .repairActiveBefore(MEMBER_ID, "last-room", score, 10);
         verify(queryRepairService, never()).repairByIds(anyList());
         verify(cache, times(1)).updateLastRead("room-1", MEMBER_ID, 10L);
+        verify(cache, times(1)).updateRecentScore(
+                "room-1",
+                MEMBER_ID,
+                MyChatRoomScoreCalculator.read(1_000L)
+        );
     }
 
     @Test
     @DisplayName("listActiveBefore: 일부 미스 시 미스난 roomId만 repairByIds로 복구하고 원래 순서대로 병합한다")
     void should_repair_only_missed_rooms_when_active_before_partially_misses() {
         // given
-        Long score = ChatRoomActivityScore.calculate(1_000L, true);
+        Long score = MyChatRoomScoreCalculator.unread(1_000L);
 
         when(room.getId()).thenReturn("room-1");
         when(room2.getId()).thenReturn("room-2");
@@ -525,6 +634,11 @@ class ChatRoomQueryServiceTest {
         verify(queryRepairService, never()).repairActiveBefore(anyString(), anyString(), anyLong(), anyInt());
         verify(queryRepairService, times(1)).repairByIds(List.of("room-2"));
         verify(cache).updateLastRead("room-2", MEMBER_ID, 2L);
+        verify(cache).updateRecentScore(
+                "room-2",
+                MEMBER_ID,
+                MyChatRoomScoreCalculator.read(2_000L)
+        );
     }
 
     @Test

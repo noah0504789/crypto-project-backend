@@ -8,10 +8,10 @@ import org.bson.types.ObjectId;
 import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessage;
 import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessageRepository;
 import org.example.chat.chatroom.application.dto.ChatRoomMembershipScore;
-import org.example.chat.chatroom.application.service.ChatRoomActivityScore;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
+import org.example.chat.chatroom.domain.service.MyChatRoomScoreCalculator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -344,9 +344,9 @@ class MongoChatRoomAdapterTest {
             MongoChatRoomMembership member2 = findMembership(roomId1, OTHER_MEMBER_ID);
 
             assertThat(member1.getScore())
-                    .isEqualTo(ChatRoomActivityScore.calculate(SCORE_3000, true));
+                    .isEqualTo(MyChatRoomScoreCalculator.unread(SCORE_3000));
             assertThat(member2.getScore())
-                    .isEqualTo(ChatRoomActivityScore.calculate(SCORE_3000, true));
+                    .isEqualTo(MyChatRoomScoreCalculator.unread(SCORE_3000));
 
             assertThat(member1.getLastMsgReadSeq()).isEqualTo(0L);
             assertThat(member2.getLastMsgReadSeq()).isEqualTo(0L);
@@ -362,7 +362,8 @@ class MongoChatRoomAdapterTest {
             saveMembership(unreadMembership(roomId1, OTHER_MEMBER_ID, SCORE_2000));
 
             // when
-            List<ChatRoomMembershipScore> result = sut.refreshMembershipScores(roomId1.toHexString(), SCORE_9999);
+            List<ChatRoomMembershipScore> result =
+                    sut.refreshMembershipScores(roomId1.toHexString(), SCORE_9999);
 
             // then
             assertThat(result)
@@ -373,10 +374,10 @@ class MongoChatRoomAdapterTest {
             MongoChatRoomMembership unreadMember = findMembership(roomId1, OTHER_MEMBER_ID);
 
             assertThat(readMember.getScore())
-                    .isEqualTo(ChatRoomActivityScore.calculate(SCORE_9999, false));
+                    .isEqualTo(MyChatRoomScoreCalculator.read(SCORE_9999));
 
             assertThat(unreadMember.getScore())
-                    .isEqualTo(ChatRoomActivityScore.calculate(SCORE_9999, true));
+                    .isEqualTo(MyChatRoomScoreCalculator.unread(SCORE_9999));
         }
     }
 
@@ -605,31 +606,31 @@ class MongoChatRoomAdapterTest {
     private MongoChatRoomMembership readMembership(
             ObjectId roomId,
             String memberId,
-            long lastMsgReadSeq,
-            long score
+            Long lastMsgReadSeq,
+            Long lastMsgCreatedAt
     ) {
         return MongoChatRoomMembership.ofReadActivity(
                 roomId.toHexString(),
                 memberId,
                 lastMsgReadSeq,
-                score
+                MyChatRoomScoreCalculator.read(lastMsgCreatedAt)
         );
     }
 
     private MongoChatRoomMembership unreadMembership(
             ObjectId roomId,
             String memberId,
-            long lastMsgCreatedAt
+            Long lastMsgCreatedAt
     ) {
         return MongoChatRoomMembership.ofUnreadActivity(
                 roomId.toHexString(),
                 memberId,
-                lastMsgCreatedAt
+                MyChatRoomScoreCalculator.unread(lastMsgCreatedAt)
         );
     }
 
-    private MongoChatRoomMembership saveMembership(MongoChatRoomMembership membership) {
-        return membershipRepository.save(membership);
+    private void saveMembership(MongoChatRoomMembership membership) {
+        membershipRepository.save(membership);
     }
 
     private MongoChatRoomMembership findMembership(ObjectId roomId, String memberId) {
