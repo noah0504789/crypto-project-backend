@@ -7,7 +7,10 @@ dependencies {
         exclude group: 'com.google.protobuf', module: 'protobuf-java'
     }
 
+    implementation project(':common:common-jpa')
+    implementation project(':common:common-id')
     implementation project(':user:user-application')
+
     implementation(libs.spring.security.crypto)
 
     testImplementation project(':common:common-test')

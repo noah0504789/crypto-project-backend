@@ -1,9 +1,7 @@
-package user;
+package org.example.user.account.domain.model;
 
 import org.example.user.role.domain.model.RoleEnum;
 import org.example.user.role.domain.model.Role;
-import org.example.user.account.domain.model.User;
-import org.example.user.account.domain.model.UserRole;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -95,8 +93,8 @@ class UserTest {
     }
 
     @Test
-    @DisplayName("addRole은 UserRole을 생성하고 User와 Role을 연결한다")
-    void addRole_linksUserAndRole() {
+    @DisplayName("addRole은 Role을 User에 추가한다")
+    void addRole_addsRoleToUser() {
         // given
         Role role = Role.ofName(RoleEnum.USER);
 
@@ -111,17 +109,9 @@ class UserTest {
 
         // then
         assertThat(user.getRoles()).hasSize(1);
+        assertThat(user.getRoles()).containsExactly(role);
         assertThat(user.getRoleNames())
                 .containsExactly(RoleEnum.USER.getName());
-
-        UserRole userRole = user.getRoles()
-                .stream()
-                .findFirst()
-                .orElseThrow();
-
-        assertThat(userRole.getUser()).isSameAs(user);
-        assertThat(userRole.getRole()).isSameAs(role);
-        assertThat(userRole.getRoleName()).isEqualTo(RoleEnum.USER.getName());
     }
 
     @Test
@@ -200,6 +190,30 @@ class UserTest {
 
         // when
         user.addRole(role);
+
+        // then
+        assertThat(user.getRoles()).hasSize(1);
+        assertThat(user.getRoleNames())
+                .containsExactly(RoleEnum.USER.getName());
+    }
+
+    @Test
+    @DisplayName("addRole은 같은 이름의 Role이면 다른 객체여도 중복 추가하지 않는다")
+    void addRole_whenSameRoleNameAlreadyExists_doesNotAddDuplicate() {
+        // given
+        Role role1 = Role.ofName(RoleEnum.USER);
+        Role role2 = Role.ofName(RoleEnum.USER);
+
+        User user = User.ofLocal(
+                "noah@test.com",
+                "noah",
+                "encoded-password"
+        );
+
+        user.addRole(role1);
+
+        // when
+        user.addRole(role2);
 
         // then
         assertThat(user.getRoles()).hasSize(1);
