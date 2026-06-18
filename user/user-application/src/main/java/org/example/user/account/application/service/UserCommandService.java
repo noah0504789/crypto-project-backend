@@ -1,8 +1,5 @@
 package org.example.user.account.application.service;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.example.user.account.application.port.out.UserPersistencePort;
 import org.example.user.account.domain.exception.UserNotFoundException;
