@@ -1,66 +1,47 @@
 package org.example.market.domain.model;
 
-import jakarta.persistence.*;
-import lombok.*;
-import org.example.common.jpa.BaseEntity;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
-@Entity
-@Table(
-    name = "market",
-    uniqueConstraints = {@UniqueConstraint(name = "uk_markets_market_code", columnNames = "market_code")}
-)
+import java.time.LocalDateTime;
+
 @Getter
 @Builder(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class Market extends BaseEntity {
+public class Market {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(name = "market_code", nullable = false, length = 30)
     private String marketCode;
-
-    @Column(nullable = false, length = 20)
     private String symbol;
-
-    @Column(name = "korean_name", nullable = false, length = 50)
     private String koreanName;
-
-    @Column(name = "english_name", nullable = false, length = 80)
     private String englishName;
-
-    @Column(nullable = false)
     private boolean enabled;
+    protected LocalDateTime createdAt;
+    protected LocalDateTime updatedAt;
 
-    public static Market create(
+    public static Market rehydrate(
+            Long id,
             String marketCode,
             String symbol,
             String koreanName,
             String englishName,
-            boolean enabled
+            boolean enabled,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt
     ) {
         return Market.builder()
+                .id(id)
                 .marketCode(marketCode)
                 .symbol(symbol)
                 .koreanName(koreanName)
                 .englishName(englishName)
                 .enabled(enabled)
+                .createdAt(createdAt)
+                .updatedAt(updatedAt)
                 .build();
-    }
-
-    public void change(
-            String marketCode,
-            String symbol,
-            String koreanName,
-            String englishName,
-            boolean enabled
-    ) {
-        this.marketCode = marketCode;
-        this.symbol = symbol;
-        this.koreanName = koreanName;
-        this.englishName = englishName;
-        this.enabled = enabled;
     }
 }
