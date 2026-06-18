@@ -1,69 +1,39 @@
 package org.example.user.account.domain.model;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
 import lombok.*;
-import org.example.common.jpa.BaseEntity;
-import org.example.common.id.annotation.SnowflakeId;
 import org.example.common.time.ServiceZoneUtils;
 import org.example.user.role.domain.model.Role;
 import org.example.user.role.domain.model.RoleEnum;
 
 import java.time.Instant;
-import java.time.ZoneId;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-@Entity
-@Table(name = "user")
 @Getter
 @Builder(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class User extends BaseEntity {
+public class User {
 
-    @Id
-    @SnowflakeId
     private Long id;
-
-    @Column(name = "public_id", nullable = false, unique = true, updatable = false)
     private UUID publicId;
     private String sub;
-
-    @Column(nullable = false)
     private String email;
-
     private String nickname;
     private String password;
 
     @Builder.Default
-    @OneToMany(
-            mappedBy = "user",
-            cascade = CascadeType.ALL,
-            orphanRemoval = true
-    )
-    private Set<UserRole> roles = new HashSet<>();
+    private Set<Role> roles = new HashSet<>();
 
-    @PrePersist
-    void init() {
-        if (publicId == null) {
-            publicId = UUID.randomUUID();
-        }
-
-        if (roles == null) {
-            roles = new HashSet<>();
-        }
-    }
+    protected LocalDateTime createdAt;
+    protected LocalDateTime updatedAt;
 
     public static User ofLocal(String email, String nickname, String encodedPassword) {
         return User.builder()
+                .publicId(UUID.randomUUID())
                 .email(email)
                 .nickname(nickname)
                 .password(encodedPassword)
@@ -73,10 +43,35 @@ public class User extends BaseEntity {
 
     public static User ofOAuth2(String sub, String email, String nickname) {
         return User.builder()
+                .publicId(UUID.randomUUID())
                 .sub(sub)
                 .email(email)
                 .nickname(nickname)
                 .roles(new HashSet<>())
+                .build();
+    }
+
+    public static User rehydrate(
+            Long id,
+            UUID publicId,
+            String sub,
+            String email,
+            String nickname,
+            String password,
+            Set<Role> roles,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt
+    ) {
+        return User.builder()
+                .id(id)
+                .publicId(publicId)
+                .sub(sub)
+                .email(email)
+                .nickname(nickname)
+                .password(password)
+                .roles(roles == null ? new HashSet<>() : roles)
+                .createdAt(createdAt)
+                .updatedAt(updatedAt)
                 .build();
     }
 
@@ -86,7 +81,7 @@ public class User extends BaseEntity {
 
     public List<String> getRoleNames() {
         return roles.stream()
-                .map(UserRole::getRoleName)
+                .map(role -> role.getName().getName())
                 .toList();
     }
 
@@ -95,7 +90,8 @@ public class User extends BaseEntity {
             return false;
         }
 
-        return roles.stream().anyMatch(userRole -> userRole.hasRole(role));
+        return roles.stream()
+                .anyMatch(myRole -> myRole.getName() == role.getName());
     }
 
     public void addRole(Role role) {
@@ -111,7 +107,7 @@ public class User extends BaseEntity {
             return;
         }
 
-        this.roles.add(UserRole.of(this, role));
+        this.roles.add(role);
     }
 
     public void updateNickname(String nickname) {
