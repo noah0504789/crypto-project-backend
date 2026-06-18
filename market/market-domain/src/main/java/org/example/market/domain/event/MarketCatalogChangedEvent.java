@@ -5,32 +5,26 @@ import lombok.Getter;
 import lombok.ToString;
 import org.example.common.enums.KafkaTopic;
 import org.example.common.event.HandleableEvent;
-import org.example.common.outbox.domain.OutboxDispatchType;
 import org.example.common.outbox.domain.OutboxDomainType;
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 import org.example.market.domain.port.MarketEventHandler;
 
 @Getter
 @ToString
-public class MarketChangedEvent extends AbstractOutboxEvent implements HandleableEvent<MarketEventHandler> {
+public class MarketCatalogChangedEvent extends AbstractOutboxEvent implements HandleableEvent<MarketEventHandler> {
 
     @JsonCreator
-    public MarketChangedEvent() {
+    public MarketCatalogChangedEvent() {
         super(KafkaTopic.MARKET_CHANGED.getTopicName(), "MARKET_LIST", "MARKET_LIST");
     }
 
-    public static MarketChangedEvent of() {
-        return new MarketChangedEvent();
+    public static MarketCatalogChangedEvent of() {
+        return new MarketCatalogChangedEvent();
     }
 
     @Override
     protected OutboxDomainType getDomainType() {
         return OutboxDomainType.MARKET;
-    }
-
-    @Override
-    protected OutboxDispatchType getDispatchType() {
-        return OutboxDispatchType.BROADCAST;
     }
 
     @Override

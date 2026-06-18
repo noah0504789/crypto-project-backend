@@ -16,13 +16,16 @@ import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
-public class MarketPersistenceAdapter implements MarketPersistencePort {
+public class JpaMarketAdapter implements MarketPersistencePort {
 
-    private final MarketJpaRepository marketJpaRepository;
+    private final JpaMarketRepository marketRepository;
 
     @Override
     public List<Market> findAllByEnabledTrueOrderByIdAsc() {
-        return marketJpaRepository.findAllByEnabledTrueOrderByIdAsc();
+        return marketRepository.findAllByEnabledTrueOrderByIdAsc()
+                .stream()
+                .map(JpaMarket::toDomain)
+                .toList();
     }
 
     @Override
@@ -37,8 +40,8 @@ public class MarketPersistenceAdapter implements MarketPersistencePort {
             return;
         }
 
-        List<Market> markets = commands.stream()
-                .map(command -> Market.create(
+        List<JpaMarket> markets = commands.stream()
+                .map(command -> JpaMarket.create(
                         command.marketCode(),
                         command.symbol(),
                         command.koreanName(),
@@ -47,7 +50,7 @@ public class MarketPersistenceAdapter implements MarketPersistencePort {
                 ))
                 .toList();
 
-        marketJpaRepository.saveAll(markets);
+        marketRepository.saveAll(markets);
     }
 
     private void updateMarkets(List<UpdateMarketCommand> commands) {
@@ -61,16 +64,16 @@ public class MarketPersistenceAdapter implements MarketPersistencePort {
                         Function.identity()
                 ));
 
-        List<Market> markets = marketJpaRepository.findAllById(commandMap.keySet());
+        List<JpaMarket> jpaMarkets = marketRepository.findAllById(commandMap.keySet());
 
-        if (markets.size() != commandMap.size()) {
+        if (jpaMarkets.size() != commandMap.size()) {
             throw new IllegalArgumentException("Some markets to update were not found.");
         }
 
-        for (Market market : markets) {
-            UpdateMarketCommand command = commandMap.get(market.getId());
+        for (JpaMarket jpaMarket : jpaMarkets) {
+            UpdateMarketCommand command = commandMap.get(jpaMarket.getId());
 
-            market.change(
+            jpaMarket.update(
                     command.marketCode(),
                     command.symbol(),
                     command.koreanName(),
@@ -89,6 +92,6 @@ public class MarketPersistenceAdapter implements MarketPersistencePort {
                 .map(DeleteMarketCommand::id)
                 .toList();
 
-        marketJpaRepository.deleteAllByIdInBatch(ids);
+        marketRepository.deleteAllByIdInBatch(ids);
     }
 }
