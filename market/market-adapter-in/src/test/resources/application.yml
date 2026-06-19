@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: market-service
+
+  config:
+    import: ""
+
+  cloud:
+    config:
+      enabled: false
+      fail-fast: false
+      import-check:
+        enabled: false
+    discovery:
+      enabled: false
+
+eureka:
+  client:
+    enabled: false

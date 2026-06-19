@@ -7,4 +7,6 @@ dependencies {
     implementation project(':market:market-application')
 
     implementation(libs.spring.cloud.starter.stream.kafka)
+
+    testImplementation project(':common:common-test')
 }
