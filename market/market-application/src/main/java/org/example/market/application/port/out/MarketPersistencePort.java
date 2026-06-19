@@ -12,7 +12,5 @@ public interface MarketPersistencePort {
 
     List<Market> findAllEnabledByIds(Set<Long> ids);
 
-    List<Market> findAllEnabledByMarketCodes(Set<String> marketCodes);
-
     void changeMarkets(ChangeMarketsCommand command);
 }

@@ -42,18 +42,6 @@ public class JpaMarketAdapter implements MarketPersistencePort {
     }
 
     @Override
-    public List<Market> findAllEnabledByMarketCodes(Set<String> marketCodes) {
-        if (marketCodes == null || marketCodes.isEmpty()) {
-            return List.of();
-        }
-
-        return marketRepository.findAllByMarketCodeInAndEnabledTrue(marketCodes)
-                .stream()
-                .map(JpaMarket::toDomain)
-                .toList();
-    }
-
-    @Override
     public void changeMarkets(ChangeMarketsCommand command) {
         deleteMarkets(command.deletes());
         updateMarkets(command.updates());
