@@ -21,6 +21,6 @@ public class MarketQueryService implements MarketQueryUseCase {
     @Override
     @Cacheable(cacheNames = MarketCacheNames.MARKETS, key = "'enabled'")
     public List<Market> getMarkets() {
-        return marketPersistencePort.findAllByEnabledTrueOrderByIdAsc();
+        return marketPersistencePort.findAllEnabledOrderByIdAsc();
     }
 }

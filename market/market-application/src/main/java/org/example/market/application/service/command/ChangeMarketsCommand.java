@@ -17,4 +17,28 @@ public record ChangeMarketsCommand(
     public boolean isEmpty() {
         return creates.isEmpty() && updates.isEmpty() && deletes.isEmpty();
     }
+
+    public record CreateMarketCommand(
+            String marketCode,
+            String symbol,
+            String koreanName,
+            String englishName,
+            boolean enabled
+    ) {
+    }
+
+    public record UpdateMarketCommand(
+            Long id,
+            String marketCode,
+            String symbol,
+            String koreanName,
+            String englishName,
+            boolean enabled
+    ) {
+    }
+
+    public record DeleteMarketCommand(
+            Long id
+    ) {
+    }
 }
