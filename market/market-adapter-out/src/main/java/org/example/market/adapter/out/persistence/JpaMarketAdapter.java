@@ -3,14 +3,15 @@ package org.example.market.adapter.out.persistence;
 import lombok.RequiredArgsConstructor;
 import org.example.market.application.port.out.MarketPersistencePort;
 import org.example.market.application.service.command.ChangeMarketsCommand;
-import org.example.market.application.service.command.CreateMarketCommand;
-import org.example.market.application.service.command.DeleteMarketCommand;
-import org.example.market.application.service.command.UpdateMarketCommand;
+import org.example.market.application.service.command.ChangeMarketsCommand.CreateMarketCommand;
+import org.example.market.application.service.command.ChangeMarketsCommand.UpdateMarketCommand;
+import org.example.market.application.service.command.ChangeMarketsCommand.DeleteMarketCommand;
 import org.example.market.domain.model.Market;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -21,8 +22,32 @@ public class JpaMarketAdapter implements MarketPersistencePort {
     private final JpaMarketRepository marketRepository;
 
     @Override
-    public List<Market> findAllByEnabledTrueOrderByIdAsc() {
+    public List<Market> findAllEnabledOrderByIdAsc() {
         return marketRepository.findAllByEnabledTrueOrderByIdAsc()
+                .stream()
+                .map(JpaMarket::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Market> findAllEnabledByIds(Set<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+
+        return marketRepository.findAllByIdInAndEnabledTrue(ids)
+                .stream()
+                .map(JpaMarket::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Market> findAllEnabledByMarketCodes(Set<String> marketCodes) {
+        if (marketCodes == null || marketCodes.isEmpty()) {
+            return List.of();
+        }
+
+        return marketRepository.findAllByMarketCodeInAndEnabledTrue(marketCodes)
                 .stream()
                 .map(JpaMarket::toDomain)
                 .toList();
