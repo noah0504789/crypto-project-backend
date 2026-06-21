@@ -1,0 +1,7 @@
+spring:
+  application.name: notification-service
+  config.import: configserver:http://crypto-spring-cloud-config:8888
+  cloud:
+    config:
+      name: notification-service,eureka-client,mysql,mongo,kafka,monitoring
+      label: main
