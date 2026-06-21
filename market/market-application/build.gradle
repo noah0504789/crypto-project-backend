@@ -1,11 +1,11 @@
 plugins {
-    id 'crypto-domain'
+    id 'crypto-application'
 }
 
 dependencies {
     api project(':market:market-domain')
-    implementation project(':common:common-jpa')
 
+    implementation project(':common:common-jpa')
     implementation(libs.caffeine)
     implementation(libs.spring.boot.starter.cache)
 }

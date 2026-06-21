@@ -12,6 +12,9 @@ grpc:
     port: 18200
 
 spring:
+  messages:
+    basename: messages,common-validation-messages
+    encoding: UTF-8
   sql:
     init:
       mode: always
@@ -49,6 +52,6 @@ spring:
               ack-mode: record
 
 mysql:
-  username: ${mysql.user.username} # user
-  password: ${mysql.user.password} # userpass
-  db: ${mysql.user.db} # user
+  username: ${mysql.market.username} # user
+  password: ${mysql.market.password} # userpass
+  db: ${mysql.market.db} # user
