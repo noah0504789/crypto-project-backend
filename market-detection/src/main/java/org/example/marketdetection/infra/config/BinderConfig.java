@@ -1,6 +1,5 @@
 package org.example.marketdetection.infra.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.streams.kstream.KStream;
@@ -23,8 +22,6 @@ import java.util.function.Supplier;
 @RequiredArgsConstructor
 public class BinderConfig {
 
-    private final UpbitProperties properties;
-
     @Bean
     public Supplier<Message<KafkaEvent>> upbitTickerEventSupplier(UpbitWebsocketListener upbitWebsocketListener) {
         return () -> {
@@ -39,7 +36,7 @@ public class BinderConfig {
     }
 
     @Bean
-    public Consumer<KStream<String, UpbitTickerEvent>> upbitTickerWatcherEventConsumer(StreamBridge streamBridge) {
+    public Consumer<KStream<String, UpbitTickerEvent>> upbitTickerWatcherEventConsumer(StreamBridge streamBridge, UpbitProperties properties) {
         return input -> input.process(
                 () -> new UpbitTickerProcessor(streamBridge, properties),
                 Named.as("upbit-ticker-watcher"),

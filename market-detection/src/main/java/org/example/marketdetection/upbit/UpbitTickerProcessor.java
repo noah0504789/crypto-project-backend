@@ -6,10 +6,9 @@ import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
 import org.apache.kafka.streams.state.WindowStore;
 import org.apache.kafka.streams.state.WindowStoreIterator;
-import org.example.common.event.TypedPayload;
 import org.example.common.event.notification.WebNotificationEvent;
+import org.example.market.client.PriceAlertChangeRateThreshold;
 import org.example.marketdetection.upbit.event.UpbitTickerAlertEvent;
-import org.example.marketdetection.upbit.event.UpbitTickerAlertPayloadKeys;
 import org.example.marketdetection.upbit.event.UpbitTickerEvent;
 import org.example.marketdetection.upbit.event.UpbitTickerValue;
 import org.example.marketdetection.infra.properties.UpbitProperties;
@@ -28,23 +27,17 @@ public class UpbitTickerProcessor implements Processor<String, UpbitTickerEvent,
 
     @Override
     public void init(ProcessorContext<Void, Void> context) {
-        String name = properties.store().ticker().name();
-
-        this.upbitTickerStore = context.getStateStore(name);
+        this.upbitTickerStore = context.getStateStore(properties.store().ticker().name());
     }
 
     @Override
     public void process(Record<String, UpbitTickerEvent> record) {
-        if (record.key() == null || record.value() == null) {
+        if (!isProcessable(record)) {
             return;
         }
 
         String code = record.key();
         UpbitTickerEvent tickerEvent = record.value();
-
-        if (tickerEvent.tradePrice() == null) {
-            return;
-        }
 
         long timestamp = record.timestamp();
         double currentPrice = tickerEvent.tradePrice();
@@ -54,24 +47,36 @@ public class UpbitTickerProcessor implements Processor<String, UpbitTickerEvent,
 
         saveCurrentTicker(code, currentPrice, timestamp);
 
-        if (isBelowThreshold(changeRate)) {
+        List<PriceAlertChangeRateThreshold> matchedChangeRateThresholds = PriceAlertChangeRateThreshold.matchedBy(changeRate);
+
+        if (matchedChangeRateThresholds.isEmpty()) {
             return;
         }
 
-        UpbitTickerAlertEvent alertEvent = createAlertEvent(
-                code,
-                currentPrice,
-                timestamp,
-                averagePrice,
-                changeRate
-        );
+        for (PriceAlertChangeRateThreshold threshold : matchedChangeRateThresholds) {
+            UpbitTickerAlertEvent event = createAlertEvent(
+                    code,
+                    currentPrice,
+                    timestamp,
+                    averagePrice,
+                    changeRate,
+                    threshold
+            );
 
-        publishNotification(alertEvent);
+            publishNotification(event);
+        }
+    }
+
+    private boolean isProcessable(Record<String, UpbitTickerEvent> record) {
+        return record != null
+                && record.key() != null
+                && !record.key().isBlank()
+                && record.value() != null
+                && record.value().tradePrice() != null;
     }
 
     private double calculateAveragePrice(String code, long timestamp, double fallbackPrice) {
         long from = getWindowStartTime(timestamp);
-
         List<Double> prices = new ArrayList<>();
 
         try (WindowStoreIterator<UpbitTickerValue> iterator = upbitTickerStore.fetch(code, from, timestamp)) {
@@ -104,16 +109,13 @@ public class UpbitTickerProcessor implements Processor<String, UpbitTickerEvent,
         upbitTickerStore.put(code, new UpbitTickerValue(currentPrice, timestamp), timestamp);
     }
 
-    private boolean isBelowThreshold(double changeRate) {
-        return Math.abs(changeRate) <= properties.ticker().alert().thresholdRate();
-    }
-
     private UpbitTickerAlertEvent createAlertEvent(
             String code,
             double currentPrice,
             long timestamp,
             double averagePrice,
-            double changeRate
+            double changeRate,
+            PriceAlertChangeRateThreshold matchedChangeRateThreshold
     ) {
         return new UpbitTickerAlertEvent(
                 code,
@@ -121,21 +123,23 @@ public class UpbitTickerProcessor implements Processor<String, UpbitTickerEvent,
                 timestamp,
                 properties.ticker().alert().windowMinutes(),
                 averagePrice,
-                changeRate
+                changeRate,
+                matchedChangeRateThreshold
         );
     }
 
     private void publishNotification(UpbitTickerAlertEvent event) {
         WebNotificationEvent notification = new WebNotificationEvent(
                 event.getClass().getSimpleName(),
-                event.toNotificationData(),
-                UpbitTickerAlertPayloadKeys.CODE
+                event.toPayload(),
+                createRoutingKey(event)
         );
 
-        streamBridge.send(
-                notification.getTopic().getBindingName(),
-                notification.toMessage()
-        );
+        streamBridge.send(notification.getTopic().getBindingName(), notification.toMessage());
+    }
+
+    private String createRoutingKey(UpbitTickerAlertEvent event) {
+        return "price-alert/%s/%s".formatted(event.code(), event.matchedChangeRateThreshold().name());
     }
 
     private long getWindowStartTime(long timestamp) {

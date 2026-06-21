@@ -1,5 +1,13 @@
 server.port: 0
 
+grpc:
+  client:
+    market-client:
+      address: discovery:///market-service
+      negotiation-type: plaintext
+      max-inbound-message-size:
+        bytes: 16777216
+
 spring:
   cloud:
     function:
@@ -23,21 +31,18 @@ spring:
       kafka:
         binder:
           transaction:
-            transaction-id-prefix: tx-price-watcher-${spring.cloud.stream.instance-index}
+            transaction-id-prefix: tx-price-watcher-${app.instance-id}
 
 upbit:
   websocket:
     url: wss://api.upbit.com/websocket/v1
     ticket: test
-    subscribe-codes:
-      - KRW-BTC
     ticker-publish-interval: 3s
     ticker-queue-capacity: 100
 
   ticker:
     alert:
       window-minutes: 3
-      threshold-rate: 0.05
 
   store:
     ticker:

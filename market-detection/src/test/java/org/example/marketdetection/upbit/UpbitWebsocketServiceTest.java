@@ -16,11 +16,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class UpbitWebsocketServiceTest {
@@ -33,6 +35,7 @@ class UpbitWebsocketServiceTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final UpbitProperties properties = createProperties();
+
     private UpbitWebsocketService sut;
 
     @BeforeEach
@@ -59,11 +62,46 @@ class UpbitWebsocketServiceTest {
         assertThat(json).contains("\"ticket\":\"" + TICKET + "\"");
         assertThat(json).contains("\"type\":\"ticker\"");
         assertThat(json).contains("\"codes\":[\"" + CODE + "\"]");
-
-        // UpbitWebsocketRequest에서 @JsonProperty 설정에 따라 이 필드명은 달라질 수 있음.
-        // 현재 record/class가 is_only_snapshot으로 되어 있으면 아래를 사용.
         assertThat(json).contains("\"is_only_snapshot\":false");
         assertThat(json).contains("\"is_only_realtime\":true");
+    }
+
+    @Test
+    @DisplayName("subscribe 호출 시 중복 코드와 blank 코드는 제거하고 구독 요청을 전송한다")
+    void subscribe_duplicateAndBlankCodes_sendDistinctValidCodes() {
+        // when
+        sut.subscribe(webSocket, Arrays.asList(CODE, CODE, "", " ", null));
+
+        // then
+        ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
+
+        verify(webSocket).send(jsonCaptor.capture());
+
+        String json = jsonCaptor.getValue();
+
+        assertThat(json).contains("\"codes\":[\"" + CODE + "\"]");
+    }
+
+    @Test
+    @DisplayName("subscribe 코드가 비어 있으면 예외를 던진다")
+    void subscribe_emptyCodes_throwException() {
+        // when & then
+        assertThatThrownBy(() -> sut.subscribe(webSocket, List.of()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Upbit ticker subscribe codes must not be empty.");
+
+        verifyNoInteractions(webSocket);
+    }
+
+    @Test
+    @DisplayName("subscribe 코드가 null이면 예외를 던진다")
+    void subscribe_nullCodes_throwException() {
+        // when & then
+        assertThatThrownBy(() -> sut.subscribe(webSocket, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Upbit ticker subscribe codes must not be empty.");
+
+        verifyNoInteractions(webSocket);
     }
 
     @Test
@@ -177,14 +215,12 @@ class UpbitWebsocketServiceTest {
                 new UpbitProperties.Websocket(
                         "wss://api.upbit.com/websocket/v1",
                         TICKET,
-                        List.of(CODE),
                         Duration.ofSeconds(3),
                         100
                 ),
                 new UpbitProperties.Ticker(
                         new UpbitProperties.Ticker.Alert(
-                                3,
-                                0.05
+                                3
                         )
                 ),
                 new UpbitProperties.Store(
