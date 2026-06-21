@@ -1,0 +1,13 @@
+plugins {
+    id 'crypto-domain'
+}
+
+dependencies {
+    implementation project(':common:common-core')
+    implementation project(':common:common-web')
+    implementation project(':common:common-mongo')
+    implementation project(':notification:notification-application')
+    implementation project(':market:market-client')
+
+    testImplementation project(':common:common-test')
+}
