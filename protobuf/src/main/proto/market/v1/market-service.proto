@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package market.v1;
+
+option java_package = "org.example.grpc.market";
+option java_multiple_files = true;
+option java_outer_classname = "MarketProto";
+
+message GrpcMarket {
+  int64 id = 1;
+  string market_code = 2;
+  string symbol = 3;
+  string korean_name = 4;
+  string english_name = 5;
+}
+
+message GrpcGetEnabledMarketsRequest {
+}
+
+message GrpcGetEnabledMarketsResponse {
+  repeated GrpcMarket markets = 1;
+}
+
+service MarketService {
+  rpc GetEnabledMarkets(GrpcGetEnabledMarketsRequest) returns (GrpcGetEnabledMarketsResponse);
+}
