@@ -1,0 +1,14 @@
+plugins {
+    id 'crypto-common-library'
+}
+
+dependencies {
+    api project(':market:market-contract')
+
+    implementation project(':common:common-core')
+    implementation project(':protobuf')
+
+    implementation platform(libs.grpc.bom)
+    implementation(libs.grpc.stub)
+    implementation(libs.grpc.client.spring.boot.starter)
+}

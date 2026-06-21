@@ -7,6 +7,10 @@ server:
       charset: UTF-8
       force: true
 
+grpc:
+  server:
+    port: 18200
+
 spring:
   sql:
     init:
