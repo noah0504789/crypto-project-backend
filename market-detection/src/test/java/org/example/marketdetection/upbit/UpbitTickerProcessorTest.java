@@ -33,6 +33,7 @@ class UpbitTickerProcessorTest {
     private static final String STORE_NAME = "upbit-ticker-store";
     private static final String CODE = "KRW-BTC";
     private static final long TIMESTAMP = 1_000_000L;
+
     private final UpbitProperties properties = createProperties();
 
     @Mock
@@ -105,8 +106,8 @@ class UpbitTickerProcessorTest {
     }
 
     @Test
-    @DisplayName("평균 대비 변화율이 기준 초과이면 현재 값을 저장하고 알림을 발행한다")
-    void process_changeRateOverThreshold_publishNotification() {
+    @DisplayName("평균 대비 변화율이 여러 기준을 초과하면 기준별 알림을 각각 발행한다")
+    void process_changeRateOverThreshold_publishNotificationsByThreshold() {
         // given
         UpbitTickerEvent event = tickerEvent(110.0);
         Record<String, UpbitTickerEvent> record = new Record<>(CODE, event, TIMESTAMP);
@@ -136,25 +137,45 @@ class UpbitTickerProcessorTest {
 
         ArgumentCaptor<Message<?>> messageCaptor = ArgumentCaptor.forClass(Message.class);
 
-        verify(streamBridge).send(
+        verify(streamBridge, times(3)).send(
                 anyString(),
                 messageCaptor.capture()
         );
 
-        Message<?> message = messageCaptor.getValue();
+        List<WebNotificationEvent> notifications = messageCaptor.getAllValues()
+                .stream()
+                .map(Message::getPayload)
+                .map(WebNotificationEvent.class::cast)
+                .toList();
 
-        assertThat(message.getPayload()).isInstanceOf(WebNotificationEvent.class);
+        assertThat(notifications)
+                .extracting(WebNotificationEvent::eventType)
+                .containsOnly("UpbitTickerAlertEvent");
 
-        WebNotificationEvent notification = (WebNotificationEvent) message.getPayload();
+        assertThat(notifications)
+                .extracting(WebNotificationEvent::getPartitionKey)
+                .containsExactlyInAnyOrder(
+                        "price-alert/KRW-BTC/PERCENT_3",
+                        "price-alert/KRW-BTC/PERCENT_5",
+                        "price-alert/KRW-BTC/PERCENT_7"
+                );
 
-        assertThat(notification.eventType()).isEqualTo("UpbitTickerAlertEvent");
-        assertThat(notification.getPartitionKey()).isEqualTo(CODE);
-        assertThat(notification.payload().data())
-                .containsEntry("code", CODE)
-                .containsEntry("price", 110.0)
-                .containsEntry("avgInterval", 3)
-                .containsEntry("avgPrice", 100.0)
-                .containsEntry("changeRate", 0.1);
+        assertThat(notifications)
+                .extracting(notification -> notification.payload().data().get("matchedChangeRateThreshold"))
+                .containsExactlyInAnyOrder(
+                        "PERCENT_3",
+                        "PERCENT_5",
+                        "PERCENT_7"
+                );
+
+        for (WebNotificationEvent notification : notifications) {
+            assertThat(notification.payload().data())
+                    .containsEntry("code", CODE)
+                    .containsEntry("price", 110.0)
+                    .containsEntry("avgInterval", 3)
+                    .containsEntry("avgPrice", 100.0)
+                    .containsEntry("changeRate", 0.1);
+        }
     }
 
     @Test
@@ -204,6 +225,7 @@ class UpbitTickerProcessorTest {
         verifyNoInteractions(streamBridge);
     }
 
+    @SuppressWarnings("unchecked")
     private WindowStoreIterator<UpbitTickerValue> mockTickerIterator(UpbitTickerValue... values) {
         WindowStoreIterator<UpbitTickerValue> iterator = mock(WindowStoreIterator.class);
 
@@ -241,14 +263,12 @@ class UpbitTickerProcessorTest {
                 new UpbitProperties.Websocket(
                         "wss://api.upbit.com/websocket/v1",
                         "test",
-                        List.of("KRW-BTC"),
                         Duration.ofSeconds(3),
                         100
                 ),
                 new UpbitProperties.Ticker(
                         new UpbitProperties.Ticker.Alert(
-                                3,
-                                0.05
+                                3
                         )
                 ),
                 new UpbitProperties.Store(

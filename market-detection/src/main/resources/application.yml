@@ -3,5 +3,5 @@ spring:
   config.import: configserver:http://crypto-spring-cloud-config:8888
   cloud:
     config:
-      name: market-detection,eureka-client,kafka
+      name: market-detection,eureka-client,kafka,monitoring
       label: main

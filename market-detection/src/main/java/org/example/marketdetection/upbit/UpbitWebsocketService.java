@@ -24,17 +24,28 @@ import java.util.Map;
 public class UpbitWebsocketService {
 
     private static final String TYPE_FIELD = "type";
+
     private final ObjectMapper objectMapper;
     private final UpbitProperties properties;
 
     public void subscribe(WebSocket session, List<String> tickerCodes) {
+        List<String> codes = tickerCodes == null ?
+                List.of() :
+                tickerCodes.stream().filter(code -> code != null && !code.isBlank()).distinct().toList();
+
+        if (codes.isEmpty()) {
+            throw new IllegalArgumentException("Upbit ticker subscribe codes must not be empty.");
+        }
+
         String ticket = properties.websocket().ticket();
 
         UpbitWebsocketRequest request = UpbitWebsocketRequest.builder(ticket)
-                .addTicker(tickerCodes, false, true)
+                .addTicker(codes, false, true)
                 .build();
 
         session.send(serializeRequest(request));
+
+        log.info("subscribed upbit ticker websocket. codes={}", codes);
     }
 
     public KafkaEvent deserialize(ByteString bytes) {
@@ -61,7 +72,7 @@ public class UpbitWebsocketService {
         try {
             return objectMapper.readValue(
                     bytes.toByteArray(),
-                    new TypeReference<Map<String, Object>>() {}
+                    new TypeReference<Map<String, Object>>() { }
             );
         } catch (IOException e) {
             throw new UpbitWebsocketException("Failed to deserialize upbit websocket message", e);

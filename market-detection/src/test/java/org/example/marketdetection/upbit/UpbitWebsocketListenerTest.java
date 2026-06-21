@@ -5,6 +5,8 @@ import okhttp3.WebSocket;
 import okio.ByteString;
 import org.example.common.clock.Clock;
 import org.example.common.event.KafkaEvent;
+import org.example.contract.market.MarketResponse;
+import org.example.market.client.MarketClient;
 import org.example.marketdetection.infra.properties.UpbitProperties;
 import org.example.marketdetection.upbit.event.UpbitTickerEvent;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +20,7 @@ import java.time.Duration;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
@@ -25,6 +28,7 @@ import static org.mockito.Mockito.*;
 class UpbitWebsocketListenerTest {
 
     private static final String CODE = "KRW-BTC";
+    private static final String OTHER_CODE = "KRW-ETH";
 
     @Mock
     private UpbitWebsocketService websocketService;
@@ -33,28 +37,29 @@ class UpbitWebsocketListenerTest {
     private Clock clock;
 
     @Mock
+    private MarketClient marketClient;
+
+    @Mock
     private WebSocket webSocket;
 
     @Mock
     private Response response;
 
-    private final UpbitProperties properties = createProperties(Duration.ofSeconds(3));
     private UpbitWebsocketListener sut;
 
     @BeforeEach
     void setUp() {
-        sut = new UpbitWebsocketListener(
-                websocketService,
-                properties,
-                clock
-        );
-
-        sut.init();
+        sut = createSut(createProperties(Duration.ofSeconds(3), 100));
     }
 
     @Test
-    @DisplayName("웹소켓이 열리면 설정된 종목 코드로 구독을 요청한다")
-    void onOpen_subscribe() {
+    @DisplayName("웹소켓이 열리면 enabled market 코드로 구독을 요청한다")
+    void onOpen_subscribeEnabledMarkets() {
+        // given
+        given(marketClient.getEnabledMarkets()).willReturn(List.of(
+                marketResponse()
+        ));
+
         // when
         sut.onOpen(webSocket, response);
 
@@ -66,15 +71,25 @@ class UpbitWebsocketListenerTest {
     }
 
     @Test
+    @DisplayName("enabled market이 없으면 예외가 발생한다")
+    void onOpen_enabledMarketsEmpty_throwException() {
+        // given
+        given(marketClient.getEnabledMarkets()).willReturn(List.of());
+
+        // when & then
+        assertThatThrownBy(() -> sut.onOpen(webSocket, response))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
     @DisplayName("ticker 이벤트이면 큐에 적재한다")
     void onMessage_tickerEvent_offerQueue() {
         // given
         ByteString bytes = ByteString.encodeUtf8("{}");
-        UpbitTickerEvent event = tickerEvent(100.0);
+        UpbitTickerEvent event = tickerEvent(CODE, 100.0);
 
         given(websocketService.deserialize(bytes)).willReturn(event);
-        given(clock.nowMs())
-                .willReturn(10_000L);
+        given(clock.nowMs()).willReturn(10_000L);
 
         // when
         sut.onMessage(webSocket, bytes);
@@ -117,21 +132,21 @@ class UpbitWebsocketListenerTest {
     }
 
     @Test
-    @DisplayName("ticker publish interval이 지나지 않으면 큐에 적재하지 않는다")
-    void onMessage_intervalNotElapsed_ignore() {
+    @DisplayName("같은 종목의 ticker publish interval이 지나지 않으면 큐에 적재하지 않는다")
+    void onMessage_sameCodeIntervalNotElapsed_ignore() {
         // given
         ByteString firstBytes = ByteString.encodeUtf8("first");
         ByteString secondBytes = ByteString.encodeUtf8("second");
 
-        UpbitTickerEvent firstEvent = tickerEvent(100.0);
-        UpbitTickerEvent secondEvent = tickerEvent(101.0);
+        UpbitTickerEvent firstEvent = tickerEvent(CODE, 100.0);
+        UpbitTickerEvent secondEvent = tickerEvent(CODE, 101.0);
 
         given(websocketService.deserialize(firstBytes)).willReturn(firstEvent);
         given(websocketService.deserialize(secondBytes)).willReturn(secondEvent);
 
         given(clock.nowMs())
-                .willReturn(10_000L) // first onMessage
-                .willReturn(11_000L); // second onMessage, 1초 후
+                .willReturn(10_000L)
+                .willReturn(11_000L);
 
         // when
         sut.onMessage(webSocket, firstBytes);
@@ -143,21 +158,21 @@ class UpbitWebsocketListenerTest {
     }
 
     @Test
-    @DisplayName("ticker publish interval이 지나면 다음 ticker도 큐에 적재한다")
-    void onMessage_intervalElapsed_offerAgain() {
+    @DisplayName("같은 종목의 ticker publish interval이 지나면 다음 ticker도 큐에 적재한다")
+    void onMessage_sameCodeIntervalElapsed_offerAgain() {
         // given
         ByteString firstBytes = ByteString.encodeUtf8("first");
         ByteString secondBytes = ByteString.encodeUtf8("second");
 
-        UpbitTickerEvent firstEvent = tickerEvent(100.0);
-        UpbitTickerEvent secondEvent = tickerEvent(101.0);
+        UpbitTickerEvent firstEvent = tickerEvent(CODE, 100.0);
+        UpbitTickerEvent secondEvent = tickerEvent(CODE, 101.0);
 
         given(websocketService.deserialize(firstBytes)).willReturn(firstEvent);
         given(websocketService.deserialize(secondBytes)).willReturn(secondEvent);
 
         given(clock.nowMs())
-                .willReturn(10_000L) // first onMessage
-                .willReturn(14_000L); // second onMessage, 4초 후
+                .willReturn(10_000L)
+                .willReturn(14_000L);
 
         // when
         sut.onMessage(webSocket, firstBytes);
@@ -170,14 +185,59 @@ class UpbitWebsocketListenerTest {
     }
 
     @Test
-    @DisplayName("큐가 가득 차면 추가 이벤트는 버린다")
-    void onMessage_queueFull_dropEvent() {
+    @DisplayName("다른 종목이면 publish interval이 지나지 않아도 각각 큐에 적재한다")
+    void onMessage_differentCodeIntervalNotElapsed_offerEachCode() {
         // given
         ByteString firstBytes = ByteString.encodeUtf8("first");
         ByteString secondBytes = ByteString.encodeUtf8("second");
 
-        UpbitTickerEvent firstEvent = tickerEvent(100.0);
-        UpbitTickerEvent secondEvent = tickerEvent(101.0);
+        UpbitTickerEvent firstEvent = tickerEvent(CODE, 100.0);
+        UpbitTickerEvent secondEvent = tickerEvent(OTHER_CODE, 101.0);
+
+        given(websocketService.deserialize(firstBytes)).willReturn(firstEvent);
+        given(websocketService.deserialize(secondBytes)).willReturn(secondEvent);
+
+        given(clock.nowMs())
+                .willReturn(10_000L)
+                .willReturn(11_000L);
+
+        // when
+        sut.onMessage(webSocket, firstBytes);
+        sut.onMessage(webSocket, secondBytes);
+
+        // then
+        assertThat(sut.pollTickerQueue()).isSameAs(firstEvent);
+        assertThat(sut.pollTickerQueue()).isSameAs(secondEvent);
+        assertThat(sut.pollTickerQueue()).isNull();
+    }
+
+    @Test
+    @DisplayName("ticker code가 없으면 큐에 적재하지 않는다")
+    void onMessage_tickerCodeBlank_ignore() {
+        // given
+        ByteString bytes = ByteString.encodeUtf8("{}");
+        UpbitTickerEvent event = tickerEvent("", 100.0);
+
+        given(websocketService.deserialize(bytes)).willReturn(event);
+
+        // when
+        sut.onMessage(webSocket, bytes);
+
+        // then
+        assertThat(sut.pollTickerQueue()).isNull();
+    }
+
+    @Test
+    @DisplayName("큐가 가득 차면 추가 이벤트는 버린다")
+    void onMessage_queueFull_dropEvent() {
+        // given
+        sut = createSut(createProperties(Duration.ZERO, 1));
+
+        ByteString firstBytes = ByteString.encodeUtf8("first");
+        ByteString secondBytes = ByteString.encodeUtf8("second");
+
+        UpbitTickerEvent firstEvent = tickerEvent(CODE, 100.0);
+        UpbitTickerEvent secondEvent = tickerEvent(CODE, 101.0);
 
         given(websocketService.deserialize(firstBytes)).willReturn(firstEvent);
         given(websocketService.deserialize(secondBytes)).willReturn(secondEvent);
@@ -195,19 +255,30 @@ class UpbitWebsocketListenerTest {
         assertThat(sut.pollTickerQueue()).isNull();
     }
 
-    private UpbitProperties createProperties(Duration tickerPublishInterval) {
+    private UpbitWebsocketListener createSut(UpbitProperties properties) {
+        UpbitWebsocketListener listener = new UpbitWebsocketListener(
+                websocketService,
+                properties,
+                clock,
+                marketClient
+        );
+
+        listener.init();
+
+        return listener;
+    }
+
+    private UpbitProperties createProperties(Duration tickerPublishInterval, int tickerQueueCapacity) {
         return new UpbitProperties(
                 new UpbitProperties.Websocket(
                         "wss://api.upbit.com/websocket/v1",
                         "test",
-                        List.of(CODE),
                         tickerPublishInterval,
-                        100
+                        tickerQueueCapacity
                 ),
                 new UpbitProperties.Ticker(
                         new UpbitProperties.Ticker.Alert(
-                                3,
-                                0.05
+                                3
                         )
                 ),
                 new UpbitProperties.Store(
@@ -221,10 +292,20 @@ class UpbitWebsocketListenerTest {
         );
     }
 
-    private UpbitTickerEvent tickerEvent(Double tradePrice) {
+    private MarketResponse marketResponse() {
+        return new MarketResponse(
+                1L,
+                UpbitWebsocketListenerTest.CODE,
+                UpbitWebsocketListenerTest.CODE.replace("KRW-", ""),
+                "테스트",
+                "Test"
+        );
+    }
+
+    private UpbitTickerEvent tickerEvent(String code, Double tradePrice) {
         return new UpbitTickerEvent(
                 "ticker",
-                UpbitWebsocketListenerTest.CODE,
+                code,
                 null,
                 null,
                 null,

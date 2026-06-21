@@ -29,6 +29,7 @@ import org.springframework.kafka.support.serializer.JsonSerde;
 import org.springframework.messaging.Message;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Properties;
 import org.example.common.event.notification.WebNotificationEvent;
 
@@ -120,8 +121,8 @@ class UpbitTickerProcessorTopologyTest {
     }
 
     @Test
-    @DisplayName("평균 대비 변화율이 기준 초과이면 WebNotificationEvent를 발행한다")
-    void process_overThreshold_publishNotification() {
+    @DisplayName("평균 대비 변화율이 여러 기준을 초과하면 기준별 WebNotificationEvent를 각각 발행한다")
+    void process_overThreshold_publishNotificationsByThreshold() {
         // given & when
         inputTopic.pipeInput(CODE, tickerEvent(CODE, 100.0), Instant.ofEpochMilli(1_000L));
         inputTopic.pipeInput(CODE, tickerEvent(CODE, 100.0), Instant.ofEpochMilli(2_000L));
@@ -130,26 +131,45 @@ class UpbitTickerProcessorTopologyTest {
         // then
         ArgumentCaptor<Message<?>> messageCaptor = ArgumentCaptor.forClass(Message.class);
 
-        verify(streamBridge, times(1)).send(
+        verify(streamBridge, times(3)).send(
                 anyString(),
                 messageCaptor.capture()
         );
 
-        Message<?> message = messageCaptor.getValue();
+        List<WebNotificationEvent> notifications = messageCaptor.getAllValues()
+                .stream()
+                .map(Message::getPayload)
+                .map(WebNotificationEvent.class::cast)
+                .toList();
 
-        assertThat(message.getPayload()).isInstanceOf(WebNotificationEvent.class);
+        assertThat(notifications)
+                .extracting(WebNotificationEvent::eventType)
+                .containsOnly("UpbitTickerAlertEvent");
 
-        WebNotificationEvent notification = (WebNotificationEvent) message.getPayload();
+        assertThat(notifications)
+                .extracting(WebNotificationEvent::getPartitionKey)
+                .containsExactlyInAnyOrder(
+                        "price-alert/KRW-BTC/PERCENT_3",
+                        "price-alert/KRW-BTC/PERCENT_5",
+                        "price-alert/KRW-BTC/PERCENT_7"
+                );
 
-        assertThat(notification.eventType()).isEqualTo("UpbitTickerAlertEvent");
-        assertThat(notification.getPartitionKey()).isEqualTo(CODE);
+        assertThat(notifications)
+                .extracting(notification -> notification.payload().data().get("matchedChangeRateThreshold"))
+                .containsExactlyInAnyOrder(
+                        "PERCENT_3",
+                        "PERCENT_5",
+                        "PERCENT_7"
+                );
 
-        assertThat(notification.payload().data())
-                .containsEntry("code", CODE)
-                .containsEntry("price", 110.0)
-                .containsEntry("avgInterval", properties.ticker().alert().windowMinutes())
-                .containsEntry("avgPrice", 100.0)
-                .containsEntry("changeRate", 0.1);
+        for (WebNotificationEvent notification : notifications) {
+            assertThat(notification.payload().data())
+                    .containsEntry("code", CODE)
+                    .containsEntry("price", 110.0)
+                    .containsEntry("avgInterval", properties.ticker().alert().windowMinutes())
+                    .containsEntry("avgPrice", 100.0)
+                    .containsEntry("changeRate", 0.1);
+        }
     }
 
     @Test
@@ -163,7 +183,34 @@ class UpbitTickerProcessorTopologyTest {
         inputTopic.pipeInput(CODE, tickerEvent(CODE, 110.0), Instant.ofEpochMilli(242_000L));
 
         // then
-        verify(streamBridge, times(1)).send(anyString(), any(Message.class));
+        ArgumentCaptor<Message<?>> messageCaptor = ArgumentCaptor.forClass(Message.class);
+
+        verify(streamBridge, times(3)).send(
+                anyString(),
+                messageCaptor.capture()
+        );
+
+        List<WebNotificationEvent> notifications = messageCaptor.getAllValues()
+                .stream()
+                .map(Message::getPayload)
+                .map(WebNotificationEvent.class::cast)
+                .toList();
+
+        assertThat(notifications)
+                .extracting(WebNotificationEvent::getPartitionKey)
+                .containsExactlyInAnyOrder(
+                        "price-alert/KRW-BTC/PERCENT_3",
+                        "price-alert/KRW-BTC/PERCENT_5",
+                        "price-alert/KRW-BTC/PERCENT_7"
+                );
+
+        for (WebNotificationEvent notification : notifications) {
+            assertThat(notification.payload().data())
+                    .containsEntry("code", CODE)
+                    .containsEntry("price", 110.0)
+                    .containsEntry("avgPrice", 100.0)
+                    .containsEntry("changeRate", 0.1);
+        }
     }
 
     private UpbitTickerEvent tickerEvent(String code, Double tradePrice) {
