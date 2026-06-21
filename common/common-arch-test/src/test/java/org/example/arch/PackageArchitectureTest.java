@@ -69,6 +69,14 @@ class PackageArchitectureTest {
                     List.of("market/market-adapter-in", "market/market-adapter-out"),
                     "market/market-bootstrap",
                     List.of("org.example.market.domain..")
+            ),
+            new ServiceBoundary(
+                    "notification",
+                    "notification/notification-domain",
+                    "notification/notification-application",
+                    List.of("notification/notification-adapter-in", "notification/notification-adapter-out"),
+                    "notification/notification-bootstrap",
+                    List.of("org.example.notification.domain..")
             )
     );
 
@@ -80,7 +88,9 @@ class PackageArchitectureTest {
             "spring-cloud-api-gateway/spring-cloud-api-gateway-application",
             "spring-cloud-config/spring-cloud-config-application",
             "user/user-application",
-            "outbox-poller/outbox-poller-application"
+            "outbox-poller/outbox-poller-application",
+            "market/market-application",
+            "notification/notification-application"
     );
 
     private static final List<String> BOOTSTRAP_MODULE_DIRECTORIES = List.of(
@@ -92,7 +102,8 @@ class PackageArchitectureTest {
             "spring-cloud-config/spring-cloud-config-bootstrap",
             "user/user-bootstrap",
             "outbox-poller/outbox-poller-bootstrap",
-            "market/market-bootstrap"
+            "market/market-bootstrap",
+            "notification/notification-bootstrap"
     );
 
     @ArchTest
@@ -142,7 +153,8 @@ class PackageArchitectureTest {
                 "websocket-gateway/websocket-gateway-domain",
                 "spring-cloud-config/spring-cloud-config-domain",
                 "user/user-domain",
-                "market/market-domain"
+                "market/market-domain",
+                "notification/notification-domain"
         )));
     }
 

@@ -1,0 +1,14 @@
+server:
+  port: 8300
+  version: v1
+  servlet:
+    context-path: /api/${server.version}
+    encoding:
+      charset: UTF-8
+      force: true
+
+mongo:
+  user: ${mongo.notification.username}
+  pass: ${mongo.notification.password}
+  db: ${mongo.notification.db}
+  authSource: notification
