@@ -134,6 +134,8 @@ tasks.register("marketCi") {
 
     dependsOn(
             ":market:market-domain:build",
+            ":market:market-client:build",
+            ":market:market-contract:build",
             ":market:market-application:build",
             ":market:market-adapter-in:build",
             ":market:market-adapter-out:build",
