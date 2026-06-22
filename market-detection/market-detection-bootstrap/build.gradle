@@ -1,0 +1,19 @@
+plugins {
+    id 'crypto-bootstrap'
+}
+
+ext.dockerImageName = "crypto-market-service"
+
+dependencies {
+    implementation project(':common:common-event')
+    implementation project(':market-detection:market-detection-contract')
+    implementation project(':market:market-client')
+
+    implementation(libs.okhttp)
+    implementation(libs.spring.cloud.config.client)
+    implementation(libs.spring.cloud.eureka.client)
+    implementation(libs.spring.cloud.stream.binder.kafka.streams)
+
+    testImplementation project(':common:common-test')
+    testImplementation(libs.kafka.streams.test.utils)
+}

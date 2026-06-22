@@ -80,6 +80,9 @@ include 'market:market-adapter-in'
 include 'market:market-adapter-out'
 include 'market:market-bootstrap'
 
-include 'outbox-poller'
 include 'market-detection'
+include 'market-detection:market-detection-bootstrap'
+include 'market-detection:market-detection-contract'
+
 include 'spring-cloud-eureka-server'
+include 'outbox-poller'

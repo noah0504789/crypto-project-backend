@@ -1,4 +1,4 @@
-server.port: 0
+server.port: 8500
 
 grpc:
   client:
@@ -11,7 +11,7 @@ grpc:
 spring:
   cloud:
     function:
-      definition: upbitTickerEventSupplier;upbitTickerWatcherEventConsumer
+      definition: upbitTickerEventSupplier;upbitTickerAlertEventConsumer
     stream:
       bindings:
         upbitTickerEventSupplier-out-0:
@@ -21,17 +21,14 @@ spring:
             poller:
               fixed-delay:
                 nanos: 500_000_000 # 0.5s
-        upbitTickerWatcherEventConsumer-in-0:
-          destination: upbit-ticker-event
+        upbitTickerAlertEventConsumer-in-0:
+          destination: upbit-ticker-alert-event
           content-type: application/json
-          group: upbit-ticker-watcher
-        web-notification-event-out:
-          destination: web-notification-event
-          content-type: application/json
+          group: upbit-ticker-alert
       kafka:
         binder:
           transaction:
-            transaction-id-prefix: tx-price-watcher-${app.instance-id}
+            transaction-id-prefix: tx-price-alert-${app.instance-id}
 
 upbit:
   websocket:

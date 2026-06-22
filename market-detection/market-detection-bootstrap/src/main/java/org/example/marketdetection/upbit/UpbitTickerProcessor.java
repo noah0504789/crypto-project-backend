@@ -6,12 +6,11 @@ import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
 import org.apache.kafka.streams.state.WindowStore;
 import org.apache.kafka.streams.state.WindowStoreIterator;
-import org.example.common.event.notification.WebNotificationEvent;
 import org.example.market.client.PriceAlertChangeRateThreshold;
-import org.example.marketdetection.upbit.event.UpbitTickerAlertEvent;
+import org.example.marketdetection.contract.event.PriceAlertDetectedEvent;
+import org.example.marketdetection.infra.properties.UpbitProperties;
 import org.example.marketdetection.upbit.event.UpbitTickerEvent;
 import org.example.marketdetection.upbit.event.UpbitTickerValue;
-import org.example.marketdetection.infra.properties.UpbitProperties;
 import org.springframework.cloud.stream.function.StreamBridge;
 
 import java.util.ArrayList;
@@ -53,18 +52,11 @@ public class UpbitTickerProcessor implements Processor<String, UpbitTickerEvent,
             return;
         }
 
-        for (PriceAlertChangeRateThreshold threshold : matchedChangeRateThresholds) {
-            UpbitTickerAlertEvent event = createAlertEvent(
-                    code,
-                    currentPrice,
-                    timestamp,
-                    averagePrice,
-                    changeRate,
-                    threshold
-            );
-
-            publishNotification(event);
-        }
+        matchedChangeRateThresholds.forEach(threshold ->
+            publishPriceAlertDetected(
+                createPriceAlertDetectedEvent(code, currentPrice, timestamp, averagePrice, changeRate, threshold)
+            )
+        );
     }
 
     private boolean isProcessable(Record<String, UpbitTickerEvent> record) {
@@ -109,37 +101,27 @@ public class UpbitTickerProcessor implements Processor<String, UpbitTickerEvent,
         upbitTickerStore.put(code, new UpbitTickerValue(currentPrice, timestamp), timestamp);
     }
 
-    private UpbitTickerAlertEvent createAlertEvent(
+    private PriceAlertDetectedEvent createPriceAlertDetectedEvent(
             String code,
             double currentPrice,
             long timestamp,
             double averagePrice,
             double changeRate,
-            PriceAlertChangeRateThreshold matchedChangeRateThreshold
+            PriceAlertChangeRateThreshold threshold
     ) {
-        return new UpbitTickerAlertEvent(
+        return new PriceAlertDetectedEvent(
                 code,
                 currentPrice,
                 timestamp,
                 properties.ticker().alert().windowMinutes(),
                 averagePrice,
                 changeRate,
-                matchedChangeRateThreshold
+                threshold.name()
         );
     }
 
-    private void publishNotification(UpbitTickerAlertEvent event) {
-        WebNotificationEvent notification = new WebNotificationEvent(
-                event.getClass().getSimpleName(),
-                event.toPayload(),
-                createRoutingKey(event)
-        );
-
-        streamBridge.send(notification.getTopic().getBindingName(), notification.toMessage());
-    }
-
-    private String createRoutingKey(UpbitTickerAlertEvent event) {
-        return "price-alert/%s/%s".formatted(event.code(), event.matchedChangeRateThreshold().name());
+    private void publishPriceAlertDetected(PriceAlertDetectedEvent event) {
+        streamBridge.send(event.getTopic().getBindingName(), event.toMessage());
     }
 
     private long getWindowStartTime(long timestamp) {
