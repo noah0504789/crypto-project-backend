@@ -1,4 +1,4 @@
-package org.example.chat.common.exception;
+package org.example.chat.infra.exception;
 
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
@@ -12,6 +12,8 @@ import org.example.chat.chatmessage.adapter.in.exception.ChatMessageResourceExha
 import org.example.chat.chatmessage.application.service.ChatMessageCommandService;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
+import org.example.chat.common.exception.ChatMessageCacheException;
+import org.example.chat.common.exception.ChatMessagePersistException;
 import org.example.common.grpc.exception.BaseGrpcExceptionAdvice;
 
 @Slf4j
