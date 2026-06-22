@@ -149,7 +149,8 @@ tasks.register("marketDetectionCi") {
     description = "Runs build and tests for market detection"
 
     dependsOn(
-            ":market-detection:build",
+            ":market-detection:market-detection-bootstrap:build",
+            ":market-detection:market-detection-contract:build",
             ":common:common-arch-test:test"
     )
 }

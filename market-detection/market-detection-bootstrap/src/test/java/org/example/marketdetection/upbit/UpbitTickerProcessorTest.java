@@ -5,8 +5,9 @@ import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
 import org.apache.kafka.streams.state.WindowStore;
 import org.apache.kafka.streams.state.WindowStoreIterator;
+import org.example.common.enums.KafkaTopic;
+import org.example.marketdetection.contract.event.PriceAlertDetectedEvent;
 import org.example.marketdetection.infra.properties.UpbitProperties;
-import org.example.common.event.notification.WebNotificationEvent;
 import org.example.marketdetection.upbit.event.UpbitTickerEvent;
 import org.example.marketdetection.upbit.event.UpbitTickerValue;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,7 +61,7 @@ class UpbitTickerProcessorTest {
     }
 
     @Test
-    @DisplayName("현재가가 null이면 저장과 알림 발행을 하지 않는다")
+    @DisplayName("현재가가 null이면 저장과 알림 감지 이벤트 발행을 하지 않는다")
     void process_tradePriceIsNull_doNothing() {
         // given
         UpbitTickerEvent event = tickerEvent(null);
@@ -75,7 +76,7 @@ class UpbitTickerProcessorTest {
     }
 
     @Test
-    @DisplayName("평균 대비 변화율이 기준 이하이면 현재 값만 저장하고 알림은 발행하지 않는다")
+    @DisplayName("평균 대비 변화율이 기준 이하이면 현재 값만 저장하고 알림 감지 이벤트는 발행하지 않는다")
     void process_changeRateBelowThreshold_saveOnly() {
         // given
         UpbitTickerEvent event = tickerEvent(102.0);
@@ -106,8 +107,8 @@ class UpbitTickerProcessorTest {
     }
 
     @Test
-    @DisplayName("평균 대비 변화율이 여러 기준을 초과하면 기준별 알림을 각각 발행한다")
-    void process_changeRateOverThreshold_publishNotificationsByThreshold() {
+    @DisplayName("평균 대비 변화율이 여러 기준을 초과하면 기준별 가격 알림 감지 이벤트를 각각 발행한다")
+    void process_changeRateOverThreshold_publishPriceAlertDetectedEventsByThreshold() {
         // given
         UpbitTickerEvent event = tickerEvent(110.0);
         Record<String, UpbitTickerEvent> record = new Record<>(CODE, event, TIMESTAMP);
@@ -135,46 +136,42 @@ class UpbitTickerProcessorTest {
                 eq(TIMESTAMP)
         );
 
+        ArgumentCaptor<String> bindingNameCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Message<?>> messageCaptor = ArgumentCaptor.forClass(Message.class);
 
         verify(streamBridge, times(3)).send(
-                anyString(),
+                bindingNameCaptor.capture(),
                 messageCaptor.capture()
         );
 
-        List<WebNotificationEvent> notifications = messageCaptor.getAllValues()
+        List<PriceAlertDetectedEvent> events = messageCaptor.getAllValues()
                 .stream()
                 .map(Message::getPayload)
-                .map(WebNotificationEvent.class::cast)
+                .map(PriceAlertDetectedEvent.class::cast)
                 .toList();
 
-        assertThat(notifications)
-                .extracting(WebNotificationEvent::eventType)
-                .containsOnly("UpbitTickerAlertEvent");
+        assertThat(bindingNameCaptor.getAllValues())
+                .containsOnly(KafkaTopic.PRICE_ALERT_DETECTED.getBindingName());
 
-        assertThat(notifications)
-                .extracting(WebNotificationEvent::getPartitionKey)
-                .containsExactlyInAnyOrder(
-                        "price-alert/KRW-BTC/PERCENT_3",
-                        "price-alert/KRW-BTC/PERCENT_5",
-                        "price-alert/KRW-BTC/PERCENT_7"
-                );
+        assertThat(events)
+                .extracting(PriceAlertDetectedEvent::getPartitionKey)
+                .containsOnly(CODE);
 
-        assertThat(notifications)
-                .extracting(notification -> notification.payload().data().get("matchedChangeRateThreshold"))
+        assertThat(events)
+                .extracting(PriceAlertDetectedEvent::threshold)
                 .containsExactlyInAnyOrder(
                         "PERCENT_3",
                         "PERCENT_5",
                         "PERCENT_7"
                 );
 
-        for (WebNotificationEvent notification : notifications) {
-            assertThat(notification.payload().data())
-                    .containsEntry("code", CODE)
-                    .containsEntry("price", 110.0)
-                    .containsEntry("avgInterval", 3)
-                    .containsEntry("avgPrice", 100.0)
-                    .containsEntry("changeRate", 0.1);
+        for (PriceAlertDetectedEvent detectedEvent : events) {
+            assertThat(detectedEvent.code()).isEqualTo(CODE);
+            assertThat(detectedEvent.price()).isEqualTo(110.0);
+            assertThat(detectedEvent.timestamp()).isEqualTo(TIMESTAMP);
+            assertThat(detectedEvent.avgInterval()).isEqualTo(3);
+            assertThat(detectedEvent.avgPrice()).isEqualTo(100.0);
+            assertThat(detectedEvent.changeRate()).isEqualTo(0.1);
         }
     }
 
