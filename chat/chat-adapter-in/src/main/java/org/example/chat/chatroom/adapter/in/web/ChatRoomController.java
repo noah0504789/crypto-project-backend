@@ -4,7 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.example.chat.chatroom.application.dto.*;
-import org.example.chat.common.dto.CursorPage;
+import org.example.common.dto.CursorPage;
 import org.example.chat.chatroom.adapter.in.dto.ChatRoomResponse;
 import org.example.chat.chatroom.adapter.in.dto.MyChatRoomResponse;
 import org.example.chat.chatroom.application.port.in.ChatRoomCommandUseCase;
@@ -30,7 +30,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("${api-path.chat.base:/chat}")
