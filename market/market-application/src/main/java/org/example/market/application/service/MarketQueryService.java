@@ -13,12 +13,12 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class MarketQueryService implements MarketQueryUseCase {
 
     private final MarketPersistencePort marketPersistencePort;
 
     @Override
+    @Transactional(readOnly = true)
     @Cacheable(cacheNames = MarketCacheNames.MARKETS, key = "'enabled'")
     public List<Market> getMarkets() {
         return marketPersistencePort.findAllEnabledOrderByIdAsc();
