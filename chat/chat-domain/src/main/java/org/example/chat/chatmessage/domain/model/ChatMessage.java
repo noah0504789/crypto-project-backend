@@ -70,11 +70,12 @@ public class ChatMessage {
     }
 
     public void persist(Set<String> memberIds, String clientMessageId) {
+        ChatMessagePayload payload = ChatMessagePayload.fromDomain(this);
+
         this.eventList
-                .addEvent(new ChatMessagePersistEvent(ChatMessagePayload.fromDomain(this), memberIds))
-                .addEvent(new ChatMessageBroadcastEvent(ChatMessagePayload.fromDomain(this), memberIds, clientMessageId))
+                .addEvent(new ChatMessagePersistEvent(payload, memberIds))
+                .addEvent(new ChatMessageBroadcastEvent(payload, memberIds, clientMessageId))
                 .addEvent(new MyChatRoomBadgeEvent(MyChatRoomPayload.ofLastMessage(roomId, memberIds, content, this.toInstant())));
-//                .addEvent(new WebNotificationEvent(this.getClass().getName(), WebNotificationPayload.fromChatMessage(this), writerId))
 
         this.eventList.publish();
     }

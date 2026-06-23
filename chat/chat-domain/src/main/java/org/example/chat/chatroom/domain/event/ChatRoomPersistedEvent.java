@@ -15,7 +15,7 @@ import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 @ToString
 public class ChatRoomPersistedEvent extends AbstractOutboxEvent implements HandleableEvent<ChatRoomEventHandler> {
 
-    private ChatRoomPayload payload;
+    private final ChatRoomPayload payload;
 
     @JsonCreator
     public ChatRoomPersistedEvent(@JsonProperty("payload") ChatRoomPayload payload) {
