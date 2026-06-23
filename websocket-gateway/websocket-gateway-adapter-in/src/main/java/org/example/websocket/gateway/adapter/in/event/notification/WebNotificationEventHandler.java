@@ -3,8 +3,8 @@ package org.example.websocket.gateway.adapter.in.event.notification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.common.enums.StompTopic;
-import org.example.common.event.notification.WebNotificationEvent;
-import org.example.common.event.notification.WebNotificationPayload;
+import org.example.notification.contract.event.WebNotificationEvent;
+import org.example.notification.contract.event.WebNotificationPayload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -27,11 +27,21 @@ public class WebNotificationEventHandler {
     }
 
     private boolean sendWebNotification(WebNotificationEvent event, String txId) {
-        WebNotificationPayload payload = event.payload();
-        String partitionKey = event.partitionKey();
+        if (event == null) {
+            log.warn("[STOMP] web notification ignored. txId={}, event-null=true", txId);
+            return false;
+        }
+
+        WebNotificationPayload payload = event.getPayload();
+        String partitionKey = event.getPartitionKey();
 
         if (payload == null || partitionKey == null || partitionKey.isBlank()) {
-            log.warn("[STOMP] web notification ignored. txId={}, partitionKey={}, payload-null={}", txId, partitionKey, payload == null);
+            log.warn(
+                    "[STOMP] web notification ignored. txId={}, partitionKey={}, payload-null={}",
+                    txId,
+                    partitionKey,
+                    payload == null
+            );
 
             return false;
         }
@@ -41,9 +51,23 @@ public class WebNotificationEventHandler {
         try {
             stompTemplate.convertAndSend(destination, payload);
 
+            log.debug(
+                    "[STOMP] web notification sent. txId={}, notificationId={}, partitionKey={}, destination={}",
+                    txId,
+                    event.getNotificationId(),
+                    partitionKey,
+                    destination
+            );
+
             return true;
         } catch (Exception e) {
-            log.error("❌ [STOMP] web notification 실패: txId={}, destination={}, error={}", txId, destination, e.getMessage(), e);
+            log.error(
+                    "❌ [STOMP] web notification 실패: txId={}, destination={}, error={}",
+                    txId,
+                    destination,
+                    e.getMessage(),
+                    e
+            );
 
             return false;
         }

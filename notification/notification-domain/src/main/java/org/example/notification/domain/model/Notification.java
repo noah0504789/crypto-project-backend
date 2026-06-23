@@ -103,9 +103,8 @@ public class Notification {
                         recipientPayloads
                 ))
                 .addEvent(WebNotificationEvent.of(
-                        this.id,
-                        routingKey,
-                        createWebNotificationPayload(typedPayload)
+                        createWebNotificationPayload(typedPayload), this.id,
+                        routingKey
                 ))
                 .publish();
     }

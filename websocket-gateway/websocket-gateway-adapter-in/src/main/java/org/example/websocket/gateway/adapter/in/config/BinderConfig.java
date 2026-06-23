@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.common.enums.KafkaHeaderKey;
 import org.example.contract.chatmessage.ChatMessageBroadcastEvent;
 import org.example.contract.chatroom.MyChatRoomBadgeEvent;
-import org.example.common.event.notification.WebNotificationEvent;
+import org.example.notification.contract.event.WebNotificationEvent;
 import org.example.websocket.gateway.adapter.in.event.chatmessage.ChatMessageBroadcastEventHandler;
 import org.example.websocket.gateway.adapter.in.event.chatroom.MyChatRoomBadgeEventHandler;
 import org.example.websocket.gateway.adapter.in.event.notification.WebNotificationEventHandler;
