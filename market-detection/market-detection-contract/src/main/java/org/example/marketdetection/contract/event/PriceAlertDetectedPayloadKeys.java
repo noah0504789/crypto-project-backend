@@ -1,10 +1,10 @@
-package org.example.marketdetection.upbit.event;
+package org.example.marketdetection.contract.event;
 
 import org.example.common.event.TypedKey;
 
-public final class UpbitTickerAlertPayloadKeys {
+public final class PriceAlertDetectedPayloadKeys {
 
-    private UpbitTickerAlertPayloadKeys() {
+    private PriceAlertDetectedPayloadKeys() {
     }
 
     public static final TypedKey<String> CODE = new TypedKey<>("code", String.class);
@@ -13,5 +13,5 @@ public final class UpbitTickerAlertPayloadKeys {
     public static final TypedKey<Integer> AVG_INTERVAL = new TypedKey<>("avgInterval", Integer.class);
     public static final TypedKey<Double> AVG_PRICE = new TypedKey<>("avgPrice", Double.class);
     public static final TypedKey<Double> CHANGE_RATE = new TypedKey<>("changeRate", Double.class);
-    public static final TypedKey<String> MATCHED_CHANGE_RATE_THRESHOLD = new TypedKey<>("matchedChangeRateThreshold", String.class);
+    public static final TypedKey<String> THRESHOLD = new TypedKey<>("threshold", String.class);
 }

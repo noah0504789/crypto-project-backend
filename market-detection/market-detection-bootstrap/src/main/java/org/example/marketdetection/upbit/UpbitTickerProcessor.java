@@ -109,15 +109,15 @@ public class UpbitTickerProcessor implements Processor<String, UpbitTickerEvent,
             double changeRate,
             PriceAlertChangeRateThreshold threshold
     ) {
-        return new PriceAlertDetectedEvent(
-                code,
-                currentPrice,
-                timestamp,
-                properties.ticker().alert().windowMinutes(),
-                averagePrice,
-                changeRate,
-                threshold.name()
-        );
+        return PriceAlertDetectedEvent.builder()
+                .code(code)
+                .price(currentPrice)
+                .timestamp(timestamp)
+                .avgInterval(properties.ticker().alert().windowMinutes())
+                .avgPrice(averagePrice)
+                .changeRate(changeRate)
+                .threshold(threshold.name())
+                .build();
     }
 
     private void publishPriceAlertDetected(PriceAlertDetectedEvent event) {

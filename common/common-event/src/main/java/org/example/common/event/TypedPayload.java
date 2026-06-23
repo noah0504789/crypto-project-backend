@@ -12,6 +12,10 @@ public final class TypedPayload {
         this.values = Map.copyOf(values);
     }
 
+    public static TypedPayload empty() {
+        return new TypedPayload(Map.of());
+    }
+
     public static Builder builder() {
         return new Builder();
     }
