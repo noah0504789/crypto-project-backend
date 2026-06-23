@@ -6,9 +6,11 @@ import org.example.market.application.service.command.ChangePriceAlertSettingsCo
 import org.example.market.application.service.command.ChangePriceAlertSettingsCommand.CreatePriceAlertSettingCommand;
 import org.example.market.application.service.command.ChangePriceAlertSettingsCommand.UpdatePriceAlertSettingCommand;
 import org.example.market.application.service.command.ChangePriceAlertSettingsCommand.DeletePriceAlertSettingCommand;
+import org.example.market.client.PriceAlertChangeRateThreshold;
 import org.example.market.domain.model.PriceAlertSetting;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -26,6 +28,15 @@ public class JpaPriceAlertSettingAdapter implements PriceAlertSettingPersistence
                 .stream()
                 .map(JpaPriceAlertSetting::toDomain)
                 .toList();
+    }
+
+    @Override
+    public List<UUID> findReceiverIds(String marketCode, BigDecimal targetChangeRate) {
+        if (marketCode == null || marketCode.isBlank() || targetChangeRate == null) {
+            return List.of();
+        }
+
+        return priceAlertSettingRepository.findReceiverIdsByMarketCodeAndTargetChangeRate(marketCode, targetChangeRate);
     }
 
     @Override

@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -30,5 +31,18 @@ public interface JpaPriceAlertSettingRepository extends JpaRepository<JpaPriceAl
     List<JpaPriceAlertSetting> findAllByUserPublicIdAndMarketCodeIn(
             @Param("userPublicId") UUID userPublicId,
             @Param("marketCodes") Set<String> marketCodes
+    );
+
+    @Query("""
+            select p.userPublicId
+            from JpaPriceAlertSetting p
+            join p.market m
+            where m.marketCode = :marketCode
+              and p.targetChangeRate = :targetChangeRate
+              and p.enabled = true
+            """)
+    List<UUID> findReceiverIdsByMarketCodeAndTargetChangeRate(
+            @Param("marketCode") String marketCode,
+            @Param("targetChangeRate") BigDecimal targetChangeRate
     );
 }

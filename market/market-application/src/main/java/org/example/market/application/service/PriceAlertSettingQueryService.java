@@ -10,6 +10,7 @@ import org.example.market.domain.model.PriceAlertSetting;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -53,5 +54,15 @@ public class PriceAlertSettingQueryService implements PriceAlertSettingQueryUseC
                     );
                 })
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UUID> findReceiverIds(String marketCode, BigDecimal targetChangeRate) {
+        if (marketCode == null || marketCode.isBlank() || targetChangeRate == null) {
+            return List.of();
+        }
+
+        return priceAlertSettingPersistencePort.findReceiverIds(marketCode, targetChangeRate);
     }
 }

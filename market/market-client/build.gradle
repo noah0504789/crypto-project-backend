@@ -8,7 +8,5 @@ dependencies {
     implementation project(':common:common-core')
     implementation project(':protobuf')
 
-    implementation platform(libs.grpc.bom)
-    implementation(libs.grpc.stub)
     implementation(libs.grpc.client.spring.boot.starter)
 }

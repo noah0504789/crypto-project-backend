@@ -10,4 +10,5 @@ dependencies {
     implementation project(':common:common-jpa')
     implementation project(':common:common-id')
     implementation project(':market:market-application')
+    implementation project(':market:market-client')
 }

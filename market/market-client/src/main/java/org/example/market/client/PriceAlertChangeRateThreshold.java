@@ -3,6 +3,8 @@ package org.example.market.client;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Arrays;
 import java.util.List;
 
@@ -22,5 +24,13 @@ public enum PriceAlertChangeRateThreshold {
         return Arrays.stream(values())
                 .filter(value -> absoluteChangeRate >= value.rate)
                 .toList();
+    }
+
+    public static BigDecimal toBigDecimal(String threshold) {
+        return PriceAlertChangeRateThreshold.valueOf(threshold).toBigDecimal();
+    }
+
+    public BigDecimal toBigDecimal() {
+        return BigDecimal.valueOf(rate).setScale(4, RoundingMode.HALF_UP);
     }
 }
