@@ -10,14 +10,8 @@ dependencies {
     implementation project(':protobuf')
     implementation project(':oauth2-authorization-server:oauth2-authorization-server-client')
 
-    implementation(platform(libs.grpc.bom))
     implementation(libs.grpc.netty)
-    implementation(libs.grpc.protobuf)
-    implementation(libs.grpc.stub)
     implementation(libs.grpc.client.spring.boot.starter)
-
-    implementation(libs.protobuf.java)
-    implementation(libs.protobuf.util)
 
     implementation(libs.spring.boot.starter.webflux)
     implementation(libs.spring.boot.starter.security)
