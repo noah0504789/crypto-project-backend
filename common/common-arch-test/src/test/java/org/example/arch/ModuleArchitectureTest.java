@@ -37,7 +37,8 @@ class ModuleArchitectureTest {
             "org.example.upbit",
             "org.example.vault",
             "org.example.contract",
-            "org.example.market"
+            "org.example.market",
+            "org.example.notification"
     );
 
     private final Path root = findRoot();

@@ -1,0 +1,13 @@
+plugins {
+    id 'crypto-domain'
+}
+
+dependencies {
+    implementation project(':common:common-web')
+    implementation project(':market-detection:market-detection-contract')
+    implementation project(':notification:notification-application')
+
+    implementation(libs.spring.cloud.starter.stream.kafka)
+
+    testImplementation project(':common:common-test')
+}

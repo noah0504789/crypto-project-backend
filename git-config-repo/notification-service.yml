@@ -1,0 +1,32 @@
+server:
+  port: 8300
+  version: v1
+  servlet:
+    context-path: /api/${server.version}
+    encoding:
+      charset: UTF-8
+      force: true
+
+spring:
+  cloud:
+    function:
+      definition: priceAlertDetectedEventConsumer;notificationEventConsumer
+    stream:
+      bindings:
+        priceAlertDetectedEventConsumer-in-0:
+          destination: price-alert-detected-event
+          content-type: application/json
+          group: notification
+        notificationEventConsumer-in-0:
+          destination: notification-event
+          content-type: application/json
+          group: notification
+        web-notification-event-out:
+          destination: web-notification-event
+          content-type: application/json
+
+mongo:
+  user: ${mongo.notification.username}
+  pass: ${mongo.notification.password}
+  db: ${mongo.notification.db}
+  authSource: notification

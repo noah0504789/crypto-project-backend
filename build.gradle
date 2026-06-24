@@ -16,6 +16,7 @@ tasks.register("serviceCi") {
             "gatewayCi",
             "marketCi",
             "marketDetectionCi",
+            "notificationCi",
             "outboxPollerCi",
             "eurekaServerCi"
     )
@@ -151,6 +152,21 @@ tasks.register("marketDetectionCi") {
     dependsOn(
             ":market-detection:market-detection-bootstrap:build",
             ":market-detection:market-detection-contract:build",
+            ":common:common-arch-test:test"
+    )
+}
+
+tasks.register("notificationCi") {
+    group = "verification"
+    description = "Runs build and tests for notification service modules"
+
+    dependsOn(
+            ":notification:notification-domain:build",
+            ":notification:notification-contract:build",
+            ":notification:notification-application:build",
+            ":notification:notification-adapter-in:build",
+            ":notification:notification-adapter-out:build",
+            ":notification:notification-bootstrap:build",
             ":common:common-arch-test:test"
     )
 }

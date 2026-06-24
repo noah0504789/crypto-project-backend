@@ -1,0 +1,21 @@
+plugins {
+    id 'crypto-bootstrap'
+}
+
+ext.dockerImageName = "crypto-notification-service"
+
+dependencies {
+    runtimeOnly(libs.mysql.connector.j) {
+        exclude group: 'com.google.protobuf', module: 'protobuf-java'
+    }
+
+    implementation project(':common:common-actuator-webmvc')
+    implementation project(':notification:notification-domain')
+    implementation project(':notification:notification-application')
+    implementation project(':notification:notification-adapter-in')
+    implementation project(':notification:notification-adapter-out')
+
+    implementation(libs.spring.cloud.config.client)
+    implementation(libs.spring.cloud.eureka.client)
+    implementation(libs.micrometer.registry.prometheus)
+}

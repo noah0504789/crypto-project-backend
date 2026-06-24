@@ -84,5 +84,13 @@ include 'market-detection'
 include 'market-detection:market-detection-bootstrap'
 include 'market-detection:market-detection-contract'
 
+include 'notification'
+include 'notification:notification-domain'
+include 'notification:notification-contract'
+include 'notification:notification-application'
+include 'notification:notification-adapter-in'
+include 'notification:notification-adapter-out'
+include 'notification:notification-bootstrap'
+
 include 'spring-cloud-eureka-server'
 include 'outbox-poller'

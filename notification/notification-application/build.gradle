@@ -1,0 +1,12 @@
+plugins {
+    id 'crypto-domain'
+}
+
+dependencies {
+    api project(':notification:notification-domain')
+
+    implementation project(':common:common-mongo')
+
+    implementation(libs.caffeine)
+    implementation(libs.spring.boot.starter.cache)
+}
