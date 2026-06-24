@@ -25,6 +25,10 @@ spring:
           destination: upbit-ticker-alert-event
           content-type: application/json
           group: upbit-ticker-alert
+        price-alert-detected-event-out:
+          destination: price-alert-detected-event
+          content-type: application/json
+          group: upbit-ticker-alert
       kafka:
         binder:
           transaction:
