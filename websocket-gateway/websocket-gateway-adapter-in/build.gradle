@@ -9,6 +9,7 @@ dependencies {
     implementation project(':protobuf')
     implementation project(':websocket-gateway:websocket-gateway-application')
     implementation project(':chat:chat-contract')
+    implementation project(':notification:notification-contract')
 
     implementation(libs.spring.boot.starter.websocket)
     implementation(libs.spring.cloud.starter.stream.kafka)
