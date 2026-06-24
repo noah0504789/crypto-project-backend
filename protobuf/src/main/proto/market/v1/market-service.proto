@@ -24,3 +24,16 @@ message GrpcGetEnabledMarketsResponse {
 service MarketService {
   rpc GetEnabledMarkets(GrpcGetEnabledMarketsRequest) returns (GrpcGetEnabledMarketsResponse);
 }
+
+message GrpcFindPriceAlertReceiversRequest {
+  string market_code = 1;
+  string target_change_rate = 2;
+}
+
+message GrpcFindPriceAlertReceiversResponse {
+  repeated string receiver_ids = 1;
+}
+
+service PriceAlertSettingService {
+  rpc FindReceiverIds(GrpcFindPriceAlertReceiversRequest) returns (GrpcFindPriceAlertReceiversResponse);
+}
