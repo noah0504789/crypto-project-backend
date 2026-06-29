@@ -1,30 +1,38 @@
-package outbox;
+package org.example.common.outbox.adapter.in;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.example.common.outbox.adapter.in.OutboxEventListListener;
-import org.example.common.outbox.domain.event.AbstractOutboxEvent;
-import org.example.common.outbox.domain.Outbox;
 import org.example.common.outbox.application.service.OutboxService;
+import org.example.common.outbox.domain.Outbox;
+import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 import org.example.common.outbox.domain.event.AbstractOutboxEventList;
+import org.example.common.outbox.exception.OutboxPersistenceException;
+import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataRetrievalFailureException;
+import org.springframework.dao.TransientDataAccessResourceException;
 
 import java.util.List;
 
-import org.mockito.*;
-import org.springframework.dao.DataAccessException;
-import org.springframework.dao.DataRetrievalFailureException;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class OutboxEventListListenerTest {
@@ -65,7 +73,13 @@ class OutboxEventListListenerTest {
         sut.handleOutboxEventList(eventList);
 
         // then
-        InOrder inOrder = inOrder(eventList, objectMapper, event1, event2, outboxService);
+        InOrder inOrder = inOrder(
+                eventList,
+                objectMapper,
+                event1,
+                event2,
+                outboxService
+        );
 
         inOrder.verify(eventList).getTxId();
         inOrder.verify(eventList).getEventList();
@@ -86,7 +100,7 @@ class OutboxEventListListenerTest {
 
     @Test
     @DisplayName("이벤트 리스트가 비어 있어도 빈 Outbox 목록을 저장한다")
-    void handleOutboxEventListWithEmptyEvents() throws Exception {
+    void handleOutboxEventListWithEmptyEvents() throws JsonProcessingException {
         // given
         AbstractOutboxEventList eventList = mock(AbstractOutboxEventList.class);
 
@@ -107,8 +121,8 @@ class OutboxEventListListenerTest {
     }
 
     @Test
-    @DisplayName("이벤트 직렬화에 실패하면 JsonProcessingException을 다시 던지고 저장하지 않는다")
-    void handleOutboxEventListThrowsJsonProcessingException() throws Exception {
+    @DisplayName("이벤트 직렬화에 실패하면 OutboxPersistenceException으로 감싸고 저장하지 않는다")
+    void handleOutboxEventListThrowsOutboxPersistenceExceptionWhenSerializationFails() throws Exception {
         // given
         AbstractOutboxEventList eventList = mock(AbstractOutboxEventList.class);
         AbstractOutboxEvent event = mock(AbstractOutboxEvent.class);
@@ -123,7 +137,9 @@ class OutboxEventListListenerTest {
 
         // when & then
         assertThatThrownBy(() -> sut.handleOutboxEventList(eventList))
-                .isSameAs(exception);
+                .isInstanceOf(OutboxPersistenceException.class)
+                .hasMessageContaining("failed to serialize outbox events")
+                .hasCause(exception);
 
         verify(objectMapper).writeValueAsString(event);
         verify(event, never()).toOutbox(anyString(), anyString());
@@ -131,14 +147,15 @@ class OutboxEventListListenerTest {
     }
 
     @Test
-    @DisplayName("Outbox 저장에 실패하면 DataAccessException을 다시 던진다")
-    void handleOutboxEventListThrowsDataAccessException() throws Exception {
+    @DisplayName("Outbox 저장 중 일반 DataAccessException이 발생하면 OutboxPersistenceException으로 감싼다")
+    void handleOutboxEventListThrowsOutboxPersistenceExceptionWhenSaveFails() throws Exception {
         // given
         AbstractOutboxEventList eventList = mock(AbstractOutboxEventList.class);
         AbstractOutboxEvent event = mock(AbstractOutboxEvent.class);
         Outbox outbox = mock(Outbox.class);
 
-        DataAccessException exception = new DataRetrievalFailureException("outbox save failed");
+        DataAccessException exception =
+                new DataRetrievalFailureException("outbox save failed");
 
         given(eventList.getTxId()).willReturn(txId);
         given(eventList.getEventList()).willReturn(List.of(event));
@@ -152,10 +169,71 @@ class OutboxEventListListenerTest {
 
         // when & then
         assertThatThrownBy(() -> sut.handleOutboxEventList(eventList))
-                .isSameAs(exception);
+                .isInstanceOf(OutboxPersistenceException.class)
+                .isNotInstanceOf(TemporaryOutboxPersistenceException.class)
+                .hasMessageContaining("failed to save outbox events")
+                .hasCause(exception);
 
         verify(objectMapper).writeValueAsString(event);
         verify(event).toOutbox(txId, "payload");
         verify(outboxService).saveAll(anyList());
+    }
+
+    @Test
+    @DisplayName("Outbox 저장 중 일시적 DataAccessException이 발생하면 TemporaryOutboxPersistenceException으로 감싼다")
+    void handleOutboxEventListThrowsTemporaryOutboxPersistenceExceptionWhenTemporarySaveFails() throws Exception {
+        // given
+        AbstractOutboxEventList eventList = mock(AbstractOutboxEventList.class);
+        AbstractOutboxEvent event = mock(AbstractOutboxEvent.class);
+        Outbox outbox = mock(Outbox.class);
+
+        DataAccessException exception =
+                new TransientDataAccessResourceException("temporary outbox save failed");
+
+        given(eventList.getTxId()).willReturn(txId);
+        given(eventList.getEventList()).willReturn(List.of(event));
+
+        given(objectMapper.writeValueAsString(event)).willReturn("payload");
+        given(event.toOutbox(txId, "payload")).willReturn(outbox);
+
+        doThrow(exception)
+                .when(outboxService)
+                .saveAll(anyList());
+
+        // when & then
+        assertThatThrownBy(() -> sut.handleOutboxEventList(eventList))
+                .isInstanceOf(TemporaryOutboxPersistenceException.class)
+                .hasMessageContaining("failed to save outbox events")
+                .hasCause(exception);
+
+        verify(objectMapper).writeValueAsString(event);
+        verify(event).toOutbox(txId, "payload");
+        verify(outboxService).saveAll(anyList());
+    }
+
+    @Test
+    @DisplayName("예상하지 못한 예외가 발생하면 OutboxPersistenceException으로 감싼다")
+    void handleOutboxEventListThrowsOutboxPersistenceExceptionWhenUnexpectedExceptionOccurs() throws Exception {
+        // given
+        AbstractOutboxEventList eventList = mock(AbstractOutboxEventList.class);
+        AbstractOutboxEvent event = mock(AbstractOutboxEvent.class);
+
+        RuntimeException exception = new RuntimeException("unexpected failure");
+
+        given(eventList.getTxId()).willReturn(txId);
+        given(eventList.getEventList()).willReturn(List.of(event));
+
+        given(objectMapper.writeValueAsString(event)).willReturn("payload");
+        given(event.toOutbox(txId, "payload")).willThrow(exception);
+
+        // when & then
+        assertThatThrownBy(() -> sut.handleOutboxEventList(eventList))
+                .isInstanceOf(OutboxPersistenceException.class)
+                .hasMessageContaining("failed to handle outbox event list")
+                .hasCause(exception);
+
+        verify(objectMapper).writeValueAsString(event);
+        verify(event).toOutbox(txId, "payload");
+        verify(outboxService, never()).saveAll(anyList());
     }
 }

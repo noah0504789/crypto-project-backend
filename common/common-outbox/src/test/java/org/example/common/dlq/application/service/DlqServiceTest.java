@@ -1,9 +1,8 @@
-package dlq;
+package org.example.common.dlq.application.service;
 
 import org.example.common.exception.DlqNotFoundException;
-import org.example.common.dlq.adapter.DlqRepository;
+import org.example.common.dlq.adapter.out.DlqRepository;
 import org.example.common.outbox.application.port.out.EventPublisherPort;
-import org.example.common.dlq.application.DlqService;
 import org.example.common.dlq.domain.Dlq;
 import org.example.common.dlq.domain.DlqStatus;
 import org.example.common.dlq.properties.DlqPollerProperties;

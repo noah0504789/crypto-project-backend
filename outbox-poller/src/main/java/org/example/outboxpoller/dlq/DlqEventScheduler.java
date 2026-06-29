@@ -1,7 +1,7 @@
 package org.example.outboxpoller.dlq;
 
 import lombok.RequiredArgsConstructor;
-import org.example.common.dlq.application.DlqService;
+import org.example.common.dlq.application.service.DlqService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 

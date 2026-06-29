@@ -21,8 +21,17 @@ public class AbstractDlqEventList {
         this.eventList.add(event);
     }
 
-    public void publish() {
+    public void assignTxId() {
         this.txId = generateTxId();
+    }
+
+    /**
+     * @deprecated 도메인 객체에서 직접 publish하지 말고,
+     * DlqEventListPublishPort를 통해 발행하도록 교체한다.
+     */
+    @Deprecated
+    public void publish() {
+        assignTxId();
 
         EventUtils.raise(this);
 
