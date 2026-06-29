@@ -1,11 +1,9 @@
-package chatroom.service;
+package org.example.chat.chatroom.application.service;
 
 import org.example.chat.chatroom.application.dto.ChatRoomCacheLookupResult;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.application.query.MyChatRoomSummary;
-import org.example.chat.chatroom.application.service.ChatRoomQueryRepairService;
-import org.example.chat.chatroom.application.service.ChatRoomQueryService;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.chat.chatroom.domain.service.MyChatRoomScoreCalculator;
