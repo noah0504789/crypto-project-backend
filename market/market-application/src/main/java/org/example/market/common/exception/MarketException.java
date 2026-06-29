@@ -1,0 +1,10 @@
+package org.example.market.common.exception;
+
+import org.example.common.exception.InfrastructureException;
+
+public class MarketException extends InfrastructureException {
+
+    public MarketException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}

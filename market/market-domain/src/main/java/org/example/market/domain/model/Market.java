@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.example.market.domain.event.MarketCatalogChangedEvent;
+import org.example.market.domain.event.MarketEventList;
 
 import java.time.LocalDateTime;
 
@@ -22,6 +24,8 @@ public class Market {
     private boolean enabled;
     protected LocalDateTime createdAt;
     protected LocalDateTime updatedAt;
+
+    private MarketEventList eventList;
 
     public static Market rehydrate(
             Long id,
@@ -42,6 +46,32 @@ public class Market {
                 .enabled(enabled)
                 .createdAt(createdAt)
                 .updatedAt(updatedAt)
+                .eventList(new MarketEventList())
                 .build();
+    }
+
+    public static Market eventSource() {
+        return Market.builder()
+                .eventList(new MarketEventList())
+                .build();
+    }
+
+    public void catalogChanged() {
+        eventList().addEvent(MarketCatalogChangedEvent.of());
+    }
+
+    public MarketEventList pullEventList() {
+        MarketEventList pulledEventList = eventList();
+        this.eventList = new MarketEventList();
+
+        return pulledEventList;
+    }
+
+    private MarketEventList eventList() {
+        if (this.eventList == null) {
+            this.eventList = new MarketEventList();
+        }
+
+        return this.eventList;
     }
 }
