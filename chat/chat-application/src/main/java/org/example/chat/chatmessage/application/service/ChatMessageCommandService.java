@@ -3,7 +3,6 @@ package org.example.chat.chatmessage.application.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.chat.common.exception.ChatMessageCacheException;
-import org.example.chat.common.exception.ChatMessagePersistException;
 import org.example.chat.chatmessage.application.dto.ChatMessageSaveCommand;
 import org.example.chat.chatmessage.application.dto.ChatMessageSaveResult;
 import org.example.chat.chatmessage.application.port.out.ChatMessageCachePort;
@@ -14,33 +13,39 @@ import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
-import org.hibernate.exception.JDBCConnectionException;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.dao.TransientDataAccessException;
-import org.springframework.data.mongodb.MongoTransactionException;
+import org.example.chat.common.exception.ChatMessagePersistException;
+import org.example.chat.common.exception.TemporaryChatPersistenceException;
+import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
+import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.SQLTransientConnectionException;
 import java.util.List;
 import java.util.Set;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class ChatMessageCommandService  {
+public class ChatMessageCommandService {
 
     private final ChatMessagePersistencePort chatMessagePersistencePort;
     private final ChatMessageCachePort chatMessageCachePort;
     private final ChatRoomPersistencePort chatRoomPersistencePort;
+    private final OutboxEventListPublishPort outboxEventListPublishPort;
 
+    @Retryable(
+            retryFor = TemporaryOutboxPersistenceException.class,
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 100, multiplier = 2)
+    )
     @Transactional("chatMongoTransactionManager")
     public ChatMessageSaveResult save(ChatMessageSaveCommand command) {
         ChatRoom chatRoom = chatRoomPersistencePort.findById(command.roomId())
                 .orElseThrow(() -> new ChatRoomNotFoundException(command.roomId()));
+
         chatRoom.validateWritable(command.writerId());
 
         ChatMessage message = ChatMessage.ofNewMessage(
@@ -54,16 +59,13 @@ public class ChatMessageCommandService  {
         ChatRoomCategory category = chatRoom.getCategory();
 
         publishPersistEvent(message, memberIds, command.clientMessageId());
-        saveCache(message, category, memberIds);
+        saveCacheSafely(message, category, memberIds);
 
         return ChatMessageSaveResult.from(message);
     }
 
     @Retryable(
-            retryFor = {
-                    TransientDataAccessException.class,
-                    MongoTransactionException.class
-            },
+            retryFor = TemporaryChatPersistenceException.class,
             maxAttempts = 3,
             backoff = @Backoff(delay = 100, multiplier = 2)
     )
@@ -92,7 +94,11 @@ public class ChatMessageCommandService  {
     }
 
     @Recover
-    public void recover(TransientDataAccessException e, String messageId, String roomId) {
+    public void recover(
+            TemporaryChatPersistenceException e,
+            String messageId,
+            String roomId
+    ) {
         log.error(
                 "[chat message] hardDelete retry exhausted. messageId={}, roomId={}, error={}",
                 messageId,
@@ -102,38 +108,31 @@ public class ChatMessageCommandService  {
         );
     }
 
-    @Recover
-    public void recover(MongoTransactionException e, String messageId, String roomId) {
-        log.error(
-                "[chat message] hardDelete retry exhausted. messageId={}, roomId={}, error={}",
-                messageId,
-                roomId,
-                e.getMessage(),
-                e
-        );
-    }
-
-    private void publishPersistEvent(ChatMessage message, Set<String> memberIds, String clientMessageId) {
+    private void publishPersistEvent(
+            ChatMessage message,
+            Set<String> memberIds,
+            String clientMessageId
+    ) {
         try {
-            message.persist(memberIds, clientMessageId);
-        } catch (Exception e) {
-            if (isConnectionAcquireFailure(e)) {
-                throw new ChatMessagePersistException(
-                        message,
-                        "failed to acquire db connection before persist. chatMessageId=" + message.getId(),
-                        e
-                );
-            }
+            message.registerPersistEvents(memberIds, clientMessageId);
 
+            outboxEventListPublishPort.publish(message.pullEventList());
+        } catch (TemporaryOutboxPersistenceException e) {
+            throw e;
+        } catch (Exception e) {
             throw new ChatMessagePersistException(
                     message,
-                    "failed during persist/broadcast. chatMessageId=" + message.getId(),
+                    "failed during chat message persist event publish. chatMessageId=" + message.getId(),
                     e
             );
         }
     }
 
-    private void saveCache(ChatMessage message, ChatRoomCategory category, Set<String> memberIds) {
+    private void saveCacheSafely(
+            ChatMessage message,
+            ChatRoomCategory category,
+            Set<String> memberIds
+    ) {
         try {
             chatMessageCachePort.save(message, category, memberIds);
         } catch (Exception e) {
@@ -145,40 +144,21 @@ public class ChatMessageCommandService  {
         }
     }
 
-    private void hardDeleteCacheSafely(String messageId, String roomId, List<ChatRoomMembershipScore> chatRoomMembershipScores) {
+    private void hardDeleteCacheSafely(
+            String messageId,
+            String roomId,
+            List<ChatRoomMembershipScore> chatRoomMembershipScores
+    ) {
         try {
             chatMessageCachePort.hardDelete(messageId, roomId, chatRoomMembershipScores);
         } catch (Exception e) {
             log.warn(
-                    "[redis] chatmessage hardDelete failed. messageId={}, roomId={}, error={}",
+                    "[redis] chat message hardDelete failed. messageId={}, roomId={}, error={}",
                     messageId,
                     roomId,
                     e.getMessage(),
                     e
             );
         }
-    }
-
-    private boolean isConnectionAcquireFailure(Throwable t) {
-        Throwable cur = t;
-
-        while (cur != null) {
-            if (cur instanceof SQLTransientConnectionException) {
-                return true;
-            }
-
-            if (cur instanceof JDBCConnectionException) {
-                return true;
-            }
-
-            String msg = cur.getMessage();
-            if (msg != null && msg.contains("Connection is not available")) {
-                return true;
-            }
-
-            cur = cur.getCause();
-        }
-
-        return false;
     }
 }

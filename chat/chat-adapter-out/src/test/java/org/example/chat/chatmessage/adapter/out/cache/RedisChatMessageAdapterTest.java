@@ -1,9 +1,8 @@
-package chatmessage.adapter.out;
+package org.example.chat.chatmessage.adapter.out.cache;
 
 import org.example.common.test.config.TestBootApplication;
 import config.TestRedisConfig;
 import org.example.common.test.testcontainer.RedisTestContainerInitializer;
-import org.example.chat.chatmessage.adapter.out.cache.RedisChatMessageAdapter;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.chatroom.application.dto.ChatRoomMembershipScore;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;

@@ -1,11 +1,9 @@
-package chatmessage.adapter.out;
+package org.example.chat.chatmessage.adapter.out.persistence;
 
 import org.example.common.test.config.TestBootApplication;
 import config.TestMongoConfig;
 import org.example.common.test.testcontainer.MongoDBTestContainerInitializer;
 import org.bson.types.ObjectId;
-import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessage;
-import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessageRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

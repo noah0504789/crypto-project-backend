@@ -8,7 +8,7 @@ import org.example.chat.chatroom.application.service.ChatRoomEventService;
 import org.example.common.event.HandleableEvent;
 import org.example.common.event.RecoverableEvent;
 import org.example.common.enums.KafkaHeaderKey;
-import org.example.common.dlq.application.DlqService;
+import org.example.common.dlq.application.service.DlqService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.Message;

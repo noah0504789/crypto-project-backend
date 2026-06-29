@@ -16,7 +16,6 @@ import org.example.common.time.ServiceZoneUtils;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Set;
 
 @Getter
@@ -69,20 +68,35 @@ public class ChatMessage {
                 .build();
     }
 
-    public void persist(Set<String> memberIds, String clientMessageId) {
+    public void registerPersistEvents(Set<String> memberIds, String clientMessageId) {
         ChatMessagePayload payload = ChatMessagePayload.fromDomain(this);
 
         this.eventList
                 .addEvent(new ChatMessagePersistEvent(payload, memberIds))
                 .addEvent(new ChatMessageBroadcastEvent(payload, memberIds, clientMessageId))
-                .addEvent(new MyChatRoomBadgeEvent(MyChatRoomPayload.ofLastMessage(roomId, memberIds, content, this.toInstant())));
-
-        this.eventList.publish();
+                .addEvent(new MyChatRoomBadgeEvent(
+                        MyChatRoomPayload.ofLastMessage(roomId, memberIds, content, this.toInstant())
+                ));
     }
 
-    public void recoverPersist(String errorMessage) {
-        this.dlqEventList.addEvent(new ChatMessagePersistDlqEvent(ChatMessagePayload.fromDomain(this), errorMessage));
-        this.dlqEventList.publish();
+    public void registerPersistDlqEvents(String errorMessage) {
+        this.dlqEventList.addEvent(
+                new ChatMessagePersistDlqEvent(ChatMessagePayload.fromDomain(this), errorMessage)
+        );
+    }
+
+    public ChatMessageEventList pullEventList() {
+        ChatMessageEventList pulledEventList = this.eventList;
+        this.eventList = new ChatMessageEventList();
+
+        return pulledEventList;
+    }
+
+    public ChatMessageDlqEventList pullDlqEventList() {
+        ChatMessageDlqEventList pulledEventList = this.dlqEventList;
+        this.dlqEventList = new ChatMessageDlqEventList();
+
+        return pulledEventList;
     }
 
     public Instant toInstant() {
