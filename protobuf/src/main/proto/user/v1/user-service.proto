@@ -8,7 +8,7 @@ option java_outer_classname = "UserProto";
 
 import "google/protobuf/timestamp.proto";
 
-message UserGrpc {
+message GrpcUser {
   string sub = 1;
   string nickname = 2;
   string email = 3;
@@ -17,25 +17,25 @@ message UserGrpc {
   string id = 6;
 }
 
-message FindByEmailGrpcRequest {
+message GrpcFindByEmailRequest {
   string email = 1;
 }
 
-message FindByEmailGrpcResponse {
-  optional UserGrpc user = 1;
+message GrpcFindByEmailResponse {
+  optional GrpcUser user = 1;
 }
 
-message SignUpOauth2GrpcRequest {
+message GrpcSignUpOauth2Request {
   string sub = 1;
   string email = 2;
   string nickname = 3;
 }
 
-message SignUpOauth2GrpcResponse {
-  UserGrpc user = 1;
+message GrpcSignUpOauth2Response {
+  GrpcUser user = 1;
 }
 
 service UserService {
-  rpc FindByEmail(FindByEmailGrpcRequest) returns (FindByEmailGrpcResponse);
-  rpc SignUpOauth2(SignUpOauth2GrpcRequest) returns (SignUpOauth2GrpcResponse);
+  rpc FindByEmail(GrpcFindByEmailRequest) returns (GrpcFindByEmailResponse);
+  rpc SignUpOauth2(GrpcSignUpOauth2Request) returns (GrpcSignUpOauth2Response);
 }
