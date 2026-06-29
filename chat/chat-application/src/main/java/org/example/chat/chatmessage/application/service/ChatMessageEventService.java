@@ -7,14 +7,14 @@ import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.chatmessage.domain.event.ChatMessagePersistEvent;
 import org.example.chat.chatmessage.domain.port.ChatMessageEventHandler;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
-import org.springframework.dao.TransientDataAccessException;
-import org.springframework.data.mongodb.MongoTransactionException;
+import org.example.chat.common.exception.DuplicateChatMessageException;
+import org.example.chat.common.exception.TemporaryChatPersistenceException;
+import org.example.common.dlq.application.port.out.DlqEventListPublishPort;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.dao.DuplicateKeyException;
 
 import java.util.Arrays;
 
@@ -25,15 +25,11 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
 
     private final ChatMessagePersistencePort chatMessagePersistencePort;
     private final ChatRoomPersistencePort chatRoomPersistencePort;
+    private final DlqEventListPublishPort dlqEventListPublishPort;
 
     @Retryable(
-            retryFor = {
-                    TransientDataAccessException.class,
-                    MongoTransactionException.class
-            },
-            noRetryFor = {
-                    DuplicateKeyException.class
-            },
+            retryFor = TemporaryChatPersistenceException.class,
+            noRetryFor = DuplicateChatMessageException.class,
             maxAttempts = 3,
             backoff = @Backoff(delay = 100, multiplier = 2)
     )
@@ -45,8 +41,12 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
 
         try {
             chatMessagePersistencePort.save(domain);
-        } catch (DuplicateKeyException e) {
-            log.warn("[chat message] persist event 중복으로 인한 스킵. txId={}, chatMessageId={}", txId, id);
+        } catch (DuplicateChatMessageException e) {
+            log.warn(
+                    "[chat message] persist event already processed. txId={}, chatMessageId={}",
+                    txId,
+                    id
+            );
             return;
         }
 
@@ -55,21 +55,40 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
     }
 
     @Recover
-    public void recover(RuntimeException e, ChatMessagePersistEvent event, String txId) {
-        log.error("❌ MongoDB 실패. chatmessage persist dlq 이벤트 발행: txId={}, error={}", txId, e.getMessage());
+    public void recover(
+            TemporaryChatPersistenceException e,
+            ChatMessagePersistEvent event,
+            String txId
+    ) {
+        log.error(
+                "❌ chat message persist retry exhausted. txId={}, error={}",
+                txId,
+                e.getMessage(),
+                e
+        );
 
         ChatMessage domain = ChatMessage.fromPayload(event.getPayload());
 
-        runRecover("chatmessage persist recover", txId, e, () -> domain.recoverPersist(e.getMessage()), event.getPayload());
+        runRecover(
+                txId,
+                e,
+                () -> publishPersistDlqEvent(domain, e.getMessage()),
+                event.getPayload()
+        );
     }
 
-    private void runRecover(String context, String txId, RuntimeException original, Runnable recoverAction, Object... details) {
+    private void runRecover(
+            String txId,
+            RuntimeException original,
+            Runnable recoverAction,
+            Object... details
+    ) {
         try {
             recoverAction.run();
         } catch (Exception recoverEx) {
             log.error(
                     "[RECOVER-FALLBACK] {} failed. txId={}, originalError={}, recoverError={}, details={}",
-                    context,
+                    "chatmessage persist recover",
                     txId,
                     original.getMessage(),
                     recoverEx.getMessage(),
@@ -77,5 +96,11 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
                     recoverEx
             );
         }
+    }
+
+    private void publishPersistDlqEvent(ChatMessage domain, String errorMessage) {
+        domain.registerPersistDlqEvents(errorMessage);
+
+        dlqEventListPublishPort.publish(domain.pullDlqEventList());
     }
 }

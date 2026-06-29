@@ -4,16 +4,19 @@ import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.example.chat.chatmessage.application.port.out.ChatMessagePersistencePort;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
+import org.example.chat.common.exception.InvalidResourceRequestException;
+import org.example.chat.infra.exception.MongoChatPersistenceExceptionTranslator;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 
-@Service
+@Repository
 @RequiredArgsConstructor
 public class MongoChatMessageAdapter implements ChatMessagePersistencePort {
 
@@ -21,37 +24,75 @@ public class MongoChatMessageAdapter implements ChatMessagePersistencePort {
 
     @Override
     public List<ChatMessage> listLatest(String roomId, int limit) {
-        Sort sort = Sort.by(Sort.Direction.DESC, "createdAt")
-                .and(Sort.by(Sort.Direction.DESC, "_id"));
-        Pageable pageable = PageRequest.of(0, limit, sort);
+        return execute(
+                "failed to list latest chat messages. roomId=" + roomId,
+                () -> {
+                    Sort sort = Sort.by(Sort.Direction.DESC, "createdAt")
+                            .and(Sort.by(Sort.Direction.DESC, "_id"));
 
-        return repository.findByRoomIdAndDeletedFalse(new ObjectId(roomId), pageable).stream()
-                .map(this::toDomain)
-                .toList();
+                    Pageable pageable = PageRequest.of(0, limit, sort);
+
+                    return repository.findByRoomIdAndDeletedFalse(
+                                    objectId(roomId, "roomId"),
+                                    pageable
+                            )
+                            .stream()
+                            .map(this::toDomain)
+                            .toList();
+                }
+        );
     }
 
     @Override
-    public List<ChatMessage> listPrev(String roomId, String lastId, Long lastCreatedAtMillis, int limit) {
-        return repository.listPrev(new ObjectId(roomId), new ObjectId(lastId), Instant.ofEpochMilli(lastCreatedAtMillis), limit).stream()
-                .map(this::toDomain)
-                .toList();
+    public List<ChatMessage> listPrev(
+            String roomId,
+            String lastId,
+            Long lastCreatedAtMillis,
+            int limit
+    ) {
+        return execute(
+                "failed to list previous chat messages. roomId=" + roomId + ", lastId=" + lastId,
+                () -> repository.listPrev(
+                                objectId(roomId, "roomId"),
+                                objectId(lastId, "lastId"),
+                                Instant.ofEpochMilli(lastCreatedAtMillis),
+                                limit
+                        )
+                        .stream()
+                        .map(this::toDomain)
+                        .toList()
+        );
     }
 
     @Override
     public ChatMessage save(ChatMessage domain) {
-        repository.save(MongoChatMessage.fromDomain(domain));
-
-        return domain;
+        try {
+            repository.save(MongoChatMessage.fromDomain(domain));
+            return domain;
+        } catch (Exception e) {
+            throw MongoChatPersistenceExceptionTranslator.translateChatMessageSave(
+                    domain,
+            "failed to save chat message. messageId=" + domain.getId() + ", roomId=" + domain.getRoomId(),
+                    e
+            );
+        }
     }
 
     @Override
     public boolean hardDelete(String id) {
-        return repository.hardDelete(new ObjectId(id));
+        return execute(
+                "failed to hard delete chat message. messageId=" + id,
+                () -> repository.hardDelete(objectId(id, "messageId"))
+        );
     }
 
     @Override
     public Optional<ChatMessage> findLatestExcluding(String roomId, String id) {
-        return repository.findLatestExcluding(roomId, id).map(this::toDomain);
+        return execute(
+                "failed to find latest excluding chat message. roomId=" + roomId + ", messageId=" + id,
+                () -> repository.findLatestExcluding(roomId, id)
+                        .map(this::toDomain)
+        );
     }
 
     private ChatMessage toDomain(MongoChatMessage mongo) {
@@ -62,5 +103,23 @@ public class MongoChatMessageAdapter implements ChatMessagePersistencePort {
                 mongo.getContent(),
                 mongo.getCreatedAt()
         );
+    }
+
+    private ObjectId objectId(String value, String fieldName) {
+        try {
+            return new ObjectId(value);
+        } catch (IllegalArgumentException e) {
+            throw new InvalidResourceRequestException("invalid ObjectId. field=" + fieldName + ", value=" + value);
+        }
+    }
+
+    private <T> T execute(String message, Supplier<T> supplier) {
+        try {
+            return supplier.get();
+        } catch (InvalidResourceRequestException e) {
+            throw e;
+        } catch (Exception e) {
+            throw MongoChatPersistenceExceptionTranslator.translate(message, e);
+        }
     }
 }

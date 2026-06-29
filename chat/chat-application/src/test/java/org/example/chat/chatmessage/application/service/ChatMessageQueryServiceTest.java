@@ -1,10 +1,8 @@
-package chatmessage.service;
+package org.example.chat.chatmessage.application.service;
 
 import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
 import org.example.chat.chatmessage.domain.event.ChatMessageEventList;
 import org.example.chat.chatmessage.application.port.out.ChatMessageCachePort;
-import org.example.chat.chatmessage.application.service.ChatMessageQueryRepairService;
-import org.example.chat.chatmessage.application.service.ChatMessageQueryService;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

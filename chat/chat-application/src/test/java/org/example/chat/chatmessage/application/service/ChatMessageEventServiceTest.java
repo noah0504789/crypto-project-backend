@@ -1,13 +1,14 @@
-package chatmessage.service;
+package org.example.chat.chatmessage.application.service;
 
 import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
 import org.example.chat.chatmessage.domain.event.ChatMessageEventList;
 import org.example.chat.chatmessage.domain.event.payload.ChatMessagePayload;
 import org.example.chat.chatmessage.application.port.out.ChatMessagePersistencePort;
-import org.example.chat.chatmessage.application.service.ChatMessageEventService;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.chatmessage.domain.event.ChatMessagePersistEvent;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
+import org.example.chat.common.exception.DuplicateChatMessageException;
+import org.example.chat.common.exception.TemporaryChatPersistenceException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -16,7 +17,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DuplicateKeyException;
 
 import java.time.LocalDateTime;
 import java.util.Set;
@@ -70,7 +70,8 @@ class ChatMessageEventServiceTest {
             sut.handle(event, txId);
 
             // then
-            ArgumentCaptor<ChatMessage> messageCaptor = ArgumentCaptor.forClass(ChatMessage.class);
+            ArgumentCaptor<ChatMessage> messageCaptor =
+                    ArgumentCaptor.forClass(ChatMessage.class);
 
             verify(chatMessagePersistencePort).save(messageCaptor.capture());
 
@@ -90,13 +91,19 @@ class ChatMessageEventServiceTest {
         }
 
         @Test
-        @DisplayName("메시지 저장 중 DuplicateKeyException이 발생하면 중복 이벤트로 보고 이후 작업을 스킵한다")
-        void handleDuplicateKeyException() {
+        @DisplayName("메시지 저장 중 DuplicateChatMessageException이 발생하면 중복 이벤트로 보고 이후 작업을 스킵한다")
+        void handleDuplicateChatMessageException() {
             // given
             ChatMessage domain = chatMessage();
             ChatMessagePersistEvent event = persistEvent(domain, memberIds);
 
-            doThrow(new DuplicateKeyException("duplicate message"))
+            DuplicateChatMessageException exception =
+                    new DuplicateChatMessageException(
+                            "duplicated chat message. messageId=" + messageId,
+                            new RuntimeException("duplicate key")
+                    );
+
+            doThrow(exception)
                     .when(chatMessagePersistencePort)
                     .save(any(ChatMessage.class));
 
@@ -112,7 +119,34 @@ class ChatMessageEventServiceTest {
         }
 
         @Test
-        @DisplayName("메시지 저장 중 RuntimeException이 발생하면 예외를 전파하고 이후 작업을 하지 않는다")
+        @DisplayName("메시지 저장 중 TemporaryChatPersistenceException이 발생하면 예외를 전파하고 이후 작업을 하지 않는다")
+        void handleTemporaryChatPersistenceException() {
+            // given
+            ChatMessage domain = chatMessage();
+            ChatMessagePersistEvent event = persistEvent(domain, memberIds);
+
+            TemporaryChatPersistenceException exception =
+                    new TemporaryChatPersistenceException(
+                            "temporary mongo failure",
+                            new RuntimeException("mongo transaction failed")
+                    );
+
+            doThrow(exception)
+                    .when(chatMessagePersistencePort)
+                    .save(any(ChatMessage.class));
+
+            // when & then
+            assertThatThrownBy(() -> sut.handle(event, txId))
+                    .isSameAs(exception);
+
+            verify(chatMessagePersistencePort).save(any(ChatMessage.class));
+            verify(chatRoomPersistencePort, never()).incrementMsgCnt(anyString());
+            verify(chatRoomPersistencePort, never())
+                    .updateMembershipScores(anyString(), anySet(), anyLong());
+        }
+
+        @Test
+        @DisplayName("메시지 저장 중 일반 RuntimeException이 발생하면 예외를 전파하고 이후 작업을 하지 않는다")
         void handleSaveRuntimeException() {
             // given
             ChatMessage domain = chatMessage();
@@ -164,11 +198,16 @@ class ChatMessageEventServiceTest {
             ChatMessage domain = chatMessage();
             ChatMessagePersistEvent event = persistEvent(domain, memberIds);
 
-            RuntimeException exception = new RuntimeException("membership score update failed");
+            RuntimeException exception =
+                    new RuntimeException("membership score update failed");
 
             doThrow(exception)
                     .when(chatRoomPersistencePort)
-                    .updateMembershipScores(eq(roomId), eq(memberIds), anyLong());
+                    .updateMembershipScores(
+                            eq(roomId),
+                            eq(memberIds),
+                            anyLong()
+                    );
 
             // when & then
             assertThatThrownBy(() -> sut.handle(event, txId))
@@ -195,7 +234,11 @@ class ChatMessageEventServiceTest {
             ChatMessage domain = chatMessage();
             ChatMessagePersistEvent event = persistEvent(domain, memberIds);
 
-            RuntimeException exception = new RuntimeException("mongo failed");
+            TemporaryChatPersistenceException exception =
+                    new TemporaryChatPersistenceException(
+                            "mongo failed",
+                            new RuntimeException("temporary failure")
+                    );
 
             // when & then
             assertThatCode(() -> sut.recover(exception, event, txId))
@@ -216,9 +259,6 @@ class ChatMessageEventServiceTest {
     }
 
     private ChatMessagePersistEvent persistEvent(ChatMessage domain, Set<String> memberIds) {
-        return new ChatMessagePersistEvent(
-                ChatMessagePayload.fromDomain(domain),
-                memberIds
-        );
+        return new ChatMessagePersistEvent(ChatMessagePayload.fromDomain(domain), memberIds);
     }
 }

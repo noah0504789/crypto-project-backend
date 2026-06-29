@@ -168,125 +168,115 @@ public class ChatRoom {
     }
 
     public void persist() {
-        this.eventList.addEvent(new ChatRoomPersistedEvent(ChatRoomPayload.fromDomain(this)));
-        this.eventList.publish();
+        eventList().addEvent(new ChatRoomPersistedEvent(ChatRoomPayload.fromDomain(this)));
     }
 
     public void update(ChatRoomUpdatedPayload updated) {
-        this.eventList.addEvent(new ChatRoomUpdatedEvent(id, updated));
-        this.eventList.publish();
+        eventList().addEvent(new ChatRoomUpdatedEvent(id, updated));
     }
 
     public void delete() {
-        this.eventList.addEvent(new ChatRoomDeletedEvent(id, category));
-        this.eventList.publish();
+        eventList().addEvent(new ChatRoomDeletedEvent(id, category));
     }
 
     public void active(String memberId, Long lastMsgSeq, Long lastMsgMs) {
-        this.eventList.addEvent(new ChatRoomActiveEvent(id, memberId, lastMsgSeq, lastMsgMs));
-
-        this.eventList.publish();
+        eventList().addEvent(new ChatRoomActiveEvent(id, memberId, lastMsgSeq, lastMsgMs));
     }
 
     public void cacheSave() {
-        this.eventList.addEvent(new ChatRoomCacheSaveEvent(id));
-        this.eventList.publish();
+        eventList().addEvent(new ChatRoomCacheSaveEvent(id));
     }
 
     public void cacheUpdate(String oldTitle) {
-        this.eventList.addEvent(new ChatRoomCacheUpdateEvent(id, oldTitle));
-        this.eventList.publish();
+        eventList().addEvent(new ChatRoomCacheUpdateEvent(id, oldTitle));
     }
 
     public void cacheDelete() {
-        this.eventList.addEvent(new ChatRoomCacheDeleteEvent(id, category, title, memberIds == null ? Set.of() : memberIds));
-        this.eventList.publish();
+        eventList().addEvent(new ChatRoomCacheDeleteEvent(id, category, title, memberIds == null ? Set.of() : memberIds));
     }
 
     public void cacheActivityInvalidate(String memberId) {
-        this.eventList.addEvent(new ChatRoomCacheActivityInvalidateEvent(id, memberId));
-        this.eventList.publish();
+        eventList().addEvent(new ChatRoomCacheActivityInvalidateEvent(id, memberId));
     }
 
     public void cacheInfoInvalidate() {
-        this.eventList.addEvent(new ChatRoomCacheInfoInvalidateEvent(id));
-        this.eventList.publish();
+        eventList().addEvent(new ChatRoomCacheInfoInvalidateEvent(id));
     }
 
     public void recoverPersist(String errorMessage) {
-        this.dlqEventList.addEvent(new ChatRoomPersistedDlqEvent(ChatRoomPayload.fromDomain(this), errorMessage));
-        this.dlqEventList.publish();
+        dlqEventList().addEvent(new ChatRoomPersistedDlqEvent(ChatRoomPayload.fromDomain(this), errorMessage));
     }
 
     public void recoverUpdate(ChatRoomUpdatedEvent event, String errorMessage) {
-        this.dlqEventList.addEvent(new ChatRoomUpdatedDlqEvent(id, event.getUpdated(), errorMessage));
-        this.dlqEventList.publish();
+        dlqEventList().addEvent(new ChatRoomUpdatedDlqEvent(id, event.getUpdated(), errorMessage));
     }
 
     public void recoverDelete(String errorMessage) {
-        this.dlqEventList.addEvent(new ChatRoomDeletedDlqEvent(id, category, errorMessage));
-        this.dlqEventList.publish();
+        dlqEventList().addEvent(new ChatRoomDeletedDlqEvent(id, category, errorMessage));
     }
 
     public void recoverJoin(ChatRoomJoinedEvent event, String errorMessage) {
-        this.dlqEventList.addEvent(new ChatRoomJoinedDlqEvent(id, event.getMemberId(), errorMessage));
-        this.dlqEventList.publish();
+        dlqEventList().addEvent(new ChatRoomJoinedDlqEvent(id, event.getMemberId(), errorMessage));
     }
 
     public void recoverLeave(ChatRoomLeavedEvent event, String errorMessage) {
-        this.dlqEventList.addEvent(new ChatRoomLeavedDlqEvent(id, event.getMemberId(), errorMessage));
-        this.dlqEventList.publish();
+        dlqEventList().addEvent(new ChatRoomLeavedDlqEvent(id, event.getMemberId(), errorMessage));
     }
 
     public void recoverActive(ChatRoomActiveEvent event, String errorMessage) {
-        this.dlqEventList.addEvent(new ChatRoomActiveDlqEvent(id, event.getMemberId(), event.getLastMsgSeq(), event.getLastMsgMs(), errorMessage));
-        this.dlqEventList.publish();
+        dlqEventList().addEvent(new ChatRoomActiveDlqEvent(id, event.getMemberId(), event.getLastMsgSeq(), event.getLastMsgMs(), errorMessage));
     }
 
     public void recoverCacheSave(String errorMessage) {
-        this.dlqEventList.addEvent(new ChatRoomCacheSaveDlqEvent(id, errorMessage));
-        this.dlqEventList.publish();
+        dlqEventList().addEvent(new ChatRoomCacheSaveDlqEvent(id, errorMessage));
     }
 
     public void recoverCacheUpdate(ChatRoomCacheUpdateEvent event, String errorMessage) {
-        this.dlqEventList.addEvent(new ChatRoomCacheUpdateDlqEvent(id, event.getOldTitle(), errorMessage));
-        this.dlqEventList.publish();
+        dlqEventList().addEvent(new ChatRoomCacheUpdateDlqEvent(id, event.getOldTitle(), errorMessage));
     }
 
     public void recoverCacheDelete(ChatRoomCacheDeleteEvent event, String errorMessage) {
-        this.dlqEventList.addEvent(new ChatRoomCacheDeleteDlqEvent(id, event.getCategory(), event.getTitle(), event.getMemberids(), errorMessage));
-        this.dlqEventList.publish();
+        dlqEventList().addEvent(new ChatRoomCacheDeleteDlqEvent(id, event.getCategory(), event.getTitle(), event.getMemberids(), errorMessage));
     }
 
     public void recoverCacheInvalidateActivity(ChatRoomCacheActivityInvalidateEvent event, String errorMessage) {
-        this.dlqEventList.addEvent(new ChatRoomCacheActivityInvalidateDlqEvent(id, event.getMemberId(), errorMessage));
-        this.dlqEventList.publish();
+        dlqEventList().addEvent(new ChatRoomCacheActivityInvalidateDlqEvent(id, event.getMemberId(), errorMessage));
     }
 
     public void recoverCacheInvalidateInfo(ChatRoomCacheInfoInvalidateEvent event, String errorMessage) {
-        this.dlqEventList.addEvent(new ChatRoomCacheInfoInvalidateDlqEvent(event.getId(), errorMessage));
-        this.dlqEventList.publish();
+        dlqEventList().addEvent(new ChatRoomCacheInfoInvalidateDlqEvent(event.getId(), errorMessage));
     }
 
     public boolean addMember(String memberId) {
         if (memberIds.contains(memberId)) return false;
 
         memberIds.add(memberId);
-
-        this.eventList.addEvent(new ChatRoomJoinedEvent(id, memberId));
-        this.eventList.publish();
+        eventList().addEvent(new ChatRoomJoinedEvent(id, memberId));
 
         return true;
     }
 
     public boolean removeMember(String memberId) {
         if (!memberIds.contains(memberId)) return false;
-        memberIds.remove(memberId);
 
-        this.eventList.addEvent(new ChatRoomLeavedEvent(id, memberId));
-        this.eventList.publish();
+        memberIds.remove(memberId);
+        eventList().addEvent(new ChatRoomLeavedEvent(id, memberId));
 
         return true;
+    }
+
+    public ChatRoomEventList pullEventList() {
+        ChatRoomEventList pulledEventList = eventList();
+        this.eventList = new ChatRoomEventList();
+
+        return pulledEventList;
+    }
+
+    public ChatRoomDlqEventList pullDlqEventList() {
+        ChatRoomDlqEventList pulledEventList = dlqEventList();
+        this.dlqEventList = new ChatRoomDlqEventList();
+
+        return pulledEventList;
     }
 
     public Double getPopularity() {
@@ -320,6 +310,22 @@ public class ChatRoom {
         if (writerId == null || writerId.isBlank() || memberIds == null || !memberIds.contains(writerId)) {
             throw new ChatRoomMembershipNotFoundException(id, writerId);
         }
+    }
+
+    private ChatRoomEventList eventList() {
+        if (this.eventList == null) {
+            this.eventList = new ChatRoomEventList();
+        }
+
+        return this.eventList;
+    }
+
+    private ChatRoomDlqEventList dlqEventList() {
+        if (this.dlqEventList == null) {
+            this.dlqEventList = new ChatRoomDlqEventList();
+        }
+
+        return this.dlqEventList;
     }
 
     @Override
