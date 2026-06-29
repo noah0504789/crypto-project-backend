@@ -6,17 +6,16 @@ import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.client.inject.GrpcClient;
 import org.example.common.time.ServiceZoneUtils;
 import org.example.contract.user.UserResponse;
-import org.example.grpc.user.FindByEmailGrpcRequest;
-import org.example.grpc.user.FindByEmailGrpcResponse;
-import org.example.grpc.user.SignUpOauth2GrpcRequest;
-import org.example.grpc.user.SignUpOauth2GrpcResponse;
-import org.example.grpc.user.UserGrpc;
+import org.example.grpc.user.GrpcFindByEmailRequest;
+import org.example.grpc.user.GrpcFindByEmailResponse;
+import org.example.grpc.user.GrpcSignUpOauth2Request;
+import org.example.grpc.user.GrpcSignUpOauth2Response;
+import org.example.grpc.user.GrpcUser;
 import org.example.grpc.user.UserServiceGrpc;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -30,23 +29,23 @@ public class GrpcUserClient implements UserClient {
 
     @Override
     public Optional<UserResponse> findByEmail(String email) {
-        FindByEmailGrpcRequest request = FindByEmailGrpcRequest.newBuilder().setEmail(email).build();
+        GrpcFindByEmailRequest request = GrpcFindByEmailRequest.newBuilder().setEmail(email).build();
 
         return Optional.ofNullable(stub().findByEmail(request))
-                .filter(FindByEmailGrpcResponse::hasUser)
-                .map(FindByEmailGrpcResponse::getUser)
+                .filter(GrpcFindByEmailResponse::hasUser)
+                .map(GrpcFindByEmailResponse::getUser)
                 .map(this::toResponse);
     }
 
     @Override
     public UserResponse signUpOauth2(String sub, String email, String nickname) {
-        SignUpOauth2GrpcRequest request = SignUpOauth2GrpcRequest.newBuilder()
+        GrpcSignUpOauth2Request request = GrpcSignUpOauth2Request.newBuilder()
                 .setSub(sub)
                 .setEmail(email)
                 .setNickname(nickname)
                 .build();
 
-        SignUpOauth2GrpcResponse response = stub().signUpOauth2(request);
+        GrpcSignUpOauth2Response response = stub().signUpOauth2(request);
 
         return toResponse(response.getUser());
     }
@@ -55,7 +54,7 @@ public class GrpcUserClient implements UserClient {
         return UserServiceGrpc.newBlockingStub(channel).withDeadlineAfter(3500, TimeUnit.MILLISECONDS);
     }
 
-    private UserResponse toResponse(UserGrpc user) {
+    private UserResponse toResponse(GrpcUser user) {
         return UserResponse.builder()
                 .id(user.getId())
                 .sub(user.getSub())

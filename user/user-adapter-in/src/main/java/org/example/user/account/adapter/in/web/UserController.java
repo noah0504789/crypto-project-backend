@@ -4,12 +4,11 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.common.enums.HttpHeaderKey;
 import org.example.user.account.adapter.in.web.dto.UserProfileUpdateRequest;
-import org.example.user.account.application.service.UserCommandService;
+import org.example.user.account.application.port.in.UserCommandUseCase;
+import org.example.user.account.application.port.in.UserQueryUseCase;
 import org.example.user.account.domain.exception.UserNotFoundException;
 import org.example.user.account.adapter.in.web.dto.UserCreateRequest;
 import org.example.user.account.adapter.in.web.dto.UserResponse;
-import org.example.user.account.application.service.LocalUserSignUpService;
-import org.example.user.account.application.service.UserQueryService;
 import org.example.user.account.domain.model.User;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,13 +21,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserController {
 
-    private final UserQueryService userQueryService;
-    private final LocalUserSignUpService localUserSignUpService;
-    private final UserCommandService userCommandService;
+    private final UserQueryUseCase userQueryUseCase;
+    private final UserCommandUseCase userCommandUseCase;
 
     @PostMapping("${api-path.user.sign-up}")
     public ResponseEntity<Void> signUp(@RequestBody @Valid UserCreateRequest request) {
-        localUserSignUpService.signUp(
+        userCommandUseCase.signUpLocal(
                 request.email(),
                 request.nickname(),
                 request.password()
@@ -39,14 +37,14 @@ public class UserController {
 
     @GetMapping("${api-path.user.me}")
     public ResponseEntity<UserResponse> myProfile(@RequestHeader(HttpHeaderKey.USER_ID_VALUE) UUID publicId) {
-        User entity = userQueryService.findByPublicId(publicId).orElseThrow(() -> new UserNotFoundException(publicId));
+        User entity = userQueryUseCase.findByPublicId(publicId).orElseThrow(() -> new UserNotFoundException(publicId));
 
         return ResponseEntity.ok(UserResponse.fromEntity(entity));
     }
 
     @GetMapping("${api-path.user.profile}")
     public ResponseEntity<UserResponse> otherProfile(@PathVariable("publicId") UUID publicId) {
-        User entity = userQueryService.findByPublicId(publicId).orElseThrow(() -> new UserNotFoundException(publicId));
+        User entity = userQueryUseCase.findByPublicId(publicId).orElseThrow(() -> new UserNotFoundException(publicId));
 
         return ResponseEntity.ok().body(UserResponse.fromEntity(entity));
     }
@@ -60,7 +58,7 @@ public class UserController {
             return ResponseEntity.badRequest().build();
         }
 
-        userCommandService.updateProfile(publicId, request.nickname());
+        userCommandUseCase.updateProfile(publicId, request.nickname());
 
         return ResponseEntity.noContent().build();
     }

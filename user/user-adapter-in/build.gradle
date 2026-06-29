@@ -8,8 +8,5 @@ dependencies {
     implementation project(':protobuf')
     implementation project(':user:user-application')
 
-    implementation(libs.protobuf.java)
-    implementation(libs.protobuf.util)
-
     testImplementation project(':common:common-test')
 }

@@ -5,11 +5,11 @@ import org.example.common.enums.HttpHeaderKey;
 import org.example.common.exception.GlobalExceptionHandler;
 import org.example.common.test.config.TestBootApplication;
 import org.example.common.validation.NotBlankIfPresentValidator;
+import org.example.user.account.adapter.in.web.dto.UserCreateRequest;
 import org.example.user.account.adapter.in.web.dto.UserProfileUpdateRequest;
+import org.example.user.account.application.port.in.UserCommandUseCase;
+import org.example.user.account.application.port.in.UserQueryUseCase;
 import org.example.user.account.application.port.out.UserPersistencePort;
-import org.example.user.account.application.service.LocalUserSignUpService;
-import org.example.user.account.application.service.UserCommandService;
-import org.example.user.account.application.service.UserQueryService;
 import org.example.user.account.application.validation.UniqueUserNicknameValidator;
 import org.example.user.account.domain.model.User;
 import org.example.user.role.domain.model.Role;
@@ -30,8 +30,7 @@ import java.util.UUID;
 import static org.hamcrest.Matchers.hasItem;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(UserController.class)
@@ -51,16 +50,48 @@ class UserControllerWebMvcTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
-    private UserQueryService userQueryService;
+    private UserQueryUseCase userQueryUseCase;
 
     @MockitoBean
-    private LocalUserSignUpService localUserSignUpService;
-
-    @MockitoBean
-    private UserCommandService userCommandService;
+    private UserCommandUseCase userCommandUseCase;
 
     @MockitoBean
     private UserPersistencePort userPersistencePort;
+
+    @Test
+    @DisplayName("회원가입 요청이 성공하면 201 Created를 반환한다")
+    void signUp_shouldReturnCreated() throws Exception {
+        // given
+        UserCreateRequest request = new UserCreateRequest(
+                "test@test.com",
+                "test",
+                "raw-password"
+        );
+
+        given(userPersistencePort.existsByNickname("test"))
+                .willReturn(false);
+
+        // when & then
+        mockMvc.perform(
+                        post("/user/sign-up")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", "/"))
+                .andExpect(content().string(""));
+
+        then(userPersistencePort)
+                .should()
+                .existsByNickname("test");
+
+        then(userCommandUseCase)
+                .should()
+                .signUpLocal("test@test.com", "test", "raw-password");
+
+        then(userQueryUseCase)
+                .shouldHaveNoInteractions();
+    }
 
     @Test
     @DisplayName("내 프로필 조회 요청이 성공하면 200 OK와 UserResponse를 반환한다")
@@ -73,7 +104,7 @@ class UserControllerWebMvcTest {
                 "local-user"
         );
 
-        given(userQueryService.findByPublicId(publicId))
+        given(userQueryUseCase.findByPublicId(publicId))
                 .willReturn(Optional.of(user));
 
         mockMvc.perform(
@@ -85,17 +116,20 @@ class UserControllerWebMvcTest {
                 .andExpect(jsonPath("$.email").value("local@test.com"))
                 .andExpect(jsonPath("$.nickname").value("local-user"));
 
-        then(userQueryService)
+        then(userQueryUseCase)
                 .should()
                 .findByPublicId(publicId);
+
+        then(userCommandUseCase)
+                .shouldHaveNoInteractions();
     }
 
     @Test
-    @DisplayName("내 프로필 조회 시 유저가 없으면 404 Not Found를 반환한다")
-    void myProfile_shouldReturnNotFound_whenUserDoesNotExist() throws Exception {
+    @DisplayName("내 프로필 조회 시 유저가 없으면 204 No Content를 반환한다")
+    void myProfile_shouldReturnNoContent_whenUserDoesNotExist() throws Exception {
         UUID publicId = UUID.randomUUID();
 
-        given(userQueryService.findByPublicId(publicId))
+        given(userQueryUseCase.findByPublicId(publicId))
                 .willReturn(Optional.empty());
 
         mockMvc.perform(
@@ -104,9 +138,12 @@ class UserControllerWebMvcTest {
                 )
                 .andExpect(status().isNoContent());
 
-        then(userQueryService)
+        then(userQueryUseCase)
                 .should()
                 .findByPublicId(publicId);
+
+        then(userCommandUseCase)
+                .shouldHaveNoInteractions();
     }
 
     @Test
@@ -120,7 +157,7 @@ class UserControllerWebMvcTest {
                 "other-user"
         );
 
-        given(userQueryService.findByPublicId(publicId))
+        given(userQueryUseCase.findByPublicId(publicId))
                 .willReturn(Optional.of(user));
 
         mockMvc.perform(
@@ -131,25 +168,31 @@ class UserControllerWebMvcTest {
                 .andExpect(jsonPath("$.email").value("other@test.com"))
                 .andExpect(jsonPath("$.nickname").value("other-user"));
 
-        then(userQueryService)
+        then(userQueryUseCase)
                 .should()
                 .findByPublicId(publicId);
+
+        then(userCommandUseCase)
+                .shouldHaveNoInteractions();
     }
 
     @Test
-    @DisplayName("다른 유저 프로필 조회 시 유저가 없으면 404 Not Found를 반환한다")
-    void otherProfile_shouldReturnNotFound_whenUserDoesNotExist() throws Exception {
+    @DisplayName("다른 유저 프로필 조회 시 유저가 없으면 204 No Content를 반환한다")
+    void otherProfile_shouldReturnNoContent_whenUserDoesNotExist() throws Exception {
         UUID publicId = UUID.randomUUID();
 
-        given(userQueryService.findByPublicId(publicId))
+        given(userQueryUseCase.findByPublicId(publicId))
                 .willReturn(Optional.empty());
 
         mockMvc.perform(get("/user/{publicId}/profile", publicId))
                 .andExpect(status().isNoContent());
 
-        then(userQueryService)
+        then(userQueryUseCase)
                 .should()
                 .findByPublicId(publicId);
+
+        then(userCommandUseCase)
+                .shouldHaveNoInteractions();
     }
 
     @Test
@@ -178,14 +221,11 @@ class UserControllerWebMvcTest {
                 .should()
                 .existsByNickname("updatedUser");
 
-        then(userCommandService)
+        then(userCommandUseCase)
                 .should()
                 .updateProfile(publicId, "updatedUser");
 
-        then(userQueryService)
-                .shouldHaveNoInteractions();
-
-        then(localUserSignUpService)
+        then(userQueryUseCase)
                 .shouldHaveNoInteractions();
     }
 
@@ -205,16 +245,13 @@ class UserControllerWebMvcTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(content().string(""));
 
-        then(userCommandService)
+        then(userCommandUseCase)
                 .shouldHaveNoInteractions();
 
         then(userPersistencePort)
                 .shouldHaveNoInteractions();
 
-        then(userQueryService)
-                .shouldHaveNoInteractions();
-
-        then(localUserSignUpService)
+        then(userQueryUseCase)
                 .shouldHaveNoInteractions();
     }
 
@@ -242,10 +279,13 @@ class UserControllerWebMvcTest {
                 .andExpect(jsonPath("$.errors[*].code").value(hasItem("Pattern")))
                 .andExpect(jsonPath("$.errors[*].message").value(hasItem("닉네임은 한글, 영문, 숫자, 언더스코어만 사용할 수 있습니다.")));
 
-        then(userCommandService)
+        then(userCommandUseCase)
                 .shouldHaveNoInteractions();
 
         then(userPersistencePort)
+                .shouldHaveNoInteractions();
+
+        then(userQueryUseCase)
                 .shouldHaveNoInteractions();
     }
 
@@ -278,7 +318,10 @@ class UserControllerWebMvcTest {
                 .should()
                 .existsByNickname("a");
 
-        then(userCommandService)
+        then(userCommandUseCase)
+                .shouldHaveNoInteractions();
+
+        then(userQueryUseCase)
                 .shouldHaveNoInteractions();
     }
 
@@ -313,7 +356,10 @@ class UserControllerWebMvcTest {
                 .should()
                 .existsByNickname(nickname);
 
-        then(userCommandService)
+        then(userCommandUseCase)
+                .shouldHaveNoInteractions();
+
+        then(userQueryUseCase)
                 .shouldHaveNoInteractions();
     }
 
@@ -346,7 +392,10 @@ class UserControllerWebMvcTest {
                 .should()
                 .existsByNickname("bad!");
 
-        then(userCommandService)
+        then(userCommandUseCase)
+                .shouldHaveNoInteractions();
+
+        then(userQueryUseCase)
                 .shouldHaveNoInteractions();
     }
 
@@ -379,7 +428,10 @@ class UserControllerWebMvcTest {
                 .should()
                 .existsByNickname("existingUser");
 
-        then(userCommandService)
+        then(userCommandUseCase)
+                .shouldHaveNoInteractions();
+
+        then(userQueryUseCase)
                 .shouldHaveNoInteractions();
     }
 
