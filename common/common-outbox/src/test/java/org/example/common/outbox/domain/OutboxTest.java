@@ -1,9 +1,5 @@
-package outbox;
+package org.example.common.outbox.domain;
 
-import org.example.common.outbox.domain.Outbox;
-import org.example.common.outbox.domain.OutboxDispatchType;
-import org.example.common.outbox.domain.OutboxDomainType;
-import org.example.common.outbox.domain.OutboxStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

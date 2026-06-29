@@ -1,8 +1,7 @@
-package outbox;
+package org.example.common.outbox.application.service;
 
 import org.example.common.outbox.application.port.out.EventPublisherPort;
 import org.example.common.outbox.adapter.out.OutboxRepository;
-import org.example.common.outbox.application.service.OutboxService;
 import org.example.common.outbox.properties.OutboxPollerProperties;
 import org.example.common.outbox.domain.Outbox;
 import org.example.common.outbox.domain.OutboxDispatchType;

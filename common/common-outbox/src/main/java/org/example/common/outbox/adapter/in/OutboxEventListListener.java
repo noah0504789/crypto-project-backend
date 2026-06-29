@@ -4,10 +4,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.common.outbox.adapter.out.OutboxPersistenceExceptionTranslator;
 import org.example.common.outbox.application.service.OutboxService;
 import org.example.common.outbox.domain.Outbox;
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 import org.example.common.outbox.domain.event.AbstractOutboxEventList;
+import org.example.common.outbox.exception.OutboxPersistenceException;
 import org.springframework.context.event.EventListener;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
@@ -24,7 +26,7 @@ public class OutboxEventListListener {
     private final ObjectMapper objectMapper;
 
     @EventListener
-    public void handleOutboxEventList(AbstractOutboxEventList eventList) throws JsonProcessingException {
+    public void handleOutboxEventList(AbstractOutboxEventList eventList) {
         String txId = eventList.getTxId();
 
         try {
@@ -37,11 +39,41 @@ public class OutboxEventListListener {
 
             outboxService.saveAll(outboxes);
         } catch (JsonProcessingException e) {
-            log.error("[Outbox 직렬화 실패], txId={}, error={}", txId, e.getMessage());
-            throw e;
+            log.error(
+                    "[outbox] serialization failed. txId={}, error={}",
+                    txId,
+                    e.getMessage(),
+                    e
+            );
+
+            throw new OutboxPersistenceException(
+                    "failed to serialize outbox events. txId=" + txId,
+                    e
+            );
         } catch (DataAccessException e) {
-            log.error("[Outbox 저장 실패], txId={}, error={}", txId, e.getMessage());
-            throw e;
+            log.error(
+                    "[outbox] save failed. txId={}, error={}",
+                    txId,
+                    e.getMessage(),
+                    e
+            );
+
+            throw OutboxPersistenceExceptionTranslator.translate(
+                    "failed to save outbox events. txId=" + txId,
+                    e
+            );
+        } catch (Exception e) {
+            log.error(
+                    "[outbox] unexpected failure. txId={}, error={}",
+                    txId,
+                    e.getMessage(),
+                    e
+            );
+
+            throw OutboxPersistenceExceptionTranslator.translate(
+                    "failed to handle outbox event list. txId=" + txId,
+                    e
+            );
         }
     }
 }

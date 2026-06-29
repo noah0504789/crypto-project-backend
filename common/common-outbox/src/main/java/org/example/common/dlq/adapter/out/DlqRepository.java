@@ -1,4 +1,4 @@
-package org.example.common.dlq.adapter;
+package org.example.common.dlq.adapter.out;
 
 import org.example.common.dlq.domain.Dlq;
 import org.example.common.dlq.domain.DlqStatus;
