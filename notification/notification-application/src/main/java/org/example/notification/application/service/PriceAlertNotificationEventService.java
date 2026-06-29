@@ -1,9 +1,13 @@
 package org.example.notification.application.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.example.common.clock.Clock;
+import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
+import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
 import org.example.notification.application.port.out.PriceAlertRecipientQueryPort;
 import org.example.notification.application.service.command.PriceAlertNotificationCreateCommand;
+import org.example.notification.common.exception.NotificationPersistException;
 import org.example.notification.domain.model.Notification;
 import org.example.notification.domain.model.NotificationMessagePart;
 import org.example.notification.domain.model.NotificationRecipient;
@@ -14,17 +18,19 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PriceAlertNotificationEventService {
 
     private final Clock clock;
     private final PriceAlertRecipientQueryPort priceAlertRecipientQueryPort;
+    private final OutboxEventListPublishPort outboxEventListPublishPort;
 
     public void create(PriceAlertNotificationCreateCommand command) {
-        Notification notification = createNotification(command);
-
         LocalDateTime deliveredAt = clock.nowLocalDateTime();
+
+        Notification notification = createNotification(command, deliveredAt);
 
         List<UUID> receiverIds = priceAlertRecipientQueryPort.findReceiverIds(command.code(), command.threshold());
 
@@ -33,37 +39,26 @@ public class PriceAlertNotificationEventService {
                 .toList();
 
         notification.save(command.typedPayload(), command.routingKey(), recipients);
+
+        publishNotificationEvent(notification);
     }
 
-    private Notification createNotification(PriceAlertNotificationCreateCommand command) {
-        String marketCode = command.code();
-
-        double changeRatePercent = command.changeRate() == null ? 0 : command.changeRate() * 100;
-
-        boolean increased = changeRatePercent >= 0;
-        String directionText = increased ? "상승" : "하락";
-        String formattedRate = "%.1f%%".formatted(Math.abs(changeRatePercent));
-
-        String title = "가격 알림";
-        String message = "%s이 %s 이상 %s했습니다.".formatted(marketCode, formattedRate, directionText);
-
-        List<NotificationMessagePart> messageParts = List.of(
-                NotificationMessagePart.bold(marketCode),
-                NotificationMessagePart.plain("이 "),
-                NotificationMessagePart.bold(formattedRate),
-                NotificationMessagePart.plain(" 이상 "),
-                NotificationMessagePart.bold(directionText),
-                NotificationMessagePart.plain("했습니다.")
-        );
-
-        return Notification.create(
-                NotificationType.PRICE_ALERT,
-                title,
-                message,
-                messageParts,
-                null,
+    private Notification createNotification(PriceAlertNotificationCreateCommand command, LocalDateTime deliveredAt) {
+        return Notification.createPriceAlert(
+                command.code(),
+                command.changeRate(),
                 command.toPayload(),
-                clock.nowLocalDateTime()
+                deliveredAt
         );
+    }
+
+    private void publishNotificationEvent(Notification notification) {
+        try {
+            outboxEventListPublishPort.publish(notification.pullEventList());
+        } catch (TemporaryOutboxPersistenceException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new NotificationPersistException("failed to publish notification event", e);
+        }
     }
 }

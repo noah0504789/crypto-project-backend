@@ -63,6 +63,41 @@ public class Notification {
                 .build();
     }
 
+    public static Notification createPriceAlert(
+            String marketCode,
+            Double changeRate,
+            Map<String, Object> payload,
+            LocalDateTime createdAt
+    ) {
+        double changeRatePercent = changeRate == null ? 0 : changeRate * 100;
+
+        boolean increased = changeRatePercent >= 0;
+        String directionText = increased ? "상승" : "하락";
+        String formattedRate = "%.1f%%".formatted(Math.abs(changeRatePercent));
+
+        String title = "가격 알림";
+        String message = "%s이 %s 이상 %s했습니다.".formatted(marketCode, formattedRate, directionText);
+
+        List<NotificationMessagePart> messageParts = List.of(
+                NotificationMessagePart.bold(marketCode),
+                NotificationMessagePart.plain("이 "),
+                NotificationMessagePart.bold(formattedRate),
+                NotificationMessagePart.plain(" 이상 "),
+                NotificationMessagePart.bold(directionText),
+                NotificationMessagePart.plain("했습니다.")
+        );
+
+        return Notification.create(
+                NotificationType.PRICE_ALERT,
+                title,
+                message,
+                messageParts,
+                null,
+                payload,
+                createdAt
+        );
+    }
+
     public static Notification rehydrate(
             String id,
             NotificationType type,
@@ -90,23 +125,27 @@ public class Notification {
                 .build();
     }
 
-    public void save(
-            TypedPayload typedPayload,
-            String routingKey,
-            List<NotificationRecipient> recipients
-    ) {
-        List<NotificationRecipientPayload> recipientPayloads = recipients == null ? List.of() : recipients.stream().map(NotificationRecipientPayload::from).toList();
+    public void save(TypedPayload typedPayload, String routingKey, List<NotificationRecipient> recipients) {
+        List<NotificationRecipientPayload> recipientPayloads = recipients == null ?
+                List.of() : recipients.stream().map(NotificationRecipientPayload::from).toList();
 
-        this.eventList
+        eventList()
                 .addEvent(NotificationSaveEvent.from(
                         NotificationPayload.from(this),
                         recipientPayloads
                 ))
                 .addEvent(WebNotificationEvent.of(
-                        createWebNotificationPayload(typedPayload), this.id,
+                        createWebNotificationPayload(typedPayload),
+                        this.id,
                         routingKey
-                ))
-                .publish();
+                ));
+    }
+
+    public NotificationEventList pullEventList() {
+        NotificationEventList pulledEventList = eventList();
+        this.eventList = new NotificationEventList();
+
+        return pulledEventList;
     }
 
     public long toMillis() {
@@ -130,5 +169,13 @@ public class Notification {
                 null,
                 typedPayload
         );
+    }
+
+    private NotificationEventList eventList() {
+        if (this.eventList == null) {
+            this.eventList = new NotificationEventList();
+        }
+
+        return this.eventList;
     }
 }
