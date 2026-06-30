@@ -1,4 +1,4 @@
-package org.example.websocket.gateway.adapter.in.event;
+package org.example.websocket.gateway.adapter.in.event.websocket;
 
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
