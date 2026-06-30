@@ -15,6 +15,10 @@ public enum StompDestination {
 
     private final String prefix;
 
+    public String destination() {
+        return prefix;
+    }
+
     public String destination(String uri) {
         return prefix + uri;
     }

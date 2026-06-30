@@ -3,10 +3,6 @@ plugins {
 }
 
 dependencies {
-    implementation project(':common:common-core')
-    implementation project(':common:common-event')
-    implementation project(':common:common-grpc')
-    implementation project(':protobuf')
     implementation project(':websocket-gateway:websocket-gateway-application')
     implementation project(':chat:chat-contract')
     implementation project(':notification:notification-contract')
@@ -14,12 +10,4 @@ dependencies {
     implementation(libs.spring.boot.starter.websocket)
     implementation(libs.spring.cloud.starter.stream.kafka)
     implementation(libs.micrometer.registry.prometheus)
-    implementation(libs.protobuf.java)
-    implementation 'org.mongodb:bson:5.1.0'
-
-    testImplementation platform(libs.grpc.bom)
-    testImplementation(libs.grpc.stub)
-    testImplementation(libs.protobuf.java)
-    testImplementation project(':common:common-test')
-    testImplementation project(':protobuf')
 }
