@@ -5,12 +5,13 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public enum StompTopic {
+public enum StompDestination {
 
-    CHAT_ROOM("/topic/chat/"),
-    CHAT_ROOM_BADGE("/queue/chat/badge"),
+    CHAT_ROOM_PREFIX("/topic/chat/"),
+    CHAT_ROOM_BADGE_QUEUE("/queue/chat/badge"),
+    CHAT_ACK_QUEUE("/queue/chat/ack"),
 
-    NOTIFICATION("/topic/notification/");
+    NOTIFICATION_PREFIX("/topic/notification/");
 
     private final String prefix;
 
