@@ -1,11 +1,10 @@
-package chatroom.adapter.in;
+package org.example.chat.chatroom.adapter.in.web;
 
 import org.example.chat.chatroom.application.dto.ChatRoomUpdateCommand;
 import org.example.chat.chatroom.application.query.MyChatRoomSummary;
 import org.example.common.test.config.TestBootApplication;
 import org.bson.types.ObjectId;
 import org.example.chat.chatroom.application.dto.ChatRoomCreateRequest;
-import org.example.chat.chatroom.adapter.in.web.ChatRoomController;
 import org.example.chat.chatroom.application.port.in.ChatRoomCommandUseCase;
 import org.example.chat.chatroom.application.port.in.ChatRoomQueryUseCase;
 import org.example.chat.chatroom.domain.model.ChatRoom;
@@ -27,10 +26,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
-import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.*;

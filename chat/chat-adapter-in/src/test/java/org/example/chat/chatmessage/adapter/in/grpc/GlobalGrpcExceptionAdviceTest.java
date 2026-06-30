@@ -1,4 +1,4 @@
-package infra;
+package org.example.chat.chatmessage.adapter.in.grpc;
 
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
