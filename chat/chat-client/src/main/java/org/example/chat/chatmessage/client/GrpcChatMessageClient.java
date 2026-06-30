@@ -5,10 +5,10 @@ import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.client.inject.GrpcClient;
-import org.example.grpc.chatmessage.ChatMessageGrpcRequest;
-import org.example.grpc.chatmessage.ChatMessageGrpcResponse;
-import org.example.grpc.chatmessage.ChatMessageHardDeleteGrpcRequest;
-import org.example.grpc.chatmessage.ChatMessageHardDeleteGrpcResponse;
+import org.example.grpc.chatmessage.GrpcChatMessageRequest;
+import org.example.grpc.chatmessage.GrpcChatMessageResponse;
+import org.example.grpc.chatmessage.GrpcChatMessageHardDeleteRequest;
+import org.example.grpc.chatmessage.GrpcChatMessageHardDeleteResponse;
 import org.example.grpc.chatmessage.ChatMessageServiceGrpc;
 import org.springframework.stereotype.Service;
 
@@ -23,15 +23,12 @@ public class GrpcChatMessageClient implements ChatMessageClient {
     private Channel channel;
 
     @Override
-    public void save(ChatMessageGrpcRequest request, StreamObserver<ChatMessageGrpcResponse> responseObserver) {
+    public void save(GrpcChatMessageRequest request, StreamObserver<GrpcChatMessageResponse> responseObserver) {
         stub().save(request, responseObserver);
     }
 
     @Override
-    public void hardDelete(
-            ChatMessageHardDeleteGrpcRequest request,
-            StreamObserver<ChatMessageHardDeleteGrpcResponse> responseObserver
-    ) {
+    public void hardDelete(GrpcChatMessageHardDeleteRequest request, StreamObserver<GrpcChatMessageHardDeleteResponse> responseObserver) {
         stub().hardDelete(request, responseObserver);
     }
 

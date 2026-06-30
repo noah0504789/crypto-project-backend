@@ -6,7 +6,7 @@ option java_package = "org.example.grpc.chatmessage";
 option java_multiple_files = true;
 option java_outer_classname = "ChatMessageProto";
 
-message ChatMessageGrpcRequest {
+message GrpcChatMessageRequest {
   string clientMessageId = 1;
   string messageId = 2;
   string roomId = 3;
@@ -14,19 +14,19 @@ message ChatMessageGrpcRequest {
   string content = 5;
 }
 
-message ChatMessageGrpcResponse {
+message GrpcChatMessageResponse {
   bool success = 1;
   string id = 2;
   int64 ts = 3;
 }
 
-message ChatMessageHardDeleteGrpcRequest {
+message GrpcChatMessageHardDeleteRequest {
   string messageId = 1;
   string roomId = 2;
   string reason = 3;
 }
 
-message ChatMessageHardDeleteGrpcResponse {
+message GrpcChatMessageHardDeleteResponse {
   bool success = 1;
   string messageId = 2;
   bool deleted = 3;
@@ -35,6 +35,6 @@ message ChatMessageHardDeleteGrpcResponse {
 }
 
 service ChatMessageService {
-  rpc save(ChatMessageGrpcRequest) returns (ChatMessageGrpcResponse);
-  rpc HardDelete(ChatMessageHardDeleteGrpcRequest) returns (ChatMessageHardDeleteGrpcResponse);
+  rpc save(GrpcChatMessageRequest) returns (GrpcChatMessageResponse);
+  rpc HardDelete(GrpcChatMessageHardDeleteRequest) returns (GrpcChatMessageHardDeleteResponse);
 }

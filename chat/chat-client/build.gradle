@@ -5,9 +5,5 @@ plugins {
 dependencies {
     api project(':protobuf')
 
-    api platform(libs.grpc.bom)
-    api(libs.grpc.stub)
-
     implementation(libs.grpc.client.spring.boot.starter)
-    implementation(libs.protobuf.java)
 }
