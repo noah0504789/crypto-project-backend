@@ -1,6 +1,5 @@
-package session;
+package org.example.websocket.gateway.session.application.cache;
 
-import org.example.websocket.gateway.session.application.cache.LocalSessionCache;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

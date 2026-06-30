@@ -3,12 +3,9 @@ plugins {
 }
 
 dependencies {
-    api project(':websocket-gateway:websocket-gateway-domain')
     api project(':protobuf')
+    api project(':common:common-grpc')
+    api project(':websocket-gateway:websocket-gateway-domain')
 
-    api platform(libs.grpc.bom)
-    api(libs.grpc.stub)
-
-    implementation(libs.spring.boot.starter.websocket)
     implementation(libs.caffeine)
 }
