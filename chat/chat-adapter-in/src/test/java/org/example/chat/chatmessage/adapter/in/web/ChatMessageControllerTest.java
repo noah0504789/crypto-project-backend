@@ -1,9 +1,8 @@
-package chatmessage.adapter.in;
+package org.example.chat.chatmessage.adapter.in.web;
 
 import org.example.common.test.config.TestBootApplication;
 import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
 import org.example.chat.chatmessage.domain.event.ChatMessageEventList;
-import org.example.chat.chatmessage.adapter.in.web.ChatMessageController;
 import org.example.chat.chatmessage.application.port.in.ChatMessageQueryUsecase;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.junit.jupiter.api.DisplayName;

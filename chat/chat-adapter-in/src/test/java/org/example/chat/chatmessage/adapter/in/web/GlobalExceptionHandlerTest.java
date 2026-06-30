@@ -1,4 +1,4 @@
-package infra;
+package org.example.chat.chatmessage.adapter.in.web;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
