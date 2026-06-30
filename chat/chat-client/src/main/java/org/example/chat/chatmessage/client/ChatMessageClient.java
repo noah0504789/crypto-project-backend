@@ -1,14 +1,14 @@
 package org.example.chat.chatmessage.client;
 
 import io.grpc.stub.StreamObserver;
-import org.example.grpc.chatmessage.ChatMessageGrpcRequest;
-import org.example.grpc.chatmessage.ChatMessageGrpcResponse;
-import org.example.grpc.chatmessage.ChatMessageHardDeleteGrpcRequest;
-import org.example.grpc.chatmessage.ChatMessageHardDeleteGrpcResponse;
+import org.example.grpc.chatmessage.GrpcChatMessageRequest;
+import org.example.grpc.chatmessage.GrpcChatMessageResponse;
+import org.example.grpc.chatmessage.GrpcChatMessageHardDeleteRequest;
+import org.example.grpc.chatmessage.GrpcChatMessageHardDeleteResponse;
 
 public interface ChatMessageClient {
 
-    void save(ChatMessageGrpcRequest request, StreamObserver<ChatMessageGrpcResponse> responseObserver);
+    void save(GrpcChatMessageRequest request, StreamObserver<GrpcChatMessageResponse> responseObserver);
 
-    void hardDelete(ChatMessageHardDeleteGrpcRequest request, StreamObserver<ChatMessageHardDeleteGrpcResponse> responseObserver);
+    void hardDelete(GrpcChatMessageHardDeleteRequest request, StreamObserver<GrpcChatMessageHardDeleteResponse> responseObserver);
 }

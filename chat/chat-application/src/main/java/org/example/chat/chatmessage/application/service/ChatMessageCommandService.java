@@ -2,6 +2,7 @@ package org.example.chat.chatmessage.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.chat.chatmessage.application.port.in.ChatMessageCommandUseCase;
 import org.example.chat.common.exception.ChatMessageCacheException;
 import org.example.chat.chatmessage.application.dto.ChatMessageSaveCommand;
 import org.example.chat.chatmessage.application.dto.ChatMessageSaveResult;
@@ -29,7 +30,7 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class ChatMessageCommandService {
+public class ChatMessageCommandService implements ChatMessageCommandUseCase {
 
     private final ChatMessagePersistencePort chatMessagePersistencePort;
     private final ChatMessageCachePort chatMessageCachePort;
