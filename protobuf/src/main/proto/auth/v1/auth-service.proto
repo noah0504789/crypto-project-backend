@@ -1,28 +1,28 @@
 syntax = "proto3";
 
-package token.v1;
+package auth.v1;
 
-option java_package = "org.example.grpc.token";
+option java_package = "org.example.grpc.auth";
 option java_multiple_files = true;
-option java_outer_classname = "TokenProto";
+option java_outer_classname = "AuthProto";
 
 import "google/protobuf/wrappers.proto"; // StringValue, BoolValue
 
-message FindAccessTokenGrpcRequest {
+message GrpcFindAccessTokenRequest {
   string clientRegistrationId = 1;
   string username = 2;
 }
 
-message FindRefreshTokenGrpcRequest {
+message GrpcFindRefreshTokenRequest {
   string clientRegistrationId = 1;
   string username = 2;
 }
 
-message RegisterBlacklistTokenGrpcRequest {
+message GrpcRegisterBlacklistTokenRequest {
   string accessToken = 1;
 }
 
-message ExistsBlacklistTokenGrpcRequest {
+message GrpcExistsBlacklistTokenRequest {
   string accessToken = 1;
 }
 
@@ -39,16 +39,16 @@ message RemoveAuthorizedClientRequest {
 }
 
 service AccessTokenService {
-  rpc findValue(FindAccessTokenGrpcRequest) returns (google.protobuf.StringValue);
+  rpc findValue(GrpcFindAccessTokenRequest) returns (google.protobuf.StringValue);
 }
 
 service RefreshTokenService {
-  rpc findValue(FindRefreshTokenGrpcRequest) returns (google.protobuf.StringValue);
+  rpc findValue(GrpcFindRefreshTokenRequest) returns (google.protobuf.StringValue);
 }
 
 service BlacklistTokenService {
-  rpc register(RegisterBlacklistTokenGrpcRequest) returns (google.protobuf.BoolValue);
-  rpc exists(ExistsBlacklistTokenGrpcRequest) returns (google.protobuf.BoolValue);
+  rpc register(GrpcRegisterBlacklistTokenRequest) returns (google.protobuf.BoolValue);
+  rpc exists(GrpcExistsBlacklistTokenRequest) returns (google.protobuf.BoolValue);
 }
 
 service AuthorizedClientService {

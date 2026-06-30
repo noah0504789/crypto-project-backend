@@ -4,16 +4,16 @@ import io.grpc.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.client.inject.GrpcClient;
-import org.example.grpc.token.AccessTokenServiceGrpc;
-import org.example.grpc.token.AuthorizedClientServiceGrpc;
-import org.example.grpc.token.BlacklistTokenServiceGrpc;
-import org.example.grpc.token.ExistsBlacklistTokenGrpcRequest;
-import org.example.grpc.token.FindAccessTokenGrpcRequest;
-import org.example.grpc.token.FindRefreshTokenGrpcRequest;
-import org.example.grpc.token.RefreshTokenServiceGrpc;
-import org.example.grpc.token.RegisterBlacklistTokenGrpcRequest;
-import org.example.grpc.token.RemoveAuthorizedClientRequest;
-import org.example.grpc.token.SaveAuthorizedClientRequest;
+import org.example.grpc.auth.AccessTokenServiceGrpc;
+import org.example.grpc.auth.AuthorizedClientServiceGrpc;
+import org.example.grpc.auth.BlacklistTokenServiceGrpc;
+import org.example.grpc.auth.GrpcExistsBlacklistTokenRequest;
+import org.example.grpc.auth.GrpcFindAccessTokenRequest;
+import org.example.grpc.auth.GrpcFindRefreshTokenRequest;
+import org.example.grpc.auth.RefreshTokenServiceGrpc;
+import org.example.grpc.auth.GrpcRegisterBlacklistTokenRequest;
+import org.example.grpc.auth.RemoveAuthorizedClientRequest;
+import org.example.grpc.auth.SaveAuthorizedClientRequest;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -31,7 +31,7 @@ public class GrpcOauth2AuthorizationServerClient implements Oauth2AuthorizationS
 
     @Override
     public String findAccessToken(String clientRegistrationId, String username) {
-        FindAccessTokenGrpcRequest request = FindAccessTokenGrpcRequest.newBuilder()
+        GrpcFindAccessTokenRequest request = GrpcFindAccessTokenRequest.newBuilder()
                 .setClientRegistrationId(clientRegistrationId)
                 .setUsername(username)
                 .build();
@@ -41,7 +41,7 @@ public class GrpcOauth2AuthorizationServerClient implements Oauth2AuthorizationS
 
     @Override
     public String findRefreshToken(String clientRegistrationId, String username) {
-        FindRefreshTokenGrpcRequest request = FindRefreshTokenGrpcRequest.newBuilder()
+        GrpcFindRefreshTokenRequest request = GrpcFindRefreshTokenRequest.newBuilder()
                 .setClientRegistrationId(clientRegistrationId)
                 .setUsername(username)
                 .build();
@@ -51,7 +51,7 @@ public class GrpcOauth2AuthorizationServerClient implements Oauth2AuthorizationS
 
     @Override
     public boolean registerBlacklist(String accessToken) {
-        RegisterBlacklistTokenGrpcRequest request = RegisterBlacklistTokenGrpcRequest.newBuilder()
+        GrpcRegisterBlacklistTokenRequest request = GrpcRegisterBlacklistTokenRequest.newBuilder()
                 .setAccessToken(accessToken)
                 .build();
 
@@ -60,7 +60,7 @@ public class GrpcOauth2AuthorizationServerClient implements Oauth2AuthorizationS
 
     @Override
     public boolean existsBlacklist(String accessToken) {
-        ExistsBlacklistTokenGrpcRequest request = ExistsBlacklistTokenGrpcRequest.newBuilder()
+        GrpcExistsBlacklistTokenRequest request = GrpcExistsBlacklistTokenRequest.newBuilder()
                 .setAccessToken(accessToken)
                 .build();
 
