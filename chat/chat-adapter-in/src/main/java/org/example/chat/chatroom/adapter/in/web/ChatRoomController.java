@@ -143,7 +143,7 @@ public class ChatRoomController {
             @RequestBody @Valid ChatRoomCreateRequest request,
             @RequestHeader(HttpHeaderKey.USER_ID_VALUE) String hostId
     ) {
-        chatRoomCommandUseCase.save(hostId, request);
+        chatRoomCommandUseCase.create(request.toCommand(hostId));
 
         return ResponseEntity.created(URI.create("/home")).build();
     }

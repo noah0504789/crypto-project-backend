@@ -2,6 +2,7 @@ package org.example.chat.chatroom.adapter.in.web;
 
 import org.example.chat.chatroom.application.dto.ChatRoomUpdateCommand;
 import org.example.chat.chatroom.application.query.MyChatRoomSummary;
+import org.example.chat.chatroom.application.service.command.ChatRoomCreateCommand;
 import org.example.common.test.config.TestBootApplication;
 import org.bson.types.ObjectId;
 import org.example.chat.chatroom.application.dto.ChatRoomCreateRequest;
@@ -416,12 +417,19 @@ class ChatRoomControllerTest {
                     .willReturn(false);
 
             String body = """
-                {
-                  "title": "새 채팅방",
-                  "description": "새 설명",
-                  "category": "%s"
-                }
-                """.formatted(category.name());
+            {
+              "title": "새 채팅방",
+              "description": "새 설명",
+              "category": "%s"
+            }
+            """.formatted(category.name());
+
+            ChatRoomCreateCommand command = new ChatRoomCreateCommand(
+                    HOST_ID,
+                    "새 채팅방",
+                    "새 설명",
+                    category
+            );
 
             // when & then
             mockMvc.perform(post("/chat/room")
@@ -435,7 +443,7 @@ class ChatRoomControllerTest {
                     .existsByTitle("새 채팅방");
 
             verify(chatRoomCommandUseCase)
-                    .save(eq(HOST_ID), any(ChatRoomCreateRequest.class));
+                    .create(command);
         }
 
         @Test
@@ -443,11 +451,11 @@ class ChatRoomControllerTest {
         void createWithoutTitle() throws Exception {
             // given
             String body = """
-                {
-                  "description": "새 설명",
-                  "category": "%s"
-                }
-                """.formatted(category.name());
+            {
+              "description": "새 설명",
+              "category": "%s"
+            }
+            """.formatted(category.name());
 
             // when & then
             mockMvc.perform(post("/chat/room")
@@ -459,7 +467,7 @@ class ChatRoomControllerTest {
                     .andExpect(jsonPath("$.errors[0].code").value("NotBlank"));
 
             verify(chatRoomCommandUseCase, never())
-                    .save(anyString(), any(ChatRoomCreateRequest.class));
+                    .create(any(ChatRoomCreateCommand.class));
         }
 
         @Test
@@ -467,12 +475,12 @@ class ChatRoomControllerTest {
         void createBlankTitle() throws Exception {
             // given
             String body = """
-                {
-                  "title": "   ",
-                  "description": "새 설명",
-                  "category": "%s"
-                }
-                """.formatted(category.name());
+            {
+              "title": "   ",
+              "description": "새 설명",
+              "category": "%s"
+            }
+            """.formatted(category.name());
 
             // when & then
             mockMvc.perform(post("/chat/room")
@@ -484,7 +492,7 @@ class ChatRoomControllerTest {
                     .andExpect(jsonPath("$.errors[0].code").value("NotBlank"));
 
             verify(chatRoomCommandUseCase, never())
-                    .save(anyString(), any(ChatRoomCreateRequest.class));
+                    .create(any(ChatRoomCreateCommand.class));
         }
 
         @Test
@@ -492,11 +500,11 @@ class ChatRoomControllerTest {
         void createWithoutDescription() throws Exception {
             // given
             String body = """
-                {
-                  "title": "새 채팅방",
-                  "category": "%s"
-                }
-                """.formatted(category.name());
+            {
+              "title": "새 채팅방",
+              "category": "%s"
+            }
+            """.formatted(category.name());
 
             // when & then
             mockMvc.perform(post("/chat/room")
@@ -508,7 +516,7 @@ class ChatRoomControllerTest {
                     .andExpect(jsonPath("$.errors[0].code").value("NotBlank"));
 
             verify(chatRoomCommandUseCase, never())
-                    .save(anyString(), any(ChatRoomCreateRequest.class));
+                    .create(any(ChatRoomCreateCommand.class));
         }
 
         @Test
@@ -516,12 +524,12 @@ class ChatRoomControllerTest {
         void createBlankDescription() throws Exception {
             // given
             String body = """
-                {
-                  "title": "새 채팅방",
-                  "description": "   ",
-                  "category": "%s"
-                }
-                """.formatted(category.name());
+            {
+              "title": "새 채팅방",
+              "description": "   ",
+              "category": "%s"
+            }
+            """.formatted(category.name());
 
             // when & then
             mockMvc.perform(post("/chat/room")
@@ -533,7 +541,7 @@ class ChatRoomControllerTest {
                     .andExpect(jsonPath("$.errors[0].code").value("NotBlank"));
 
             verify(chatRoomCommandUseCase, never())
-                    .save(anyString(), any(ChatRoomCreateRequest.class));
+                    .create(any(ChatRoomCreateCommand.class));
         }
 
         @Test
@@ -541,11 +549,11 @@ class ChatRoomControllerTest {
         void createWithoutCategory() throws Exception {
             // given
             String body = """
-                {
-                  "title": "새 채팅방",
-                  "description": "새 설명"
-                }
-                """;
+            {
+              "title": "새 채팅방",
+              "description": "새 설명"
+            }
+            """;
 
             // when & then
             mockMvc.perform(post("/chat/room")
@@ -557,7 +565,7 @@ class ChatRoomControllerTest {
                     .andExpect(jsonPath("$.errors[0].code").value("NotNull"));
 
             verify(chatRoomCommandUseCase, never())
-                    .save(anyString(), any(ChatRoomCreateRequest.class));
+                    .create(any(ChatRoomCreateCommand.class));
         }
 
         @Test
@@ -567,12 +575,12 @@ class ChatRoomControllerTest {
             String longTitle = "가".repeat(101);
 
             String body = """
-                {
-                  "title": "%s",
-                  "description": "새 설명",
-                  "category": "%s"
-                }
-                """.formatted(longTitle, category.name());
+            {
+              "title": "%s",
+              "description": "새 설명",
+              "category": "%s"
+            }
+            """.formatted(longTitle, category.name());
 
             // when & then
             mockMvc.perform(post("/chat/room")
@@ -584,7 +592,7 @@ class ChatRoomControllerTest {
                     .andExpect(jsonPath("$.errors[0].code").value("Size"));
 
             verify(chatRoomCommandUseCase, never())
-                    .save(anyString(), any(ChatRoomCreateRequest.class));
+                    .create(any(ChatRoomCreateCommand.class));
         }
 
         @Test
@@ -594,12 +602,12 @@ class ChatRoomControllerTest {
             String longDescription = "가".repeat(2001);
 
             String body = """
-                {
-                  "title": "새 채팅방",
-                  "description": "%s",
-                  "category": "%s"
-                }
-                """.formatted(longDescription, category.name());
+            {
+              "title": "새 채팅방",
+              "description": "%s",
+              "category": "%s"
+            }
+            """.formatted(longDescription, category.name());
 
             // when & then
             mockMvc.perform(post("/chat/room")
@@ -611,7 +619,7 @@ class ChatRoomControllerTest {
                     .andExpect(jsonPath("$.errors[0].code").value("Size"));
 
             verify(chatRoomCommandUseCase, never())
-                    .save(anyString(), any(ChatRoomCreateRequest.class));
+                    .create(any(ChatRoomCreateCommand.class));
         }
 
         @Test
@@ -622,12 +630,12 @@ class ChatRoomControllerTest {
                     .willReturn(true);
 
             String body = """
-                {
-                  "title": "중복 채팅방",
-                  "description": "새 설명",
-                  "category": "%s"
-                }
-                """.formatted(category.name());
+            {
+              "title": "중복 채팅방",
+              "description": "새 설명",
+              "category": "%s"
+            }
+            """.formatted(category.name());
 
             // when & then
             mockMvc.perform(post("/chat/room")
@@ -642,23 +650,23 @@ class ChatRoomControllerTest {
                     .existsByTitle("중복 채팅방");
 
             verify(chatRoomCommandUseCase, never())
-                    .save(anyString(), any(ChatRoomCreateRequest.class));
+                    .create(any(ChatRoomCreateCommand.class));
         }
 
         @Test
-        @DisplayName("생성 시 X-User-Id 헤더가 없으면 400을 반환하고 save를 호출하지 않는다")
+        @DisplayName("생성 시 X-User-Id 헤더가 없으면 400을 반환하고 create를 호출하지 않는다")
         void createWithoutUserHeader() throws Exception {
             // given
             given(chatRoomQueryUseCase.existsByTitle("새 채팅방"))
                     .willReturn(false);
 
             String body = """
-                {
-                  "title": "새 채팅방",
-                  "description": "새 설명",
-                  "category": "%s"
-                }
-                """.formatted(category.name());
+            {
+              "title": "새 채팅방",
+              "description": "새 설명",
+              "category": "%s"
+            }
+            """.formatted(category.name());
 
             // when & then
             mockMvc.perform(post("/chat/room")
@@ -667,7 +675,7 @@ class ChatRoomControllerTest {
                     .andExpect(status().isBadRequest());
 
             verify(chatRoomCommandUseCase, never())
-                    .save(anyString(), any(ChatRoomCreateRequest.class));
+                    .create(any(ChatRoomCreateCommand.class));
         }
     }
 

@@ -1,14 +1,14 @@
 package org.example.chat.chatroom.application.port.in;
 
-import org.example.chat.chatroom.application.dto.ChatRoomCreateRequest;
 import org.example.chat.chatroom.application.dto.ChatRoomUpdateCommand;
+import org.example.chat.chatroom.application.service.command.ChatRoomCreateCommand;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 
 public interface ChatRoomCommandUseCase {
 
-    void save(ChatRoom domain);
+    void create(ChatRoomCreateCommand command);
 
-    void save(String hostId, ChatRoomCreateRequest request);
+    void save(ChatRoom domain);
 
     void update(String roomId, ChatRoomUpdateCommand command);
 
