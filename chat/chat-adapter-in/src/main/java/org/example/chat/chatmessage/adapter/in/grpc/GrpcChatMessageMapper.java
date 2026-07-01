@@ -1,7 +1,7 @@
 package org.example.chat.chatmessage.adapter.in.grpc;
 
-import org.example.chat.chatmessage.application.dto.ChatMessageSaveCommand;
-import org.example.chat.chatmessage.application.dto.ChatMessageSaveResult;
+import org.example.chat.chatmessage.application.service.command.ChatMessageSaveCommand;
+import org.example.chat.chatmessage.application.service.result.ChatMessageSaveResult;
 import org.example.grpc.chatmessage.GrpcChatMessageHardDeleteResponse;
 import org.example.grpc.chatmessage.GrpcChatMessageRequest;
 import org.example.grpc.chatmessage.GrpcChatMessageResponse;
