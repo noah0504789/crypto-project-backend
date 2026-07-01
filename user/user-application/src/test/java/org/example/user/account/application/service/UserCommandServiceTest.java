@@ -1,6 +1,7 @@
 package org.example.user.account.application.service;
 
 import org.example.user.account.application.port.out.UserPersistencePort;
+import org.example.user.account.application.service.command.SignUpLocalCommand;
 import org.example.user.account.application.service.command.SignUpOauth2Command;
 import org.example.user.account.application.service.command.UpdateProfileCommand;
 import org.example.user.account.domain.exception.UserNotFoundException;
@@ -197,6 +198,8 @@ class UserCommandServiceTest {
             User newUser = mock(User.class);
             User savedUser = mock(User.class);
 
+            SignUpLocalCommand command = new SignUpLocalCommand(EMAIL, NICKNAME, PASSWORD);
+
             given(roleRepository.findByName(defaultRole))
                     .willReturn(Optional.of(role));
 
@@ -214,12 +217,17 @@ class UserCommandServiceTest {
                         .thenReturn(newUser);
 
                 // when
-                User result = sut.signUpLocal(EMAIL, NICKNAME, PASSWORD);
+                User result = sut.signUpLocal(command);
 
                 // then
                 assertThat(result).isSameAs(savedUser);
 
-                InOrder inOrder = inOrder(roleRepository, passwordEncoder, newUser, userRepository);
+                InOrder inOrder = inOrder(
+                        roleRepository,
+                        passwordEncoder,
+                        newUser,
+                        userRepository
+                );
 
                 inOrder.verify(roleRepository).findByName(defaultRole);
                 inOrder.verify(passwordEncoder).encode(PASSWORD);
@@ -237,6 +245,8 @@ class UserCommandServiceTest {
             // given
             RoleEnum defaultRole = RoleEnum.USER;
 
+            SignUpLocalCommand command = new SignUpLocalCommand(EMAIL, NICKNAME, PASSWORD);
+
             given(roleRepository.findByName(defaultRole))
                     .willReturn(Optional.empty());
 
@@ -245,7 +255,7 @@ class UserCommandServiceTest {
                         .thenReturn(defaultRole);
 
                 // when & then
-                assertThatThrownBy(() -> sut.signUpLocal(EMAIL, NICKNAME, PASSWORD))
+                assertThatThrownBy(() -> sut.signUpLocal(command))
                         .isInstanceOf(RoleNotFoundException.class);
 
                 verify(roleRepository).findByName(defaultRole);
@@ -254,7 +264,7 @@ class UserCommandServiceTest {
 
                 mockedUser.verify(User::getDefaultRole);
                 mockedUser.verify(
-                        () -> User.ofLocal(anyString(), anyString(), anyString()),
+                        () -> User.ofLocal(EMAIL, NICKNAME, PASSWORD),
                         never()
                 );
             }

@@ -10,6 +10,7 @@ import org.example.user.account.adapter.in.web.dto.UserProfileUpdateRequest;
 import org.example.user.account.application.port.in.UserCommandUseCase;
 import org.example.user.account.application.port.in.UserQueryUseCase;
 import org.example.user.account.application.port.out.UserPersistencePort;
+import org.example.user.account.application.service.command.SignUpLocalCommand;
 import org.example.user.account.application.service.command.UpdateProfileCommand;
 import org.example.user.account.application.validation.UniqueUserNicknameValidator;
 import org.example.user.account.domain.model.User;
@@ -69,6 +70,12 @@ class UserControllerWebMvcTest {
                 "raw-password"
         );
 
+        SignUpLocalCommand command = new SignUpLocalCommand(
+                "test@test.com",
+                "test",
+                "raw-password"
+        );
+
         given(userPersistencePort.existsByNickname("test"))
                 .willReturn(false);
 
@@ -88,7 +95,7 @@ class UserControllerWebMvcTest {
 
         then(userCommandUseCase)
                 .should()
-                .signUpLocal("test@test.com", "test", "raw-password");
+                .signUpLocal(command);
 
         then(userQueryUseCase)
                 .shouldHaveNoInteractions();

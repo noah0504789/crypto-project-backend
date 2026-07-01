@@ -3,6 +3,7 @@ package org.example.user.account.adapter.in.web;
 import org.example.user.account.adapter.in.web.dto.UserProfileUpdateRequest;
 import org.example.user.account.application.port.in.UserCommandUseCase;
 import org.example.user.account.application.port.in.UserQueryUseCase;
+import org.example.user.account.application.service.command.SignUpLocalCommand;
 import org.example.user.account.application.service.command.UpdateProfileCommand;
 import org.example.user.account.domain.exception.UserNotFoundException;
 import org.example.user.account.adapter.in.web.dto.UserCreateRequest;
@@ -50,15 +51,17 @@ class UserControllerTest {
                 "raw-password"
         );
 
-        // when
-        ResponseEntity<Void> response = sut.signUp(request);
-
-        // then
-        verify(userCommandUseCase).signUpLocal(
+        SignUpLocalCommand command = new SignUpLocalCommand(
                 "test@test.com",
                 "test",
                 "raw-password"
         );
+
+        // when
+        ResponseEntity<Void> response = sut.signUp(request);
+
+        // then
+        verify(userCommandUseCase).signUpLocal(command);
 
         assertThat(response.getStatusCode().value()).isEqualTo(201);
         assertThat(response.getHeaders().getLocation()).isEqualTo(URI.create("/"));
