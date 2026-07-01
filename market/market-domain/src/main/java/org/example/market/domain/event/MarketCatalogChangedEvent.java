@@ -7,7 +7,7 @@ import org.example.common.enums.KafkaTopic;
 import org.example.common.event.HandleableEvent;
 import org.example.common.outbox.domain.OutboxDomainType;
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;
-import org.example.market.domain.port.MarketEventHandler;
+import org.example.market.domain.event.port.in.MarketEventHandler;
 
 @Getter
 @ToString
@@ -18,10 +18,6 @@ public class MarketCatalogChangedEvent extends AbstractOutboxEvent implements Ha
         super(KafkaTopic.MARKET_CHANGED_BROADCAST.getTopicName(), "MARKET_LIST", "MARKET_LIST");
     }
 
-    public static MarketCatalogChangedEvent of() {
-        return new MarketCatalogChangedEvent();
-    }
-
     @Override
     protected OutboxDomainType getDomainType() {
         return OutboxDomainType.MARKET;
@@ -30,5 +26,9 @@ public class MarketCatalogChangedEvent extends AbstractOutboxEvent implements Ha
     @Override
     public void handle(MarketEventHandler handler, String txId) {
         handler.handle(this, txId);
+    }
+
+    public static MarketCatalogChangedEvent of() {
+        return new MarketCatalogChangedEvent();
     }
 }

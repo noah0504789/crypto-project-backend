@@ -1,4 +1,4 @@
-package org.example.market.domain.port;
+package org.example.market.domain.event.port.in;
 
 import org.example.market.domain.event.MarketCatalogChangedEvent;
 
