@@ -4,6 +4,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.example.chat.chatroom.application.dto.*;
+import org.example.chat.chatroom.application.service.command.ChatRoomActivityCommand;
+import org.example.chat.chatroom.application.service.command.ChatRoomUpdateCommand;
 import org.example.common.dto.CursorPage;
 import org.example.chat.chatroom.adapter.in.dto.ChatRoomResponse;
 import org.example.chat.chatroom.adapter.in.dto.MyChatRoomResponse;
@@ -126,12 +128,12 @@ public class ChatRoomController {
     }
 
     @PutMapping("${api-path.chat.room-activity:/room/{roomId}/activity}")
-    public ResponseEntity activity(
+    public ResponseEntity<Void> activity(
             @PathVariable("roomId") String roomId,
             @RequestParam("lastMsgSeq") Long lastMsgSeq,
             @RequestParam("lastMsgMs") Long lastMsgMs,
             @RequestHeader(HttpHeaderKey.USER_ID_VALUE) String myUserId) {
-        chatRoomCommandUseCase.activity(roomId, myUserId, lastMsgSeq, lastMsgMs);
+        chatRoomCommandUseCase.activity(new ChatRoomActivityCommand(roomId, myUserId, lastMsgSeq, lastMsgMs));
 
         return ResponseEntity.noContent().build();
     }
@@ -143,7 +145,7 @@ public class ChatRoomController {
             @RequestBody @Valid ChatRoomCreateRequest request,
             @RequestHeader(HttpHeaderKey.USER_ID_VALUE) String hostId
     ) {
-        chatRoomCommandUseCase.save(hostId, request);
+        chatRoomCommandUseCase.create(request.toCommand(hostId));
 
         return ResponseEntity.created(URI.create("/home")).build();
     }
@@ -153,13 +155,11 @@ public class ChatRoomController {
             @PathVariable("roomId") @NotBlank String roomId,
             @RequestBody @Valid ChatRoomUpdateRequest request
     ) {
-        ChatRoomUpdateCommand command = request.toCommand();
-
-        if (command.isEmpty()) {
+        if (request.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
 
-        chatRoomCommandUseCase.update(roomId, command);
+        chatRoomCommandUseCase.update(request.toCommand(roomId));
 
         return ResponseEntity.noContent().build();
     }

@@ -2,12 +2,13 @@ package org.example.chat.chatroom.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.bson.types.ObjectId;
-import org.example.chat.chatroom.application.dto.ChatRoomCreateRequest;
-import org.example.chat.chatroom.application.dto.ChatRoomUpdateCommand;
+import org.example.chat.chatroom.application.service.command.ChatRoomActivityCommand;
+import org.example.chat.chatroom.application.service.command.ChatRoomUpdateCommand;
 import org.example.chat.chatroom.application.port.in.ChatRoomCommandUseCase;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
+import org.example.chat.chatroom.application.port.out.ChatRoomIdGeneratorPort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
+import org.example.chat.chatroom.application.service.command.ChatRoomCreateCommand;
 import org.example.chat.chatroom.domain.event.payload.ChatRoomUpdatedPayload;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
@@ -26,17 +27,19 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
 
     private final ChatRoomCachePort cache;
     private final ChatRoomPersistencePort persistence;
+    private final ChatRoomIdGeneratorPort idGenerator;
     private final OutboxEventListPublishPort outboxEventListPublishPort;
 
-    public void save(String hostId, ChatRoomCreateRequest request) {
-        String id = new ObjectId().toHexString();
+    @Override
+    public void create(ChatRoomCreateCommand command) {
+        String id = idGenerator.generate();
 
         ChatRoom domain = ChatRoom.ofNewRoom(
                 id,
-                hostId,
-                request.title(),
-                request.description(),
-                request.category()
+                command.hostId(),
+                command.title(),
+                command.description(),
+                command.category()
         );
 
         save(domain);
@@ -48,19 +51,21 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
 
         saveCacheSafely(domain);
 
-        activity(domain.getId(), domain.getHostId(), 0L, 0L);
+        activity(new ChatRoomActivityCommand(domain.getId(), domain.getHostId(), 0L, 0L));
     }
 
-    public void update(String id, ChatRoomUpdateCommand command) {
+    @Override
+    public void update(ChatRoomUpdateCommand command) {
+        String id = command.roomId();
         ChatRoom domain = persistence.findById(id)
                 .orElseThrow(() -> new ChatRoomNotFoundException(id));
 
-        String oldTitle = domain.getTitle();
         ChatRoomUpdatedPayload payload = command.toPayload();
+        String oldTitle = domain.getTitle();
 
         domain.update(payload);
-        publishEvent(domain, "chatroom update");
 
+        publishEvent(domain, "chatroom update");
         updateCacheSafely(domain, payload, oldTitle);
     }
 
@@ -96,13 +101,23 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
         leaveCacheSafely(domain, memberId);
     }
 
-    public void activity(String id, String memberId, Long lastMsgSeq, Long lastMsgMs) {
-        ChatRoom domain = ChatRoom.ofId(id);
+    @Override
+    public void activity(ChatRoomActivityCommand command) {
+        ChatRoom domain = ChatRoom.ofId(command.roomId());
 
-        domain.active(memberId, lastMsgSeq, lastMsgMs);
+        domain.active(
+                command.memberId(),
+                command.lastMsgSeq(),
+                command.lastMsgMs()
+        );
+
         publishEvent(domain, "chatroom activity");
-
-        activityCacheSafely(domain, memberId, lastMsgSeq, lastMsgMs);
+        activityCacheSafely(
+                domain,
+                command.memberId(),
+                command.lastMsgSeq(),
+                command.lastMsgMs()
+        );
     }
 
     public void delete(String id) {

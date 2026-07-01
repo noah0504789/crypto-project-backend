@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     implementation project(':common:common-web')
+    implementation project(':common:common-id')
     implementation project(':common:common-redis')
     implementation project(':common:common-mongo')
     implementation project(':protobuf')
