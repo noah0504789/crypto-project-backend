@@ -1,5 +1,6 @@
 package org.example.chat.chatroom.application.port.in;
 
+import org.example.chat.chatroom.application.service.command.ChatRoomActivityCommand;
 import org.example.chat.chatroom.application.service.command.ChatRoomUpdateCommand;
 import org.example.chat.chatroom.application.service.command.ChatRoomCreateCommand;
 import org.example.chat.chatroom.domain.model.ChatRoom;
@@ -18,5 +19,5 @@ public interface ChatRoomCommandUseCase {
 
     void delete(String roomId);
 
-    void activity(String id, String memberId, Long lastMsgSeq, Long lastMsgMs);
+    void activity(ChatRoomActivityCommand command);
 }

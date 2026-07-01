@@ -2,6 +2,7 @@ package org.example.chat.chatroom.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.chat.chatroom.application.service.command.ChatRoomActivityCommand;
 import org.example.chat.chatroom.application.service.command.ChatRoomUpdateCommand;
 import org.example.chat.chatroom.application.port.in.ChatRoomCommandUseCase;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
@@ -50,7 +51,7 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
 
         saveCacheSafely(domain);
 
-        activity(domain.getId(), domain.getHostId(), 0L, 0L);
+        activity(new ChatRoomActivityCommand(domain.getId(), domain.getHostId(), 0L, 0L));
     }
 
     @Override
@@ -100,13 +101,23 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
         leaveCacheSafely(domain, memberId);
     }
 
-    public void activity(String id, String memberId, Long lastMsgSeq, Long lastMsgMs) {
-        ChatRoom domain = ChatRoom.ofId(id);
+    @Override
+    public void activity(ChatRoomActivityCommand command) {
+        ChatRoom domain = ChatRoom.ofId(command.roomId());
 
-        domain.active(memberId, lastMsgSeq, lastMsgMs);
+        domain.active(
+                command.memberId(),
+                command.lastMsgSeq(),
+                command.lastMsgMs()
+        );
+
         publishEvent(domain, "chatroom activity");
-
-        activityCacheSafely(domain, memberId, lastMsgSeq, lastMsgMs);
+        activityCacheSafely(
+                domain,
+                command.memberId(),
+                command.lastMsgSeq(),
+                command.lastMsgMs()
+        );
     }
 
     public void delete(String id) {

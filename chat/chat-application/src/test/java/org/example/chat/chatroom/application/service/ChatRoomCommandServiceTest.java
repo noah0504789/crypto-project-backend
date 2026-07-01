@@ -1,5 +1,6 @@
 package org.example.chat.chatroom.application.service;
 
+import org.example.chat.chatroom.application.service.command.ChatRoomActivityCommand;
 import org.example.chat.chatroom.application.service.command.ChatRoomUpdateCommand;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomIdGeneratorPort;
@@ -153,7 +154,7 @@ class ChatRoomCommandServiceTest {
             when(domain.getHostId()).thenReturn(hostId);
             when(domain.pullEventList()).thenReturn(eventList);
 
-            doNothing().when(sut).activity(id, hostId, 0L, 0L);
+            doNothing().when(sut).activity(new ChatRoomActivityCommand(id, hostId, 0L, 0L));
 
             // when
             sut.save(domain);
@@ -165,7 +166,7 @@ class ChatRoomCommandServiceTest {
             inOrder.verify(domain).pullEventList();
             inOrder.verify(outboxEventListPublishPort).publish(eventList);
             inOrder.verify(cache).save(domain);
-            inOrder.verify(sut).activity(id, hostId, 0L, 0L);
+            inOrder.verify(sut).activity(new ChatRoomActivityCommand(id, hostId, 0L, 0L));
 
             verify(domain, never()).cacheSave();
         }
@@ -186,7 +187,7 @@ class ChatRoomCommandServiceTest {
                     .when(cache)
                     .save(domain);
 
-            doNothing().when(sut).activity(id, hostId, 0L, 0L);
+            doNothing().when(sut).activity(new ChatRoomActivityCommand(id, hostId, 0L, 0L));
 
             // when & then
             assertDoesNotThrow(() -> sut.save(domain));
@@ -203,7 +204,7 @@ class ChatRoomCommandServiceTest {
             inOrder.verify(domain).pullEventList();
             inOrder.verify(outboxEventListPublishPort).publish(cacheSaveEventList);
 
-            inOrder.verify(sut).activity(id, hostId, 0L, 0L);
+            inOrder.verify(sut).activity(new ChatRoomActivityCommand(id, hostId, 0L, 0L));
         }
 
         @Test
@@ -223,7 +224,7 @@ class ChatRoomCommandServiceTest {
             verify(domain, never()).pullEventList();
             verify(outboxEventListPublishPort, never()).publish(any());
             verify(cache, never()).save(any());
-            verify(sut, never()).activity(anyString(), anyString(), anyLong(), anyLong());
+            verify(sut, never()).activity(any(ChatRoomActivityCommand.class));
         }
 
         @Test
@@ -247,7 +248,7 @@ class ChatRoomCommandServiceTest {
             verify(domain).pullEventList();
             verify(outboxEventListPublishPort).publish(eventList);
             verify(cache, never()).save(any());
-            verify(sut, never()).activity(anyString(), anyString(), anyLong(), anyLong());
+            verify(sut, never()).activity(any(ChatRoomActivityCommand.class));
         }
     }
 
@@ -256,23 +257,37 @@ class ChatRoomCommandServiceTest {
     class ActivityTest {
 
         @Test
-        @DisplayName("활동 정보를 갱신하면 active 이벤트 발행 후 lastRead와 recentScore 캐시를 갱신한다")
-        void activity_should_publish_active_event_and_update_cache() {
+        @DisplayName("채팅방 activity 이벤트를 발행하고 캐시 activity를 갱신한다")
+        void activity_should_publish_activity_event_and_update_cache() {
             // given
             ChatRoom domain = mock(ChatRoom.class);
             ChatRoomEventList eventList = mock(ChatRoomEventList.class);
 
-            when(domain.getId()).thenReturn(id);
-            when(domain.pullEventList()).thenReturn(eventList);
+            ChatRoomActivityCommand command = new ChatRoomActivityCommand(
+                    id,
+                    memberId,
+                    lastMsgSeq,
+                    lastMsgMs
+            );
 
-            try (MockedStatic<ChatRoom> mockedStatic = Mockito.mockStatic(ChatRoom.class)) {
-                mockedStatic.when(() -> ChatRoom.ofId(id)).thenReturn(domain);
+            try (MockedStatic<ChatRoom> mockedChatRoom = Mockito.mockStatic(ChatRoom.class)) {
+                mockedChatRoom.when(() -> ChatRoom.ofId(id))
+                        .thenReturn(domain);
+
+                when(domain.getId()).thenReturn(id);
+                when(domain.pullEventList()).thenReturn(eventList);
 
                 // when
-                sut.activity(id, memberId, lastMsgSeq, lastMsgMs);
+                sut.activity(command);
 
                 // then
-                InOrder inOrder = inOrder(domain, outboxEventListPublishPort, cache);
+                InOrder inOrder = inOrder(
+                        domain,
+                        outboxEventListPublishPort,
+                        cache
+                );
+
+                mockedChatRoom.verify(() -> ChatRoom.ofId(id));
 
                 inOrder.verify(domain).active(memberId, lastMsgSeq, lastMsgMs);
                 inOrder.verify(domain).pullEventList();
@@ -285,31 +300,46 @@ class ChatRoomCommandServiceTest {
         }
 
         @Test
-        @DisplayName("lastRead 캐시 갱신이 실패하면 recentScore를 건너뛰고 activity invalidate 이벤트를 발행한다")
-        void activity_should_publish_invalidate_event_if_cache_updateLastRead_fails() {
+        @DisplayName("캐시 activity 갱신이 실패하면 cacheActivityInvalidate 이벤트를 발행한다")
+        void activity_should_publish_cache_activity_invalidate_event_if_cache_activity_fails() {
             // given
             ChatRoom domain = mock(ChatRoom.class);
-            ChatRoomEventList activeEventList = mock(ChatRoomEventList.class);
+            ChatRoomEventList activityEventList = mock(ChatRoomEventList.class);
             ChatRoomEventList invalidateEventList = mock(ChatRoomEventList.class);
 
-            when(domain.getId()).thenReturn(id);
-            when(domain.pullEventList()).thenReturn(activeEventList, invalidateEventList);
+            ChatRoomActivityCommand command = new ChatRoomActivityCommand(
+                    id,
+                    memberId,
+                    lastMsgSeq,
+                    lastMsgMs
+            );
 
-            doThrow(new RuntimeException("cache updateLastRead failed"))
-                    .when(cache)
-                    .updateLastRead(id, memberId, lastMsgSeq);
+            try (MockedStatic<ChatRoom> mockedChatRoom = Mockito.mockStatic(ChatRoom.class)) {
+                mockedChatRoom.when(() -> ChatRoom.ofId(id))
+                        .thenReturn(domain);
 
-            try (MockedStatic<ChatRoom> mockedStatic = Mockito.mockStatic(ChatRoom.class)) {
-                mockedStatic.when(() -> ChatRoom.ofId(id)).thenReturn(domain);
+                when(domain.getId()).thenReturn(id);
+                when(domain.pullEventList())
+                        .thenReturn(activityEventList, invalidateEventList);
+
+                doThrow(new RuntimeException("cache activity failed"))
+                        .when(cache)
+                        .updateLastRead(id, memberId, lastMsgSeq);
 
                 // when & then
-                assertDoesNotThrow(() -> sut.activity(id, memberId, lastMsgSeq, lastMsgMs));
+                assertDoesNotThrow(() -> sut.activity(command));
 
-                InOrder inOrder = inOrder(domain, outboxEventListPublishPort, cache);
+                InOrder inOrder = inOrder(
+                        domain,
+                        outboxEventListPublishPort,
+                        cache
+                );
+
+                mockedChatRoom.verify(() -> ChatRoom.ofId(id));
 
                 inOrder.verify(domain).active(memberId, lastMsgSeq, lastMsgMs);
                 inOrder.verify(domain).pullEventList();
-                inOrder.verify(outboxEventListPublishPort).publish(activeEventList);
+                inOrder.verify(outboxEventListPublishPort).publish(activityEventList);
 
                 inOrder.verify(cache).updateLastRead(id, memberId, lastMsgSeq);
 
@@ -322,62 +352,37 @@ class ChatRoomCommandServiceTest {
         }
 
         @Test
-        @DisplayName("recentScore 캐시 갱신이 실패하면 activity invalidate 이벤트를 발행한다")
-        void activity_should_publish_invalidate_event_if_cache_updateRecentScore_fails() {
-            // given
-            ChatRoom domain = mock(ChatRoom.class);
-            ChatRoomEventList activeEventList = mock(ChatRoomEventList.class);
-            ChatRoomEventList invalidateEventList = mock(ChatRoomEventList.class);
-
-            when(domain.getId()).thenReturn(id);
-            when(domain.pullEventList()).thenReturn(activeEventList, invalidateEventList);
-
-            doThrow(new RuntimeException("cache updateRecentScore failed"))
-                    .when(cache)
-                    .updateRecentScore(id, memberId, lastMsgMs);
-
-            try (MockedStatic<ChatRoom> mockedStatic = Mockito.mockStatic(ChatRoom.class)) {
-                mockedStatic.when(() -> ChatRoom.ofId(id)).thenReturn(domain);
-
-                // when & then
-                assertDoesNotThrow(() -> sut.activity(id, memberId, lastMsgSeq, lastMsgMs));
-
-                InOrder inOrder = inOrder(domain, outboxEventListPublishPort, cache);
-
-                inOrder.verify(domain).active(memberId, lastMsgSeq, lastMsgMs);
-                inOrder.verify(domain).pullEventList();
-                inOrder.verify(outboxEventListPublishPort).publish(activeEventList);
-
-                inOrder.verify(cache).updateLastRead(id, memberId, lastMsgSeq);
-                inOrder.verify(cache).updateRecentScore(id, memberId, lastMsgMs);
-
-                inOrder.verify(domain).cacheActivityInvalidate(memberId);
-                inOrder.verify(domain).pullEventList();
-                inOrder.verify(outboxEventListPublishPort).publish(invalidateEventList);
-            }
-        }
-
-        @Test
         @DisplayName("도메인 active가 실패하면 이벤트 발행과 캐시 갱신을 수행하지 않는다")
         void activity_should_throw_if_domain_active_fails() {
             // given
             ChatRoom domain = mock(ChatRoom.class);
 
-            doThrow(new RuntimeException("domain active failed"))
-                    .when(domain)
-                    .active(memberId, lastMsgSeq, lastMsgMs);
+            ChatRoomActivityCommand command = new ChatRoomActivityCommand(
+                    id,
+                    memberId,
+                    lastMsgSeq,
+                    lastMsgMs
+            );
 
-            try (MockedStatic<ChatRoom> mockedStatic = Mockito.mockStatic(ChatRoom.class)) {
-                mockedStatic.when(() -> ChatRoom.ofId(id)).thenReturn(domain);
+            try (MockedStatic<ChatRoom> mockedChatRoom = Mockito.mockStatic(ChatRoom.class)) {
+                mockedChatRoom.when(() -> ChatRoom.ofId(id))
+                        .thenReturn(domain);
+
+                doThrow(new RuntimeException("domain active failed"))
+                        .when(domain)
+                        .active(memberId, lastMsgSeq, lastMsgMs);
 
                 // when & then
-                assertThrows(RuntimeException.class, () -> sut.activity(id, memberId, lastMsgSeq, lastMsgMs));
+                assertThrows(RuntimeException.class, () -> sut.activity(command));
+
+                mockedChatRoom.verify(() -> ChatRoom.ofId(id));
 
                 verify(domain).active(memberId, lastMsgSeq, lastMsgMs);
                 verify(domain, never()).pullEventList();
                 verify(outboxEventListPublishPort, never()).publish(any());
                 verify(cache, never()).updateLastRead(anyString(), anyString(), anyLong());
                 verify(cache, never()).updateRecentScore(anyString(), anyString(), anyLong());
+                verify(domain, never()).cacheActivityInvalidate(anyString());
             }
         }
     }

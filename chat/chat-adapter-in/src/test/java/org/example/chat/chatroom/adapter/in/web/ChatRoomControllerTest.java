@@ -1,5 +1,6 @@
 package org.example.chat.chatroom.adapter.in.web;
 
+import org.example.chat.chatroom.application.service.command.ChatRoomActivityCommand;
 import org.example.chat.chatroom.application.service.command.ChatRoomUpdateCommand;
 import org.example.chat.chatroom.application.query.MyChatRoomSummary;
 import org.example.chat.chatroom.application.service.command.ChatRoomCreateCommand;
@@ -369,6 +370,15 @@ class ChatRoomControllerTest {
         @Test
         @DisplayName("활동 정보를 갱신하고 204 No Content를 반환한다")
         void activity() throws Exception {
+            // given
+            ChatRoomActivityCommand command = new ChatRoomActivityCommand(
+                    roomId1,
+                    USER_ID,
+                    10L,
+                    1_717_000_000_000L
+            );
+
+            // when & then
             mockMvc.perform(put("/chat/room/{roomId}/activity", roomId1)
                             .header("X-User-Id", USER_ID)
                             .param("lastMsgSeq", "10")
@@ -376,31 +386,33 @@ class ChatRoomControllerTest {
                     .andExpect(status().isNoContent());
 
             verify(chatRoomCommandUseCase)
-                    .activity(roomId1, USER_ID, 10L, 1_717_000_000_000L);
+                    .activity(command);
         }
 
         @Test
         @DisplayName("필수 파라미터가 없으면 400을 반환한다")
         void activityWithoutRequiredParam() throws Exception {
+            // when & then
             mockMvc.perform(put("/chat/room/{roomId}/activity", roomId1)
                             .header("X-User-Id", USER_ID)
                             .param("lastMsgSeq", "10"))
                     .andExpect(status().isBadRequest());
 
             verify(chatRoomCommandUseCase, never())
-                    .activity(anyString(), anyString(), anyLong(), anyLong());
+                    .activity(any(ChatRoomActivityCommand.class));
         }
 
         @Test
         @DisplayName("X-User-Id 헤더가 없으면 400을 반환한다")
         void activityWithoutUserHeader() throws Exception {
+            // when & then
             mockMvc.perform(put("/chat/room/{roomId}/activity", roomId1)
                             .param("lastMsgSeq", "10")
                             .param("lastMsgMs", "1717000000000"))
                     .andExpect(status().isBadRequest());
 
             verify(chatRoomCommandUseCase, never())
-                    .activity(anyString(), anyString(), anyLong(), anyLong());
+                    .activity(any(ChatRoomActivityCommand.class));
         }
     }
 
