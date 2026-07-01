@@ -26,11 +26,7 @@ public class UserController {
 
     @PostMapping("${api-path.user.sign-up}")
     public ResponseEntity<Void> signUp(@RequestBody @Valid UserCreateRequest request) {
-        userCommandUseCase.signUpLocal(
-                request.email(),
-                request.nickname(),
-                request.password()
-        );
+        userCommandUseCase.signUpLocal(request.toCommand());
 
         return ResponseEntity.created(URI.create("/")).build();
     }
@@ -58,7 +54,7 @@ public class UserController {
             return ResponseEntity.badRequest().build();
         }
 
-        userCommandUseCase.updateProfile(publicId, request.nickname());
+        userCommandUseCase.updateProfile(request.toCommand(publicId));
 
         return ResponseEntity.noContent().build();
     }

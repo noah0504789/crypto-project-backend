@@ -1,6 +1,9 @@
 package org.example.user.account.application.service;
 
 import org.example.user.account.application.port.out.UserPersistencePort;
+import org.example.user.account.application.service.command.SignUpLocalCommand;
+import org.example.user.account.application.service.command.SignUpOauth2Command;
+import org.example.user.account.application.service.command.UpdateProfileCommand;
 import org.example.user.account.domain.exception.UserNotFoundException;
 import org.example.user.account.domain.model.User;
 import org.example.user.role.application.port.out.RolePersistencePort;
@@ -66,31 +69,43 @@ class UserCommandServiceTest {
             // given
             User user = mock(User.class);
 
+            UpdateProfileCommand command = new UpdateProfileCommand(
+                    PUBLIC_ID,
+                    NEW_NICKNAME
+            );
+
             given(userRepository.findByPublicId(PUBLIC_ID))
                     .willReturn(Optional.of(user));
 
             // when
-            sut.updateProfile(PUBLIC_ID, NEW_NICKNAME);
+            sut.updateProfile(command);
 
             // then
             InOrder inOrder = inOrder(userRepository, user);
 
             inOrder.verify(userRepository).findByPublicId(PUBLIC_ID);
             inOrder.verify(user).updateNickname(NEW_NICKNAME);
+            inOrder.verify(userRepository).save(user);
         }
 
         @Test
         @DisplayName("publicId에 해당하는 유저가 없으면 UserNotFoundException을 던진다")
         void updateProfile_should_throw_exception_when_user_not_found() {
             // given
+            UpdateProfileCommand command = new UpdateProfileCommand(
+                    PUBLIC_ID,
+                    NEW_NICKNAME
+            );
+
             given(userRepository.findByPublicId(PUBLIC_ID))
                     .willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> sut.updateProfile(PUBLIC_ID, NEW_NICKNAME))
+            assertThatThrownBy(() -> sut.updateProfile(command))
                     .isInstanceOf(UserNotFoundException.class);
 
             verify(userRepository).findByPublicId(PUBLIC_ID);
+            verify(userRepository, never()).save(any());
         }
     }
 
@@ -107,6 +122,8 @@ class UserCommandServiceTest {
             User newUser = mock(User.class);
             User savedUser = mock(User.class);
 
+            SignUpOauth2Command command = new SignUpOauth2Command(SUB, EMAIL, NICKNAME);
+
             given(roleRepository.findByName(defaultRole))
                     .willReturn(Optional.of(role));
 
@@ -121,7 +138,7 @@ class UserCommandServiceTest {
                         .thenReturn(newUser);
 
                 // when
-                User result = sut.signUpOauth2(SUB, EMAIL, NICKNAME);
+                User result = sut.signUpOauth2(command);
 
                 // then
                 assertThat(result).isSameAs(savedUser);
@@ -143,6 +160,8 @@ class UserCommandServiceTest {
             // given
             RoleEnum defaultRole = RoleEnum.USER;
 
+            SignUpOauth2Command command = new SignUpOauth2Command(SUB, EMAIL, NICKNAME);
+
             given(roleRepository.findByName(defaultRole))
                     .willReturn(Optional.empty());
 
@@ -151,7 +170,7 @@ class UserCommandServiceTest {
                         .thenReturn(defaultRole);
 
                 // when & then
-                assertThatThrownBy(() -> sut.signUpOauth2(SUB, EMAIL, NICKNAME))
+                assertThatThrownBy(() -> sut.signUpOauth2(command))
                         .isInstanceOf(RoleNotFoundException.class);
 
                 verify(roleRepository).findByName(defaultRole);
@@ -159,7 +178,7 @@ class UserCommandServiceTest {
 
                 mockedUser.verify(User::getDefaultRole);
                 mockedUser.verify(
-                        () -> User.ofOAuth2(anyString(), anyString(), anyString()),
+                        () -> User.ofOAuth2(SUB, EMAIL, NICKNAME),
                         never()
                 );
             }
@@ -179,6 +198,8 @@ class UserCommandServiceTest {
             User newUser = mock(User.class);
             User savedUser = mock(User.class);
 
+            SignUpLocalCommand command = new SignUpLocalCommand(EMAIL, NICKNAME, PASSWORD);
+
             given(roleRepository.findByName(defaultRole))
                     .willReturn(Optional.of(role));
 
@@ -196,12 +217,17 @@ class UserCommandServiceTest {
                         .thenReturn(newUser);
 
                 // when
-                User result = sut.signUpLocal(EMAIL, NICKNAME, PASSWORD);
+                User result = sut.signUpLocal(command);
 
                 // then
                 assertThat(result).isSameAs(savedUser);
 
-                InOrder inOrder = inOrder(roleRepository, passwordEncoder, newUser, userRepository);
+                InOrder inOrder = inOrder(
+                        roleRepository,
+                        passwordEncoder,
+                        newUser,
+                        userRepository
+                );
 
                 inOrder.verify(roleRepository).findByName(defaultRole);
                 inOrder.verify(passwordEncoder).encode(PASSWORD);
@@ -219,6 +245,8 @@ class UserCommandServiceTest {
             // given
             RoleEnum defaultRole = RoleEnum.USER;
 
+            SignUpLocalCommand command = new SignUpLocalCommand(EMAIL, NICKNAME, PASSWORD);
+
             given(roleRepository.findByName(defaultRole))
                     .willReturn(Optional.empty());
 
@@ -227,7 +255,7 @@ class UserCommandServiceTest {
                         .thenReturn(defaultRole);
 
                 // when & then
-                assertThatThrownBy(() -> sut.signUpLocal(EMAIL, NICKNAME, PASSWORD))
+                assertThatThrownBy(() -> sut.signUpLocal(command))
                         .isInstanceOf(RoleNotFoundException.class);
 
                 verify(roleRepository).findByName(defaultRole);
@@ -236,7 +264,7 @@ class UserCommandServiceTest {
 
                 mockedUser.verify(User::getDefaultRole);
                 mockedUser.verify(
-                        () -> User.ofLocal(anyString(), anyString(), anyString()),
+                        () -> User.ofLocal(EMAIL, NICKNAME, PASSWORD),
                         never()
                 );
             }

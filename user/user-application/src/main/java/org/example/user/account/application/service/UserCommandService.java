@@ -3,6 +3,9 @@ package org.example.user.account.application.service;
 import lombok.RequiredArgsConstructor;
 import org.example.user.account.application.port.in.UserCommandUseCase;
 import org.example.user.account.application.port.out.UserPersistencePort;
+import org.example.user.account.application.service.command.SignUpLocalCommand;
+import org.example.user.account.application.service.command.SignUpOauth2Command;
+import org.example.user.account.application.service.command.UpdateProfileCommand;
 import org.example.user.account.domain.exception.UserNotFoundException;
 import org.example.user.account.domain.model.User;
 import org.example.user.role.application.port.out.RolePersistencePort;
@@ -25,19 +28,27 @@ public class UserCommandService implements UserCommandUseCase {
 
     @Override
     @Transactional
-    public void updateProfile(UUID publicId, String nickname) {
+    public void updateProfile(UpdateProfileCommand command) {
+        UUID publicId = command.publicId();
         User user = userRepository.findByPublicId(publicId)
                 .orElseThrow(() -> new UserNotFoundException(publicId));
 
-        user.updateNickname(nickname);
+        user.updateNickname(command.nickname());
+
+        userRepository.save(user);
     }
 
     @Override
     @Transactional
-    public User signUpOauth2(String sub, String email, String nickname) {
+    public User signUpOauth2(SignUpOauth2Command command) {
         Role role = getDefaultRole();
 
-        User newUser = User.ofOAuth2(sub, email, nickname);
+        User newUser = User.ofOAuth2(
+                command.sub(),
+                command.email(),
+                command.nickname()
+        );
+
         newUser.addRole(role);
 
         return userRepository.save(newUser);
@@ -45,12 +56,17 @@ public class UserCommandService implements UserCommandUseCase {
 
     @Override
     @Transactional
-    public User signUpLocal(String email, String nickname, String password) {
+    public User signUpLocal(SignUpLocalCommand command) {
         Role role = getDefaultRole();
 
-        String encodedPassword = passwordEncoder.encode(password);
+        String encodedPassword = passwordEncoder.encode(command.password());
 
-        User newUser = User.ofLocal(email, nickname, encodedPassword);
+        User newUser = User.ofLocal(
+                command.email(),
+                command.nickname(),
+                encodedPassword
+        );
+
         newUser.addRole(role);
 
         return userRepository.save(newUser);

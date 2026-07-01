@@ -3,11 +3,11 @@ package org.example.user.account.adapter.in.web;
 import org.example.user.account.adapter.in.web.dto.UserProfileUpdateRequest;
 import org.example.user.account.application.port.in.UserCommandUseCase;
 import org.example.user.account.application.port.in.UserQueryUseCase;
-import org.example.user.account.application.service.UserCommandService;
+import org.example.user.account.application.service.command.SignUpLocalCommand;
+import org.example.user.account.application.service.command.UpdateProfileCommand;
 import org.example.user.account.domain.exception.UserNotFoundException;
 import org.example.user.account.adapter.in.web.dto.UserCreateRequest;
 import org.example.user.account.adapter.in.web.dto.UserResponse;
-import org.example.user.account.application.service.UserQueryService;
 import org.example.user.role.domain.model.RoleEnum;
 import org.example.user.role.domain.model.Role;
 import org.example.user.account.domain.model.User;
@@ -51,15 +51,17 @@ class UserControllerTest {
                 "raw-password"
         );
 
-        // when
-        ResponseEntity<Void> response = sut.signUp(request);
-
-        // then
-        verify(userCommandUseCase).signUpLocal(
+        SignUpLocalCommand command = new SignUpLocalCommand(
                 "test@test.com",
                 "test",
                 "raw-password"
         );
+
+        // when
+        ResponseEntity<Void> response = sut.signUp(request);
+
+        // then
+        verify(userCommandUseCase).signUpLocal(command);
 
         assertThat(response.getStatusCode().value()).isEqualTo(201);
         assertThat(response.getHeaders().getLocation()).isEqualTo(URI.create("/"));
@@ -178,11 +180,16 @@ class UserControllerTest {
                 "updated-user"
         );
 
+        UpdateProfileCommand command = new UpdateProfileCommand(
+                publicId,
+                "updated-user"
+        );
+
         // when
         ResponseEntity<Void> response = sut.updateProfile(publicId, request);
 
         // then
-        verify(userCommandUseCase).updateProfile(publicId, "updated-user");
+        verify(userCommandUseCase).updateProfile(command);
 
         assertThat(response.getStatusCode().value()).isEqualTo(204);
         assertThat(response.getBody()).isNull();
