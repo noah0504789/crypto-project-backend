@@ -1,4 +1,4 @@
-package org.example.chat.chatmessage.application.dto;
+package org.example.chat.chatmessage.application.service.command;
 
 public record ChatMessageSaveCommand(
         String messageId,

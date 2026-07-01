@@ -1,9 +1,9 @@
 package org.example.chat.chatmessage.adapter.in.web;
 
 import lombok.RequiredArgsConstructor;
-import org.example.chat.chatmessage.adapter.in.dto.ChatMessageResponse;
+import org.example.chat.chatmessage.adapter.in.web.dto.ChatMessageResponse;
 import org.example.common.dto.CursorPage;
-import org.example.chat.chatmessage.application.dto.ChatMessageCursor;
+import org.example.chat.chatmessage.adapter.in.web.dto.ChatMessageCursor;
 import org.example.chat.chatmessage.application.port.in.ChatMessageQueryUsecase;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.springframework.http.ResponseEntity;

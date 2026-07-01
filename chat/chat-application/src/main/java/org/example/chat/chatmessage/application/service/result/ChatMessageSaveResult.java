@@ -1,4 +1,4 @@
-package org.example.chat.chatmessage.application.dto;
+package org.example.chat.chatmessage.application.service.result;
 
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 

@@ -1,8 +1,8 @@
 package org.example.chat.chatmessage.application.service;
 
 import org.example.chat.common.exception.ChatMessageCacheException;
-import org.example.chat.chatmessage.application.dto.ChatMessageSaveCommand;
-import org.example.chat.chatmessage.application.dto.ChatMessageSaveResult;
+import org.example.chat.chatmessage.application.service.command.ChatMessageSaveCommand;
+import org.example.chat.chatmessage.application.service.result.ChatMessageSaveResult;
 import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
 import org.example.chat.chatmessage.domain.event.ChatMessageEventList;
 import org.example.chat.chatmessage.application.port.out.ChatMessageCachePort;
