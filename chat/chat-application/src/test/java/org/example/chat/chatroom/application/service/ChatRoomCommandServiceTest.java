@@ -1,6 +1,6 @@
 package org.example.chat.chatroom.application.service;
 
-import org.example.chat.chatroom.application.dto.ChatRoomUpdateCommand;
+import org.example.chat.chatroom.application.service.command.ChatRoomUpdateCommand;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomIdGeneratorPort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
@@ -393,7 +393,13 @@ class ChatRoomCommandServiceTest {
             ChatRoom domain = mock(ChatRoom.class);
             ChatRoomEventList eventList = mock(ChatRoomEventList.class);
 
-            ChatRoomUpdateCommand command = new ChatRoomUpdateCommand("수정된 제목", "수정된 설명", ChatRoomCategory.FREE);
+            ChatRoomUpdateCommand command = new ChatRoomUpdateCommand(
+                    id,
+                    "수정된 제목",
+                    "수정된 설명",
+                    category
+            );
+
             ChatRoomUpdatedPayload payload = command.toPayload();
             Map<String, Object> updated = payload.toUpdateMap();
 
@@ -403,10 +409,15 @@ class ChatRoomCommandServiceTest {
             when(domain.pullEventList()).thenReturn(eventList);
 
             // when
-            sut.update(id, command);
+            sut.update(command);
 
             // then
-            InOrder inOrder = inOrder(persistence, domain, outboxEventListPublishPort, cache);
+            InOrder inOrder = inOrder(
+                    persistence,
+                    domain,
+                    outboxEventListPublishPort,
+                    cache
+            );
 
             inOrder.verify(persistence).findById(id);
             inOrder.verify(domain).getTitle();
@@ -426,7 +437,13 @@ class ChatRoomCommandServiceTest {
             ChatRoomEventList updateEventList = mock(ChatRoomEventList.class);
             ChatRoomEventList cacheUpdateEventList = mock(ChatRoomEventList.class);
 
-            ChatRoomUpdateCommand command = new ChatRoomUpdateCommand("수정된 제목", "수정된 설명", ChatRoomCategory.FREE);
+            ChatRoomUpdateCommand command = new ChatRoomUpdateCommand(
+                    id,
+                    "수정된 제목",
+                    "수정된 설명",
+                    category
+            );
+
             ChatRoomUpdatedPayload payload = command.toPayload();
             Map<String, Object> updated = payload.toUpdateMap();
 
@@ -440,9 +457,14 @@ class ChatRoomCommandServiceTest {
                     .update(id, updated, oldTitle);
 
             // when & then
-            assertDoesNotThrow(() -> sut.update(id, command));
+            assertDoesNotThrow(() -> sut.update(command));
 
-            InOrder inOrder = inOrder(persistence, domain, outboxEventListPublishPort, cache);
+            InOrder inOrder = inOrder(
+                    persistence,
+                    domain,
+                    outboxEventListPublishPort,
+                    cache
+            );
 
             inOrder.verify(persistence).findById(id);
             inOrder.verify(domain).getTitle();
@@ -461,12 +483,17 @@ class ChatRoomCommandServiceTest {
         @DisplayName("수정할 채팅방이 없으면 ChatRoomNotFoundException을 던지고 이벤트 발행과 캐시 갱신을 수행하지 않는다")
         void update_should_throw_if_domain_not_found() {
             // given
-            ChatRoomUpdateCommand command = new ChatRoomUpdateCommand("수정된 제목", "수정된 설명", ChatRoomCategory.FREE);
+            ChatRoomUpdateCommand command = new ChatRoomUpdateCommand(
+                    id,
+                    "수정된 제목",
+                    "수정된 설명",
+                    category
+            );
 
             when(persistence.findById(id)).thenReturn(Optional.empty());
 
             // when & then
-            assertThrows(ChatRoomNotFoundException.class, () -> sut.update(id, command));
+            assertThrows(ChatRoomNotFoundException.class, () -> sut.update(command));
 
             verify(persistence).findById(id);
             verify(outboxEventListPublishPort, never()).publish(any());
@@ -479,7 +506,13 @@ class ChatRoomCommandServiceTest {
             // given
             ChatRoom domain = mock(ChatRoom.class);
 
-            ChatRoomUpdateCommand command = new ChatRoomUpdateCommand("수정된 제목", "수정된 설명", ChatRoomCategory.FREE);
+            ChatRoomUpdateCommand command = new ChatRoomUpdateCommand(
+                    id,
+                    "수정된 제목",
+                    "수정된 설명",
+                    category
+            );
+
             ChatRoomUpdatedPayload payload = command.toPayload();
 
             when(persistence.findById(id)).thenReturn(Optional.of(domain));
@@ -490,7 +523,7 @@ class ChatRoomCommandServiceTest {
                     .update(payload);
 
             // when & then
-            assertThrows(RuntimeException.class, () -> sut.update(id, command));
+            assertThrows(RuntimeException.class, () -> sut.update(command));
 
             verify(persistence).findById(id);
             verify(domain).getTitle();

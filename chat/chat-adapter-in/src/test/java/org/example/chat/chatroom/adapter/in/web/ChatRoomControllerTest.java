@@ -1,11 +1,10 @@
 package org.example.chat.chatroom.adapter.in.web;
 
-import org.example.chat.chatroom.application.dto.ChatRoomUpdateCommand;
+import org.example.chat.chatroom.application.service.command.ChatRoomUpdateCommand;
 import org.example.chat.chatroom.application.query.MyChatRoomSummary;
 import org.example.chat.chatroom.application.service.command.ChatRoomCreateCommand;
 import org.example.common.test.config.TestBootApplication;
 import org.bson.types.ObjectId;
-import org.example.chat.chatroom.application.dto.ChatRoomCreateRequest;
 import org.example.chat.chatroom.application.port.in.ChatRoomCommandUseCase;
 import org.example.chat.chatroom.application.port.in.ChatRoomQueryUseCase;
 import org.example.chat.chatroom.domain.model.ChatRoom;
@@ -691,12 +690,12 @@ class ChatRoomControllerTest {
                     .willReturn(false);
 
             String body = """
-            {
-              "title": "수정제목",
-              "description": "수정설명",
-              "category": "%s"
-            }
-            """.formatted(category.name());
+        {
+          "title": "수정제목",
+          "description": "수정설명",
+          "category": "%s"
+        }
+        """.formatted(category.name());
 
             // when
             mockMvc.perform(patch("/chat/room/{roomId}", roomId1)
@@ -712,10 +711,11 @@ class ChatRoomControllerTest {
                     .existsByTitle("수정제목");
 
             verify(chatRoomCommandUseCase)
-                    .update(eq(roomId1), captor.capture());
+                    .update(captor.capture());
 
             ChatRoomUpdateCommand command = captor.getValue();
 
+            assertThat(command.roomId()).isEqualTo(roomId1);
             assertThat(command.title()).isEqualTo("수정제목");
             assertThat(command.description()).isEqualTo("수정설명");
             assertThat(command.category()).isEqualTo(category);
@@ -729,10 +729,10 @@ class ChatRoomControllerTest {
                     .willReturn(false);
 
             String body = """
-            {
-              "title": "수정제목"
-            }
-            """;
+        {
+          "title": "수정제목"
+        }
+        """;
 
             // when
             mockMvc.perform(patch("/chat/room/{roomId}", roomId1)
@@ -748,10 +748,11 @@ class ChatRoomControllerTest {
                     .existsByTitle("수정제목");
 
             verify(chatRoomCommandUseCase)
-                    .update(eq(roomId1), captor.capture());
+                    .update(captor.capture());
 
             ChatRoomUpdateCommand command = captor.getValue();
 
+            assertThat(command.roomId()).isEqualTo(roomId1);
             assertThat(command.title()).isEqualTo("수정제목");
             assertThat(command.description()).isNull();
             assertThat(command.category()).isNull();
@@ -762,10 +763,10 @@ class ChatRoomControllerTest {
         void updateDescriptionOnly() throws Exception {
             // given
             String body = """
-            {
-              "description": "수정설명"
-            }
-            """;
+        {
+          "description": "수정설명"
+        }
+        """;
 
             // when
             mockMvc.perform(patch("/chat/room/{roomId}", roomId1)
@@ -778,10 +779,11 @@ class ChatRoomControllerTest {
                     ArgumentCaptor.forClass(ChatRoomUpdateCommand.class);
 
             verify(chatRoomCommandUseCase)
-                    .update(eq(roomId1), captor.capture());
+                    .update(captor.capture());
 
             ChatRoomUpdateCommand command = captor.getValue();
 
+            assertThat(command.roomId()).isEqualTo(roomId1);
             assertThat(command.title()).isNull();
             assertThat(command.description()).isEqualTo("수정설명");
             assertThat(command.category()).isNull();
@@ -795,10 +797,10 @@ class ChatRoomControllerTest {
         void updateCategoryOnly() throws Exception {
             // given
             String body = """
-            {
-              "category": "%s"
-            }
-            """.formatted(category.name());
+        {
+          "category": "%s"
+        }
+        """.formatted(category.name());
 
             // when
             mockMvc.perform(patch("/chat/room/{roomId}", roomId1)
@@ -811,10 +813,11 @@ class ChatRoomControllerTest {
                     ArgumentCaptor.forClass(ChatRoomUpdateCommand.class);
 
             verify(chatRoomCommandUseCase)
-                    .update(eq(roomId1), captor.capture());
+                    .update(captor.capture());
 
             ChatRoomUpdateCommand command = captor.getValue();
 
+            assertThat(command.roomId()).isEqualTo(roomId1);
             assertThat(command.title()).isNull();
             assertThat(command.description()).isNull();
             assertThat(command.category()).isEqualTo(category);
@@ -836,7 +839,7 @@ class ChatRoomControllerTest {
                     .andExpect(status().isBadRequest());
 
             verify(chatRoomCommandUseCase, never())
-                    .update(anyString(), any(ChatRoomUpdateCommand.class));
+                    .update(any(ChatRoomUpdateCommand.class));
         }
 
         @Test
@@ -844,10 +847,10 @@ class ChatRoomControllerTest {
         void updateBlankTitle() throws Exception {
             // given
             String body = """
-            {
-              "title": "   "
-            }
-            """;
+        {
+          "title": "   "
+        }
+        """;
 
             // when & then
             mockMvc.perform(patch("/chat/room/{roomId}", roomId1)
@@ -858,7 +861,7 @@ class ChatRoomControllerTest {
                     .andExpect(jsonPath("$.errors[0].code").value("NotBlankIfPresent"));
 
             verify(chatRoomCommandUseCase, never())
-                    .update(anyString(), any(ChatRoomUpdateCommand.class));
+                    .update(any(ChatRoomUpdateCommand.class));
         }
 
         @Test
@@ -866,10 +869,10 @@ class ChatRoomControllerTest {
         void updateBlankDescription() throws Exception {
             // given
             String body = """
-            {
-              "description": "   "
-            }
-            """;
+        {
+          "description": "   "
+        }
+        """;
 
             // when & then
             mockMvc.perform(patch("/chat/room/{roomId}", roomId1)
@@ -880,7 +883,7 @@ class ChatRoomControllerTest {
                     .andExpect(jsonPath("$.errors[0].code").value("NotBlankIfPresent"));
 
             verify(chatRoomCommandUseCase, never())
-                    .update(anyString(), any(ChatRoomUpdateCommand.class));
+                    .update(any(ChatRoomUpdateCommand.class));
         }
 
         @Test
@@ -890,10 +893,10 @@ class ChatRoomControllerTest {
             String longTitle = "가".repeat(101);
 
             String body = """
-            {
-              "title": "%s"
-            }
-            """.formatted(longTitle);
+        {
+          "title": "%s"
+        }
+        """.formatted(longTitle);
 
             // when & then
             mockMvc.perform(patch("/chat/room/{roomId}", roomId1)
@@ -904,7 +907,7 @@ class ChatRoomControllerTest {
                     .andExpect(jsonPath("$.errors[0].code").value("Size"));
 
             verify(chatRoomCommandUseCase, never())
-                    .update(anyString(), any(ChatRoomUpdateCommand.class));
+                    .update(any(ChatRoomUpdateCommand.class));
         }
 
         @Test
@@ -914,10 +917,10 @@ class ChatRoomControllerTest {
             String longDescription = "가".repeat(2001);
 
             String body = """
-            {
-              "description": "%s"
-            }
-            """.formatted(longDescription);
+        {
+          "description": "%s"
+        }
+        """.formatted(longDescription);
 
             // when & then
             mockMvc.perform(patch("/chat/room/{roomId}", roomId1)
@@ -928,7 +931,7 @@ class ChatRoomControllerTest {
                     .andExpect(jsonPath("$.errors[0].code").value("Size"));
 
             verify(chatRoomCommandUseCase, never())
-                    .update(anyString(), any(ChatRoomUpdateCommand.class));
+                    .update(any(ChatRoomUpdateCommand.class));
         }
 
         @Test
@@ -939,10 +942,10 @@ class ChatRoomControllerTest {
                     .willReturn(true);
 
             String body = """
-            {
-              "title": "중복 제목"
-            }
-            """;
+        {
+          "title": "중복 제목"
+        }
+        """;
 
             // when & then
             mockMvc.perform(patch("/chat/room/{roomId}", roomId1)
@@ -956,7 +959,7 @@ class ChatRoomControllerTest {
                     .existsByTitle("중복 제목");
 
             verify(chatRoomCommandUseCase, never())
-                    .update(anyString(), any(ChatRoomUpdateCommand.class));
+                    .update(any(ChatRoomUpdateCommand.class));
         }
 
         @Test
@@ -967,10 +970,10 @@ class ChatRoomControllerTest {
                     .willReturn(false);
 
             String body = """
-            {
-              "title": "수정제목"
-            }
-            """;
+        {
+          "title": "수정제목"
+        }
+        """;
 
             // when & then
             mockMvc.perform(patch("/chat/room/{roomId}", " ")
@@ -981,7 +984,7 @@ class ChatRoomControllerTest {
                     .andExpect(jsonPath("$.errors[0].code").value("NotBlank"));
 
             verify(chatRoomCommandUseCase, never())
-                    .update(anyString(), any(ChatRoomUpdateCommand.class));
+                    .update(any(ChatRoomUpdateCommand.class));
         }
 
         @Test
@@ -989,10 +992,10 @@ class ChatRoomControllerTest {
         void updateInvalidCategory() throws Exception {
             // given
             String body = """
-            {
-              "category": "WRONG_CATEGORY"
-            }
-            """;
+        {
+          "category": "WRONG_CATEGORY"
+        }
+        """;
 
             // when & then
             mockMvc.perform(patch("/chat/room/{roomId}", roomId1)
@@ -1001,7 +1004,7 @@ class ChatRoomControllerTest {
                     .andExpect(status().isBadRequest());
 
             verify(chatRoomCommandUseCase, never())
-                    .update(anyString(), any(ChatRoomUpdateCommand.class));
+                    .update(any(ChatRoomUpdateCommand.class));
         }
     }
 

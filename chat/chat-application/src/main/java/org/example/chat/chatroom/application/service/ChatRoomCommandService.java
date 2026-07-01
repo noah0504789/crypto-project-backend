@@ -2,7 +2,7 @@ package org.example.chat.chatroom.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.chat.chatroom.application.dto.ChatRoomUpdateCommand;
+import org.example.chat.chatroom.application.service.command.ChatRoomUpdateCommand;
 import org.example.chat.chatroom.application.port.in.ChatRoomCommandUseCase;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomIdGeneratorPort;
@@ -53,16 +53,18 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
         activity(domain.getId(), domain.getHostId(), 0L, 0L);
     }
 
-    public void update(String id, ChatRoomUpdateCommand command) {
+    @Override
+    public void update(ChatRoomUpdateCommand command) {
+        String id = command.roomId();
         ChatRoom domain = persistence.findById(id)
                 .orElseThrow(() -> new ChatRoomNotFoundException(id));
 
-        String oldTitle = domain.getTitle();
         ChatRoomUpdatedPayload payload = command.toPayload();
+        String oldTitle = domain.getTitle();
 
         domain.update(payload);
-        publishEvent(domain, "chatroom update");
 
+        publishEvent(domain, "chatroom update");
         updateCacheSafely(domain, payload, oldTitle);
     }
 
