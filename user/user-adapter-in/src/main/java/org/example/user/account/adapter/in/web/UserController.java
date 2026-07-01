@@ -58,7 +58,7 @@ public class UserController {
             return ResponseEntity.badRequest().build();
         }
 
-        userCommandUseCase.updateProfile(publicId, request.nickname());
+        userCommandUseCase.updateProfile(request.toCommand(publicId));
 
         return ResponseEntity.noContent().build();
     }

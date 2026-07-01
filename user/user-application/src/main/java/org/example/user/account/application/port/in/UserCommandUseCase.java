@@ -1,12 +1,11 @@
 package org.example.user.account.application.port.in;
 
+import org.example.user.account.application.service.command.UpdateProfileCommand;
 import org.example.user.account.domain.model.User;
-
-import java.util.UUID;
 
 public interface UserCommandUseCase {
 
-    void updateProfile(UUID publicId, String nickname);
+    void updateProfile(UpdateProfileCommand command);
 
     User signUpOauth2(String sub, String email, String nickname);
 

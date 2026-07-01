@@ -1,6 +1,7 @@
 package org.example.user.account.application.service;
 
 import org.example.user.account.application.port.out.UserPersistencePort;
+import org.example.user.account.application.service.command.UpdateProfileCommand;
 import org.example.user.account.domain.exception.UserNotFoundException;
 import org.example.user.account.domain.model.User;
 import org.example.user.role.application.port.out.RolePersistencePort;
@@ -66,31 +67,43 @@ class UserCommandServiceTest {
             // given
             User user = mock(User.class);
 
+            UpdateProfileCommand command = new UpdateProfileCommand(
+                    PUBLIC_ID,
+                    NEW_NICKNAME
+            );
+
             given(userRepository.findByPublicId(PUBLIC_ID))
                     .willReturn(Optional.of(user));
 
             // when
-            sut.updateProfile(PUBLIC_ID, NEW_NICKNAME);
+            sut.updateProfile(command);
 
             // then
             InOrder inOrder = inOrder(userRepository, user);
 
             inOrder.verify(userRepository).findByPublicId(PUBLIC_ID);
             inOrder.verify(user).updateNickname(NEW_NICKNAME);
+            inOrder.verify(userRepository).save(user);
         }
 
         @Test
         @DisplayName("publicId에 해당하는 유저가 없으면 UserNotFoundException을 던진다")
         void updateProfile_should_throw_exception_when_user_not_found() {
             // given
+            UpdateProfileCommand command = new UpdateProfileCommand(
+                    PUBLIC_ID,
+                    NEW_NICKNAME
+            );
+
             given(userRepository.findByPublicId(PUBLIC_ID))
                     .willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> sut.updateProfile(PUBLIC_ID, NEW_NICKNAME))
+            assertThatThrownBy(() -> sut.updateProfile(command))
                     .isInstanceOf(UserNotFoundException.class);
 
             verify(userRepository).findByPublicId(PUBLIC_ID);
+            verify(userRepository, never()).save(any());
         }
     }
 

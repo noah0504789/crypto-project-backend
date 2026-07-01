@@ -10,6 +10,7 @@ import org.example.user.account.adapter.in.web.dto.UserProfileUpdateRequest;
 import org.example.user.account.application.port.in.UserCommandUseCase;
 import org.example.user.account.application.port.in.UserQueryUseCase;
 import org.example.user.account.application.port.out.UserPersistencePort;
+import org.example.user.account.application.service.command.UpdateProfileCommand;
 import org.example.user.account.application.validation.UniqueUserNicknameValidator;
 import org.example.user.account.domain.model.User;
 import org.example.user.role.domain.model.Role;
@@ -204,6 +205,11 @@ class UserControllerWebMvcTest {
         UserProfileUpdateRequest request =
                 new UserProfileUpdateRequest("updatedUser");
 
+        UpdateProfileCommand command = new UpdateProfileCommand(
+                publicId,
+                "updatedUser"
+        );
+
         given(userPersistencePort.existsByNickname("updatedUser"))
                 .willReturn(false);
 
@@ -223,7 +229,7 @@ class UserControllerWebMvcTest {
 
         then(userCommandUseCase)
                 .should()
-                .updateProfile(publicId, "updatedUser");
+                .updateProfile(command);
 
         then(userQueryUseCase)
                 .shouldHaveNoInteractions();

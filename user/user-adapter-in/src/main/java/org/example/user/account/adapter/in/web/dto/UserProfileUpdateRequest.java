@@ -3,7 +3,10 @@ package org.example.user.account.adapter.in.web.dto;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.example.common.validation.NotBlankIfPresent;
+import org.example.user.account.application.service.command.UpdateProfileCommand;
 import org.example.user.account.application.validation.UniqueUserNickname;
+
+import java.util.UUID;
 
 public record UserProfileUpdateRequest(
 
@@ -15,5 +18,9 @@ public record UserProfileUpdateRequest(
 ) {
     public boolean isEmpty() {
         return nickname == null;
+    }
+
+    public UpdateProfileCommand toCommand(UUID publicId) {
+        return new UpdateProfileCommand(publicId, nickname);
     }
 }
