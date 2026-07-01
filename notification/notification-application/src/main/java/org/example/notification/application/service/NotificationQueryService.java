@@ -3,7 +3,7 @@ package org.example.notification.application.service;
 import lombok.RequiredArgsConstructor;
 import org.example.notification.application.port.in.NotificationQueryUseCase;
 import org.example.notification.application.port.out.NotificationPersistencePort;
-import org.example.notification.application.service.query.NotificationInboxItem;
+import org.example.notification.application.service.result.NotificationInboxItem;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

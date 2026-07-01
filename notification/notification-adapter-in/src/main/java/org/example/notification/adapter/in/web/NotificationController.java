@@ -6,7 +6,7 @@ import org.example.notification.adapter.in.web.dto.NotificationCursor;
 import org.example.notification.adapter.in.web.dto.NotificationResponse;
 import org.example.notification.application.port.in.NotificationCommandUseCase;
 import org.example.notification.application.port.in.NotificationQueryUseCase;
-import org.example.notification.application.service.query.NotificationInboxItem;
+import org.example.notification.application.service.result.NotificationInboxItem;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

@@ -1,4 +1,4 @@
-package org.example.notification.application.service.query;
+package org.example.notification.application.service.result;
 
 import org.example.notification.domain.model.Notification;
 import org.example.notification.domain.model.NotificationMessagePart;

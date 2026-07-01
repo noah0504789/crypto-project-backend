@@ -1,6 +1,6 @@
 package org.example.notification.application.port.in;
 
-import org.example.notification.application.service.query.NotificationInboxItem;
+import org.example.notification.application.service.result.NotificationInboxItem;
 
 import java.util.List;
 import java.util.UUID;
