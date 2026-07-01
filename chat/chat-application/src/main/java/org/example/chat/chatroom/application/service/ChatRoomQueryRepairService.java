@@ -2,7 +2,7 @@ package org.example.chat.chatroom.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.chat.chatroom.application.dto.ChatRoomCacheLookupResult;
+import org.example.chat.chatroom.application.service.result.ChatRoomCacheLookupResult;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.domain.model.ChatRoom;

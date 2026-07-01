@@ -1,7 +1,7 @@
 package org.example.chat.chatmessage.application.port.out;
 
 import org.example.chat.chatmessage.domain.model.ChatMessage;
-import org.example.chat.chatroom.application.dto.ChatRoomMembershipScore;
+import org.example.chat.chatroom.application.service.result.ChatRoomMembershipScore;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 
 import java.util.List;

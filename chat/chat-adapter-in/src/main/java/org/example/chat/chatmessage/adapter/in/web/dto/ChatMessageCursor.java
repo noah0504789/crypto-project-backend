@@ -1,4 +1,4 @@
-package org.example.chat.chatmessage.application.dto;
+package org.example.chat.chatmessage.adapter.in.web.dto;
 
 // TODO: validation check
 public record ChatMessageCursor(

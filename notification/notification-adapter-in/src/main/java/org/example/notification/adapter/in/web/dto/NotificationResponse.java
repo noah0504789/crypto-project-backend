@@ -1,7 +1,7 @@
 package org.example.notification.adapter.in.web.dto;
 
 import org.example.notification.domain.model.NotificationMessagePart;
-import org.example.notification.application.service.query.NotificationInboxItem;
+import org.example.notification.application.service.result.NotificationInboxItem;
 
 import java.time.LocalDateTime;
 import java.util.List;

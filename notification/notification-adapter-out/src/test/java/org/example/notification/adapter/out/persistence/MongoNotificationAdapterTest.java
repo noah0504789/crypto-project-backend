@@ -3,7 +3,7 @@ package org.example.notification.adapter.out.persistence;
 import org.bson.types.ObjectId;
 import org.example.common.clock.Clock;
 import org.example.common.time.ServiceZoneUtils;
-import org.example.notification.application.service.query.NotificationInboxItem;
+import org.example.notification.application.service.result.NotificationInboxItem;
 import org.example.notification.domain.model.Notification;
 import org.example.notification.domain.model.NotificationRecipient;
 import org.example.notification.domain.model.NotificationType;

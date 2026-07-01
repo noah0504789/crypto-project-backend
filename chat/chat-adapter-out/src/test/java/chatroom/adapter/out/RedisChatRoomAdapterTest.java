@@ -2,7 +2,7 @@ package chatroom.adapter.out;
 
 import config.TestRedisConfig;
 import org.example.chat.chatroom.adapter.out.cache.RedisChatRoomAdapter;
-import org.example.chat.chatroom.application.dto.ChatRoomCacheLookupResult;
+import org.example.chat.chatroom.application.service.result.ChatRoomCacheLookupResult;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.common.test.config.TestBootApplication;

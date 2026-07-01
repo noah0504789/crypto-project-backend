@@ -1,4 +1,4 @@
-package org.example.chat.chatroom.application.dto;
+package org.example.chat.chatroom.adapter.in.web.dto;
 
 import jakarta.validation.constraints.Size;
 import org.example.chat.chatroom.application.service.command.ChatRoomUpdateCommand;

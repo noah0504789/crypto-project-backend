@@ -1,8 +1,8 @@
-package org.example.chat.chatroom.adapter.in.dto;
+package org.example.chat.chatroom.adapter.in.web.dto;
 
 import lombok.Builder;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
-import org.example.chat.chatroom.application.query.MyChatRoomSummary;
+import org.example.chat.chatroom.application.service.result.MyChatRoomSummary;
 
 import java.time.Instant;
 

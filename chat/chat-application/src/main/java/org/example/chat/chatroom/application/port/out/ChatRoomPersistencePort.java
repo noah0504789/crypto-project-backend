@@ -1,6 +1,6 @@
 package org.example.chat.chatroom.application.port.out;
 
-import org.example.chat.chatroom.application.dto.ChatRoomMembershipScore;
+import org.example.chat.chatroom.application.service.result.ChatRoomMembershipScore;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 

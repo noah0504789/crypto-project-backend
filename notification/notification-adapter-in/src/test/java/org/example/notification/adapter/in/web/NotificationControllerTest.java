@@ -3,7 +3,7 @@ package org.example.notification.adapter.in.web;
 import org.example.common.test.config.TestBootApplication;
 import org.example.notification.application.port.in.NotificationCommandUseCase;
 import org.example.notification.application.port.in.NotificationQueryUseCase;
-import org.example.notification.application.service.query.NotificationInboxItem;
+import org.example.notification.application.service.result.NotificationInboxItem;
 import org.example.notification.domain.model.NotificationMessagePart;
 import org.example.notification.domain.model.NotificationType;
 import org.junit.jupiter.api.DisplayName;

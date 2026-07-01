@@ -1,4 +1,4 @@
-package org.example.chat.chatroom.application.query;
+package org.example.chat.chatroom.application.service.result;
 
 import lombok.Builder;
 import org.example.chat.chatroom.domain.model.ChatRoom;

@@ -1,6 +1,6 @@
 package org.example.chat.chatroom.application.port.in;
 
-import org.example.chat.chatroom.application.query.MyChatRoomSummary;
+import org.example.chat.chatroom.application.service.result.MyChatRoomSummary;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 
