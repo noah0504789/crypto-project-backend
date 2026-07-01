@@ -6,11 +6,8 @@ dependencies {
     implementation project(':common:common-core')
     implementation project(':common:common-web')
     implementation project(':common:common-grpc')
-    implementation project(':oauth2-authorization-server:oauth2-authorization-server-application')
     implementation project(':protobuf')
-
-    implementation(libs.grpc.server.spring.boot.starter)
-    implementation(libs.protobuf.java)
+    implementation project(':oauth2-authorization-server:oauth2-authorization-server-application')
 
     implementation(libs.spring.security.oauth2.authorization.server)
 

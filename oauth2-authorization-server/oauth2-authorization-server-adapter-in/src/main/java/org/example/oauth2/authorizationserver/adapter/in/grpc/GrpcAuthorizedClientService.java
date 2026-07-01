@@ -5,9 +5,9 @@ import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
-import org.example.grpc.token.AuthorizedClientServiceGrpc;
-import org.example.grpc.token.RemoveAuthorizedClientRequest;
-import org.example.grpc.token.SaveAuthorizedClientRequest;
+import org.example.grpc.auth.AuthorizedClientServiceGrpc;
+import org.example.grpc.auth.RemoveAuthorizedClientRequest;
+import org.example.grpc.auth.SaveAuthorizedClientRequest;
 import org.example.oauth2.authorizationserver.token.application.port.out.AuthorizedClientPort;
 
 import java.util.Map;

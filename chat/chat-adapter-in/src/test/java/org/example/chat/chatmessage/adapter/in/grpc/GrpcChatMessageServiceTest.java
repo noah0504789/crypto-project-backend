@@ -2,9 +2,9 @@ package org.example.chat.chatmessage.adapter.in.grpc;
 
 import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
-import org.example.chat.chatmessage.adapter.in.exception.ChatMessageGrpcCancelledException;
-import org.example.chat.chatmessage.application.dto.ChatMessageSaveCommand;
-import org.example.chat.chatmessage.application.dto.ChatMessageSaveResult;
+import org.example.chat.chatmessage.adapter.in.grpc.exception.ChatMessageGrpcCancelledException;
+import org.example.chat.chatmessage.application.service.command.ChatMessageSaveCommand;
+import org.example.chat.chatmessage.application.service.result.ChatMessageSaveResult;
 import org.example.chat.chatmessage.application.port.in.ChatMessageCommandUseCase;
 import org.example.grpc.chatmessage.GrpcChatMessageHardDeleteRequest;
 import org.example.grpc.chatmessage.GrpcChatMessageHardDeleteResponse;

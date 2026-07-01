@@ -12,6 +12,6 @@ dependencies {
     implementation(libs.micrometer.registry.prometheus)
     implementation(libs.caffeine)
 
-    testImplementation(libs.spring.security.test)
     testImplementation project(':common:common-test')
+    testImplementation(libs.spring.security.test)
 }

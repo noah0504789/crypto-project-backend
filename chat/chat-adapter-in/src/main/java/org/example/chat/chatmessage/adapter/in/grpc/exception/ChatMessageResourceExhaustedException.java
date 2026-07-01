@@ -1,4 +1,4 @@
-package org.example.chat.chatmessage.adapter.in.exception;
+package org.example.chat.chatmessage.adapter.in.grpc.exception;
 
 public class ChatMessageResourceExhaustedException extends ChatMessageGrpcException {
 

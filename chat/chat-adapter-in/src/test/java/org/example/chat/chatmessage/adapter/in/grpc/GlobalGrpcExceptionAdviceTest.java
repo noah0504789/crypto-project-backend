@@ -2,11 +2,11 @@ package org.example.chat.chatmessage.adapter.in.grpc;
 
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
-import org.example.chat.chatmessage.adapter.in.exception.ChatMessageResourceExhaustedException;
+import org.example.chat.chatmessage.adapter.in.grpc.exception.ChatMessageResourceExhaustedException;
 import org.example.chat.common.exception.ChatMessageCacheException;
 import org.example.chat.common.exception.ChatMessagePersistException;
 import org.example.chat.infra.exception.GlobalGrpcExceptionAdvice;
-import org.example.chat.chatmessage.adapter.in.exception.ChatMessageGrpcCancelledException;
+import org.example.chat.chatmessage.adapter.in.grpc.exception.ChatMessageGrpcCancelledException;
 import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
 import org.example.chat.chatmessage.domain.event.ChatMessageEventList;
 import org.example.chat.chatmessage.application.service.ChatMessageCommandService;

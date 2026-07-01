@@ -5,8 +5,8 @@ import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
-import org.example.chat.chatmessage.adapter.in.exception.ChatMessageGrpcCancelledException;
-import org.example.chat.chatmessage.application.dto.ChatMessageSaveResult;
+import org.example.chat.chatmessage.adapter.in.grpc.exception.ChatMessageGrpcCancelledException;
+import org.example.chat.chatmessage.application.service.result.ChatMessageSaveResult;
 import org.example.chat.chatmessage.application.port.in.ChatMessageCommandUseCase;
 import org.example.grpc.chatmessage.*;
 
