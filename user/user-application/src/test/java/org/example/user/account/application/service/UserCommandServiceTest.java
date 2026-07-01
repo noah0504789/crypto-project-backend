@@ -1,6 +1,7 @@
 package org.example.user.account.application.service;
 
 import org.example.user.account.application.port.out.UserPersistencePort;
+import org.example.user.account.application.service.command.SignUpOauth2Command;
 import org.example.user.account.application.service.command.UpdateProfileCommand;
 import org.example.user.account.domain.exception.UserNotFoundException;
 import org.example.user.account.domain.model.User;
@@ -120,6 +121,8 @@ class UserCommandServiceTest {
             User newUser = mock(User.class);
             User savedUser = mock(User.class);
 
+            SignUpOauth2Command command = new SignUpOauth2Command(SUB, EMAIL, NICKNAME);
+
             given(roleRepository.findByName(defaultRole))
                     .willReturn(Optional.of(role));
 
@@ -134,7 +137,7 @@ class UserCommandServiceTest {
                         .thenReturn(newUser);
 
                 // when
-                User result = sut.signUpOauth2(SUB, EMAIL, NICKNAME);
+                User result = sut.signUpOauth2(command);
 
                 // then
                 assertThat(result).isSameAs(savedUser);
@@ -156,6 +159,8 @@ class UserCommandServiceTest {
             // given
             RoleEnum defaultRole = RoleEnum.USER;
 
+            SignUpOauth2Command command = new SignUpOauth2Command(SUB, EMAIL, NICKNAME);
+
             given(roleRepository.findByName(defaultRole))
                     .willReturn(Optional.empty());
 
@@ -164,7 +169,7 @@ class UserCommandServiceTest {
                         .thenReturn(defaultRole);
 
                 // when & then
-                assertThatThrownBy(() -> sut.signUpOauth2(SUB, EMAIL, NICKNAME))
+                assertThatThrownBy(() -> sut.signUpOauth2(command))
                         .isInstanceOf(RoleNotFoundException.class);
 
                 verify(roleRepository).findByName(defaultRole);
@@ -172,7 +177,7 @@ class UserCommandServiceTest {
 
                 mockedUser.verify(User::getDefaultRole);
                 mockedUser.verify(
-                        () -> User.ofOAuth2(anyString(), anyString(), anyString()),
+                        () -> User.ofOAuth2(SUB, EMAIL, NICKNAME),
                         never()
                 );
             }

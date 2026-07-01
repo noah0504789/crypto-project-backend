@@ -3,6 +3,7 @@ package org.example.user.account.application.service;
 import lombok.RequiredArgsConstructor;
 import org.example.user.account.application.port.in.UserCommandUseCase;
 import org.example.user.account.application.port.out.UserPersistencePort;
+import org.example.user.account.application.service.command.SignUpOauth2Command;
 import org.example.user.account.application.service.command.UpdateProfileCommand;
 import org.example.user.account.domain.exception.UserNotFoundException;
 import org.example.user.account.domain.model.User;
@@ -38,10 +39,15 @@ public class UserCommandService implements UserCommandUseCase {
 
     @Override
     @Transactional
-    public User signUpOauth2(String sub, String email, String nickname) {
+    public User signUpOauth2(SignUpOauth2Command command) {
         Role role = getDefaultRole();
 
-        User newUser = User.ofOAuth2(sub, email, nickname);
+        User newUser = User.ofOAuth2(
+                command.sub(),
+                command.email(),
+                command.nickname()
+        );
+
         newUser.addRole(role);
 
         return userRepository.save(newUser);
