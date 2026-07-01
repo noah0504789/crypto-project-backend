@@ -1,4 +1,4 @@
-package org.example.chat.chatroom.application.dto;
+package org.example.chat.chatroom.adapter.in.web.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

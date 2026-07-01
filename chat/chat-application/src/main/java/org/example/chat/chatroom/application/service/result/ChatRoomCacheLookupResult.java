@@ -1,4 +1,4 @@
-package org.example.chat.chatroom.application.dto;
+package org.example.chat.chatroom.application.service.result;
 
 import org.example.chat.chatroom.domain.model.ChatRoom;
 
@@ -22,9 +22,5 @@ public record ChatRoomCacheLookupResult(
 
     public boolean isAllHit() {
         return !orderedIds.isEmpty() && misses.isEmpty();
-    }
-
-    public boolean hasMisses() {
-        return !misses.isEmpty();
     }
 }

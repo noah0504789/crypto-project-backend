@@ -2,7 +2,7 @@ package org.example.chat.chatroom.adapter.in.web;
 
 import org.example.chat.chatroom.application.service.command.ChatRoomActivityCommand;
 import org.example.chat.chatroom.application.service.command.ChatRoomUpdateCommand;
-import org.example.chat.chatroom.application.query.MyChatRoomSummary;
+import org.example.chat.chatroom.application.service.result.MyChatRoomSummary;
 import org.example.chat.chatroom.application.service.command.ChatRoomCreateCommand;
 import org.example.common.test.config.TestBootApplication;
 import org.bson.types.ObjectId;
