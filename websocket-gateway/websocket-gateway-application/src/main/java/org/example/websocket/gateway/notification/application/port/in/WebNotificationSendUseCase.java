@@ -2,7 +2,7 @@ package org.example.websocket.gateway.notification.application.port.in;
 
 import org.example.websocket.gateway.notification.application.service.command.WebNotificationCommand;
 
-public interface WebNotificationEventHandler {
+public interface WebNotificationSendUseCase {
 
-    void handle(WebNotificationCommand command, String txId);
+    void send(WebNotificationCommand command, String txId);
 }

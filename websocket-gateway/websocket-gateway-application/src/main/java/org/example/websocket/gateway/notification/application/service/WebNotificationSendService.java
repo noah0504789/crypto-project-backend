@@ -2,7 +2,7 @@ package org.example.websocket.gateway.notification.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.websocket.gateway.notification.application.port.in.WebNotificationEventHandler;
+import org.example.websocket.gateway.notification.application.port.in.WebNotificationSendUseCase;
 import org.example.websocket.gateway.notification.application.port.out.WebNotificationPort;
 import org.example.websocket.gateway.notification.application.service.command.WebNotificationCommand;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class WebNotificationEventService implements WebNotificationEventHandler {
+public class WebNotificationSendService implements WebNotificationSendUseCase {
 
     @Value("${app.instance-id:unknown}")
     private String instanceId;
@@ -19,7 +19,7 @@ public class WebNotificationEventService implements WebNotificationEventHandler 
     private final WebNotificationPort webNotificationPort;
 
     @Override
-    public void handle(WebNotificationCommand command, String txId) {
+    public void send(WebNotificationCommand command, String txId) {
         boolean sent = webNotificationPort.send(command, txId);
 
         if (sent) {

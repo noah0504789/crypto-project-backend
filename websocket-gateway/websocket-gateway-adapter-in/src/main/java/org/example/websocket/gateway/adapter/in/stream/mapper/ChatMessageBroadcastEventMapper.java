@@ -1,4 +1,4 @@
-package org.example.websocket.gateway.adapter.in.event.chatmessage;
+package org.example.websocket.gateway.adapter.in.stream.mapper;
 
 import org.example.contract.chatmessage.ChatMessageBroadcastEvent;
 import org.example.contract.chatmessage.ChatMessagePayload;

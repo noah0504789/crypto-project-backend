@@ -1,7 +1,8 @@
-package org.example.websocket.gateway.adapter.in.stomp;
+package org.example.websocket.gateway.adapter.in.websocket.stomp;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.example.websocket.gateway.adapter.in.websocket.stomp.mapper.StompChatMessageMapper;
 import org.example.websocket.gateway.chatmessage.application.port.in.ChatMessageSendUseCase;
 import org.example.websocket.gateway.stomp.dto.ChatMessageRequest;
 import org.springframework.messaging.handler.annotation.MessageMapping;

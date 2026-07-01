@@ -1,4 +1,4 @@
-package org.example.websocket.gateway.adapter.in.config;
+package org.example.websocket.gateway.adapter.in.websocket.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;

@@ -1,4 +1,4 @@
-package org.example.websocket.gateway.adapter.in.stomp;
+package org.example.websocket.gateway.adapter.in.websocket.stomp.mapper;
 
 import lombok.RequiredArgsConstructor;
 import org.example.websocket.gateway.chatmessage.application.service.command.ChatMessageSendCommand;

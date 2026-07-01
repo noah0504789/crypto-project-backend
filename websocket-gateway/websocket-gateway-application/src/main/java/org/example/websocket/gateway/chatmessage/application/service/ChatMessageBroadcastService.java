@@ -2,7 +2,7 @@ package org.example.websocket.gateway.chatmessage.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.websocket.gateway.chatmessage.application.port.in.ChatMessageBroadcastEventHandler;
+import org.example.websocket.gateway.chatmessage.application.port.in.ChatMessageBroadcastUseCase;
 import org.example.websocket.gateway.chatmessage.application.port.out.ChatMessageBroadcastPort;
 import org.example.websocket.gateway.chatmessage.application.service.command.ChatMessageBroadcastCommand;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class ChatMessageBroadcastEventService implements ChatMessageBroadcastEventHandler {
+public class ChatMessageBroadcastService implements ChatMessageBroadcastUseCase {
 
     @Value("${app.instance-id:unknown}")
     private String instanceId;
@@ -19,7 +19,7 @@ public class ChatMessageBroadcastEventService implements ChatMessageBroadcastEve
     private final ChatMessageBroadcastPort chatMessageBroadcastPort;
 
     @Override
-    public void handle(ChatMessageBroadcastCommand command, String txId) {
+    public void broadcast(ChatMessageBroadcastCommand command, String txId) {
         boolean sent = chatMessageBroadcastPort.broadcast(command, txId);
 
         if (sent) {

@@ -12,10 +12,10 @@ public enum KafkaTopic {
     CHAT_MESSAGE("chatmessage-event", "chatmessage-event.dlq", null),
     CHAT_MESSAGE_BROADCAST("chatmessage-broadcast-event", "chatmessage-broadcast-event.dlq", null),
 
-    NOTIFICATION("notification-broadcast-event", "notification-broadcast-event.dlq", "web-notification-event-out"),
-    WEB_NOTIFICATION_BROADCAST("notification-broadcast-event", "notification-broadcast-event.dlq", "web-notification-event-out"),
+    NOTIFICATION("notification-event", "notification-event.dlq", null),
+    WEB_NOTIFICATION_BROADCAST("web-notification-broadcast-event", "web-notification-broadcast-event.dlq", "web-notification-broadcast-event-out"),
 
-    MARKET_CHANGED("market-broadcast-event", null, null),
+    MARKET_CHANGED_BROADCAST("market-broadcast-event", null, null),
     PRICE_ALERT_DETECTED(null, null, "price-alert-detected-event-out");
 
     private final String topicName;

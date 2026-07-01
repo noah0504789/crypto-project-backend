@@ -1,4 +1,4 @@
-package org.example.websocket.gateway.adapter.in.event.chatroom;
+package org.example.websocket.gateway.adapter.in.stream.mapper;
 
 import org.example.contract.chatroom.MyChatRoomPayload;
 import org.example.contract.chatroom.MyChatRoomBadgeEvent;

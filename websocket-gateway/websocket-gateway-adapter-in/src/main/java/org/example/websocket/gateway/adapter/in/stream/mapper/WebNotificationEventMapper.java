@@ -1,4 +1,4 @@
-package org.example.websocket.gateway.adapter.in.event.notification;
+package org.example.websocket.gateway.adapter.in.stream.mapper;
 
 import org.example.notification.contract.event.WebNotificationEvent;
 import org.example.notification.contract.event.WebNotificationPayload;

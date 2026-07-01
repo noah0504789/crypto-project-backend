@@ -2,7 +2,7 @@ package org.example.websocket.gateway.chatroom.application.port.in;
 
 import org.example.websocket.gateway.chatroom.application.service.command.MyChatRoomBadgeCommand;
 
-public interface MyChatRoomBadgeEventHandler {
+public interface MyChatRoomBadgeSendUseCase {
 
-    void handle(MyChatRoomBadgeCommand command, String txId);
+    void send(MyChatRoomBadgeCommand command, String txId);
 }

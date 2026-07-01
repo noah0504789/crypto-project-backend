@@ -1,4 +1,4 @@
-package org.example.websocket.gateway.adapter.in.exception;
+package org.example.websocket.gateway.adapter.in.websocket.stomp.exception;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,7 +12,7 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 @Slf4j
 @ControllerAdvice
 @RequiredArgsConstructor
-public class GlobalMessageExceptionHandler {
+public class StompAckExceptionHandler {
 
     @MessageExceptionHandler(MethodArgumentNotValidException.class)
     @SendToUser("/queue/chat/ack")

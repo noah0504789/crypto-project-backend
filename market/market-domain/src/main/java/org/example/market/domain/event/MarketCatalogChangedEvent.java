@@ -15,7 +15,7 @@ public class MarketCatalogChangedEvent extends AbstractOutboxEvent implements Ha
 
     @JsonCreator
     public MarketCatalogChangedEvent() {
-        super(KafkaTopic.MARKET_CHANGED.getTopicName(), "MARKET_LIST", "MARKET_LIST");
+        super(KafkaTopic.MARKET_CHANGED_BROADCAST.getTopicName(), "MARKET_LIST", "MARKET_LIST");
     }
 
     public static MarketCatalogChangedEvent of() {

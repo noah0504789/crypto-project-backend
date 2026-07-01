@@ -2,7 +2,7 @@ package org.example.websocket.gateway.chatmessage.application.port.in;
 
 import org.example.websocket.gateway.chatmessage.application.service.command.ChatMessageBroadcastCommand;
 
-public interface ChatMessageBroadcastEventHandler {
+public interface ChatMessageBroadcastUseCase {
 
-    void handle(ChatMessageBroadcastCommand command, String txId);
+    void broadcast(ChatMessageBroadcastCommand command, String txId);
 }

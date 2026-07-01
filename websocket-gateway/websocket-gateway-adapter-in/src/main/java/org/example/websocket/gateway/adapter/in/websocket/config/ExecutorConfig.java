@@ -1,4 +1,4 @@
-package org.example.websocket.gateway.adapter.in.config;
+package org.example.websocket.gateway.adapter.in.websocket.config;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
