@@ -4,10 +4,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.notification.application.port.out.NotificationPersistencePort;
 import org.example.notification.domain.event.NotificationSaveEvent;
-import org.example.notification.domain.event.NotificationPayload;
 import org.example.notification.domain.model.Notification;
 import org.example.notification.domain.model.NotificationRecipient;
-import org.example.notification.domain.port.NotificationEventHandler;
+import org.example.notification.domain.event.port.in.NotificationEventHandler;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

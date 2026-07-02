@@ -10,9 +10,9 @@ import org.example.common.time.ServiceZoneUtils;
 import org.example.notification.contract.event.WebNotificationEvent;
 import org.example.notification.contract.event.WebNotificationPayload;
 import org.example.notification.domain.event.NotificationEventList;
-import org.example.notification.domain.event.NotificationRecipientPayload;
+import org.example.notification.domain.event.payload.NotificationRecipientPayload;
 import org.example.notification.domain.event.NotificationSaveEvent;
-import org.example.notification.domain.event.NotificationPayload;
+import org.example.notification.domain.event.payload.NotificationPayload;
 
 import java.time.LocalDateTime;
 import java.util.List;

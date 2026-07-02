@@ -1,4 +1,4 @@
-package org.example.notification.domain.port;
+package org.example.notification.domain.event.port.in;
 
 import org.example.notification.domain.event.NotificationSaveEvent;
 

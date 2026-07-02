@@ -7,8 +7,10 @@ import lombok.ToString;
 import org.example.common.enums.KafkaTopic;
 import org.example.common.event.HandleableEvent;
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;
+import org.example.notification.domain.event.payload.NotificationPayload;
+import org.example.notification.domain.event.payload.NotificationRecipientPayload;
 import org.example.notification.domain.model.NotificationRecipient;
-import org.example.notification.domain.port.NotificationEventHandler;
+import org.example.notification.domain.event.port.in.NotificationEventHandler;
 
 import java.util.List;
 

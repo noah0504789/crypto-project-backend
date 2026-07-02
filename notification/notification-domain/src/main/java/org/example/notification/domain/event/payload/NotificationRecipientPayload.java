@@ -1,4 +1,4 @@
-package org.example.notification.domain.event;
+package org.example.notification.domain.event.payload;
 
 import org.example.notification.domain.model.NotificationRecipient;
 

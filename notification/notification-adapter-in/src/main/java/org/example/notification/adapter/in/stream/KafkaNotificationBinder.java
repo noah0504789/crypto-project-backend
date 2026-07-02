@@ -1,12 +1,12 @@
-package org.example.notification.adapter.in.event;
+package org.example.notification.adapter.in.stream;
 
 import lombok.extern.slf4j.Slf4j;
 import org.example.common.enums.KafkaHeaderKey;
 import org.example.common.event.HandleableEvent;
 import org.example.marketdetection.contract.event.PriceAlertDetectedEvent;
-import org.example.notification.application.service.PriceAlertNotificationEventService;
+import org.example.notification.application.port.in.PriceAlertNotificationCommandUseCase;
 import org.example.notification.application.service.command.PriceAlertNotificationCreateCommand;
-import org.example.notification.domain.port.NotificationEventHandler;
+import org.example.notification.domain.event.port.in.NotificationEventHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.Message;
@@ -15,10 +15,15 @@ import java.util.function.Consumer;
 
 @Slf4j
 @Configuration
-public class BinderConfig {
+public class KafkaNotificationBinder {
 
     @Bean
-    public Consumer<Message<PriceAlertDetectedEvent>> priceAlertDetectedEventConsumer(PriceAlertNotificationEventService priceAlertNotificationEventService) {
+    public Consumer<Message<HandleableEvent<NotificationEventHandler>>> notificationEventConsumer(NotificationEventHandler handler) {
+        return message -> message.getPayload().handle(handler, message.getHeaders().get(KafkaHeaderKey.TRANSACTION_ID.value())+"");
+    }
+
+    @Bean
+    public Consumer<Message<PriceAlertDetectedEvent>> priceAlertDetectedEventConsumer(PriceAlertNotificationCommandUseCase priceAlertNotificationCommandUseCase) {
         return message -> {
             PriceAlertDetectedEvent event = message.getPayload();
             String transactionId = message.getHeaders().get(KafkaHeaderKey.TRANSACTION_ID.value()) + "";
@@ -36,12 +41,7 @@ public class BinderConfig {
                             .transactionId(transactionId)
                             .build();
 
-            priceAlertNotificationEventService.create(command);
+            priceAlertNotificationCommandUseCase.create(command);
         };
-    }
-
-    @Bean
-    public Consumer<Message<HandleableEvent<NotificationEventHandler>>> notificationEventConsumer(NotificationEventHandler handler) {
-        return message -> message.getPayload().handle(handler, message.getHeaders().get(KafkaHeaderKey.TRANSACTION_ID.value())+"");
     }
 }

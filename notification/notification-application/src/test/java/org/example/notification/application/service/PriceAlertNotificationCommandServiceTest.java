@@ -35,7 +35,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class PriceAlertNotificationEventServiceTest {
+class PriceAlertNotificationCommandServiceTest {
 
     @Mock
     private Clock clock;
@@ -47,7 +47,7 @@ class PriceAlertNotificationEventServiceTest {
     private OutboxEventListPublishPort outboxEventListPublishPort;
 
     @InjectMocks
-    private PriceAlertNotificationEventService sut;
+    private PriceAlertNotificationCommandService sut;
 
     private static final String CODE = "KRW-BTC";
     private static final Double CHANGE_RATE = 0.05;
