@@ -25,13 +25,13 @@ api-path:
 spring:
   cloud:
     function:
-      definition: chatRoomBroadcastEventConsumer;chatMessageBroadcastEventConsumer;webNotificationEventConsumer
+      definition: myChatRoomBadgeEventConsumer;chatMessageBroadcastEventConsumer;webNotificationEventConsumer
     stream:
       bindings:
-        chatRoomBroadcastEventConsumer-in-0:
+        myChatRoomBadgeEventConsumer-in-0:
           destination: chatroom-broadcast-event
           contentType: application/json
-          group: chatroom-broadcast-${app.instance-id}
+          group: chatroom-broadcast-event-${app.instance-id}
           consumer:
             concurrency: 2
         chatMessageBroadcastEventConsumer-in-0:
@@ -41,9 +41,9 @@ spring:
           consumer:
             concurrency: 2
         webNotificationEventConsumer-in-0:
-          destination: web-notification-event
+          destination: web-notification-broadcast-event
           contentType: application/json
-          group: web-notification-${app.instance-id}
+          group: web-notification-broadcast-${app.instance-id}
           consumer:
             concurrency: 2
       kafka:
@@ -51,7 +51,7 @@ spring:
           consumer-properties:
             spring.json.trusted.packages: "*"
         bindings:
-          chatRoomBroadcastEventConsumer-in-0:
+          myChatRoomBadgeEventConsumer-in-0:
             consumer:
               reset-offsets: false
               start-offset: latest
