@@ -1,7 +1,7 @@
 package org.example.notification.adapter.out.grpc;
 
 import lombok.RequiredArgsConstructor;
-import org.example.market.client.PriceAlertChangeRateThreshold;
+import org.example.common.enums.PriceAlertChangeRateThreshold;
 import org.example.market.client.PriceAlertSettingClient;
 import org.example.notification.application.port.out.PriceAlertRecipientQueryPort;
 import org.springframework.stereotype.Repository;

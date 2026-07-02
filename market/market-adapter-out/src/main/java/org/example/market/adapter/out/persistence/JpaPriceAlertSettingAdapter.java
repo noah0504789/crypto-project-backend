@@ -6,7 +6,6 @@ import org.example.market.application.service.command.ChangePriceAlertSettingsCo
 import org.example.market.application.service.command.ChangePriceAlertSettingsCommand.CreatePriceAlertSettingCommand;
 import org.example.market.application.service.command.ChangePriceAlertSettingsCommand.UpdatePriceAlertSettingCommand;
 import org.example.market.application.service.command.ChangePriceAlertSettingsCommand.DeletePriceAlertSettingCommand;
-import org.example.market.client.PriceAlertChangeRateThreshold;
 import org.example.market.domain.model.PriceAlertSetting;
 import org.springframework.stereotype.Repository;
 
