@@ -4,12 +4,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.chat.chatmessage.application.port.out.ChatMessageCachePort;
 import org.example.chat.chatmessage.application.port.out.ChatMessagePersistencePort;
+import org.example.chat.chatmessage.application.service.query.ListChatMessagesQuery;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.common.redis.lock.DistributedLockExecutor;
 import org.example.common.redis.lock.DistributedLockPolicy;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 @Slf4j
 @Service
@@ -23,33 +25,31 @@ public class ChatMessageQueryRepairService {
     public List<ChatMessage> repairLatest(String roomId, int limit) {
         return distributedLockExecutor.execute(
                 "chatmessage:listLatest:" + roomId + ":" + limit,
-                () -> {
-                    List<ChatMessage> cached = cache.listLatest(roomId, limit);
-
-                    if (!cached.isEmpty()) {
-                        return cached;
-                    }
-
-                    return loadLatestAndWarmUp(roomId, limit);
-                },
+                () -> repairCachedMessages(
+                        cache.listLatest(roomId, limit),
+                        () -> loadLatestAndWarmUp(roomId, limit)
+                ),
                 DistributedLockPolicy.CACHE_WARM_UP
         );
     }
 
-    public List<ChatMessage> repairPrev(String roomId, String lastId, Long lastCreatedAtMillis, int limit) {
+    public List<ChatMessage> repairPrev(ListChatMessagesQuery query) {
         return distributedLockExecutor.execute(
-                "chatmessage:listPrev:" + roomId + ":" + lastId + ":" + lastCreatedAtMillis + ":" + limit,
-                () -> {
-                    List<ChatMessage> cached = cache.listPrev(roomId, lastId, lastCreatedAtMillis, limit);
-
-                    if (!cached.isEmpty()) {
-                        return cached;
-                    }
-
-                    return loadPrevAndWarmUp(roomId, lastId, lastCreatedAtMillis, limit);
-                },
+                "chatmessage:listPrev:" + query.roomId() + ":" + query.lastId() + ":" + query.cursorCreatedAtMillis() + ":" + query.limit(),
+                () -> repairCachedMessages(
+                        cache.listPrev(query.roomId(), query.lastId(), query.cursorCreatedAtMillis(), query.limit()),
+                        () -> loadPrevAndWarmUp(query)
+                ),
                 DistributedLockPolicy.CACHE_WARM_UP
         );
+    }
+
+    private List<ChatMessage> repairCachedMessages(List<ChatMessage> cached, Supplier<List<ChatMessage>> noCacheLoader) {
+        if (!cached.isEmpty()) {
+            return cached;
+        }
+
+        return noCacheLoader.get();
     }
 
     private List<ChatMessage> loadLatestAndWarmUp(String roomId, int limit) {
@@ -64,14 +64,14 @@ public class ChatMessageQueryRepairService {
         return stored;
     }
 
-    private List<ChatMessage> loadPrevAndWarmUp(String roomId, String lastId, Long lastCreatedAtMillis, int limit) {
-        List<ChatMessage> stored = persistence.listPrev(roomId, lastId, lastCreatedAtMillis, limit);
+    private List<ChatMessage> loadPrevAndWarmUp(ListChatMessagesQuery query) {
+        List<ChatMessage> stored = persistence.listPrev(query.roomId(), query.lastId(), query.cursorCreatedAtMillis(), query.limit());
 
         if (stored.isEmpty()) {
             return List.of();
         }
 
-        warmUpListSafely(stored, roomId);
+        warmUpListSafely(stored, query.roomId());
 
         return stored;
     }
@@ -80,7 +80,12 @@ public class ChatMessageQueryRepairService {
         try {
             cache.warmUpList(messages, roomId);
         } catch (RuntimeException e) {
-            log.warn("[cache] chatmessage warmUpList failed. roomId={}, size={}", roomId, messages == null ? 0 : messages.size(), e);
+            log.warn(
+                    "[cache] chatmessage warmUpList failed. roomId={}, size={}",
+                    roomId,
+                    messages == null ? 0 : messages.size(),
+                    e
+            );
         }
     }
 }
