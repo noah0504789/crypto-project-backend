@@ -2,6 +2,9 @@ package org.example.chat.chatroom.adapter.in.web;
 
 import org.example.chat.chatroom.application.service.command.ChatRoomActivityCommand;
 import org.example.chat.chatroom.application.service.command.ChatRoomUpdateCommand;
+import org.example.chat.chatroom.application.service.query.GetMyChatRoomQuery;
+import org.example.chat.chatroom.application.service.query.ListMyChatRoomsQuery;
+import org.example.chat.chatroom.application.service.query.ListPopularChatRoomsQuery;
 import org.example.chat.chatroom.application.service.result.MyChatRoomSummary;
 import org.example.chat.chatroom.application.service.command.ChatRoomCreateCommand;
 import org.example.common.test.config.TestBootApplication;
@@ -45,16 +48,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         NotBlankIfPresentValidator.class,
         GlobalExceptionHandler.class
 })
-class ChatRoomControllerTest {
+class ChatRoomControllerMvcTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ChatRoomCommandUseCase chatRoomCommandUseCase;
+    private ChatRoomQueryUseCase chatRoomQueryUseCase;
 
     @MockitoBean
-    private ChatRoomQueryUseCase chatRoomQueryUseCase;
+    private ChatRoomCommandUseCase chatRoomCommandUseCase;
 
     private final String USER_ID = "user-1";
     private final String HOST_ID = "host-1";
@@ -70,10 +73,12 @@ class ChatRoomControllerTest {
     class PopularChatRoomsTest {
 
         @Test
-        @DisplayName("cursor가 없으면 listMostPopular를 limit+1로 조회하고 hasNext=true를 반환한다")
+        @DisplayName("cursor가 없으면 listPopularRooms를 첫 페이지 Query로 limit+1 조회하고 hasNext=true를 반환한다")
         void popularChatRoomsFirstPageHasNext() throws Exception {
             // given
-            given(chatRoomQueryUseCase.listMostPopular(category, 3))
+            ListPopularChatRoomsQuery query = ListPopularChatRoomsQuery.firstPage(category, 3);
+
+            given(chatRoomQueryUseCase.listPopularRooms(query))
                     .willReturn(List.of(
                             chatRoom(roomId1, "방1", 30L),
                             chatRoom(roomId2, "방2", 20L),
@@ -90,16 +95,21 @@ class ChatRoomControllerTest {
                     .andExpect(jsonPath("$.items[0].id").value(roomId1))
                     .andExpect(jsonPath("$.items[1].id").value(roomId2));
 
-            verify(chatRoomQueryUseCase).listMostPopular(category, 3);
-            verify(chatRoomQueryUseCase, never())
-                    .listNextPopular(any(), anyString(), anyLong(), anyInt());
+            verify(chatRoomQueryUseCase).listPopularRooms(query);
         }
 
         @Test
-        @DisplayName("cursor가 있으면 listNextPopular를 limit+1로 조회한다")
+        @DisplayName("cursor가 있으면 listPopularRooms를 다음 페이지 Query로 limit+1 조회한다")
         void popularChatRoomsNextPage() throws Exception {
             // given
-            given(chatRoomQueryUseCase.listNextPopular(category, roomId3, 10L, 3))
+            ListPopularChatRoomsQuery query = ListPopularChatRoomsQuery.nextPage(
+                    category,
+                    roomId3,
+                    10L,
+                    3
+            );
+
+            given(chatRoomQueryUseCase.listPopularRooms(query))
                     .willReturn(List.of(
                             chatRoom(roomId2, "방2", 20L),
                             chatRoom(roomId1, "방1", 10L)
@@ -117,15 +127,16 @@ class ChatRoomControllerTest {
                     .andExpect(jsonPath("$.items[0].id").value(roomId2))
                     .andExpect(jsonPath("$.items[1].id").value(roomId1));
 
-            verify(chatRoomQueryUseCase).listNextPopular(category, roomId3, 10L, 3);
-            verify(chatRoomQueryUseCase, never()).listMostPopular(any(), anyInt());
+            verify(chatRoomQueryUseCase).listPopularRooms(query);
         }
 
         @Test
         @DisplayName("조회 결과가 비어 있으면 items=null, hasNext=false를 반환한다")
         void popularChatRoomsEmpty() throws Exception {
             // given
-            given(chatRoomQueryUseCase.listMostPopular(category, 11))
+            ListPopularChatRoomsQuery query = ListPopularChatRoomsQuery.firstPage(category, 11);
+
+            given(chatRoomQueryUseCase.listPopularRooms(query))
                     .willReturn(List.of());
 
             // when & then
@@ -135,7 +146,7 @@ class ChatRoomControllerTest {
                     .andExpect(jsonPath("$.items").doesNotExist())
                     .andExpect(jsonPath("$.hasNext").value(false));
 
-            verify(chatRoomQueryUseCase).listMostPopular(category, 11);
+            verify(chatRoomQueryUseCase).listPopularRooms(query);
         }
 
         @Test
@@ -144,8 +155,7 @@ class ChatRoomControllerTest {
             mockMvc.perform(get("/chat/rooms/popular"))
                     .andExpect(status().isBadRequest());
 
-            verify(chatRoomQueryUseCase, never()).listMostPopular(any(), anyInt());
-            verify(chatRoomQueryUseCase, never()).listNextPopular(any(), anyString(), anyLong(), anyInt());
+            verify(chatRoomQueryUseCase, never()).listPopularRooms(any());
         }
     }
 
@@ -154,10 +164,12 @@ class ChatRoomControllerTest {
     class MyChatRoomsTest {
 
         @Test
-        @DisplayName("cursor가 없으면 listLatestActive를 limit+1로 조회하고 hasNext=true를 반환한다")
+        @DisplayName("cursor가 없으면 listMyRooms를 첫 페이지 Query로 limit+1 조회하고 hasNext=true를 반환한다")
         void myChatRoomsFirstPageHasNext() throws Exception {
             // given
-            given(chatRoomQueryUseCase.listLatestActive(USER_ID, 3))
+            ListMyChatRoomsQuery query = ListMyChatRoomsQuery.firstPage(USER_ID, 3);
+
+            given(chatRoomQueryUseCase.listMyRooms(query))
                     .willReturn(List.of(
                             myChatRoomSummary(roomId1, "내 방1", 0L),
                             myChatRoomSummary(roomId2, "내 방2", 0L),
@@ -174,26 +186,27 @@ class ChatRoomControllerTest {
                     .andExpect(jsonPath("$.items[0].id").value(roomId1))
                     .andExpect(jsonPath("$.items[1].id").value(roomId2));
 
-            verify(chatRoomQueryUseCase).listLatestActive(USER_ID, 3);
-            verify(chatRoomQueryUseCase, never())
-                    .listActiveBefore(anyString(), anyString(), anyBoolean(), anyLong(), anyInt());
+            verify(chatRoomQueryUseCase).listMyRooms(query);
         }
 
         @Test
-        @DisplayName("cursor가 있으면 listActiveBefore를 limit+1로 조회한다")
+        @DisplayName("cursor가 있으면 listMyRooms를 다음 페이지 Query로 limit+1 조회한다")
         void myChatRoomsNextPage() throws Exception {
             // given
             Instant lastMsgCreatedAt = Instant.parse("2026-01-01T03:00:00Z");
 
-            given(chatRoomQueryUseCase.listActiveBefore(
+            ListMyChatRoomsQuery query = ListMyChatRoomsQuery.nextPage(
                     USER_ID,
                     roomId3,
                     true,
                     lastMsgCreatedAt.toEpochMilli(),
                     3
-            )).willReturn(List.of(
-                    myChatRoomSummary(roomId2, "내 방2", 0L)
-            ));
+            );
+
+            given(chatRoomQueryUseCase.listMyRooms(query))
+                    .willReturn(List.of(
+                            myChatRoomSummary(roomId2, "내 방2", 0L)
+                    ));
 
             // when & then
             mockMvc.perform(get("/chat/rooms/me")
@@ -207,14 +220,7 @@ class ChatRoomControllerTest {
                     .andExpect(jsonPath("$.items", hasSize(1)))
                     .andExpect(jsonPath("$.items[0].id").value(roomId2));
 
-            verify(chatRoomQueryUseCase).listActiveBefore(
-                    USER_ID,
-                    roomId3,
-                    true,
-                    lastMsgCreatedAt.toEpochMilli(),
-                    3
-            );
-            verify(chatRoomQueryUseCase, never()).listLatestActive(anyString(), anyInt());
+            verify(chatRoomQueryUseCase).listMyRooms(query);
         }
 
         @Test
@@ -223,14 +229,16 @@ class ChatRoomControllerTest {
             mockMvc.perform(get("/chat/rooms/me"))
                     .andExpect(status().isBadRequest());
 
-            verify(chatRoomQueryUseCase, never()).listLatestActive(anyString(), anyInt());
+            verify(chatRoomQueryUseCase, never()).listMyRooms(any());
         }
 
         @Test
         @DisplayName("조회 결과가 비어 있으면 items=null, hasNext=false를 반환한다")
         void myChatRoomsEmpty() throws Exception {
             // given
-            given(chatRoomQueryUseCase.listLatestActive(USER_ID, 11))
+            ListMyChatRoomsQuery query = ListMyChatRoomsQuery.firstPage(USER_ID, 11);
+
+            given(chatRoomQueryUseCase.listMyRooms(query))
                     .willReturn(List.of());
 
             // when & then
@@ -240,7 +248,7 @@ class ChatRoomControllerTest {
                     .andExpect(jsonPath("$.items").doesNotExist())
                     .andExpect(jsonPath("$.hasNext").value(false));
 
-            verify(chatRoomQueryUseCase).listLatestActive(USER_ID, 11);
+            verify(chatRoomQueryUseCase).listMyRooms(query);
         }
     }
 
@@ -252,7 +260,7 @@ class ChatRoomControllerTest {
         @DisplayName("채팅방 단건을 조회한다")
         void chatRoom_() throws Exception {
             // given
-            given(chatRoomQueryUseCase.findById(roomId1))
+            given(chatRoomQueryUseCase.getRoom(roomId1))
                     .willReturn(chatRoom(roomId1, "방1", 0L));
 
             // when & then
@@ -261,14 +269,16 @@ class ChatRoomControllerTest {
                     .andExpect(jsonPath("$.id").value(roomId1))
                     .andExpect(jsonPath("$.title").value("방1"));
 
-            verify(chatRoomQueryUseCase).findById(roomId1);
+            verify(chatRoomQueryUseCase).getRoom(roomId1);
         }
 
         @Test
         @DisplayName("내 채팅방 정보를 조회한다")
         void myChatRoom() throws Exception {
             // given
-            given(chatRoomQueryUseCase.findActive(roomId1, USER_ID))
+            GetMyChatRoomQuery query = GetMyChatRoomQuery.of(roomId1, USER_ID);
+
+            given(chatRoomQueryUseCase.getMyRoom(query))
                     .willReturn(myChatRoomSummary(roomId1, "내 방1", 0L));
 
             // when & then
@@ -278,7 +288,7 @@ class ChatRoomControllerTest {
                     .andExpect(jsonPath("$.id").value(roomId1))
                     .andExpect(jsonPath("$.title").value("내 방1"));
 
-            verify(chatRoomQueryUseCase).findActive(roomId1, USER_ID);
+            verify(chatRoomQueryUseCase).getMyRoom(query);
         }
 
         @Test
@@ -287,7 +297,7 @@ class ChatRoomControllerTest {
             mockMvc.perform(get("/chat/room/{roomId}/me", roomId1))
                     .andExpect(status().isBadRequest());
 
-            verify(chatRoomQueryUseCase, never()).findActive(anyString(), anyString());
+            verify(chatRoomQueryUseCase, never()).getMyRoom(any());
         }
     }
 

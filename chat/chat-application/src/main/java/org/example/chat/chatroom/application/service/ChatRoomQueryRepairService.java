@@ -2,6 +2,8 @@ package org.example.chat.chatroom.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.chat.chatroom.application.service.query.ListMyChatRoomsQuery;
+import org.example.chat.chatroom.application.service.query.ListPopularChatRoomsQuery;
 import org.example.chat.chatroom.application.service.result.ChatRoomCacheLookupResult;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -26,180 +29,155 @@ public class ChatRoomQueryRepairService {
     private final ChatRoomPersistencePort persistence;
     private final DistributedLockExecutor distributedLockExecutor;
 
-    public ChatRoom repairFindById(String id) {
+    public ChatRoom repairRoom(String roomId) {
         return distributedLockExecutor.execute(
-                "chatroom:findById:" + id,
-                () -> cache.findById(id)
-                        .orElseGet(() -> loadRoomAndWarmUp(id)),
+                "chatroom:findById:" + roomId,
+                () -> cache.findById(roomId)
+                        .orElseGet(() -> loadRoomAndWarmUp(roomId)),
                 DistributedLockPolicy.CACHE_WARM_UP
         );
     }
 
-    public List<ChatRoom> repairByIds(List<String> ids) {
-        if (ids == null || ids.isEmpty()) {
+    public List<ChatRoom> repairRoomsByIds(List<String> roomIds) {
+        if (roomIds == null || roomIds.isEmpty()) {
             return List.of();
         }
 
-        return ids.stream()
-                .map(this::repairByIdSafely)
+        return roomIds.stream()
+                .map(this::repairRoomSafely)
                 .filter(Objects::nonNull)
                 .toList();
     }
 
-    public List<ChatRoom> repairMostPopular(ChatRoomCategory category, int limit) {
+    public List<ChatRoom> repairPopularRooms(ChatRoomCategory category, int limit) {
         return distributedLockExecutor.execute(
                 "chatroom:listMostPopular:" + category.name() + ":" + limit,
-                () -> {
-                    ChatRoomCacheLookupResult cached = cache.listMostPopular(category, limit);
-
-                    if (cached.hasNoIndex()) {
-                        return loadMostPopularAndWarmUp(category, limit);
-                    }
-
-                    if (cached.isAllHit()) {
-                        return cached.hits();
-                    }
-
-                    List<ChatRoom> repaired = repairByIds(cached.misses());
-
-                    return mergeByOriginalOrder(cached.orderedIds(), cached.hits(), repaired, limit);
-                },
+                () -> repairCachedRooms(
+                        cache.listMostPopular(category, limit),
+                        () -> loadPopularRoomsAndWarmUp(category, limit),
+                        limit
+                ),
                 DistributedLockPolicy.CACHE_WARM_UP
         );
     }
 
-    public List<ChatRoom> repairNextPopular(ChatRoomCategory category, String lastId, Long lastPopularity, int limit) {
+    public List<ChatRoom> repairPopularRoomsAfter(ListPopularChatRoomsQuery query) {
         return distributedLockExecutor.execute(
-                "chatroom:listNextPopular:" + category.name() + ":" + lastId + ":" + lastPopularity + ":" + limit,
-                () -> {
-                    ChatRoomCacheLookupResult cached = cache.listNextPopular(category, lastId, lastPopularity, limit);
-
-                    if (cached.hasNoIndex()) {
-                        return loadNextPopularAndWarmUp(category, lastId, lastPopularity, limit);
-                    }
-
-                    if (cached.isAllHit()) {
-                        return cached.hits();
-                    }
-
-                    List<ChatRoom> repaired = repairByIds(cached.misses());
-
-                    return mergeByOriginalOrder(cached.orderedIds(), cached.hits(), repaired, limit);
-                },
+                "chatroom:listNextPopular:" + query.category().name() + ":" + query.lastId() + ":" + query.lastPopularity() + ":" + query.limit(),
+                () -> repairCachedRooms(
+                        cache.listNextPopular(query.category(), query.lastId(), query.lastPopularity(), query.limit()),
+                        () -> loadPopularRoomsAfterAndWarmUp(query.category(), query.lastId(), query.lastPopularity(), query.limit()),
+                        query.limit()
+                ),
                 DistributedLockPolicy.CACHE_WARM_UP
         );
     }
 
-    public List<ChatRoom> repairLatestActive(String memberId, int limit) {
+    public List<ChatRoom> repairMyRooms(String memberId, int limit) {
         return distributedLockExecutor.execute(
                 "chatroom:listLatestActive:" + memberId + ":" + limit,
-                () -> {
-                    ChatRoomCacheLookupResult cached = cache.listLatestActive(memberId, limit);
-
-                    if (cached.hasNoIndex()) {
-                        return loadLatestActiveAndWarmUp(memberId, limit);
-                    }
-
-                    if (cached.isAllHit()) {
-                        return cached.hits();
-                    }
-
-                    List<ChatRoom> repaired = repairByIds(cached.misses());
-
-                    return mergeByOriginalOrder(cached.orderedIds(), cached.hits(), repaired, limit);
-                },
+                () -> repairCachedRooms(
+                        cache.listLatestActive(memberId, limit),
+                        () -> loadMyRoomsAndWarmUp(memberId, limit),
+                        limit
+                ),
                 DistributedLockPolicy.CACHE_WARM_UP
         );
     }
 
-    public List<ChatRoom> repairActiveBefore(String memberId, String lastId, Long score, int limit) {
+    public List<ChatRoom> repairMyRoomsBefore(ListMyChatRoomsQuery query, Long score) {
         return distributedLockExecutor.execute(
-                "chatroom:listActiveBefore:" + memberId + ":" + lastId + ":" + score + ":" + limit,
-                () -> {
-                    ChatRoomCacheLookupResult cached = cache.listActiveBefore(memberId, lastId, score, limit);
-
-                    if (cached.hasNoIndex()) {
-                        return loadActiveBeforeAndWarmUp(memberId, lastId, score, limit);
-                    }
-
-                    if (cached.isAllHit()) {
-                        return cached.hits();
-                    }
-
-                    List<ChatRoom> repaired = repairByIds(cached.misses());
-
-                    return mergeByOriginalOrder(cached.orderedIds(), cached.hits(), repaired, limit);
-                },
+                "chatroom:listActiveBefore:" + query.memberId() + ":" + query.lastId() + ":" + score + ":" + query.limit(),
+                () -> repairCachedRooms(
+                        cache.listActiveBefore(query.memberId(), query.lastId(), score, query.limit()),
+                        () -> loadMyRoomsBeforeAndWarmUp(query.memberId(), query.lastId(), score, query.limit()),
+                        query.limit()
+                ),
                 DistributedLockPolicy.CACHE_WARM_UP
         );
     }
 
-    private ChatRoom loadRoomAndWarmUp(String id) {
-        ChatRoom stored = persistence.findByIdWithLatest(id)
-                .orElseThrow(() -> new ChatRoomNotFoundException(id));
+    private List<ChatRoom> repairCachedRooms(
+            ChatRoomCacheLookupResult cached,
+            Supplier<List<ChatRoom>> noIndexLoader,
+            int limit
+    ) {
+        if (cached.hasNoIndex()) {
+            return noIndexLoader.get();
+        }
+
+        if (cached.isAllHit()) {
+            return cached.hits();
+        }
+
+        List<ChatRoom> repaired = repairRoomsByIds(cached.misses());
+
+        return mergeRoomsByOriginalOrder(
+                cached.orderedIds(),
+                cached.hits(),
+                repaired,
+                limit
+        );
+    }
+
+    private ChatRoom loadRoomAndWarmUp(String roomId) {
+        ChatRoom stored = persistence.findByIdWithLatest(roomId)
+                .orElseThrow(() -> new ChatRoomNotFoundException(roomId));
 
         warmUpSafely(stored);
 
         return stored;
     }
 
-    private List<ChatRoom> loadMostPopularAndWarmUp(ChatRoomCategory category, int limit) {
-        List<ChatRoom> stored = persistence.listMostPopular(category, limit);
+    private List<ChatRoom> loadPopularRoomsAndWarmUp(ChatRoomCategory category, int limit) {
+        return warmUpAndReturn(persistence.listMostPopular(category, limit));
+    }
 
-        if (stored.isEmpty()) {
+    private List<ChatRoom> loadPopularRoomsAfterAndWarmUp(
+            ChatRoomCategory category,
+            String lastId,
+            Long lastPopularity,
+            int limit
+    ) {
+        return warmUpAndReturn(
+                persistence.listNextPopular(category, lastId, lastPopularity, limit)
+        );
+    }
+
+    private List<ChatRoom> loadMyRoomsAndWarmUp(String memberId, int limit) {
+        return warmUpAndReturn(persistence.listLatestActive(memberId, limit));
+    }
+
+    private List<ChatRoom> loadMyRoomsBeforeAndWarmUp(
+            String memberId,
+            String lastId,
+            Long score,
+            int limit
+    ) {
+        return warmUpAndReturn(
+                persistence.listActiveBefore(memberId, lastId, score, limit)
+        );
+    }
+
+    private List<ChatRoom> warmUpAndReturn(List<ChatRoom> rooms) {
+        if (rooms.isEmpty()) {
             return List.of();
         }
 
-        warmUpListSafely(stored);
+        warmUpListSafely(rooms);
 
-        return stored;
+        return rooms;
     }
 
-    private List<ChatRoom> loadNextPopular(ChatRoomCategory category, String lastId, Long lastPopularity, int limit) {
-        return persistence.listNextPopular(category, lastId, lastPopularity, limit);
-    }
-
-    private List<ChatRoom> loadNextPopularAndWarmUp(ChatRoomCategory category, String lastId, Long lastPopularity, int limit) {
-        List<ChatRoom> stored = loadNextPopular(category, lastId, lastPopularity, limit);
-
-        if (stored.isEmpty()) {
-            return List.of();
-        }
-
-        warmUpListSafely(stored);
-
-        return stored;
-    }
-
-    private List<ChatRoom> loadLatestActiveAndWarmUp(String memberId, int limit) {
-        List<ChatRoom> stored = persistence.listLatestActive(memberId, limit);
-
-        if (stored.isEmpty()) {
-            return List.of();
-        }
-
-        warmUpListSafely(stored);
-
-        return stored;
-    }
-
-    private List<ChatRoom> loadActiveBeforeAndWarmUp(String memberId, String lastId, Long score, int limit) {
-        List<ChatRoom> stored = persistence.listActiveBefore(memberId, lastId, score, limit);
-
-        if (stored.isEmpty()) {
-            return List.of();
-        }
-
-        warmUpListSafely(stored);
-
-        return stored;
-    }
-
-    private ChatRoom repairByIdSafely(String id) {
+    private ChatRoom repairRoomSafely(String roomId) {
         try {
-            return repairFindById(id);
+            return repairRoom(roomId);
         } catch (RuntimeException e) {
-            log.warn("[chatroom cache partial repair skipped] roomId={}, reason={}", id, e.getMessage());
+            log.warn(
+                    "[chatroom cache partial repair skipped] roomId={}, reason={}",
+                    roomId,
+                    e.getMessage()
+            );
             return null;
         }
     }
@@ -218,20 +196,25 @@ public class ChatRoomQueryRepairService {
         }
 
         try {
-            cache.warmUpList(rooms, popularitiesOf(rooms));
+            cache.warmUpList(rooms, toPopularityScores(rooms));
         } catch (RuntimeException e) {
             log.warn("[cache] chatroom warmUpList failed. size={}", rooms.size(), e);
         }
     }
 
-    private Map<String, Double> popularitiesOf(List<ChatRoom> rooms) {
+    private Map<String, Double> toPopularityScores(List<ChatRoom> rooms) {
         Map<String, Double> popularities = new HashMap<>();
         rooms.forEach(room -> popularities.put(room.getId(), room.getPopularity()));
 
         return popularities;
     }
 
-    private List<ChatRoom> mergeByOriginalOrder(List<String> orderedIds, List<ChatRoom> hits, List<ChatRoom> repaired, int limit) {
+    private List<ChatRoom> mergeRoomsByOriginalOrder(
+            List<String> orderedIds,
+            List<ChatRoom> hits,
+            List<ChatRoom> repaired,
+            int limit
+    ) {
         Map<String, ChatRoom> chatRoomMap = Stream.concat(hits.stream(), repaired.stream())
                 .collect(Collectors.toMap(
                         ChatRoom::getId,

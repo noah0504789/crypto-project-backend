@@ -5,6 +5,9 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.example.chat.chatroom.adapter.in.web.dto.*;
 import org.example.chat.chatroom.application.service.command.ChatRoomActivityCommand;
+import org.example.chat.chatroom.application.service.query.GetMyChatRoomQuery;
+import org.example.chat.chatroom.application.service.query.ListMyChatRoomsQuery;
+import org.example.chat.chatroom.application.service.query.ListPopularChatRoomsQuery;
 import org.example.common.dto.CursorPage;
 import org.example.chat.chatroom.application.port.in.ChatRoomCommandUseCase;
 import org.example.chat.chatroom.application.port.in.ChatRoomQueryUseCase;
@@ -29,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
 import java.util.List;
+import java.util.function.Function;
 
 @RestController
 @RequestMapping("${api-path.chat.base:/chat}")
@@ -36,61 +40,48 @@ import java.util.List;
 @Validated
 public class ChatRoomController {
 
-    private final ChatRoomCommandUseCase chatRoomCommandUseCase;
     private final ChatRoomQueryUseCase chatRoomQueryUseCase;
+    private final ChatRoomCommandUseCase chatRoomCommandUseCase;
 
     @GetMapping("${api-path.chat.rooms-popular:/rooms/popular}")
     public ResponseEntity<CursorPage<ChatRoomResponse>> popularChatRooms(
             @RequestParam("category") ChatRoomCategory category,
             @RequestParam(value = "limit", defaultValue = "10") Integer limit,
-            @ModelAttribute ChatRoomCursor cursor) {
+            @ModelAttribute ChatRoomCursor cursor
+    ) {
         int limitPlus1 = limit + 1;
 
-        List<ChatRoom> result = cursor.isNull() ?
-                chatRoomQueryUseCase.listMostPopular(category, limitPlus1) :
-                chatRoomQueryUseCase.listNextPopular(category, cursor.lastId(), cursor.lastPopularity(), limitPlus1);
+        ListPopularChatRoomsQuery query = cursor.isNull()
+                ? ListPopularChatRoomsQuery.firstPage(category, limitPlus1)
+                : ListPopularChatRoomsQuery.nextPage(category, cursor.lastId(), cursor.lastPopularity(), limitPlus1);
 
-        if (result.isEmpty()) return ResponseEntity.ok(new CursorPage(null, false));
+        List<ChatRoom> result = chatRoomQueryUseCase.listPopularRooms(query);
 
-        boolean hasNext = result.size() > limit;
-        if (hasNext) result = result.subList(0, limit);
-
-        return ResponseEntity.ok(new CursorPage<>(result.stream().map(ChatRoomResponse::fromDomain).toList(), hasNext));
+        return toCursorPage(result, limit, ChatRoomResponse::fromDomain);
     }
 
     @GetMapping("${api-path.chat.rooms-me:/rooms/me}")
     public ResponseEntity<CursorPage<MyChatRoomResponse>> myChatRooms(
             @RequestParam(value = "limit", defaultValue = "10") Integer limit,
             @ModelAttribute MyChatRoomCursor cursor,
-            @RequestHeader(HttpHeaderKey.USER_ID_VALUE) String myUserId) {
+            @RequestHeader(HttpHeaderKey.USER_ID_VALUE) String myUserId
+    ) {
         int limitPlus1 = limit + 1;
 
-        List<MyChatRoomSummary> result = cursor.isNull() ?
-                chatRoomQueryUseCase.listLatestActive(myUserId, limitPlus1) :
-                chatRoomQueryUseCase.listActiveBefore(
-                        myUserId,
-                        cursor.lastId(),
-                        cursor.lastUnreadFlag(),
-                        cursor.lastMsgCreatedAt().toEpochMilli(),
-                        limitPlus1
-                );
+        ListMyChatRoomsQuery query = cursor.isNull()
+                ? ListMyChatRoomsQuery.firstPage(myUserId, limitPlus1)
+                : ListMyChatRoomsQuery.nextPage(myUserId, cursor.lastId(), cursor.lastUnreadFlag(), cursor.lastMsgCreatedAtMs(), limitPlus1);
 
-        if (result.isEmpty()) return ResponseEntity.ok(new CursorPage(null, false));
+        List<MyChatRoomSummary> result = chatRoomQueryUseCase.listMyRooms(query);
 
-        boolean hasNext = result.size() > limit;
-        if (hasNext) result = result.subList(0, limit);
-
-        return ResponseEntity.ok(
-                new CursorPage<>(
-                        result.stream().map(MyChatRoomResponse::from).toList(),
-                        hasNext
-                )
-        );
+        return toCursorPage(result, limit, MyChatRoomResponse::from);
     }
 
     @GetMapping("${api-path.chat.room:/room/{roomId}}")
-    public ResponseEntity<ChatRoomResponse> chatRoom(@PathVariable("roomId") String roomId) {
-        ChatRoom chatRoom = chatRoomQueryUseCase.findById(roomId);
+    public ResponseEntity<ChatRoomResponse> chatRoom(
+            @PathVariable("roomId") String roomId
+    ) {
+        ChatRoom chatRoom = chatRoomQueryUseCase.getRoom(roomId);
 
         return ResponseEntity.ok(ChatRoomResponse.fromDomain(chatRoom));
     }
@@ -98,17 +89,20 @@ public class ChatRoomController {
     @GetMapping("${api-path.chat.room-me:/room/{roomId}/me}")
     public ResponseEntity<MyChatRoomResponse> myChatRoom(
             @PathVariable("roomId") String roomId,
-            @RequestHeader(HttpHeaderKey.USER_ID_VALUE) String myUserId) {
-        MyChatRoomSummary summary = chatRoomQueryUseCase.findActive(roomId, myUserId);
+            @RequestHeader(HttpHeaderKey.USER_ID_VALUE) String myUserId
+    ) {
+        MyChatRoomSummary summary = chatRoomQueryUseCase.getMyRoom(
+                GetMyChatRoomQuery.of(roomId, myUserId)
+        );
 
         return ResponseEntity.ok(MyChatRoomResponse.from(summary));
     }
 
     @PostMapping("${api-path.chat.room-members:/room/{roomId}/members}")
-    public ResponseEntity join(
+    public ResponseEntity<Void> join(
             @PathVariable("roomId") String roomId,
             @RequestHeader(HttpHeaderKey.USER_ID_VALUE) String myUserId) {
-        Boolean isNewMember = chatRoomCommandUseCase.join(roomId, myUserId);
+        boolean isNewMember = chatRoomCommandUseCase.join(roomId, myUserId);
 
         return isNewMember ?
                 ResponseEntity.created(URI.create(String.format("/chat/room/%s/member/%s", roomId, myUserId))).build() :
@@ -116,7 +110,7 @@ public class ChatRoomController {
     }
 
     @DeleteMapping("${api-path.chat.room-members:/room/{roomId}/members}")
-    public ResponseEntity leave(
+    public ResponseEntity<Void> leave(
             @PathVariable("roomId") String roomId,
             @RequestHeader(HttpHeaderKey.USER_ID_VALUE) String myUserId) {
         chatRoomCommandUseCase.leave(roomId, myUserId);
@@ -135,8 +129,8 @@ public class ChatRoomController {
         return ResponseEntity.noContent().build();
     }
 
-    // TODO: 여기 아래로부터 인가 처리하기
 
+    // TODO: 여기 아래로부터 인가 처리하기
     @PostMapping("${api-path.chat.room-create:/room}")
     public ResponseEntity<Void> create(
             @RequestBody @Valid ChatRoomCreateRequest request,
@@ -162,9 +156,32 @@ public class ChatRoomController {
     }
 
     @DeleteMapping("${api-path.chat.room:/room/{roomId}}")
-    public ResponseEntity delete(@PathVariable("roomId") String roomId) {
+    public ResponseEntity<Void> delete(@PathVariable("roomId") String roomId) {
         chatRoomCommandUseCase.delete(roomId);
 
         return ResponseEntity.noContent().build();
+    }
+
+    private <T, R> ResponseEntity<CursorPage<R>> toCursorPage(
+            List<T> result,
+            int limit,
+            Function<T, R> mapper
+    ) {
+        if (result.isEmpty()) {
+            return ResponseEntity.ok(new CursorPage<>(null, false));
+        }
+
+        boolean hasNext = result.size() > limit;
+
+        List<T> pageItems = hasNext ? result.subList(0, limit) : result;
+
+        return ResponseEntity.ok(
+                new CursorPage<>(
+                        pageItems.stream()
+                                .map(mapper)
+                                .toList(),
+                        hasNext
+                )
+        );
     }
 }

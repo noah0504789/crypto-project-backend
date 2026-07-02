@@ -12,4 +12,8 @@ public record MyChatRoomCursor(
     public boolean isNull() {
         return lastUnreadFlag == null && lastMsgCreatedAt == null && lastId == null;
     }
+
+    public long lastMsgCreatedAtMs() {
+        return lastMsgCreatedAt == null ? null : lastMsgCreatedAt.toEpochMilli();
+    }
 }
