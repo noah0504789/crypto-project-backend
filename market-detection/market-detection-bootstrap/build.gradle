@@ -6,6 +6,7 @@ ext.dockerImageName = "crypto-market-detection"
 
 dependencies {
     implementation project(':common:common-event')
+    implementation project(':market:market-client')
     implementation project(':market-detection:market-detection-contract')
 
     implementation(libs.okhttp)
