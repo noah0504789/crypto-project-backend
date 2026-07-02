@@ -1,4 +1,4 @@
-package org.example.market.client;
+package org.example.common.enums;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
