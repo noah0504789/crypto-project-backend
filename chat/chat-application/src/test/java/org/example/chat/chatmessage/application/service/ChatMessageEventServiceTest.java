@@ -7,8 +7,8 @@ import org.example.chat.chatmessage.application.port.out.ChatMessagePersistenceP
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.chatmessage.domain.event.ChatMessagePersistEvent;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
-import org.example.chat.common.exception.DuplicateChatMessageException;
-import org.example.chat.common.exception.TemporaryChatPersistenceException;
+import org.example.chat.chatmessage.application.exception.DuplicateChatMessageException;
+import org.example.chat.exception.TemporaryChatPersistenceException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

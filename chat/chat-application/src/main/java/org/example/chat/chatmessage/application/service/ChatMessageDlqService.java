@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.chat.chatmessage.application.port.out.ChatMessagePersistencePort;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.chatmessage.domain.event.dlq.ChatMessagePersistDlqEvent;
-import org.example.chat.chatmessage.domain.port.ChatMessageDlqHandler;
+import org.example.chat.chatmessage.domain.event.handler.ChatMessageDlqHandler;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

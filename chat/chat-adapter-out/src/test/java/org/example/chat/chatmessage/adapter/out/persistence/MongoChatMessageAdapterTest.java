@@ -1,10 +1,14 @@
 package org.example.chat.chatmessage.adapter.out.persistence;
 
 import org.bson.types.ObjectId;
+import org.example.chat.chatmessage.application.exception.ChatMessagePersistException;
+import org.example.chat.chatmessage.application.exception.DuplicateChatMessageException;
 import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
 import org.example.chat.chatmessage.domain.event.ChatMessageEventList;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
-import org.example.chat.common.exception.*;
+import org.example.chat.exception.ChatPersistenceException;
+import org.example.chat.exception.InvalidResourceRequestException;
+import org.example.chat.exception.TemporaryChatPersistenceException;
 import org.example.common.time.ServiceZoneUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

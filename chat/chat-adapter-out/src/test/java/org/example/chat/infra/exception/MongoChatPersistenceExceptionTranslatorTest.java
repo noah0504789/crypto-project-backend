@@ -1,10 +1,10 @@
 package org.example.chat.infra.exception;
 
 import org.example.chat.chatmessage.domain.model.ChatMessage;
-import org.example.chat.common.exception.ChatMessagePersistException;
-import org.example.chat.common.exception.ChatPersistenceException;
-import org.example.chat.common.exception.DuplicateChatMessageException;
-import org.example.chat.common.exception.TemporaryChatPersistenceException;
+import org.example.chat.chatmessage.application.exception.ChatMessagePersistException;
+import org.example.chat.exception.ChatPersistenceException;
+import org.example.chat.chatmessage.application.exception.DuplicateChatMessageException;
+import org.example.chat.exception.TemporaryChatPersistenceException;
 import org.hibernate.exception.JDBCConnectionException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

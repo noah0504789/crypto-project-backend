@@ -3,9 +3,9 @@ package org.example.chat.chatmessage.adapter.in.grpc;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import org.example.chat.chatmessage.adapter.in.grpc.exception.ChatMessageResourceExhaustedException;
-import org.example.chat.common.exception.ChatMessageCacheException;
-import org.example.chat.common.exception.ChatMessagePersistException;
-import org.example.chat.infra.exception.GlobalGrpcExceptionAdvice;
+import org.example.chat.chatmessage.application.exception.ChatMessageCacheException;
+import org.example.chat.chatmessage.application.exception.ChatMessagePersistException;
+import org.example.chat.chatmessage.adapter.in.grpc.exception.GrpcChatMessageExceptionAdvice;
 import org.example.chat.chatmessage.adapter.in.grpc.exception.ChatMessageGrpcCancelledException;
 import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
 import org.example.chat.chatmessage.domain.event.ChatMessageEventList;
@@ -26,13 +26,13 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class GlobalGrpcExceptionAdviceTest {
+class GrpcChatMessageExceptionAdviceTest {
 
     @Mock
     private ChatMessageCommandService chatMessageCommandService;
 
     @InjectMocks
-    private GlobalGrpcExceptionAdvice sut;
+    private GrpcChatMessageExceptionAdvice sut;
 
     private final String messageId = "100000000000000000000001";
     private final String roomId = "000000000000000000000001";

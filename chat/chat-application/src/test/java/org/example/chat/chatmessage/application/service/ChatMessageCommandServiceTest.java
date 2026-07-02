@@ -1,6 +1,6 @@
 package org.example.chat.chatmessage.application.service;
 
-import org.example.chat.common.exception.ChatMessageCacheException;
+import org.example.chat.chatmessage.application.exception.ChatMessageCacheException;
 import org.example.chat.chatmessage.application.service.command.ChatMessageSaveCommand;
 import org.example.chat.chatmessage.application.service.result.ChatMessageSaveResult;
 import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
@@ -14,7 +14,7 @@ import org.example.chat.chatroom.domain.exception.ChatRoomMembershipNotFoundExce
 import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
-import org.example.chat.common.exception.ChatMessagePersistException;
+import org.example.chat.chatmessage.application.exception.ChatMessagePersistException;
 import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
 import org.example.common.outbox.domain.event.AbstractOutboxEventList;
 import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;

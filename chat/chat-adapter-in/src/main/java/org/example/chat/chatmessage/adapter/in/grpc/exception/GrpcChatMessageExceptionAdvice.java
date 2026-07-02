@@ -1,4 +1,4 @@
-package org.example.chat.infra.exception;
+package org.example.chat.chatmessage.adapter.in.grpc.exception;
 
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
@@ -6,20 +6,17 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.advice.GrpcAdvice;
 import net.devh.boot.grpc.server.advice.GrpcExceptionHandler;
-import org.example.chat.chatmessage.adapter.in.grpc.exception.ChatMessageGrpcCancelledException;
-import org.example.chat.chatmessage.adapter.in.grpc.exception.ChatMessageGrpcException;
-import org.example.chat.chatmessage.adapter.in.grpc.exception.ChatMessageResourceExhaustedException;
 import org.example.chat.chatmessage.application.service.ChatMessageCommandService;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
-import org.example.chat.common.exception.ChatMessageCacheException;
-import org.example.chat.common.exception.ChatMessagePersistException;
+import org.example.chat.chatmessage.application.exception.ChatMessageCacheException;
+import org.example.chat.chatmessage.application.exception.ChatMessagePersistException;
 import org.example.common.grpc.exception.BaseGrpcExceptionAdvice;
 
 @Slf4j
 @GrpcAdvice
 @RequiredArgsConstructor
-public class GlobalGrpcExceptionAdvice extends BaseGrpcExceptionAdvice {
+public class GrpcChatMessageExceptionAdvice extends BaseGrpcExceptionAdvice {
 
     private final ChatMessageCommandService chatMessageCommandService;
 
