@@ -1,4 +1,4 @@
-package org.example.marketdetection.infra.config;
+package org.example.marketdetection.adapter.in.stream;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +20,7 @@ import java.util.function.Supplier;
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
-public class BinderConfig {
+public class KafkaMarketDetectionBinder {
 
     @Bean
     public Supplier<Message<KafkaEvent>> upbitTickerEventSupplier(UpbitWebsocketListener upbitWebsocketListener) {
