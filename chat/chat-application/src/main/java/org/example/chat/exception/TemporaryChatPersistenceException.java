@@ -1,4 +1,4 @@
-package org.example.chat.common.exception;
+package org.example.chat.exception;
 
 public class TemporaryChatPersistenceException extends ChatPersistenceException {
 

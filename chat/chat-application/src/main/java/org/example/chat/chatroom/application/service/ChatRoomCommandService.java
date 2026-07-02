@@ -13,7 +13,7 @@ import org.example.chat.chatroom.domain.event.payload.ChatRoomUpdatedPayload;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
-import org.example.chat.common.exception.ChatRoomPersistException;
+import org.example.chat.chatroom.application.exception.ChatRoomPersistException;
 import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
 import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
 import org.springframework.stereotype.Service;

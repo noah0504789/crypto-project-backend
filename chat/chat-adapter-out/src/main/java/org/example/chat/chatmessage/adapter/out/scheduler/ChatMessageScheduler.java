@@ -2,7 +2,7 @@ package org.example.chat.chatmessage.adapter.out.scheduler;
 
 import lombok.extern.slf4j.Slf4j;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
-import org.example.chat.common.exception.ChatCacheException;
+import org.example.chat.exception.ChatCacheException;
 import org.example.common.clock.Clock;
 import org.example.chat.infra.redis.RedisCollectionRegistry;
 import org.example.common.redis.codec.RedisValueCodec;

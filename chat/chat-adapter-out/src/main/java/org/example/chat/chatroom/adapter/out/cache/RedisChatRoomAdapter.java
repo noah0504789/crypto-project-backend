@@ -11,7 +11,7 @@ import org.example.common.redis.codec.RedisHashCodec;
 import org.example.common.redis.operation.StringRedisHashOperations;
 import org.example.common.redis.codec.RedisValueCodec;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.example.chat.common.exception.ChatCacheException;
+import org.example.chat.exception.ChatCacheException;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.data.redis.core.script.RedisScript;

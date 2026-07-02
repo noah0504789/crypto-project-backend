@@ -5,11 +5,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.ToString;
 import org.example.chat.chatroom.domain.event.payload.ChatRoomUpdatedPayload;
-import org.example.chat.chatroom.domain.port.ChatRoomEventHandler;
+import org.example.chat.chatroom.domain.event.handler.ChatRoomEventHandler;
 import org.example.common.event.HandleableEvent;
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;
-
-import java.util.Map;
 
 import static org.example.common.enums.KafkaTopic.CHAT_ROOM;
 

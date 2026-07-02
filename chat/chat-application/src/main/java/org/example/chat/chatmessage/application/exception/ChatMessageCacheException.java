@@ -1,7 +1,8 @@
-package org.example.chat.common.exception;
+package org.example.chat.chatmessage.application.exception;
 
 import lombok.Getter;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
+import org.example.chat.exception.ChatCacheException;
 
 @Getter
 public class ChatMessageCacheException extends ChatCacheException {

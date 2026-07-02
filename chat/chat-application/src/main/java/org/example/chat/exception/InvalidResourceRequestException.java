@@ -1,4 +1,4 @@
-package org.example.chat.common.exception;
+package org.example.chat.exception;
 
 import org.example.common.exception.InvalidRequestException;
 

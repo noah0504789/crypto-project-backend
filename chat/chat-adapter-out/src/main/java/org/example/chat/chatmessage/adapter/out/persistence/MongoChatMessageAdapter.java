@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.example.chat.chatmessage.application.port.out.ChatMessagePersistencePort;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
-import org.example.chat.common.exception.InvalidResourceRequestException;
+import org.example.chat.exception.InvalidResourceRequestException;
 import org.example.chat.infra.exception.MongoChatPersistenceExceptionTranslator;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;

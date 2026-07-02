@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
-import org.example.chat.common.exception.ChatCacheException;
+import org.example.chat.exception.ChatCacheException;
 import org.example.common.redis.codec.RedisValueCodec;
 import org.springframework.stereotype.Component;
 
