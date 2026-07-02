@@ -1,4 +1,4 @@
-package org.example.chat.chatroom.domain.port;
+package org.example.chat.chatroom.domain.event.handler;
 
 import org.example.chat.chatroom.domain.event.ChatRoomActiveEvent;
 import org.example.chat.chatroom.domain.event.ChatRoomCacheActivityInvalidateEvent;

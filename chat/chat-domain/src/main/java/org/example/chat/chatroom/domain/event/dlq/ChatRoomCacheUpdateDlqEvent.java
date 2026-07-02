@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.ToString;
-import org.example.chat.chatroom.domain.port.ChatRoomDlqHandler;
+import org.example.chat.chatroom.domain.event.handler.ChatRoomDlqHandler;
 import org.example.common.enums.KafkaTopic;
 import org.example.common.event.RecoverableEvent;
 import org.example.common.dlq.domain.event.AbstractDlqEvent;

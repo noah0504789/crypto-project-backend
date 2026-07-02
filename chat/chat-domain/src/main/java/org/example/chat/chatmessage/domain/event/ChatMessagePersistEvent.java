@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.ToString;
 import org.example.chat.chatmessage.domain.event.payload.ChatMessagePayload;
-import org.example.chat.chatmessage.domain.port.ChatMessageEventHandler;
+import org.example.chat.chatmessage.domain.event.handler.ChatMessageEventHandler;
 import org.example.common.enums.KafkaTopic;
 import org.example.common.event.HandleableEvent;
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;

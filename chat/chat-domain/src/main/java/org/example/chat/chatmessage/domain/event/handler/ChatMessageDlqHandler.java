@@ -1,4 +1,4 @@
-package org.example.chat.chatmessage.domain.port;
+package org.example.chat.chatmessage.domain.event.handler;
 
 import org.example.chat.chatmessage.domain.event.dlq.ChatMessagePersistDlqEvent;
 
