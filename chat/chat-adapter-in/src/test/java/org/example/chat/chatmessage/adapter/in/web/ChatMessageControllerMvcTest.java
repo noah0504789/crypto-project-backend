@@ -1,9 +1,10 @@
 package org.example.chat.chatmessage.adapter.in.web;
 
+import org.example.chat.chatmessage.application.service.query.ListChatMessagesQuery;
 import org.example.common.test.config.TestBootApplication;
 import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
 import org.example.chat.chatmessage.domain.event.ChatMessageEventList;
-import org.example.chat.chatmessage.application.port.in.ChatMessageQueryUsecase;
+import org.example.chat.chatmessage.application.port.in.ChatMessageQueryUseCase;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -14,26 +15,25 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.hamcrest.Matchers.hasSize;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ChatMessageController.class)
 @ContextConfiguration(classes = {TestBootApplication.class, ChatMessageController.class})
-class ChatMessageControllerTest {
+class ChatMessageControllerMvcTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ChatMessageQueryUsecase chatMessageQueryService;
+    private ChatMessageQueryUseCase chatMessageQueryService;
 
     private final String ROOM_ID = "000000000000000000000001";
 
@@ -43,19 +43,21 @@ class ChatMessageControllerTest {
 
     private final String WRITER_ID = "writer-1";
 
-    private final LocalDateTime time1 = LocalDateTime.of(2026, 1, 1, 10, 0);
-    private final LocalDateTime time2 = LocalDateTime.of(2026, 1, 1, 11, 0);
-    private final LocalDateTime time3 = LocalDateTime.of(2026, 1, 1, 12, 0);
+    private final Instant time1 = Instant.parse("2026-01-01T01:00:00Z");
+    private final Instant time2 = Instant.parse("2026-01-01T02:00:00Z");
+    private final Instant time3 = Instant.parse("2026-01-01T03:00:00Z");
 
     @Nested
     @DisplayName("GET /chat/room/{roomId}/messages")
     class CursorRecentChatMessagesTest {
 
         @Test
-        @DisplayName("cursor가 없으면 listLatest를 limit+1로 조회하고 hasNext=true를 반환한다")
-        void listLatestFirstPageHasNext() throws Exception {
+        @DisplayName("cursor가 없으면 listMessages를 첫 페이지 Query로 limit+1 조회하고 hasNext=true를 반환한다")
+        void listMessagesFirstPageHasNext() throws Exception {
             // given
-            given(chatMessageQueryService.listLatest(ROOM_ID, 3))
+            ListChatMessagesQuery query = ListChatMessagesQuery.firstPage(ROOM_ID, 3);
+
+            given(chatMessageQueryService.listMessages(query))
                     .willReturn(List.of(
                             chatMessage(MESSAGE_ID_3, "message-3", time3),
                             chatMessage(MESSAGE_ID_2, "message-2", time2),
@@ -71,16 +73,16 @@ class ChatMessageControllerTest {
                     .andExpect(jsonPath("$.items[0].id").value(MESSAGE_ID_3))
                     .andExpect(jsonPath("$.items[1].id").value(MESSAGE_ID_2));
 
-            verify(chatMessageQueryService).listLatest(ROOM_ID, 3);
-            verify(chatMessageQueryService, never())
-                    .listPrev(anyString(), anyString(), anyLong(), anyInt());
+            verify(chatMessageQueryService).listMessages(query);
         }
 
         @Test
         @DisplayName("cursor가 없고 결과가 limit 이하이면 hasNext=false를 반환한다")
-        void listLatestFirstPageNoNext() throws Exception {
+        void listMessagesFirstPageNoNext() throws Exception {
             // given
-            given(chatMessageQueryService.listLatest(ROOM_ID, 3))
+            ListChatMessagesQuery query = ListChatMessagesQuery.firstPage(ROOM_ID, 3);
+
+            given(chatMessageQueryService.listMessages(query))
                     .willReturn(List.of(
                             chatMessage(MESSAGE_ID_2, "message-2", time2),
                             chatMessage(MESSAGE_ID_1, "message-1", time1)
@@ -95,24 +97,27 @@ class ChatMessageControllerTest {
                     .andExpect(jsonPath("$.items[0].id").value(MESSAGE_ID_2))
                     .andExpect(jsonPath("$.items[1].id").value(MESSAGE_ID_1));
 
-            verify(chatMessageQueryService).listLatest(ROOM_ID, 3);
+            verify(chatMessageQueryService).listMessages(query);
         }
 
         @Test
-        @DisplayName("cursor가 있으면 listPrev를 limit+1로 조회한다")
-        void listPrevWithCursor() throws Exception {
+        @DisplayName("cursor가 있으면 listMessages를 이전 페이지 Query로 limit+1 조회한다")
+        void listMessagesPrevPageWithCursor() throws Exception {
             // given
             long lastCreatedAtMillis = 1_767_224_400_000L;
 
-            given(chatMessageQueryService.listPrev(
+            ListChatMessagesQuery query = ListChatMessagesQuery.prevPage(
                     ROOM_ID,
                     MESSAGE_ID_3,
                     lastCreatedAtMillis,
                     3
-            )).willReturn(List.of(
-                    chatMessage(MESSAGE_ID_2, "message-2", time2),
-                    chatMessage(MESSAGE_ID_1, "message-1", time1)
-            ));
+            );
+
+            given(chatMessageQueryService.listMessages(query))
+                    .willReturn(List.of(
+                            chatMessage(MESSAGE_ID_2, "message-2", time2),
+                            chatMessage(MESSAGE_ID_1, "message-1", time1)
+                    ));
 
             // when & then
             mockMvc.perform(get("/chat/room/{roomId}/messages", ROOM_ID)
@@ -125,20 +130,16 @@ class ChatMessageControllerTest {
                     .andExpect(jsonPath("$.items[0].id").value(MESSAGE_ID_2))
                     .andExpect(jsonPath("$.items[1].id").value(MESSAGE_ID_1));
 
-            verify(chatMessageQueryService).listPrev(
-                    ROOM_ID,
-                    MESSAGE_ID_3,
-                    lastCreatedAtMillis,
-                    3
-            );
-            verify(chatMessageQueryService, never()).listLatest(anyString(), anyInt());
+            verify(chatMessageQueryService).listMessages(query);
         }
 
         @Test
         @DisplayName("조회 결과가 비어 있으면 items=null, hasNext=false를 반환한다")
         void emptyMessages() throws Exception {
             // given
-            given(chatMessageQueryService.listLatest(ROOM_ID, 21))
+            ListChatMessagesQuery query = ListChatMessagesQuery.firstPage(ROOM_ID, 21);
+
+            given(chatMessageQueryService.listMessages(query))
                     .willReturn(List.of());
 
             // when & then
@@ -147,14 +148,16 @@ class ChatMessageControllerTest {
                     .andExpect(jsonPath("$.items").doesNotExist())
                     .andExpect(jsonPath("$.hasNext").value(false));
 
-            verify(chatMessageQueryService).listLatest(ROOM_ID, 21);
+            verify(chatMessageQueryService).listMessages(query);
         }
 
         @Test
         @DisplayName("limit을 생략하면 기본값 20을 사용하여 21개를 조회한다")
         void defaultLimit() throws Exception {
             // given
-            given(chatMessageQueryService.listLatest(ROOM_ID, 21))
+            ListChatMessagesQuery query = ListChatMessagesQuery.firstPage(ROOM_ID, 21);
+
+            given(chatMessageQueryService.listMessages(query))
                     .willReturn(List.of(
                             chatMessage(MESSAGE_ID_1, "message-1", time1)
                     ));
@@ -166,19 +169,11 @@ class ChatMessageControllerTest {
                     .andExpect(jsonPath("$.items", hasSize(1)))
                     .andExpect(jsonPath("$.items[0].id").value(MESSAGE_ID_1));
 
-            verify(chatMessageQueryService).listLatest(ROOM_ID, 21);
+            verify(chatMessageQueryService).listMessages(query);
         }
     }
 
-    private ChatMessage chatMessage(String id, String content, LocalDateTime createdAt) {
-        return ChatMessage.builder()
-                .id(id)
-                .roomId(ROOM_ID)
-                .writerId(WRITER_ID)
-                .content(content)
-                .createdAt(createdAt)
-                .eventList(new ChatMessageEventList())
-                .dlqEventList(new ChatMessageDlqEventList())
-                .build();
+    private ChatMessage chatMessage(String id, String content, Instant createdAt) {
+        return ChatMessage.rehydrate(id, ROOM_ID, WRITER_ID, content, createdAt);
     }
 }

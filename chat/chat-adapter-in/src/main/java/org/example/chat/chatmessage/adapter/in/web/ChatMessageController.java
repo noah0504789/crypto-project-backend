@@ -2,9 +2,10 @@ package org.example.chat.chatmessage.adapter.in.web;
 
 import lombok.RequiredArgsConstructor;
 import org.example.chat.chatmessage.adapter.in.web.dto.ChatMessageResponse;
+import org.example.chat.chatmessage.application.service.query.ListChatMessagesQuery;
 import org.example.common.dto.CursorPage;
 import org.example.chat.chatmessage.adapter.in.web.dto.ChatMessageCursor;
-import org.example.chat.chatmessage.application.port.in.ChatMessageQueryUsecase;
+import org.example.chat.chatmessage.application.port.in.ChatMessageQueryUseCase;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,16 +16,15 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.function.Function;
 
 @RestController
 @RequestMapping("${api-path.chat.base:/chat}")
 @RequiredArgsConstructor
 public class ChatMessageController {
 
-    private final ChatMessageQueryUsecase chatMessageQueryService;
+    private final ChatMessageQueryUseCase chatMessageQueryUseCase;
 
-    // ?limit=20
-    // ?limit=20&lastId=20&lastMsgCreatedAt=1755771000000
     @GetMapping("${api-path.chat.room-messages:/room/{roomId}/messages}")
     public ResponseEntity<CursorPage<ChatMessageResponse>> cursorRecentChatMessages(
             @PathVariable("roomId") String roomId,
@@ -33,15 +33,37 @@ public class ChatMessageController {
     ) {
         int limitPlus1 = limit + 1;
 
-        List<ChatMessage> res = cursor.isNull() ?
-                chatMessageQueryService.listLatest(roomId, limitPlus1) :
-                chatMessageQueryService.listPrev(roomId, cursor.lastId(), cursor.lastCreatedAtMillis(), limitPlus1);
+        ListChatMessagesQuery query = cursor.isNull()
+                ? ListChatMessagesQuery.firstPage(roomId, limitPlus1)
+                : ListChatMessagesQuery.prevPage(roomId, cursor.lastId(), cursor.lastCreatedAtMillis(), limitPlus1);
 
-        if (res.isEmpty()) return ResponseEntity.ok(new CursorPage(null, false));
+        List<ChatMessage> result = chatMessageQueryUseCase.listMessages(query);
 
-        boolean hasNext = res.size() > limit;
-        if (hasNext) res = res.subList(0, limit);
+        return toCursorPage(result, limit, ChatMessageResponse::fromDomain);
+    }
 
-        return ResponseEntity.ok(new CursorPage<>(res.stream().map(ChatMessageResponse::fromDomain).toList(), hasNext));
+    private <T, R> ResponseEntity<CursorPage<R>> toCursorPage(
+            List<T> result,
+            int limit,
+            Function<T, R> mapper
+    ) {
+        if (result.isEmpty()) {
+            return ResponseEntity.ok(new CursorPage<>(null, false));
+        }
+
+        boolean hasNext = result.size() > limit;
+
+        List<T> pageItems = hasNext
+                ? result.subList(0, limit)
+                : result;
+
+        return ResponseEntity.ok(
+                new CursorPage<>(
+                        pageItems.stream()
+                                .map(mapper)
+                                .toList(),
+                        hasNext
+                )
+        );
     }
 }

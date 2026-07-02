@@ -1,5 +1,6 @@
 package org.example.chat.chatmessage.application.service;
 
+import org.example.chat.chatmessage.application.service.query.ListChatMessagesQuery;
 import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
 import org.example.chat.chatmessage.domain.event.ChatMessageEventList;
 import org.example.chat.chatmessage.application.port.out.ChatMessageCachePort;
@@ -16,12 +17,14 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.example.common.time.ServiceZoneUtils.ZONE_ID;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
@@ -43,15 +46,13 @@ class ChatMessageQueryRepairServiceTest {
 
     private final String roomId = "000000000000000000000001";
     private final String lastId = "100000000000000000000003";
-
     private final long lastCreatedAtMillis = 1_767_224_400_000L;
-
     private final int limit = 2;
 
     private final String writerId = "writer-1";
 
-    private final LocalDateTime time1 = LocalDateTime.of(2026, 1, 1, 10, 0);
-    private final LocalDateTime time2 = LocalDateTime.of(2026, 1, 1, 11, 0);
+    private final Instant time1 = Instant.parse("2026-01-01T01:00:00Z");
+    private final Instant time2 = Instant.parse("2026-01-01T02:00:00Z");
 
     @BeforeEach
     void setUp() {
@@ -60,7 +61,7 @@ class ChatMessageQueryRepairServiceTest {
                 any(),
                 eq(DistributedLockPolicy.CACHE_WARM_UP)
         )).willAnswer(invocation -> {
-            Supplier<List<ChatMessage>> supplier = invocation.getArgument(1);
+            Supplier<?> supplier = invocation.getArgument(1);
             return supplier.get();
         });
     }
@@ -115,7 +116,6 @@ class ChatMessageQueryRepairServiceTest {
 
             given(cache.listLatest(roomId, limit))
                     .willReturn(List.of());
-
             given(persistence.listLatest(roomId, limit))
                     .willReturn(stored);
 
@@ -139,7 +139,6 @@ class ChatMessageQueryRepairServiceTest {
             // given
             given(cache.listLatest(roomId, limit))
                     .willReturn(List.of());
-
             given(persistence.listLatest(roomId, limit))
                     .willReturn(List.of());
 
@@ -164,7 +163,6 @@ class ChatMessageQueryRepairServiceTest {
 
             given(cache.listLatest(roomId, limit))
                     .willReturn(List.of());
-
             given(persistence.listLatest(roomId, limit))
                     .willReturn(stored);
 
@@ -191,6 +189,8 @@ class ChatMessageQueryRepairServiceTest {
         @DisplayName("캐시에 이전 메시지가 있으면 DB 조회와 warmUp 없이 캐시 결과를 반환한다")
         void repairPrevReturnsCachedMessages() {
             // given
+            ListChatMessagesQuery query = prevPageQuery();
+
             List<ChatMessage> cached = List.of(
                     chatMessage("100000000000000000000002", "cached-2", time2),
                     chatMessage("100000000000000000000001", "cached-1", time1)
@@ -200,15 +200,16 @@ class ChatMessageQueryRepairServiceTest {
                     .willReturn(cached);
 
             // when
-            List<ChatMessage> result = sut.repairPrev(
-                    roomId,
-                    lastId,
-                    lastCreatedAtMillis,
-                    limit
-            );
+            List<ChatMessage> result = sut.repairPrev(query);
 
             // then
             assertThat(result).isSameAs(cached);
+            assertThat(result)
+                    .extracting(ChatMessage::getId)
+                    .containsExactly(
+                            "100000000000000000000002",
+                            "100000000000000000000001"
+                    );
 
             verify(cache).listPrev(roomId, lastId, lastCreatedAtMillis, limit);
             verify(persistence, never()).listPrev(anyString(), anyString(), anyLong(), anyInt());
@@ -225,6 +226,8 @@ class ChatMessageQueryRepairServiceTest {
         @DisplayName("캐시가 비어 있으면 DB에서 이전 메시지를 조회하고 warmUp 후 DB 결과를 반환한다")
         void repairPrevLoadsFromPersistenceAndWarmUp() {
             // given
+            ListChatMessagesQuery query = prevPageQuery();
+
             List<ChatMessage> stored = List.of(
                     chatMessage("100000000000000000000002", "stored-2", time2),
                     chatMessage("100000000000000000000001", "stored-1", time1)
@@ -232,17 +235,11 @@ class ChatMessageQueryRepairServiceTest {
 
             given(cache.listPrev(roomId, lastId, lastCreatedAtMillis, limit))
                     .willReturn(List.of());
-
             given(persistence.listPrev(roomId, lastId, lastCreatedAtMillis, limit))
                     .willReturn(stored);
 
             // when
-            List<ChatMessage> result = sut.repairPrev(
-                    roomId,
-                    lastId,
-                    lastCreatedAtMillis,
-                    limit
-            );
+            List<ChatMessage> result = sut.repairPrev(query);
 
             // then
             assertThat(result).isSameAs(stored);
@@ -259,19 +256,15 @@ class ChatMessageQueryRepairServiceTest {
         @DisplayName("캐시와 DB가 모두 비어 있으면 빈 리스트를 반환하고 warmUp하지 않는다")
         void repairPrevReturnsEmptyWhenPersistenceEmpty() {
             // given
+            ListChatMessagesQuery query = prevPageQuery();
+
             given(cache.listPrev(roomId, lastId, lastCreatedAtMillis, limit))
                     .willReturn(List.of());
-
             given(persistence.listPrev(roomId, lastId, lastCreatedAtMillis, limit))
                     .willReturn(List.of());
 
             // when
-            List<ChatMessage> result = sut.repairPrev(
-                    roomId,
-                    lastId,
-                    lastCreatedAtMillis,
-                    limit
-            );
+            List<ChatMessage> result = sut.repairPrev(query);
 
             // then
             assertThat(result).isEmpty();
@@ -285,13 +278,14 @@ class ChatMessageQueryRepairServiceTest {
         @DisplayName("DB 조회 후 warmUp이 실패해도 DB 결과를 반환한다")
         void repairPrevReturnsStoredMessagesEvenWhenWarmUpFails() {
             // given
+            ListChatMessagesQuery query = prevPageQuery();
+
             List<ChatMessage> stored = List.of(
                     chatMessage("100000000000000000000001", "stored-1", time1)
             );
 
             given(cache.listPrev(roomId, lastId, lastCreatedAtMillis, limit))
                     .willReturn(List.of());
-
             given(persistence.listPrev(roomId, lastId, lastCreatedAtMillis, limit))
                     .willReturn(stored);
 
@@ -301,29 +295,57 @@ class ChatMessageQueryRepairServiceTest {
 
             // when & then
             assertThatCode(() -> {
-                List<ChatMessage> result = sut.repairPrev(
-                        roomId,
-                        lastId,
-                        lastCreatedAtMillis,
-                        limit
-                );
+                List<ChatMessage> result = sut.repairPrev(query);
 
                 assertThat(result).isSameAs(stored);
             }).doesNotThrowAnyException();
 
             verify(cache).warmUpList(stored, roomId);
         }
+
+        @Test
+        @DisplayName("lastCreatedAtMillis가 null이면 0을 기준으로 캐시와 DB를 조회한다")
+        void repairPrevUsesZeroCursorCreatedAtMillisWhenLastCreatedAtMillisIsNull() {
+            // given
+            ListChatMessagesQuery query = ListChatMessagesQuery.prevPage(
+                    roomId,
+                    lastId,
+                    null,
+                    limit
+            );
+
+            given(cache.listPrev(roomId, lastId, 0L, limit))
+                    .willReturn(List.of());
+            given(persistence.listPrev(roomId, lastId, 0L, limit))
+                    .willReturn(List.of());
+
+            // when
+            List<ChatMessage> result = sut.repairPrev(query);
+
+            // then
+            assertThat(result).isEmpty();
+
+            verify(cache).listPrev(roomId, lastId, 0L, limit);
+            verify(persistence).listPrev(roomId, lastId, 0L, limit);
+
+            verify(distributedLockExecutor).execute(
+                    eq("chatmessage:listPrev:" + roomId + ":" + lastId + ":0:" + limit),
+                    any(),
+                    eq(DistributedLockPolicy.CACHE_WARM_UP)
+            );
+        }
     }
 
-    private ChatMessage chatMessage(String id, String content, LocalDateTime createdAt) {
-        return ChatMessage.builder()
-                .id(id)
-                .roomId(roomId)
-                .writerId(writerId)
-                .content(content)
-                .createdAt(createdAt)
-                .eventList(new ChatMessageEventList())
-                .dlqEventList(new ChatMessageDlqEventList())
-                .build();
+    private ListChatMessagesQuery prevPageQuery() {
+        return ListChatMessagesQuery.prevPage(
+                roomId,
+                lastId,
+                lastCreatedAtMillis,
+                limit
+        );
+    }
+
+    private ChatMessage chatMessage(String id, String content, Instant createdAt) {
+        return ChatMessage.rehydrate(id, roomId, writerId, content, createdAt);
     }
 }
