@@ -7,7 +7,7 @@ import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
 import org.example.market.application.port.in.MarketCommandUseCase;
 import org.example.market.application.port.out.MarketPersistencePort;
 import org.example.market.application.service.command.ChangeMarketsCommand;
-import org.example.market.common.exception.MarketPersistException;
+import org.example.market.application.exception.MarketPersistException;
 import org.example.market.domain.model.Market;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

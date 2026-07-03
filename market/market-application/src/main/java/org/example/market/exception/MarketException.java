@@ -1,4 +1,4 @@
-package org.example.market.common.exception;
+package org.example.market.exception;
 
 import org.example.common.exception.InfrastructureException;
 

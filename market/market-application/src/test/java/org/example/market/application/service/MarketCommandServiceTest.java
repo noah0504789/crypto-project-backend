@@ -6,7 +6,7 @@ import org.example.market.application.port.out.MarketPersistencePort;
 import org.example.market.application.service.command.ChangeMarketsCommand;
 import org.example.market.application.service.command.ChangeMarketsCommand.UpdateMarketCommand;
 import org.example.market.application.service.command.ChangeMarketsCommand.CreateMarketCommand;
-import org.example.market.common.exception.MarketPersistException;
+import org.example.market.application.exception.MarketPersistException;
 import org.example.market.domain.event.MarketEventList;
 import org.example.market.domain.model.Market;
 import org.junit.jupiter.api.DisplayName;
