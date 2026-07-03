@@ -101,12 +101,12 @@ class ChatMessageControllerMvcTest {
         @DisplayName("cursor가 있으면 listMessages를 이전 페이지 Query로 limit+1 조회한다")
         void listMessagesPrevPageWithCursor() throws Exception {
             // given
-            long lastCreatedAtMillis = 1_767_224_400_000L;
+            long lastCreatedAtMs = 1_767_224_400_000L;
 
             ListChatMessagesQuery query = ListChatMessagesQuery.prevPage(
                     ROOM_ID,
                     MESSAGE_ID_3,
-                    lastCreatedAtMillis,
+                    lastCreatedAtMs,
                     3
             );
 
@@ -120,7 +120,7 @@ class ChatMessageControllerMvcTest {
             mockMvc.perform(get("/chat/room/{roomId}/messages", ROOM_ID)
                             .param("limit", "2")
                             .param("lastMsgId", MESSAGE_ID_3)
-                            .param("lastCreatedAtMs", String.valueOf(lastCreatedAtMillis)))
+                            .param("lastCreatedAtMs", String.valueOf(lastCreatedAtMs)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.hasNext").value(false))
                     .andExpect(jsonPath("$.items", hasSize(2)))

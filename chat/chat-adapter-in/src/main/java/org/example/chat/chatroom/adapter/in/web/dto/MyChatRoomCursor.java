@@ -1,19 +1,16 @@
 package org.example.chat.chatroom.adapter.in.web.dto;
 
-import java.time.Instant;
-
 // TODO: validation check
 public record MyChatRoomCursor(
+        String lastRoomId,
         Boolean lastUnreadFlag,
-        Instant lastMsgCreatedAt,
-        String lastId
+        Long lastMsgCreatedAtMs
 ) {
 
     public boolean isNull() {
-        return lastUnreadFlag == null && lastMsgCreatedAt == null && lastId == null;
-    }
-
-    public long lastMsgCreatedAtMs() {
-        return lastMsgCreatedAt == null ? null : lastMsgCreatedAt.toEpochMilli();
+        return lastRoomId == null
+                || lastRoomId.isBlank()
+                || lastUnreadFlag == null
+                || lastMsgCreatedAtMs == null;
     }
 }

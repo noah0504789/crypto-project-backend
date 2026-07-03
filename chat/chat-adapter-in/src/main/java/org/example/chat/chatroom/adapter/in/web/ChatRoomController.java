@@ -33,7 +33,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
 import java.util.List;
-import java.util.function.Function;
 
 @RestController
 @RequestMapping("${api-path.chat.base:/chat}")
@@ -54,7 +53,7 @@ public class ChatRoomController {
 
         ListPopularChatRoomsQuery query = cursor.isNull()
                 ? ListPopularChatRoomsQuery.firstPage(category, limitPlus1)
-                : ListPopularChatRoomsQuery.nextPage(category, cursor.lastId(), cursor.lastPopularity(), limitPlus1);
+                : ListPopularChatRoomsQuery.nextPage(category, cursor.lastRoomId(), cursor.lastPopularity(), limitPlus1);
 
         List<ChatRoom> result = chatRoomQueryUseCase.listPopularRooms(query);
 
@@ -73,7 +72,7 @@ public class ChatRoomController {
 
         ListMyChatRoomsQuery query = cursor.isNull()
                 ? ListMyChatRoomsQuery.firstPage(myUserId, limitPlus1)
-                : ListMyChatRoomsQuery.nextPage(myUserId, cursor.lastId(), cursor.lastUnreadFlag(), cursor.lastMsgCreatedAtMs(), limitPlus1);
+                : ListMyChatRoomsQuery.nextPage(myUserId, cursor.lastRoomId(), cursor.lastUnreadFlag(), cursor.lastMsgCreatedAtMs(), limitPlus1);
 
         List<MyChatRoomSummary> result = chatRoomQueryUseCase.listMyRooms(query);
 
@@ -126,10 +125,10 @@ public class ChatRoomController {
     @PutMapping("${api-path.chat.room-activity:/room/{roomId}/activity}")
     public ResponseEntity<Void> activity(
             @PathVariable("roomId") String roomId,
-            @RequestParam("lastMsgSeq") Long lastMsgSeq,
-            @RequestParam("lastMsgMs") Long lastMsgMs,
+            @RequestParam("lastMsgReadSeq") Long lastMsgReadSeq,
+            @RequestParam("lastMsgCreatedAtMs") Long lastMsgCreatedAtMs,
             @RequestHeader(HttpHeaderKey.USER_ID_VALUE) String myUserId) {
-        chatRoomCommandUseCase.activity(new ChatRoomActivityCommand(roomId, myUserId, lastMsgSeq, lastMsgMs));
+        chatRoomCommandUseCase.activity(new ChatRoomActivityCommand(roomId, myUserId, lastMsgReadSeq, lastMsgCreatedAtMs));
 
         return ResponseEntity.noContent().build();
     }

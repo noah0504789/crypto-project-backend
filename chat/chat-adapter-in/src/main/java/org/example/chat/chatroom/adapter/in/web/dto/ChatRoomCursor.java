@@ -2,11 +2,11 @@ package org.example.chat.chatroom.adapter.in.web.dto;
 
 // TODO: validation check
 public record ChatRoomCursor(
-        String lastId,
+        String lastRoomId,
         Long lastPopularity
 ) {
 
     public boolean isNull() {
-        return lastId == null && lastPopularity == null;
+        return lastRoomId == null && lastPopularity == null;
     }
 }
