@@ -3,10 +3,12 @@ package org.example.chat.chatmessage.adapter.in.web;
 import lombok.RequiredArgsConstructor;
 import org.example.chat.chatmessage.adapter.in.web.dto.ChatMessageResponse;
 import org.example.chat.chatmessage.application.service.query.ListChatMessagesQuery;
+import org.example.chat.chatroom.adapter.in.web.dto.ChatRoomResponse;
 import org.example.common.dto.CursorPage;
 import org.example.chat.chatmessage.adapter.in.web.dto.ChatMessageCursor;
 import org.example.chat.chatmessage.application.port.in.ChatMessageQueryUseCase;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
+import org.example.common.dto.CursorPages;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -39,31 +41,8 @@ public class ChatMessageController {
 
         List<ChatMessage> result = chatMessageQueryUseCase.listMessages(query);
 
-        return toCursorPage(result, limit, ChatMessageResponse::fromDomain);
-    }
-
-    private <T, R> ResponseEntity<CursorPage<R>> toCursorPage(
-            List<T> result,
-            int limit,
-            Function<T, R> mapper
-    ) {
-        if (result.isEmpty()) {
-            return ResponseEntity.ok(new CursorPage<>(null, false));
-        }
-
-        boolean hasNext = result.size() > limit;
-
-        List<T> pageItems = hasNext
-                ? result.subList(0, limit)
-                : result;
-
         return ResponseEntity.ok(
-                new CursorPage<>(
-                        pageItems.stream()
-                                .map(mapper)
-                                .toList(),
-                        hasNext
-                )
+                CursorPages.from(result, limit, ChatMessageResponse::fromDomain)
         );
     }
 }
