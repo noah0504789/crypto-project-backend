@@ -1,4 +1,6 @@
-package org.example.notification.common.exception;
+package org.example.notification.application.exception;
+
+import org.example.notification.exception.NotificationException;
 
 public class NotificationPersistException extends NotificationException {
 

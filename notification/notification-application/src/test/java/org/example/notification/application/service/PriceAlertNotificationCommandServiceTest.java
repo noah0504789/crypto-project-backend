@@ -8,7 +8,7 @@ import org.example.notification.application.service.command.PriceAlertNotificati
 import org.example.notification.domain.event.NotificationEventList;
 import org.example.notification.domain.model.Notification;
 import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
-import org.example.notification.common.exception.NotificationPersistException;
+import org.example.notification.application.exception.NotificationPersistException;
 import org.example.notification.domain.model.NotificationRecipient;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

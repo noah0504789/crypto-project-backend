@@ -45,7 +45,7 @@ public class MongoNotificationAdapter implements NotificationPersistencePort {
     }
 
     @Override
-    public List<NotificationInboxItem> listLatest(UUID receiverId, int limit) {
+    public List<NotificationInboxItem> listLatestInboxItems(UUID receiverId, int limit) {
         if (receiverId == null || limit <= 0) {
             return List.of();
         }
@@ -56,24 +56,24 @@ public class MongoNotificationAdapter implements NotificationPersistencePort {
     }
 
     @Override
-    public List<NotificationInboxItem> listPrev(
+    public List<NotificationInboxItem> listInboxItemsBefore(
             UUID receiverId,
             String lastRecipientId,
-            Long lastDeliveredAtMillis,
+            Long lastDeliveredAtMs,
             int limit
     ) {
         if (receiverId == null
                 || lastRecipientId == null
                 || lastRecipientId.isBlank()
                 || !ObjectId.isValid(lastRecipientId)
-                || lastDeliveredAtMillis == null
+                || lastDeliveredAtMs == null
                 || limit <= 0
         ) {
             return List.of();
         }
 
         ObjectId lastRecipientObjectId = new ObjectId(lastRecipientId);
-        Instant lastDeliveredAt = Instant.ofEpochMilli(lastDeliveredAtMillis);
+        Instant lastDeliveredAt = Instant.ofEpochMilli(lastDeliveredAtMs);
 
         List<MongoNotificationRecipient> recipients = notificationRecipientRepository.listPrev(receiverId, lastRecipientObjectId, lastDeliveredAt, limit);
 

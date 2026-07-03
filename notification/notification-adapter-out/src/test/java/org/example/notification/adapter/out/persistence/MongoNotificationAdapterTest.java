@@ -84,7 +84,7 @@ class MongoNotificationAdapterTest {
 
     @Test
     @DisplayName("최신 알림함 목록은 Recipient 기준으로 조회하고 Notification 원본과 조합해서 반환한다")
-    void listLatest() {
+    void listLatestInboxItems() {
         MongoNotificationRecipient recipient2 = mongoRecipient(
                 recipientId2,
                 notificationId2,
@@ -119,7 +119,7 @@ class MongoNotificationAdapterTest {
         when(notificationRepository.findByIdInAndDeletedFalse(Set.of(notificationId1, notificationId2)))
                 .thenReturn(List.of(notification1, notification2));
 
-        List<NotificationInboxItem> result = sut.listLatest(receiverId, 2);
+        List<NotificationInboxItem> result = sut.listLatestInboxItems(receiverId, 2);
 
         assertEquals(2, result.size());
 
@@ -141,8 +141,8 @@ class MongoNotificationAdapterTest {
 
     @Test
     @DisplayName("최신 알림함 목록 조회 시 receiverId가 null이면 빈 리스트를 반환한다")
-    void listLatestWhenReceiverIdIsNull() {
-        List<NotificationInboxItem> result = sut.listLatest(null, 10);
+    void listLatestInboxItemsWhenReceiverIdIsNull() {
+        List<NotificationInboxItem> result = sut.listLatestInboxItems(null, 10);
 
         assertTrue(result.isEmpty());
 
@@ -152,8 +152,8 @@ class MongoNotificationAdapterTest {
 
     @Test
     @DisplayName("최신 알림함 목록 조회 시 limit이 0 이하이면 빈 리스트를 반환한다")
-    void listLatestWhenLimitIsInvalid() {
-        List<NotificationInboxItem> result = sut.listLatest(receiverId, 0);
+    void listLatestInboxItemsWhenLimitIsInvalid() {
+        List<NotificationInboxItem> result = sut.listLatestInboxItems(receiverId, 0);
 
         assertTrue(result.isEmpty());
 
@@ -163,7 +163,7 @@ class MongoNotificationAdapterTest {
 
     @Test
     @DisplayName("이전 알림함 목록은 Recipient 커서 기준으로 조회하고 Notification 원본과 조합해서 반환한다")
-    void listPrev() {
+    void listInboxItemsBefore() {
         MongoNotificationRecipient recipient1 = mongoRecipient(
                 recipientId1,
                 notificationId1,
@@ -187,7 +187,7 @@ class MongoNotificationAdapterTest {
         when(notificationRepository.findByIdInAndDeletedFalse(Set.of(notificationId1)))
                 .thenReturn(List.of(notification1));
 
-        List<NotificationInboxItem> result = sut.listPrev(
+        List<NotificationInboxItem> result = sut.listInboxItemsBefore(
                 receiverId,
                 recipientId2.toHexString(),
                 lastDeliveredAtMillis,
@@ -206,8 +206,8 @@ class MongoNotificationAdapterTest {
 
     @Test
     @DisplayName("이전 알림함 목록 조회 시 커서 id가 유효하지 않으면 빈 리스트를 반환한다")
-    void listPrevWhenCursorIdIsInvalid() {
-        List<NotificationInboxItem> result = sut.listPrev(
+    void listInboxItemsBeforeWhenCursorIdIsInvalid() {
+        List<NotificationInboxItem> result = sut.listInboxItemsBefore(
                 receiverId,
                 "invalid-object-id",
                 toMillis(deliveredAt1),
@@ -222,8 +222,8 @@ class MongoNotificationAdapterTest {
 
     @Test
     @DisplayName("이전 알림함 목록 조회 시 deliveredAt 커서가 null이면 빈 리스트를 반환한다")
-    void listPrevWhenDeliveredAtCursorIsNull() {
-        List<NotificationInboxItem> result = sut.listPrev(
+    void listInboxItemsBeforeWhenDeliveredAtCursorIsNull() {
+        List<NotificationInboxItem> result = sut.listInboxItemsBefore(
                 receiverId,
                 recipientId1.toHexString(),
                 null,
@@ -238,7 +238,7 @@ class MongoNotificationAdapterTest {
 
     @Test
     @DisplayName("Notification 원본이 삭제되었거나 조회되지 않으면 InboxItem 조립에서 제외한다")
-    void listLatestSkipMissingNotification() {
+    void listLatestInboxItemsSkipMissingNotification() {
         MongoNotificationRecipient recipient2 = mongoRecipient(
                 recipientId2,
                 notificationId2,
@@ -266,7 +266,7 @@ class MongoNotificationAdapterTest {
         when(notificationRepository.findByIdInAndDeletedFalse(Set.of(notificationId1, notificationId2)))
                 .thenReturn(List.of(notification1));
 
-        List<NotificationInboxItem> result = sut.listLatest(receiverId, 2);
+        List<NotificationInboxItem> result = sut.listLatestInboxItems(receiverId, 2);
 
         assertEquals(1, result.size());
         assertEquals(notificationId1.toHexString(), result.get(0).notificationId());
