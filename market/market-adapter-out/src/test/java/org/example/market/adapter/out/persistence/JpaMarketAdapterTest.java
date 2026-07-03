@@ -1,29 +1,28 @@
 package org.example.market.adapter.out.persistence;
 
-import org.example.market.application.service.command.ChangeMarketsCommand;
 import org.example.market.application.service.command.ChangeMarketsCommand.CreateMarketCommand;
 import org.example.market.application.service.command.ChangeMarketsCommand.UpdateMarketCommand;
-import org.example.market.application.service.command.ChangeMarketsCommand.DeleteMarketCommand;
+import org.example.market.domain.model.Market;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyCollection;
-import static org.mockito.Mockito.inOrder;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class JpaMarketAdapterTest {
@@ -34,246 +33,334 @@ class JpaMarketAdapterTest {
     @InjectMocks
     private JpaMarketAdapter sut;
 
-    @Test
-    @DisplayName("changeMarkets는 command가 비어 있으면 아무 작업도 하지 않는다")
-    void changeMarkets_whenCommandIsEmpty_doesNothing() {
-        ChangeMarketsCommand command = new ChangeMarketsCommand(
-                List.of(),
-                List.of(),
-                List.of()
-        );
+    @Nested
+    @DisplayName("findAllEnabledOrderByIdAsc")
+    class FindAllEnabledOrderByIdAscTest {
 
-        sut.changeMarkets(command);
+        @Test
+        @DisplayName("enabled 마켓을 id 오름차순으로 조회해 도메인으로 변환한다")
+        void findAllEnabledOrderByIdAsc_shouldReturnEnabledMarkets() {
+            // given
+            JpaMarket btc = createJpaMarket(
+                    1L,
+                    "KRW-BTC",
+                    "BTC",
+                    "비트코인",
+                    "Bitcoin"
+            );
 
-        verifyNoInteractions(marketRepository);
+            JpaMarket eth = createJpaMarket(
+                    2L,
+                    "KRW-ETH",
+                    "ETH",
+                    "이더리움",
+                    "Ethereum"
+            );
+
+            given(marketRepository.findAllByEnabledTrueOrderByIdAsc())
+                    .willReturn(List.of(btc, eth));
+
+            // when
+            List<Market> result = sut.findAllEnabledOrderByIdAsc();
+
+            // then
+            assertThat(result).hasSize(2);
+            assertThat(result)
+                    .extracting(Market::getMarketCode)
+                    .containsExactly("KRW-BTC", "KRW-ETH");
+
+            verify(marketRepository).findAllByEnabledTrueOrderByIdAsc();
+        }
     }
 
-    @Test
-    @DisplayName("changeMarkets는 create 명령이 있으면 JpaMarket을 생성해 저장한다")
-    void changeMarkets_whenCreatesExist_savesCreatedMarkets() {
-        ChangeMarketsCommand command = new ChangeMarketsCommand(
-                List.of(
-                        new CreateMarketCommand(
-                                "KRW-BTC",
-                                "BTC",
-                                "비트코인",
-                                "Bitcoin",
-                                true
-                        ),
-                        new CreateMarketCommand(
-                                "KRW-ETH",
-                                "ETH",
-                                "이더리움",
-                                "Ethereum",
-                                true
-                        )
-                ),
-                List.of(),
-                List.of()
-        );
+    @Nested
+    @DisplayName("findAllEnabledByIds")
+    class FindAllEnabledByIdsTest {
 
-        sut.changeMarkets(command);
+        @Test
+        @DisplayName("ids가 null이면 빈 목록을 반환하고 repository를 호출하지 않는다")
+        void findAllEnabledByIds_whenIdsIsNull_shouldReturnEmptyList() {
+            // when
+            List<Market> result = sut.findAllEnabledByIds(null);
 
-        ArgumentCaptor<List<JpaMarket>> captor = ArgumentCaptor.forClass(List.class);
+            // then
+            assertThat(result).isEmpty();
 
-        verify(marketRepository).saveAll(captor.capture());
+            verifyNoInteractions(marketRepository);
+        }
 
-        List<JpaMarket> savedMarkets = captor.getValue();
+        @Test
+        @DisplayName("ids가 비어 있으면 빈 목록을 반환하고 repository를 호출하지 않는다")
+        void findAllEnabledByIds_whenIdsIsEmpty_shouldReturnEmptyList() {
+            // when
+            List<Market> result = sut.findAllEnabledByIds(Set.of());
 
-        assertThat(savedMarkets).hasSize(2);
+            // then
+            assertThat(result).isEmpty();
 
-        assertThat(savedMarkets)
-                .extracting(JpaMarket::getMarketCode)
-                .containsExactly("KRW-BTC", "KRW-ETH");
+            verifyNoInteractions(marketRepository);
+        }
 
-        assertThat(savedMarkets)
-                .extracting(JpaMarket::getSymbol)
-                .containsExactly("BTC", "ETH");
+        @Test
+        @DisplayName("ids에 해당하는 enabled 마켓을 조회해 도메인으로 변환한다")
+        void findAllEnabledByIds_shouldReturnEnabledMarketsByIds() {
+            // given
+            Set<Long> ids = Set.of(1L, 2L);
 
-        assertThat(savedMarkets)
-                .extracting(JpaMarket::getKoreanName)
-                .containsExactly("비트코인", "이더리움");
+            JpaMarket btc = createJpaMarket(
+                    1L,
+                    "KRW-BTC",
+                    "BTC",
+                    "비트코인",
+                    "Bitcoin"
+            );
 
-        assertThat(savedMarkets)
-                .extracting(JpaMarket::getEnglishName)
-                .containsExactly("Bitcoin", "Ethereum");
+            JpaMarket eth = createJpaMarket(
+                    2L,
+                    "KRW-ETH",
+                    "ETH",
+                    "이더리움",
+                    "Ethereum"
+            );
 
-        assertThat(savedMarkets)
-                .extracting(JpaMarket::isEnabled)
-                .containsExactly(true, true);
+            given(marketRepository.findAllByIdInAndEnabledTrue(ids))
+                    .willReturn(List.of(btc, eth));
+
+            // when
+            List<Market> result = sut.findAllEnabledByIds(ids);
+
+            // then
+            assertThat(result).hasSize(2);
+            assertThat(result)
+                    .extracting(Market::getMarketCode)
+                    .containsExactly("KRW-BTC", "KRW-ETH");
+
+            verify(marketRepository).findAllByIdInAndEnabledTrue(ids);
+        }
     }
 
-    @Test
-    @DisplayName("changeMarkets는 update 명령이 있으면 기존 JpaMarket을 조회해 값을 변경한다")
-    void changeMarkets_whenUpdatesExist_updatesExistingMarkets() {
-        JpaMarket btc = createJpaMarket(
-                1L,
-                "KRW-BTC",
-                "BTC",
-                "비트코인",
-                "Bitcoin"
-        );
+    @Nested
+    @DisplayName("createMarkets")
+    class CreateMarketsTest {
 
-        JpaMarket eth = createJpaMarket(
-                2L,
-                "KRW-ETH",
-                "ETH",
-                "이더리움",
-                "Ethereum"
-        );
+        @Test
+        @DisplayName("create 명령이 비어 있으면 빈 목록으로 saveAll을 호출한다")
+        void createMarkets_whenCommandsIsEmpty_shouldSaveEmptyList() {
+            // when
+            sut.createMarkets(List.of());
 
-        ChangeMarketsCommand command = new ChangeMarketsCommand(
-                List.of(),
-                List.of(
-                        new UpdateMarketCommand(
-                                1L,
-                                "KRW-BTC",
-                                "BTC",
-                                "비트코인 변경",
-                                "Bitcoin Updated",
-                                false
-                        ),
-                        new UpdateMarketCommand(
-                                2L,
-                                "KRW-ETH",
-                                "ETH",
-                                "이더리움 변경",
-                                "Ethereum Updated",
-                                false
-                        )
-                ),
-                List.of()
-        );
+            // then
+            verify(marketRepository).saveAll(List.of());
+        }
 
-        when(marketRepository.findAllById(anyCollection()))
-                .thenReturn(List.of(btc, eth));
+        @Test
+        @DisplayName("create 명령이 있으면 JpaMarket을 생성해 저장한다")
+        void createMarkets_shouldSaveCreatedMarkets() {
+            // given
+            List<CreateMarketCommand> commands = List.of(
+                    new CreateMarketCommand(
+                            "KRW-BTC",
+                            "BTC",
+                            "비트코인",
+                            "Bitcoin",
+                            true
+                    ),
+                    new CreateMarketCommand(
+                            "KRW-ETH",
+                            "ETH",
+                            "이더리움",
+                            "Ethereum",
+                            true
+                    )
+            );
 
-        sut.changeMarkets(command);
+            // when
+            sut.createMarkets(commands);
 
-        verify(marketRepository).findAllById(anyCollection());
-        verify(marketRepository, never()).saveAll(anyCollection());
+            // then
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<JpaMarket>> captor = ArgumentCaptor.forClass(List.class);
 
-        assertThat(btc.getKoreanName()).isEqualTo("비트코인 변경");
-        assertThat(btc.getEnglishName()).isEqualTo("Bitcoin Updated");
-        assertThat(btc.isEnabled()).isFalse();
+            verify(marketRepository).saveAll(captor.capture());
 
-        assertThat(eth.getKoreanName()).isEqualTo("이더리움 변경");
-        assertThat(eth.getEnglishName()).isEqualTo("Ethereum Updated");
-        assertThat(eth.isEnabled()).isFalse();
+            List<JpaMarket> savedMarkets = captor.getValue();
+
+            assertThat(savedMarkets).hasSize(2);
+
+            assertThat(savedMarkets)
+                    .extracting(JpaMarket::getMarketCode)
+                    .containsExactly("KRW-BTC", "KRW-ETH");
+
+            assertThat(savedMarkets)
+                    .extracting(JpaMarket::getSymbol)
+                    .containsExactly("BTC", "ETH");
+
+            assertThat(savedMarkets)
+                    .extracting(JpaMarket::getKoreanName)
+                    .containsExactly("비트코인", "이더리움");
+
+            assertThat(savedMarkets)
+                    .extracting(JpaMarket::getEnglishName)
+                    .containsExactly("Bitcoin", "Ethereum");
+
+            assertThat(savedMarkets)
+                    .extracting(JpaMarket::isEnabled)
+                    .containsExactly(true, true);
+        }
     }
 
-    @Test
-    @DisplayName("changeMarkets는 update 대상 일부가 없으면 예외를 던진다")
-    void changeMarkets_whenSomeUpdateTargetsNotFound_throwsException() {
-        JpaMarket btc = createJpaMarket(
-                1L,
-                "KRW-BTC",
-                "BTC",
-                "비트코인",
-                "Bitcoin"
-        );
+    @Nested
+    @DisplayName("updateMarkets")
+    class UpdateMarketsTest {
 
-        ChangeMarketsCommand command = new ChangeMarketsCommand(
-                List.of(),
-                List.of(
-                        new UpdateMarketCommand(
-                                1L,
-                                "KRW-BTC",
-                                "BTC",
-                                "비트코인 변경",
-                                "Bitcoin Updated",
-                                true
-                        ),
-                        new UpdateMarketCommand(
-                                2L,
-                                "KRW-ETH",
-                                "ETH",
-                                "이더리움 변경",
-                                "Ethereum Updated",
-                                true
-                        )
-                ),
-                List.of()
-        );
+        @Test
+        @DisplayName("update 명령이 비어 있으면 findAllById를 빈 id 목록으로 호출한다")
+        void updateMarkets_whenCommandsIsEmpty_shouldFindAllByEmptyIds() {
+            // given
+            given(marketRepository.findAllById(Set.of()))
+                    .willReturn(List.of());
 
-        when(marketRepository.findAllById(anyCollection()))
-                .thenReturn(List.of(btc));
+            // when
+            sut.updateMarkets(List.of());
 
-        assertThatThrownBy(() -> sut.changeMarkets(command))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Some markets to update were not found.");
+            // then
+            verify(marketRepository).findAllById(Set.of());
+            verify(marketRepository, never()).saveAll(anyCollection());
+        }
 
-        verify(marketRepository).findAllById(anyCollection());
-        verify(marketRepository, never()).saveAll(anyCollection());
+        @Test
+        @DisplayName("update 명령이 있으면 기존 JpaMarket을 조회해 값을 변경한다")
+        void updateMarkets_shouldUpdateExistingMarkets() {
+            // given
+            JpaMarket btc = createJpaMarket(
+                    1L,
+                    "KRW-BTC",
+                    "BTC",
+                    "비트코인",
+                    "Bitcoin"
+            );
+
+            JpaMarket eth = createJpaMarket(
+                    2L,
+                    "KRW-ETH",
+                    "ETH",
+                    "이더리움",
+                    "Ethereum"
+            );
+
+            List<UpdateMarketCommand> commands = List.of(
+                    new UpdateMarketCommand(
+                            1L,
+                            "KRW-BTC",
+                            "BTC",
+                            "비트코인 변경",
+                            "Bitcoin Updated",
+                            false
+                    ),
+                    new UpdateMarketCommand(
+                            2L,
+                            "KRW-ETH",
+                            "ETH",
+                            "이더리움 변경",
+                            "Ethereum Updated",
+                            false
+                    )
+            );
+
+            given(marketRepository.findAllById(anyCollection()))
+                    .willReturn(List.of(btc, eth));
+
+            // when
+            sut.updateMarkets(commands);
+
+            // then
+            verify(marketRepository).findAllById(anyCollection());
+            verify(marketRepository, never()).saveAll(anyCollection());
+
+            assertThat(btc.getMarketCode()).isEqualTo("KRW-BTC");
+            assertThat(btc.getSymbol()).isEqualTo("BTC");
+            assertThat(btc.getKoreanName()).isEqualTo("비트코인 변경");
+            assertThat(btc.getEnglishName()).isEqualTo("Bitcoin Updated");
+            assertThat(btc.isEnabled()).isFalse();
+
+            assertThat(eth.getMarketCode()).isEqualTo("KRW-ETH");
+            assertThat(eth.getSymbol()).isEqualTo("ETH");
+            assertThat(eth.getKoreanName()).isEqualTo("이더리움 변경");
+            assertThat(eth.getEnglishName()).isEqualTo("Ethereum Updated");
+            assertThat(eth.isEnabled()).isFalse();
+        }
+
+        @Test
+        @DisplayName("update 대상 일부가 없으면 예외를 던진다")
+        void updateMarkets_whenSomeUpdateTargetsNotFound_shouldThrowException() {
+            // given
+            JpaMarket btc = createJpaMarket(
+                    1L,
+                    "KRW-BTC",
+                    "BTC",
+                    "비트코인",
+                    "Bitcoin"
+            );
+
+            List<UpdateMarketCommand> commands = List.of(
+                    new UpdateMarketCommand(
+                            1L,
+                            "KRW-BTC",
+                            "BTC",
+                            "비트코인 변경",
+                            "Bitcoin Updated",
+                            true
+                    ),
+                    new UpdateMarketCommand(
+                            2L,
+                            "KRW-ETH",
+                            "ETH",
+                            "이더리움 변경",
+                            "Ethereum Updated",
+                            true
+                    )
+            );
+
+            given(marketRepository.findAllById(anyCollection()))
+                    .willReturn(List.of(btc));
+
+            // when & then
+            assertThatThrownBy(() -> sut.updateMarkets(commands))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("Some markets to update were not found.");
+
+            verify(marketRepository).findAllById(anyCollection());
+            verify(marketRepository, never()).saveAll(anyCollection());
+            verify(marketRepository, never()).deleteAllByIdInBatch(anyCollection());
+        }
     }
 
-    @Test
-    @DisplayName("changeMarkets는 delete 명령이 있으면 id 목록으로 일괄 삭제한다")
-    void changeMarkets_whenDeletesExist_deletesByIds() {
-        ChangeMarketsCommand command = new ChangeMarketsCommand(
-                List.of(),
-                List.of(),
-                List.of(
-                        new DeleteMarketCommand(1L),
-                        new DeleteMarketCommand(2L)
-                )
-        );
+    @Nested
+    @DisplayName("deleteMarketsByIds")
+    class DeleteMarketsByIdsTest {
 
-        sut.changeMarkets(command);
+        @Test
+        @DisplayName("marketIds가 비어 있어도 repository에 삭제 요청을 위임한다")
+        void deleteMarketsByIds_whenMarketIdsIsEmpty_shouldDelegateToRepository() {
+            // when
+            sut.deleteMarketsByIds(List.of());
 
-        ArgumentCaptor<List<Long>> captor = ArgumentCaptor.forClass(List.class);
+            // then
+            verify(marketRepository).deleteAllByIdInBatch(List.of());
+        }
 
-        verify(marketRepository).deleteAllByIdInBatch(captor.capture());
+        @Test
+        @DisplayName("id 목록으로 일괄 삭제한다")
+        void deleteMarketsByIds_shouldDeleteByIds() {
+            // given
+            List<Long> marketIds = List.of(1L, 2L);
 
-        assertThat(captor.getValue()).containsExactly(1L, 2L);
-    }
+            // when
+            sut.deleteMarketsByIds(marketIds);
 
-    @Test
-    @DisplayName("changeMarkets는 delete, update, create 순서로 처리한다")
-    void changeMarkets_processesDeleteUpdateCreateInOrder() {
-        JpaMarket btc = createJpaMarket(
-                1L,
-                "KRW-BTC",
-                "BTC",
-                "비트코인",
-                "Bitcoin"
-        );
-
-        ChangeMarketsCommand command = new ChangeMarketsCommand(
-                List.of(
-                        new CreateMarketCommand(
-                                "KRW-ETH",
-                                "ETH",
-                                "이더리움",
-                                "Ethereum",
-                                true
-                        )
-                ),
-                List.of(
-                        new UpdateMarketCommand(
-                                1L,
-                                "KRW-BTC",
-                                "BTC",
-                                "비트코인 변경",
-                                "Bitcoin Updated",
-                                true
-                        )
-                ),
-                List.of(
-                        new DeleteMarketCommand(3L)
-                )
-        );
-
-        when(marketRepository.findAllById(anyCollection()))
-                .thenReturn(List.of(btc));
-
-        sut.changeMarkets(command);
-
-        InOrder inOrder = inOrder(marketRepository);
-
-        inOrder.verify(marketRepository).deleteAllByIdInBatch(List.of(3L));
-        inOrder.verify(marketRepository).findAllById(anyCollection());
-        inOrder.verify(marketRepository).saveAll(anyCollection());
+            // then
+            verify(marketRepository).deleteAllByIdInBatch(marketIds);
+        }
     }
 
     private JpaMarket createJpaMarket(

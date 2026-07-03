@@ -16,7 +16,27 @@ public record ChangePriceAlertSettingsCommand(
     }
 
     public boolean isEmpty() {
-        return creates.isEmpty() && updates.isEmpty() && deletes.isEmpty();
+        return creates.isEmpty()
+                && updates.isEmpty()
+                && deletes.isEmpty();
+    }
+
+    public boolean hasCreates() {
+        return !creates.isEmpty();
+    }
+
+    public boolean hasUpdates() {
+        return !updates.isEmpty();
+    }
+
+    public boolean hasDeletes() {
+        return !deletes.isEmpty();
+    }
+
+    public List<String> deleteCodes() {
+        return deletes.stream()
+                .map(DeletePriceAlertSettingCommand::code)
+                .toList();
     }
 
     public record CreatePriceAlertSettingCommand(

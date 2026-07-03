@@ -27,11 +27,21 @@ public class MarketCommandService implements MarketCommandUseCase {
             return;
         }
 
-        marketPersistencePort.changeMarkets(command);
+        if (command.hasDeletes()) {
+            marketPersistencePort.deleteMarketsByIds(command.deleteIds());
+        }
 
-        Market market = Market.eventSource();
+        if (command.hasUpdates()) {
+            marketPersistencePort.updateMarkets(command.updates());
+        }
 
-        publishMarketChangedEvent(market);
+        if (command.hasCreates()) {
+            marketPersistencePort.createMarkets(command.creates());
+        }
+
+        publishMarketChangedEvent(
+                Market.eventSource()
+        );
     }
 
     private void publishMarketChangedEvent(Market market) {

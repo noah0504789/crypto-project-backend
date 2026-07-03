@@ -12,5 +12,9 @@ public interface MarketPersistencePort {
 
     List<Market> findAllEnabledByIds(Set<Long> ids);
 
-    void changeMarkets(ChangeMarketsCommand command);
+    void createMarkets(List<ChangeMarketsCommand.CreateMarketCommand> commands);
+
+    void updateMarkets(List<ChangeMarketsCommand.UpdateMarketCommand> commands);
+
+    void deleteMarketsByIds(List<Long> marketIds);
 }

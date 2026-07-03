@@ -18,6 +18,24 @@ public record ChangeMarketsCommand(
         return creates.isEmpty() && updates.isEmpty() && deletes.isEmpty();
     }
 
+    public boolean hasCreates() {
+        return !creates.isEmpty();
+    }
+
+    public boolean hasUpdates() {
+        return !updates.isEmpty();
+    }
+
+    public boolean hasDeletes() {
+        return !deletes.isEmpty();
+    }
+
+    public List<Long> deleteIds() {
+        return deletes.stream()
+                .map(DeleteMarketCommand::id)
+                .toList();
+    }
+
     public record CreateMarketCommand(
             String marketCode,
             String symbol,
