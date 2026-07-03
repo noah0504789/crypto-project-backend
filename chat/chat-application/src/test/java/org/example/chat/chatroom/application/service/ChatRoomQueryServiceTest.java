@@ -103,7 +103,7 @@ class ChatRoomQueryServiceTest {
 
             when(cache.findById(ROOM_ID))
                     .thenReturn(Optional.of(room));
-            when(cache.getLastMsgSeq(ROOM_ID, MEMBER_ID))
+            when(cache.getLastReadSeq(ROOM_ID, MEMBER_ID))
                     .thenReturn(Optional.of(10L));
 
             // when
@@ -114,8 +114,8 @@ class ChatRoomQueryServiceTest {
 
             verify(queryRepairService, never()).repairRoom(anyString());
             verify(persistence, never()).getLastReadSeq(anyString(), anyString());
-            verify(cache, never()).updateLastRead(anyString(), anyString(), anyLong());
-            verify(cache, never()).updateRecentScore(anyString(), anyString(), anyLong());
+            verify(cache, never()).updateLastReadSeq(anyString(), anyString(), anyLong());
+            verify(cache, never()).updateActivityScore(anyString(), anyString(), anyLong());
         }
 
         @Test
@@ -130,7 +130,7 @@ class ChatRoomQueryServiceTest {
 
             when(cache.findById(ROOM_ID))
                     .thenReturn(Optional.of(room));
-            when(cache.getLastMsgSeq(ROOM_ID, MEMBER_ID))
+            when(cache.getLastReadSeq(ROOM_ID, MEMBER_ID))
                     .thenReturn(Optional.empty());
             when(persistence.getLastReadSeq(ROOM_ID, MEMBER_ID))
                     .thenReturn(10L);
@@ -142,8 +142,8 @@ class ChatRoomQueryServiceTest {
             assertThat(result).isNotNull();
 
             verify(persistence, times(1)).getLastReadSeq(ROOM_ID, MEMBER_ID);
-            verify(cache, times(1)).updateLastRead(ROOM_ID, MEMBER_ID, 10L);
-            verify(cache, times(1)).updateRecentScore(
+            verify(cache, times(1)).updateLastReadSeq(ROOM_ID, MEMBER_ID, 10L);
+            verify(cache, times(1)).updateActivityScore(
                     eq(ROOM_ID),
                     eq(MEMBER_ID),
                     eq(MyChatRoomScoreCalculator.unread(1_000L))
@@ -175,8 +175,8 @@ class ChatRoomQueryServiceTest {
 
             verify(queryRepairService, times(1)).repairRoom(ROOM_ID);
             verify(persistence, times(1)).getLastReadSeq(ROOM_ID, MEMBER_ID);
-            verify(cache, times(1)).updateLastRead(ROOM_ID, MEMBER_ID, 20L);
-            verify(cache, times(1)).updateRecentScore(
+            verify(cache, times(1)).updateLastReadSeq(ROOM_ID, MEMBER_ID, 20L);
+            verify(cache, times(1)).updateActivityScore(
                     eq(ROOM_ID),
                     eq(MEMBER_ID),
                     eq(MyChatRoomScoreCalculator.read(1_000L))
@@ -193,14 +193,14 @@ class ChatRoomQueryServiceTest {
 
             when(cache.findById(ROOM_ID))
                     .thenReturn(Optional.of(room));
-            when(cache.getLastMsgSeq(ROOM_ID, MEMBER_ID))
+            when(cache.getLastReadSeq(ROOM_ID, MEMBER_ID))
                     .thenReturn(Optional.empty());
             when(persistence.getLastReadSeq(ROOM_ID, MEMBER_ID))
                     .thenReturn(10L);
 
             doThrow(new RuntimeException("redis failed"))
                     .when(cache)
-                    .updateLastRead(ROOM_ID, MEMBER_ID, 10L);
+                    .updateLastReadSeq(ROOM_ID, MEMBER_ID, 10L);
 
             // when
             MyChatRoomSummary result = sut.getMyRoom(query);
@@ -208,8 +208,8 @@ class ChatRoomQueryServiceTest {
             // then
             assertThat(result).isNotNull();
 
-            verify(cache, times(1)).updateLastRead(ROOM_ID, MEMBER_ID, 10L);
-            verify(cache, never()).updateRecentScore(anyString(), anyString(), anyLong());
+            verify(cache, times(1)).updateLastReadSeq(ROOM_ID, MEMBER_ID, 10L);
+            verify(cache, never()).updateActivityScore(anyString(), anyString(), anyLong());
         }
     }
 
@@ -225,7 +225,7 @@ class ChatRoomQueryServiceTest {
 
             ChatRoomCacheLookupResult cached = allHit(List.of(ROOM_ID), List.of(room));
 
-            when(cache.listMostPopular(ChatRoomCategory.FREE, 10))
+            when(cache.listPopularRooms(ChatRoomCategory.FREE, 10))
                     .thenReturn(cached);
 
             // when
@@ -246,7 +246,7 @@ class ChatRoomQueryServiceTest {
             ListPopularChatRoomsQuery query = firstPopularRoomsQuery();
             List<ChatRoom> repaired = List.of(room, room2);
 
-            when(cache.listMostPopular(ChatRoomCategory.FREE, 10))
+            when(cache.listPopularRooms(ChatRoomCategory.FREE, 10))
                     .thenReturn(noIndex());
             when(queryRepairService.repairPopularRooms(ChatRoomCategory.FREE, 10))
                     .thenReturn(repaired);
@@ -277,7 +277,7 @@ class ChatRoomQueryServiceTest {
                     List.of(ROOM_ID_2)
             );
 
-            when(cache.listMostPopular(ChatRoomCategory.FREE, 10))
+            when(cache.listPopularRooms(ChatRoomCategory.FREE, 10))
                     .thenReturn(cached);
             when(queryRepairService.repairRoomsByIds(List.of(ROOM_ID_2)))
                     .thenReturn(List.of(room2));
@@ -301,7 +301,7 @@ class ChatRoomQueryServiceTest {
 
             ChatRoomCacheLookupResult cached = allHit(List.of(ROOM_ID), List.of(room));
 
-            when(cache.listNextPopular(ChatRoomCategory.FREE, "last-room", 100L, 10))
+            when(cache.listPopularRoomsAfter(ChatRoomCategory.FREE, "last-room", 100L, 10))
                     .thenReturn(cached);
 
             // when
@@ -322,7 +322,7 @@ class ChatRoomQueryServiceTest {
             ListPopularChatRoomsQuery query = popularRoomsAfterQuery();
             List<ChatRoom> repaired = List.of(room, room2);
 
-            when(cache.listNextPopular(ChatRoomCategory.FREE, "last-room", 100L, 10))
+            when(cache.listPopularRoomsAfter(ChatRoomCategory.FREE, "last-room", 100L, 10))
                     .thenReturn(noIndex());
             when(queryRepairService.repairPopularRoomsAfter(query))
                     .thenReturn(repaired);
@@ -353,7 +353,7 @@ class ChatRoomQueryServiceTest {
                     List.of(ROOM_ID_2)
             );
 
-            when(cache.listNextPopular(ChatRoomCategory.FREE, "last-room", 100L, 10))
+            when(cache.listPopularRoomsAfter(ChatRoomCategory.FREE, "last-room", 100L, 10))
                     .thenReturn(cached);
             when(queryRepairService.repairRoomsByIds(List.of(ROOM_ID_2)))
                     .thenReturn(List.of(room2));
@@ -388,11 +388,11 @@ class ChatRoomQueryServiceTest {
                     List.of(room, room2)
             );
 
-            when(cache.listLatestActive(MEMBER_ID, 10))
+            when(cache.listLatestActiveRooms(MEMBER_ID, 10))
                     .thenReturn(cached);
-            when(cache.getLastMsgSeq("room-1", MEMBER_ID))
+            when(cache.getLastReadSeq("room-1", MEMBER_ID))
                     .thenReturn(Optional.of(1L));
-            when(cache.getLastMsgSeq("room-2", MEMBER_ID))
+            when(cache.getLastReadSeq("room-2", MEMBER_ID))
                     .thenReturn(Optional.of(2L));
 
             // when
@@ -405,8 +405,8 @@ class ChatRoomQueryServiceTest {
             verify(queryRepairService, never()).repairMyRoomsBefore(any(), anyLong());
             verify(queryRepairService, never()).repairRoomsByIds(anyList());
             verify(persistence, never()).getLastReadSeq(anyString(), anyString());
-            verify(cache, never()).updateLastRead(anyString(), anyString(), anyLong());
-            verify(cache, never()).updateRecentScore(anyString(), anyString(), anyLong());
+            verify(cache, never()).updateLastReadSeq(anyString(), anyString(), anyLong());
+            verify(cache, never()).updateActivityScore(anyString(), anyString(), anyLong());
         }
 
         @Test
@@ -426,9 +426,9 @@ class ChatRoomQueryServiceTest {
                     List.of("room-2")
             );
 
-            when(cache.listLatestActive(MEMBER_ID, 10))
+            when(cache.listLatestActiveRooms(MEMBER_ID, 10))
                     .thenReturn(cached);
-            when(cache.getLastMsgSeq("room-1", MEMBER_ID))
+            when(cache.getLastReadSeq("room-1", MEMBER_ID))
                     .thenReturn(Optional.of(1L));
             when(queryRepairService.repairRoomsByIds(List.of("room-2")))
                     .thenReturn(List.of(room2));
@@ -444,9 +444,9 @@ class ChatRoomQueryServiceTest {
             verify(queryRepairService, never()).repairMyRooms(anyString(), anyInt());
             verify(queryRepairService, never()).repairMyRoomsBefore(any(), anyLong());
             verify(queryRepairService, times(1)).repairRoomsByIds(List.of("room-2"));
-            verify(cache, never()).updateLastRead("room-1", MEMBER_ID, 1L);
-            verify(cache).updateLastRead("room-2", MEMBER_ID, 2L);
-            verify(cache).updateRecentScore(
+            verify(cache, never()).updateLastReadSeq("room-1", MEMBER_ID, 1L);
+            verify(cache).updateLastReadSeq("room-2", MEMBER_ID, 2L);
+            verify(cache).updateActivityScore(
                     "room-2",
                     MEMBER_ID,
                     MyChatRoomScoreCalculator.read(2_000L)
@@ -469,7 +469,7 @@ class ChatRoomQueryServiceTest {
 
             List<ChatRoom> repaired = List.of(room, room2);
 
-            when(cache.listLatestActive(MEMBER_ID, 10))
+            when(cache.listLatestActiveRooms(MEMBER_ID, 10))
                     .thenReturn(noIndex());
             when(queryRepairService.repairMyRooms(MEMBER_ID, 10))
                     .thenReturn(repaired);
@@ -488,15 +488,15 @@ class ChatRoomQueryServiceTest {
             verify(queryRepairService, never()).repairMyRoomsBefore(any(), anyLong());
             verify(queryRepairService, never()).repairRoomsByIds(anyList());
 
-            verify(cache).updateLastRead("room-1", MEMBER_ID, 1L);
-            verify(cache).updateRecentScore(
+            verify(cache).updateLastReadSeq("room-1", MEMBER_ID, 1L);
+            verify(cache).updateActivityScore(
                     "room-1",
                     MEMBER_ID,
                     MyChatRoomScoreCalculator.unread(1_000L)
             );
 
-            verify(cache).updateLastRead("room-2", MEMBER_ID, 2L);
-            verify(cache).updateRecentScore(
+            verify(cache).updateLastReadSeq("room-2", MEMBER_ID, 2L);
+            verify(cache).updateActivityScore(
                     "room-2",
                     MEMBER_ID,
                     MyChatRoomScoreCalculator.read(2_000L)
@@ -517,9 +517,9 @@ class ChatRoomQueryServiceTest {
                     List.of(room)
             );
 
-            when(cache.listActiveBefore(MEMBER_ID, "last-room", score, 10))
+            when(cache.listActiveRoomsBefore(MEMBER_ID, "last-room", score, 10))
                     .thenReturn(cached);
-            when(cache.getLastMsgSeq("room-1", MEMBER_ID))
+            when(cache.getLastReadSeq("room-1", MEMBER_ID))
                     .thenReturn(Optional.of(10L));
 
             // when
@@ -547,9 +547,9 @@ class ChatRoomQueryServiceTest {
                     List.of(room)
             );
 
-            when(cache.listActiveBefore(MEMBER_ID, "last-room", score, 10))
+            when(cache.listActiveRoomsBefore(MEMBER_ID, "last-room", score, 10))
                     .thenReturn(cached);
-            when(cache.getLastMsgSeq("room-1", MEMBER_ID))
+            when(cache.getLastReadSeq("room-1", MEMBER_ID))
                     .thenReturn(Optional.of(10L));
 
             // when
@@ -558,7 +558,7 @@ class ChatRoomQueryServiceTest {
             // then
             assertThat(result).hasSize(1);
 
-            verify(cache, times(1)).listActiveBefore(MEMBER_ID, "last-room", score, 10);
+            verify(cache, times(1)).listActiveRoomsBefore(MEMBER_ID, "last-room", score, 10);
         }
 
         @Test
@@ -575,9 +575,9 @@ class ChatRoomQueryServiceTest {
                     List.of(room)
             );
 
-            when(cache.listActiveBefore(MEMBER_ID, "last-room", score, 10))
+            when(cache.listActiveRoomsBefore(MEMBER_ID, "last-room", score, 10))
                     .thenReturn(cached);
-            when(cache.getLastMsgSeq("room-1", MEMBER_ID))
+            when(cache.getLastReadSeq("room-1", MEMBER_ID))
                     .thenReturn(Optional.of(10L));
 
             // when
@@ -586,7 +586,7 @@ class ChatRoomQueryServiceTest {
             // then
             assertThat(result).hasSize(1);
 
-            verify(cache, times(1)).listActiveBefore(MEMBER_ID, "last-room", score, 10);
+            verify(cache, times(1)).listActiveRoomsBefore(MEMBER_ID, "last-room", score, 10);
         }
 
         @Test
@@ -603,9 +603,9 @@ class ChatRoomQueryServiceTest {
                     List.of(room)
             );
 
-            when(cache.listActiveBefore(MEMBER_ID, "last-room", score, 10))
+            when(cache.listActiveRoomsBefore(MEMBER_ID, "last-room", score, 10))
                     .thenReturn(cached);
-            when(cache.getLastMsgSeq("room-1", MEMBER_ID))
+            when(cache.getLastReadSeq("room-1", MEMBER_ID))
                     .thenReturn(Optional.of(10L));
 
             // when
@@ -614,7 +614,7 @@ class ChatRoomQueryServiceTest {
             // then
             assertThat(result).hasSize(1);
 
-            verify(cache, times(1)).listActiveBefore(MEMBER_ID, "last-room", score, 10);
+            verify(cache, times(1)).listActiveRoomsBefore(MEMBER_ID, "last-room", score, 10);
         }
 
         @Test
@@ -628,7 +628,7 @@ class ChatRoomQueryServiceTest {
             when(room.getLastMsgCreatedAtMs()).thenReturn(1_000L);
             when(room.hasUnread(10L)).thenReturn(false);
 
-            when(cache.listActiveBefore(MEMBER_ID, "last-room", score, 10))
+            when(cache.listActiveRoomsBefore(MEMBER_ID, "last-room", score, 10))
                     .thenReturn(noIndex());
             when(queryRepairService.repairMyRoomsBefore(query, score))
                     .thenReturn(List.of(room));
@@ -644,8 +644,8 @@ class ChatRoomQueryServiceTest {
             verify(queryRepairService, never()).repairMyRooms(anyString(), anyInt());
             verify(queryRepairService, times(1)).repairMyRoomsBefore(query, score);
             verify(queryRepairService, never()).repairRoomsByIds(anyList());
-            verify(cache, times(1)).updateLastRead("room-1", MEMBER_ID, 10L);
-            verify(cache, times(1)).updateRecentScore(
+            verify(cache, times(1)).updateLastReadSeq("room-1", MEMBER_ID, 10L);
+            verify(cache, times(1)).updateActivityScore(
                     "room-1",
                     MEMBER_ID,
                     MyChatRoomScoreCalculator.read(1_000L)
@@ -670,9 +670,9 @@ class ChatRoomQueryServiceTest {
                     List.of("room-2")
             );
 
-            when(cache.listActiveBefore(MEMBER_ID, "last-room", score, 10))
+            when(cache.listActiveRoomsBefore(MEMBER_ID, "last-room", score, 10))
                     .thenReturn(cached);
-            when(cache.getLastMsgSeq("room-1", MEMBER_ID))
+            when(cache.getLastReadSeq("room-1", MEMBER_ID))
                     .thenReturn(Optional.of(10L));
             when(queryRepairService.repairRoomsByIds(List.of("room-2")))
                     .thenReturn(List.of(room2));
@@ -688,8 +688,8 @@ class ChatRoomQueryServiceTest {
             verify(queryRepairService, never()).repairMyRooms(anyString(), anyInt());
             verify(queryRepairService, never()).repairMyRoomsBefore(any(), anyLong());
             verify(queryRepairService, times(1)).repairRoomsByIds(List.of("room-2"));
-            verify(cache).updateLastRead("room-2", MEMBER_ID, 2L);
-            verify(cache).updateRecentScore(
+            verify(cache).updateLastReadSeq("room-2", MEMBER_ID, 2L);
+            verify(cache).updateActivityScore(
                     "room-2",
                     MEMBER_ID,
                     MyChatRoomScoreCalculator.read(2_000L)

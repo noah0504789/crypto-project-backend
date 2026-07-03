@@ -141,7 +141,7 @@ class MongoChatRoomMembershipRepositoryImplTest {
             MongoChatRoomMembership saved = saveMembership(roomId1, MEMBER_ID, READ_SEQ_10, SCORE_1000);
 
             // when
-            sut.refresh(saved.getId(), SCORE_9999);
+            sut.updateScore(saved.getId(), SCORE_9999);
 
             // then
             MongoChatRoomMembership found = find(roomId1, MEMBER_ID);
@@ -159,7 +159,7 @@ class MongoChatRoomMembershipRepositoryImplTest {
             String notFoundId = membershipId(roomId1, MEMBER_ID);
 
             // when
-            sut.refresh(notFoundId, SCORE_9999);
+            sut.updateScore(notFoundId, SCORE_9999);
 
             // then
             assertThat(sut.findById(notFoundId)).isEmpty();
@@ -181,7 +181,7 @@ class MongoChatRoomMembershipRepositoryImplTest {
             saveMembership(roomId4, OTHER_MEMBER_ID, READ_SEQ_0, SCORE_9999);
 
             // when
-            List<MongoChatRoomMembership> result = sut.listLatestActive(MEMBER_ID, 10);
+            List<MongoChatRoomMembership> result = sut.listLatestActiveMemberships(MEMBER_ID, 10);
 
             // then
             assertRoomIds(result, roomId2, roomId3, roomId1);
@@ -196,7 +196,7 @@ class MongoChatRoomMembershipRepositoryImplTest {
             saveMembership(roomId3, MEMBER_ID, READ_SEQ_0, SCORE_1000);
 
             // when
-            List<MongoChatRoomMembership> result = sut.listLatestActive(MEMBER_ID, 10);
+            List<MongoChatRoomMembership> result = sut.listLatestActiveMemberships(MEMBER_ID, 10);
 
             // then
             assertRoomIds(result, roomId3, roomId2, roomId1);
@@ -211,7 +211,7 @@ class MongoChatRoomMembershipRepositoryImplTest {
             saveMembership(roomId3, MEMBER_ID, READ_SEQ_0, SCORE_2000);
 
             // when
-            List<MongoChatRoomMembership> result = sut.listLatestActive(MEMBER_ID, 2);
+            List<MongoChatRoomMembership> result = sut.listLatestActiveMemberships(MEMBER_ID, 2);
 
             // then
             assertRoomIds(result, roomId2, roomId3);
@@ -226,7 +226,7 @@ class MongoChatRoomMembershipRepositoryImplTest {
             saveMembership(roomId3, MEMBER_ID, READ_SEQ_0, SCORE_2000);
 
             // when
-            List<MongoChatRoomMembership> result = sut.listLatestActive(MEMBER_ID, 10);
+            List<MongoChatRoomMembership> result = sut.listLatestActiveMemberships(MEMBER_ID, 10);
 
             // then
             assertRoomIds(result, roomId3, roomId1);
@@ -247,7 +247,7 @@ class MongoChatRoomMembershipRepositoryImplTest {
             saveMembership(roomId1, MEMBER_ID, READ_SEQ_0, SCORE_1000);
 
             // when
-            List<MongoChatRoomMembership> result = sut.listActiveBefore(
+            List<MongoChatRoomMembership> result = sut.listActiveMembershipsBefore(
                     MEMBER_ID,
                     roomId4.toHexString(),
                     SCORE_4000,
@@ -267,7 +267,7 @@ class MongoChatRoomMembershipRepositoryImplTest {
             saveMembership(roomId3, MEMBER_ID, READ_SEQ_0, SCORE_1000);
 
             // when
-            List<MongoChatRoomMembership> result = sut.listActiveBefore(
+            List<MongoChatRoomMembership> result = sut.listActiveMembershipsBefore(
                     MEMBER_ID,
                     roomId3.toHexString(),
                     SCORE_1000,
@@ -288,7 +288,7 @@ class MongoChatRoomMembershipRepositoryImplTest {
             saveMembership(roomId1, MEMBER_ID, READ_SEQ_0, SCORE_1000);
 
             // when
-            List<MongoChatRoomMembership> result = sut.listActiveBefore(
+            List<MongoChatRoomMembership> result = sut.listActiveMembershipsBefore(
                     MEMBER_ID,
                     roomId4.toHexString(),
                     SCORE_4000,
@@ -310,7 +310,7 @@ class MongoChatRoomMembershipRepositoryImplTest {
             saveMembership(roomId1, MEMBER_ID, READ_SEQ_0, SCORE_1000);
 
             // when
-            List<MongoChatRoomMembership> result = sut.listActiveBefore(
+            List<MongoChatRoomMembership> result = sut.listActiveMembershipsBefore(
                     MEMBER_ID,
                     roomId5.toHexString(),
                     SCORE_5000,
@@ -332,7 +332,7 @@ class MongoChatRoomMembershipRepositoryImplTest {
             saveMembership(roomId1, MEMBER_ID, READ_SEQ_0, SCORE_1000);
 
             // when
-            List<MongoChatRoomMembership> result = sut.listActiveBefore(
+            List<MongoChatRoomMembership> result = sut.listActiveMembershipsBefore(
                     MEMBER_ID,
                     roomId5.toHexString(),
                     SCORE_3000,

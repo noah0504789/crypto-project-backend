@@ -15,47 +15,64 @@ public interface ChatRoomCachePort {
 
     void warmUp(ChatRoom room);
 
-    void warmUpList(List<ChatRoom> rooms, Map<String, Double> popularities);
+    void warmUpList(List<ChatRoom> rooms, Map<String, Double> popularityScores);
 
-    void update(String id, Map<String, Object> updated, String oldTitle);
+    void updateRoom(
+            String id,
+            Map<String, Object> updates,
+            String oldTitle
+    );
 
-    void join(String id, String memberId);
+    void joinMembership(String id, String memberId);
 
-    boolean leave(String id, String memberId);
+    boolean leaveMembership(String id, String memberId);
 
-    void delete(String id, ChatRoomCategory category, String title, Set<String> memberIds);
+    void deleteRoom(
+            String id,
+            ChatRoomCategory category,
+            String title,
+            Set<String> memberIds
+    );
 
-    Optional<Long> getLastMsgSeq(String roomId, String memberId);
+    Optional<Long> getLastReadSeq(String roomId, String memberId);
 
     Optional<ChatRoom> findById(String id);
 
     Optional<Boolean> existsByTitle(String title);
 
-    ChatRoomCacheLookupResult listMostPopular(ChatRoomCategory category, int limit);
+    ChatRoomCacheLookupResult listPopularRooms(ChatRoomCategory category, int limit);
 
-    ChatRoomCacheLookupResult listNextPopular(
+    ChatRoomCacheLookupResult listPopularRoomsAfter(
             ChatRoomCategory category,
-            String lastId,
+            String lastRoomId,
             Long lastPopularity,
             int limit
     );
 
-    ChatRoomCacheLookupResult listLatestActive(String memberId, int limit);
+    ChatRoomCacheLookupResult listLatestActiveRooms(String memberId, int limit);
 
-    ChatRoomCacheLookupResult listActiveBefore(
+    ChatRoomCacheLookupResult listActiveRoomsBefore(
             String memberId,
-            String lastId,
+            String lastRoomId,
             Long score,
             int limit
     );
 
-    void updateLastRead(String id, String memberId, Long lastMsgSeq);
+    void updateLastReadSeq(
+            String id,
+            String memberId,
+            Long lastReadSeq
+    );
 
-    void updateRecentScore(String id, String memberId, Long lastMsgMs);
+    void updateActivityScore(
+            String id,
+            String memberId,
+            Long score
+    );
 
-    void recoverUpdate(ChatRoom chatRoom, String oldTitle);
+    void recoverRoomUpdate(ChatRoom chatRoom, String oldTitle);
 
-    void invalidateActivity(String id, String memberId);
+    void invalidateMembershipActivity(String id, String memberId);
 
-    void invalidateInfo(String id);
+    void invalidateRoomInfo(String id);
 }

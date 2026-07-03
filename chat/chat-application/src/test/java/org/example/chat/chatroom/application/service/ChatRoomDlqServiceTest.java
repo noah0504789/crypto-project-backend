@@ -99,7 +99,7 @@ class ChatRoomDlqServiceTest {
             service.handle(event);
 
             // then
-            verify(persistence).updateAndReturn(ROOM_ID, updated.toUpdateMap());
+            verify(persistence).updateRoomAndReturn(ROOM_ID, updated.toUpdateMap());
             verifyNoInteractions(cache);
         }
 
@@ -130,7 +130,7 @@ class ChatRoomDlqServiceTest {
             service.handle(event);
 
             // then
-            verify(persistence).join(ROOM_ID, MEMBER_ID);
+            verify(persistence).joinMembership(ROOM_ID, MEMBER_ID);
             verifyNoInteractions(cache);
         }
 
@@ -146,7 +146,7 @@ class ChatRoomDlqServiceTest {
             service.handle(event);
 
             // then
-            verify(persistence).leave(ROOM_ID, MEMBER_ID);
+            verify(persistence).leaveMembership(ROOM_ID, MEMBER_ID);
             verifyNoInteractions(cache);
         }
 
@@ -167,7 +167,7 @@ class ChatRoomDlqServiceTest {
             service.handle(event);
 
             // then
-            verify(persistence).active(ROOM_ID, MEMBER_ID, lastMsgSeq, lastMsgMs);
+            verify(persistence).activateMembership(ROOM_ID, MEMBER_ID, lastMsgSeq, lastMsgMs);
             verifyNoInteractions(cache);
         }
     }
@@ -184,13 +184,13 @@ class ChatRoomDlqServiceTest {
             ChatRoom chatRoom = mock(ChatRoom.class);
 
             when(event.getId()).thenReturn(ROOM_ID);
-            when(persistence.findByIdWithLatest(ROOM_ID)).thenReturn(Optional.of(chatRoom));
+            when(persistence.findByIdWithLatestMessage(ROOM_ID)).thenReturn(Optional.of(chatRoom));
 
             // when
             service.handle(event);
 
             // then
-            verify(persistence).findByIdWithLatest(ROOM_ID);
+            verify(persistence).findByIdWithLatestMessage(ROOM_ID);
             verify(cache).warmUp(chatRoom);
         }
 
@@ -201,13 +201,13 @@ class ChatRoomDlqServiceTest {
             ChatRoomCacheSaveDlqEvent event = mock(ChatRoomCacheSaveDlqEvent.class);
 
             when(event.getId()).thenReturn(ROOM_ID);
-            when(persistence.findByIdWithLatest(ROOM_ID)).thenReturn(Optional.empty());
+            when(persistence.findByIdWithLatestMessage(ROOM_ID)).thenReturn(Optional.empty());
 
             // when
             service.handle(event);
 
             // then
-            verify(persistence).findByIdWithLatest(ROOM_ID);
+            verify(persistence).findByIdWithLatestMessage(ROOM_ID);
             verify(cache, never()).warmUp(any());
         }
 
@@ -221,14 +221,14 @@ class ChatRoomDlqServiceTest {
             ChatRoomCacheUpdateDlqEvent event = mock(ChatRoomCacheUpdateDlqEvent.class);
             when(event.getId()).thenReturn(ROOM_ID);
             when(event.getOldTitle()).thenReturn(oldTitle);
-            when(persistence.findByIdWithLatest(ROOM_ID)).thenReturn(Optional.of(chatRoom));
+            when(persistence.findByIdWithLatestMessage(ROOM_ID)).thenReturn(Optional.of(chatRoom));
 
             // when
             service.handle(event);
 
             // then
-            verify(persistence).findByIdWithLatest(ROOM_ID);
-            verify(cache).recoverUpdate(chatRoom, oldTitle);
+            verify(persistence).findByIdWithLatestMessage(ROOM_ID);
+            verify(cache).recoverRoomUpdate(chatRoom, oldTitle);
         }
 
         @Test
@@ -239,14 +239,14 @@ class ChatRoomDlqServiceTest {
 
             when(event.getId()).thenReturn(ROOM_ID);
             when(event.getOldTitle()).thenReturn("이전 제목");
-            when(persistence.findByIdWithLatest(ROOM_ID)).thenReturn(Optional.empty());
+            when(persistence.findByIdWithLatestMessage(ROOM_ID)).thenReturn(Optional.empty());
 
             // when
             service.handle(event);
 
             // then
-            verify(persistence).findByIdWithLatest(ROOM_ID);
-            verify(cache, never()).recoverUpdate(any(), anyString());
+            verify(persistence).findByIdWithLatestMessage(ROOM_ID);
+            verify(cache, never()).recoverRoomUpdate(any(), anyString());
         }
 
         @Test
@@ -267,7 +267,7 @@ class ChatRoomDlqServiceTest {
             service.handle(event);
 
             // then
-            verify(cache).delete(ROOM_ID, category, title, memberIds);
+            verify(cache).deleteRoom(ROOM_ID, category, title, memberIds);
             verifyNoInteractions(persistence);
         }
 
@@ -284,7 +284,7 @@ class ChatRoomDlqServiceTest {
             service.handle(event);
 
             // then
-            verify(cache).invalidateActivity(ROOM_ID, MEMBER_ID);
+            verify(cache).invalidateMembershipActivity(ROOM_ID, MEMBER_ID);
             verifyNoInteractions(persistence);
         }
 
@@ -300,7 +300,7 @@ class ChatRoomDlqServiceTest {
             service.handle(event);
 
             // then
-            verify(cache).invalidateInfo(ROOM_ID);
+            verify(cache).invalidateRoomInfo(ROOM_ID);
             verifyNoInteractions(persistence);
         }
     }

@@ -66,7 +66,7 @@ public class RedisChatRoomCodec implements RedisHashCodec<RedisChatRoom> {
                 case "msgCnt", "msg_cnt" -> map.put("msg_cnt", str(v));
 //                case "lastMsgId", "last_msg_id" -> map.put("last_msg_id", str(v));
 //                case "lastMsgContent", "last_msg_content" -> map.put("last_msg_content", str(v));
-//                case "lastMsgCreatedAt", "last_msg_created_at" -> map.put("last_msg_created_at", str(v));
+//                case "lastMsgCreatedAtMs", "last_msg_created_at" -> map.put("last_msg_created_at", str(v));
                 case "createdAt", "created_at" -> map.put("created_at", str(v));
                 default -> map.put(k, str(v));
             }

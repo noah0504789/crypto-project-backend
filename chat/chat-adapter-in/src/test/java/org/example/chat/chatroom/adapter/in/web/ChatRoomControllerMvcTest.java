@@ -119,7 +119,7 @@ class ChatRoomControllerMvcTest {
             mockMvc.perform(get("/chat/rooms/popular")
                             .param("category", category.name())
                             .param("limit", "2")
-                            .param("lastId", roomId3)
+                            .param("lastMsgId", roomId3)
                             .param("lastPopularity", "10"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.hasNext").value(false))
@@ -212,9 +212,9 @@ class ChatRoomControllerMvcTest {
             mockMvc.perform(get("/chat/rooms/me")
                             .header("X-User-Id", USER_ID)
                             .param("limit", "2")
-                            .param("lastId", roomId3)
+                            .param("lastMsgId", roomId3)
                             .param("lastUnreadFlag", "true")
-                            .param("lastMsgCreatedAt", lastMsgCreatedAt.toString()))
+                            .param("lastMsgCreatedAtMs", lastMsgCreatedAt.toString()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.hasNext").value(false))
                     .andExpect(jsonPath("$.items", hasSize(1)))
@@ -391,8 +391,8 @@ class ChatRoomControllerMvcTest {
             // when & then
             mockMvc.perform(put("/chat/room/{roomId}/activity", roomId1)
                             .header("X-User-Id", USER_ID)
-                            .param("lastMsgSeq", "10")
-                            .param("lastMsgMs", "1717000000000"))
+                            .param("lastMsgReadSeq", "10")
+                            .param("lastMsgCreatedAtMs", "1717000000000"))
                     .andExpect(status().isNoContent());
 
             verify(chatRoomCommandUseCase)
@@ -405,7 +405,7 @@ class ChatRoomControllerMvcTest {
             // when & then
             mockMvc.perform(put("/chat/room/{roomId}/activity", roomId1)
                             .header("X-User-Id", USER_ID)
-                            .param("lastMsgSeq", "10"))
+                            .param("lastMsgReadSeq", "10"))
                     .andExpect(status().isBadRequest());
 
             verify(chatRoomCommandUseCase, never())
@@ -417,8 +417,8 @@ class ChatRoomControllerMvcTest {
         void activityWithoutUserHeader() throws Exception {
             // when & then
             mockMvc.perform(put("/chat/room/{roomId}/activity", roomId1)
-                            .param("lastMsgSeq", "10")
-                            .param("lastMsgMs", "1717000000000"))
+                            .param("lastMsgReadSeq", "10")
+                            .param("lastMsgCreatedAtMs", "1717000000000"))
                     .andExpect(status().isBadRequest());
 
             verify(chatRoomCommandUseCase, never())

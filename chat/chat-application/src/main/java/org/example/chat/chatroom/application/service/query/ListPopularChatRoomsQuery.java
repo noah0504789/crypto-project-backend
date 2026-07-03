@@ -4,7 +4,7 @@ import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 
 public record ListPopularChatRoomsQuery(
         ChatRoomCategory category,
-        String lastId,
+        String lastRoomId,
         Long lastPopularity,
         int limit
 ) {
@@ -15,14 +15,14 @@ public record ListPopularChatRoomsQuery(
 
     public static ListPopularChatRoomsQuery nextPage(
         ChatRoomCategory category,
-        String lastId,
+        String lastRoomId,
         Long lastPopularity,
         int limit
     ) {
-        return new ListPopularChatRoomsQuery(category, lastId, lastPopularity, limit);
+        return new ListPopularChatRoomsQuery(category, lastRoomId, lastPopularity, limit);
     }
 
-    public boolean firstPage() {
-        return lastId == null || lastId.isBlank();
+    public boolean hasNoCursor() {
+        return lastRoomId == null || lastRoomId.isBlank();
     }
 }

@@ -24,7 +24,7 @@ public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCusto
 
     // TODO: Popularity Spec
 
-    public List<MongoChatRoom> listMostPopular(ChatRoomCategory category, int offset, int limit) {
+    public List<MongoChatRoom> listPopularRooms(ChatRoomCategory category, int offset, int limit) {
         Criteria criteria = Criteria.where("category").is(category).and("deleted").is(false);
         Query query = new Query(criteria)
                 .with(sortMsgCntDesc().and(sortIdDesc()))
@@ -36,12 +36,12 @@ public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCusto
         return mongoTemplate.find(query, MongoChatRoom.class);
     }
 
-    public List<MongoChatRoom> listNextPopular(ChatRoomCategory category, String lastId, long lastPopularity, int limit) {
+    public List<MongoChatRoom> listPopularRoomsAfter(ChatRoomCategory category, String lastRoomId, long lastPopularity, int limit) {
         Criteria base = Criteria.where("category").is(category).and("deleted").is(false);
 
         Criteria tieBreaker = new Criteria().andOperator(
             Criteria.where("msgCnt").is(lastPopularity),
-            Criteria.where("_id").lt(new ObjectId(lastId))
+            Criteria.where("_id").lt(new ObjectId(lastRoomId))
         );
 
         Criteria cursor = new Criteria().orOperator(
@@ -58,18 +58,18 @@ public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCusto
         return mongoTemplate.find(query, MongoChatRoom.class);
     }
 
-    public void incrementField(ObjectId roomId, String field, Integer delta) {
+    public void incrementRoomField(ObjectId roomId, String field, Integer delta) {
         Query query = new Query(Criteria.where("_id").is(roomId));
         Update update = new Update().inc(field, delta);
 
         mongoTemplate.updateFirst(query, update, MongoChatRoom.class);
     }
 
-    public Optional<MongoChatRoom> updateAndReturn(ObjectId roomId, Map<String, Object> updated) {
+    public Optional<MongoChatRoom> updateRoomAndReturn(ObjectId roomId, Map<String, Object> updates) {
         Criteria criteria = Criteria.where("_id").is(roomId);
         Query query = new Query(criteria);
         Update update = new Update();
-        updated.forEach(update::set);
+        updates.forEach(update::set);
 
         FindAndModifyOptions opts = FindAndModifyOptions.options().returnNew(true);
 

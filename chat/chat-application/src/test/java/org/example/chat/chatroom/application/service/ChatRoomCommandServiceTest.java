@@ -292,8 +292,8 @@ class ChatRoomCommandServiceTest {
                 inOrder.verify(domain).active(memberId, lastMsgSeq, lastMsgMs);
                 inOrder.verify(domain).pullEventList();
                 inOrder.verify(outboxEventListPublishPort).publish(eventList);
-                inOrder.verify(cache).updateLastRead(id, memberId, lastMsgSeq);
-                inOrder.verify(cache).updateRecentScore(id, memberId, lastMsgMs);
+                inOrder.verify(cache).updateLastReadSeq(id, memberId, lastMsgSeq);
+                inOrder.verify(cache).updateActivityScore(id, memberId, lastMsgMs);
 
                 verify(domain, never()).cacheActivityInvalidate(anyString());
             }
@@ -324,7 +324,7 @@ class ChatRoomCommandServiceTest {
 
                 doThrow(new RuntimeException("cache activity failed"))
                         .when(cache)
-                        .updateLastRead(id, memberId, lastMsgSeq);
+                        .updateLastReadSeq(id, memberId, lastMsgSeq);
 
                 // when & then
                 assertDoesNotThrow(() -> sut.activity(command));
@@ -341,13 +341,13 @@ class ChatRoomCommandServiceTest {
                 inOrder.verify(domain).pullEventList();
                 inOrder.verify(outboxEventListPublishPort).publish(activityEventList);
 
-                inOrder.verify(cache).updateLastRead(id, memberId, lastMsgSeq);
+                inOrder.verify(cache).updateLastReadSeq(id, memberId, lastMsgSeq);
 
                 inOrder.verify(domain).cacheActivityInvalidate(memberId);
                 inOrder.verify(domain).pullEventList();
                 inOrder.verify(outboxEventListPublishPort).publish(invalidateEventList);
 
-                verify(cache, never()).updateRecentScore(id, memberId, lastMsgMs);
+                verify(cache, never()).updateActivityScore(id, memberId, lastMsgMs);
             }
         }
 
@@ -380,8 +380,8 @@ class ChatRoomCommandServiceTest {
                 verify(domain).active(memberId, lastMsgSeq, lastMsgMs);
                 verify(domain, never()).pullEventList();
                 verify(outboxEventListPublishPort, never()).publish(any());
-                verify(cache, never()).updateLastRead(anyString(), anyString(), anyLong());
-                verify(cache, never()).updateRecentScore(anyString(), anyString(), anyLong());
+                verify(cache, never()).updateLastReadSeq(anyString(), anyString(), anyLong());
+                verify(cache, never()).updateActivityScore(anyString(), anyString(), anyLong());
                 verify(domain, never()).cacheActivityInvalidate(anyString());
             }
         }
@@ -429,7 +429,7 @@ class ChatRoomCommandServiceTest {
             inOrder.verify(domain).update(payload);
             inOrder.verify(domain).pullEventList();
             inOrder.verify(outboxEventListPublishPort).publish(eventList);
-            inOrder.verify(cache).update(id, updated, oldTitle);
+            inOrder.verify(cache).updateRoom(id, updated, oldTitle);
 
             verify(domain, never()).cacheUpdate(anyString());
         }
@@ -459,7 +459,7 @@ class ChatRoomCommandServiceTest {
 
             doThrow(new RuntimeException("cache update failed"))
                     .when(cache)
-                    .update(id, updated, oldTitle);
+                    .updateRoom(id, updated, oldTitle);
 
             // when & then
             assertDoesNotThrow(() -> sut.update(command));
@@ -477,7 +477,7 @@ class ChatRoomCommandServiceTest {
             inOrder.verify(domain).pullEventList();
             inOrder.verify(outboxEventListPublishPort).publish(updateEventList);
 
-            inOrder.verify(cache).update(id, updated, oldTitle);
+            inOrder.verify(cache).updateRoom(id, updated, oldTitle);
 
             inOrder.verify(domain).cacheUpdate(oldTitle);
             inOrder.verify(domain).pullEventList();
@@ -502,7 +502,7 @@ class ChatRoomCommandServiceTest {
 
             verify(persistence).findById(id);
             verify(outboxEventListPublishPort, never()).publish(any());
-            verify(cache, never()).update(anyString(), anyMap(), anyString());
+            verify(cache, never()).updateRoom(anyString(), anyMap(), anyString());
         }
 
         @Test
@@ -535,7 +535,7 @@ class ChatRoomCommandServiceTest {
             verify(domain).update(payload);
             verify(domain, never()).pullEventList();
             verify(outboxEventListPublishPort, never()).publish(any());
-            verify(cache, never()).update(anyString(), anyMap(), anyString());
+            verify(cache, never()).updateRoom(anyString(), anyMap(), anyString());
             verify(domain, never()).cacheUpdate(anyString());
         }
     }
@@ -568,7 +568,7 @@ class ChatRoomCommandServiceTest {
             inOrder.verify(domain).addMember(memberId);
             inOrder.verify(domain).pullEventList();
             inOrder.verify(outboxEventListPublishPort).publish(eventList);
-            inOrder.verify(cache).join(id, memberId);
+            inOrder.verify(cache).joinMembership(id, memberId);
 
             verify(domain, never()).cacheInfoInvalidate();
         }
@@ -592,7 +592,7 @@ class ChatRoomCommandServiceTest {
             verify(domain).addMember(memberId);
             verify(domain, never()).pullEventList();
             verify(outboxEventListPublishPort, never()).publish(any());
-            verify(cache, never()).join(anyString(), anyString());
+            verify(cache, never()).joinMembership(anyString(), anyString());
             verify(domain, never()).cacheInfoInvalidate();
         }
 
@@ -611,7 +611,7 @@ class ChatRoomCommandServiceTest {
 
             doThrow(new RuntimeException("cache join failed"))
                     .when(cache)
-                    .join(id, memberId);
+                    .joinMembership(id, memberId);
 
             // when
             boolean result = sut.join(id, memberId);
@@ -626,7 +626,7 @@ class ChatRoomCommandServiceTest {
             inOrder.verify(domain).pullEventList();
             inOrder.verify(outboxEventListPublishPort).publish(joinEventList);
 
-            inOrder.verify(cache).join(id, memberId);
+            inOrder.verify(cache).joinMembership(id, memberId);
 
             inOrder.verify(domain).cacheInfoInvalidate();
             inOrder.verify(domain).pullEventList();
@@ -644,7 +644,7 @@ class ChatRoomCommandServiceTest {
 
             verify(persistence).findById(id);
             verify(outboxEventListPublishPort, never()).publish(any());
-            verify(cache, never()).join(anyString(), anyString());
+            verify(cache, never()).joinMembership(anyString(), anyString());
         }
     }
 
@@ -675,10 +675,10 @@ class ChatRoomCommandServiceTest {
             inOrder.verify(domain).removeMember(memberId);
             inOrder.verify(domain).pullEventList();
             inOrder.verify(outboxEventListPublishPort).publish(eventList);
-            inOrder.verify(cache).leave(id, memberId);
+            inOrder.verify(cache).leaveMembership(id, memberId);
 
             verify(domain, never()).delete();
-            verify(cache, never()).delete(anyString(), any(), anyString(), anySet());
+            verify(cache, never()).deleteRoom(anyString(), any(), anyString(), anySet());
             verify(domain, never()).cacheInfoInvalidate();
         }
 
@@ -715,10 +715,10 @@ class ChatRoomCommandServiceTest {
             inOrder.verify(domain).delete();
             inOrder.verify(domain).pullEventList();
             inOrder.verify(outboxEventListPublishPort).publish(deleteEventList);
-            inOrder.verify(cache).delete(id, category, newTitle, memberIds);
+            inOrder.verify(cache).deleteRoom(id, category, newTitle, memberIds);
 
             verify(domain, never()).removeMember(anyString());
-            verify(cache, never()).leave(anyString(), anyString());
+            verify(cache, never()).leaveMembership(anyString(), anyString());
         }
 
         @Test
@@ -736,7 +736,7 @@ class ChatRoomCommandServiceTest {
 
             doThrow(new RuntimeException("cache leave failed"))
                     .when(cache)
-                    .leave(id, memberId);
+                    .leaveMembership(id, memberId);
 
             // when & then
             assertDoesNotThrow(() -> sut.leave(id, memberId));
@@ -749,14 +749,14 @@ class ChatRoomCommandServiceTest {
             inOrder.verify(domain).pullEventList();
             inOrder.verify(outboxEventListPublishPort).publish(leaveEventList);
 
-            inOrder.verify(cache).leave(id, memberId);
+            inOrder.verify(cache).leaveMembership(id, memberId);
 
             inOrder.verify(domain).cacheInfoInvalidate();
             inOrder.verify(domain).pullEventList();
             inOrder.verify(outboxEventListPublishPort).publish(invalidateEventList);
 
             verify(domain, never()).delete();
-            verify(cache, never()).delete(anyString(), any(), anyString(), anySet());
+            verify(cache, never()).deleteRoom(anyString(), any(), anyString(), anySet());
         }
 
         @Test
@@ -770,8 +770,8 @@ class ChatRoomCommandServiceTest {
 
             verify(persistence).findById(id);
             verify(outboxEventListPublishPort, never()).publish(any());
-            verify(cache, never()).leave(anyString(), anyString());
-            verify(cache, never()).delete(anyString(), any(), anyString(), anySet());
+            verify(cache, never()).leaveMembership(anyString(), anyString());
+            verify(cache, never()).deleteRoom(anyString(), any(), anyString(), anySet());
         }
     }
 
@@ -810,7 +810,7 @@ class ChatRoomCommandServiceTest {
             inOrder.verify(domain).delete();
             inOrder.verify(domain).pullEventList();
             inOrder.verify(outboxEventListPublishPort).publish(eventList);
-            inOrder.verify(cache).delete(id, category, newTitle, memberIds);
+            inOrder.verify(cache).deleteRoom(id, category, newTitle, memberIds);
 
             verify(domain, never()).cacheDelete();
         }
@@ -833,7 +833,7 @@ class ChatRoomCommandServiceTest {
 
             doThrow(new RuntimeException("cache delete failed"))
                     .when(cache)
-                    .delete(id, category, newTitle, memberIds);
+                    .deleteRoom(id, category, newTitle, memberIds);
 
             // when & then
             assertDoesNotThrow(() -> sut.delete(id));
@@ -846,7 +846,7 @@ class ChatRoomCommandServiceTest {
             inOrder.verify(domain).pullEventList();
             inOrder.verify(outboxEventListPublishPort).publish(deleteEventList);
 
-            inOrder.verify(cache).delete(id, category, newTitle, memberIds);
+            inOrder.verify(cache).deleteRoom(id, category, newTitle, memberIds);
 
             inOrder.verify(domain).cacheDelete();
             inOrder.verify(domain).pullEventList();
@@ -864,7 +864,7 @@ class ChatRoomCommandServiceTest {
 
             verify(persistence).findById(id);
             verify(outboxEventListPublishPort, never()).publish(any());
-            verify(cache, never()).delete(anyString(), any(), anyString(), anySet());
+            verify(cache, never()).deleteRoom(anyString(), any(), anyString(), anySet());
         }
 
         @Test
@@ -891,7 +891,7 @@ class ChatRoomCommandServiceTest {
             verify(domain).delete();
             verify(domain, never()).pullEventList();
             verify(outboxEventListPublishPort, never()).publish(any());
-            verify(cache, never()).delete(anyString(), any(), anyString(), anySet());
+            verify(cache, never()).deleteRoom(anyString(), any(), anyString(), anySet());
         }
     }
 }

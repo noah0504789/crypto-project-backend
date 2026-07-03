@@ -27,7 +27,7 @@ public class ChatRoomDlqService implements ChatRoomDlqHandler {
 
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomUpdatedDlqEvent event) {
-        persistence.updateAndReturn(event.getId(), event.getUpdated().toUpdateMap());
+        persistence.updateRoomAndReturn(event.getId(), event.getUpdated().toUpdateMap());
     }
 
     @Transactional("chatMongoTransactionManager")
@@ -37,39 +37,39 @@ public class ChatRoomDlqService implements ChatRoomDlqHandler {
 
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomJoinedDlqEvent event) {
-        persistence.join(event.getId(), event.getMemberId());
+        persistence.joinMembership(event.getId(), event.getMemberId());
     }
 
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomLeavedDlqEvent event) {
-        persistence.leave(event.getId(), event.getMemberId());
+        persistence.leaveMembership(event.getId(), event.getMemberId());
     }
 
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomActiveDlqEvent event) {
-        persistence.active(event.getId(), event.getMemberId(), event.getLastMsgSeq(), event.getLastMsgMs());
+        persistence.activateMembership(event.getId(), event.getMemberId(), event.getLastMsgSeq(), event.getLastMsgMs());
     }
 
     public void handle(ChatRoomCacheSaveDlqEvent event) {
         String id = event.getId();
-        persistence.findByIdWithLatest(id).ifPresent(cache::warmUp);
+        persistence.findByIdWithLatestMessage(id).ifPresent(cache::warmUp);
     }
 
     public void handle(ChatRoomCacheUpdateDlqEvent event) {
         String id = event.getId();
         String oldTitle = event.getOldTitle();
-        persistence.findByIdWithLatest(id).ifPresent(chatRoom -> cache.recoverUpdate(chatRoom, oldTitle));
+        persistence.findByIdWithLatestMessage(id).ifPresent(chatRoom -> cache.recoverRoomUpdate(chatRoom, oldTitle));
     }
 
     public void handle(ChatRoomCacheDeleteDlqEvent event) {
-        cache.delete(event.getId(), event.getCategory(), event.getTitle(), event.getMemberIds());
+        cache.deleteRoom(event.getId(), event.getCategory(), event.getTitle(), event.getMemberIds());
     }
 
     public void handle(ChatRoomCacheActivityInvalidateDlqEvent event) {
-        cache.invalidateActivity(event.getId(), event.getMemberId());
+        cache.invalidateMembershipActivity(event.getId(), event.getMemberId());
     }
 
     public void handle(ChatRoomCacheInfoInvalidateDlqEvent event) {
-        cache.invalidateInfo(event.getId());
+        cache.invalidateRoomInfo(event.getId());
     }
 }

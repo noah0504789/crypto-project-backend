@@ -107,16 +107,16 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
 
         domain.active(
                 command.memberId(),
-                command.lastMsgSeq(),
-                command.lastMsgMs()
+                command.lastMsgReadSeq(),
+                command.lastMsgCreatedAtMs()
         );
 
         publishEvent(domain, "chatroom activity");
         activityCacheSafely(
                 domain,
                 command.memberId(),
-                command.lastMsgSeq(),
-                command.lastMsgMs()
+                command.lastMsgReadSeq(),
+                command.lastMsgCreatedAtMs()
         );
     }
 
@@ -156,7 +156,7 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
 
     private void updateCacheSafely(ChatRoom domain, ChatRoomUpdatedPayload payload, String oldTitle) {
         try {
-            cache.update(domain.getId(), payload.toUpdateMap(), oldTitle);
+            cache.updateRoom(domain.getId(), payload.toUpdateMap(), oldTitle);
         } catch (RuntimeException e) {
             log.warn(
                     "[cache] chatroom update failed. roomId={}",
@@ -171,7 +171,7 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
 
     private void joinCacheSafely(ChatRoom domain, String memberId) {
         try {
-            cache.join(domain.getId(), memberId);
+            cache.joinMembership(domain.getId(), memberId);
         } catch (RuntimeException e) {
             log.warn(
                     "[cache] chatroom join failed. roomId={}, memberId={}",
@@ -187,7 +187,7 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
 
     private void leaveCacheSafely(ChatRoom domain, String memberId) {
         try {
-            cache.leave(domain.getId(), memberId);
+            cache.leaveMembership(domain.getId(), memberId);
         } catch (RuntimeException e) {
             log.warn(
                     "[cache] chatroom leave failed. roomId={}, memberId={}",
@@ -208,11 +208,11 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
             Long lastMsgMs
     ) {
         try {
-            cache.updateLastRead(domain.getId(), memberId, lastMsgSeq);
-            cache.updateRecentScore(domain.getId(), memberId, lastMsgMs);
+            cache.updateLastReadSeq(domain.getId(), memberId, lastMsgSeq);
+            cache.updateActivityScore(domain.getId(), memberId, lastMsgMs);
         } catch (RuntimeException e) {
             log.warn(
-                    "[cache] chatroom activity failed. roomId={}, memberId={}, lastMsgSeq={}, lastMsgMs={}",
+                    "[cache] chatroom activity failed. roomId={}, memberId={}, lastMsgReadSeq={}, lastMsgCreatedAtMs={}",
                     domain.getId(),
                     memberId,
                     lastMsgSeq,
@@ -233,7 +233,7 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
             Set<String> memberIds
     ) {
         try {
-            cache.delete(id, category, title, memberIds);
+            cache.deleteRoom(id, category, title, memberIds);
         } catch (RuntimeException e) {
             log.warn(
                     "[cache] chatroom delete failed. roomId={}",

@@ -82,7 +82,7 @@ class ChatMessageEventServiceTest {
             assertThat(saved.getWriterId()).isEqualTo(writerId);
             assertThat(saved.getContent()).isEqualTo(content);
 
-            verify(chatRoomPersistencePort).incrementMsgCnt(roomId);
+            verify(chatRoomPersistencePort).incrementMessageCount(roomId);
             verify(chatRoomPersistencePort).updateMembershipScores(
                     roomId,
                     memberIds,
@@ -113,7 +113,7 @@ class ChatMessageEventServiceTest {
             // then
             verify(chatMessagePersistencePort).save(any(ChatMessage.class));
 
-            verify(chatRoomPersistencePort, never()).incrementMsgCnt(anyString());
+            verify(chatRoomPersistencePort, never()).incrementMessageCount(anyString());
             verify(chatRoomPersistencePort, never())
                     .updateMembershipScores(anyString(), anySet(), anyLong());
         }
@@ -140,7 +140,7 @@ class ChatMessageEventServiceTest {
                     .isSameAs(exception);
 
             verify(chatMessagePersistencePort).save(any(ChatMessage.class));
-            verify(chatRoomPersistencePort, never()).incrementMsgCnt(anyString());
+            verify(chatRoomPersistencePort, never()).incrementMessageCount(anyString());
             verify(chatRoomPersistencePort, never())
                     .updateMembershipScores(anyString(), anySet(), anyLong());
         }
@@ -163,7 +163,7 @@ class ChatMessageEventServiceTest {
                     .isSameAs(exception);
 
             verify(chatMessagePersistencePort).save(any(ChatMessage.class));
-            verify(chatRoomPersistencePort, never()).incrementMsgCnt(anyString());
+            verify(chatRoomPersistencePort, never()).incrementMessageCount(anyString());
             verify(chatRoomPersistencePort, never())
                     .updateMembershipScores(anyString(), anySet(), anyLong());
         }
@@ -179,14 +179,14 @@ class ChatMessageEventServiceTest {
 
             doThrow(exception)
                     .when(chatRoomPersistencePort)
-                    .incrementMsgCnt(roomId);
+                    .incrementMessageCount(roomId);
 
             // when & then
             assertThatThrownBy(() -> sut.handle(event, txId))
                     .isSameAs(exception);
 
             verify(chatMessagePersistencePort).save(any(ChatMessage.class));
-            verify(chatRoomPersistencePort).incrementMsgCnt(roomId);
+            verify(chatRoomPersistencePort).incrementMessageCount(roomId);
             verify(chatRoomPersistencePort, never())
                     .updateMembershipScores(anyString(), anySet(), anyLong());
         }
@@ -214,7 +214,7 @@ class ChatMessageEventServiceTest {
                     .isSameAs(exception);
 
             verify(chatMessagePersistencePort).save(any(ChatMessage.class));
-            verify(chatRoomPersistencePort).incrementMsgCnt(roomId);
+            verify(chatRoomPersistencePort).incrementMessageCount(roomId);
             verify(chatRoomPersistencePort).updateMembershipScores(
                     eq(roomId),
                     eq(memberIds),

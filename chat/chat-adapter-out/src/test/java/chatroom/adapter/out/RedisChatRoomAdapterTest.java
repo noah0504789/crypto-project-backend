@@ -108,7 +108,7 @@ class RedisChatRoomAdapterTest {
             sut.save(room);
 
             // then
-            ChatRoomCacheLookupResult result = sut.listMostPopular(category, 10);
+            ChatRoomCacheLookupResult result = sut.listPopularRooms(category, 10);
 
             assertThat(result.isAllHit()).isTrue();
             assertThat(result.misses()).isEmpty();
@@ -184,7 +184,7 @@ class RedisChatRoomAdapterTest {
 
             assertThat(sut.existsByTitle("워밍업방")).contains(true);
 
-            ChatRoomCacheLookupResult result = sut.listMostPopular(category, 10);
+            ChatRoomCacheLookupResult result = sut.listPopularRooms(category, 10);
 
             assertThat(result.isAllHit()).isTrue();
             assertThat(result.hits())
@@ -234,7 +234,7 @@ class RedisChatRoomAdapterTest {
             assertThat(sut.existsByTitle("방1")).contains(true);
             assertThat(sut.existsByTitle("방2")).contains(true);
 
-            ChatRoomCacheLookupResult result = sut.listMostPopular(category, 10);
+            ChatRoomCacheLookupResult result = sut.listPopularRooms(category, 10);
 
             assertThat(result.isAllHit()).isTrue();
             assertThat(result.hits())
@@ -255,7 +255,7 @@ class RedisChatRoomAdapterTest {
             sut.save(room);
 
             // when
-            sut.update(
+            sut.updateRoom(
                     ROOM_ID,
                     Map.of("description", "수정된 설명"),
                     null
@@ -277,7 +277,7 @@ class RedisChatRoomAdapterTest {
             sut.save(room);
 
             // when
-            sut.update(
+            sut.updateRoom(
                     ROOM_ID,
                     Map.of(
                             "title", "수정제목",
@@ -308,7 +308,7 @@ class RedisChatRoomAdapterTest {
 
             // when & then
             assertThatThrownBy(() ->
-                    sut.update(
+                    sut.updateRoom(
                             ROOM_ID,
                             Map.of("title", "이미있는제목"),
                             "기존제목"
@@ -331,7 +331,7 @@ class RedisChatRoomAdapterTest {
             sut.save(room);
 
             // when
-            sut.join(ROOM_ID, MEMBER_ID);
+            sut.joinMembership(ROOM_ID, MEMBER_ID);
 
             // then
             ChatRoom found = sut.findById(ROOM_ID).orElseThrow();
@@ -348,8 +348,8 @@ class RedisChatRoomAdapterTest {
             sut.save(room);
 
             // when
-            sut.join(ROOM_ID, MEMBER_ID);
-            sut.join(ROOM_ID, MEMBER_ID);
+            sut.joinMembership(ROOM_ID, MEMBER_ID);
+            sut.joinMembership(ROOM_ID, MEMBER_ID);
 
             // then
             ChatRoom found = sut.findById(ROOM_ID).orElseThrow();
@@ -364,18 +364,18 @@ class RedisChatRoomAdapterTest {
             // given
             ChatRoom room = newRoom(ROOM_ID, "테스트방");
             sut.save(room);
-            sut.join(ROOM_ID, MEMBER_ID);
+            sut.joinMembership(ROOM_ID, MEMBER_ID);
 
-            sut.updateLastRead(ROOM_ID, MEMBER_ID, 10L);
-            sut.updateRecentScore(ROOM_ID, MEMBER_ID, 1_717_000_000_000L);
+            sut.updateLastReadSeq(ROOM_ID, MEMBER_ID, 10L);
+            sut.updateActivityScore(ROOM_ID, MEMBER_ID, 1_717_000_000_000L);
 
-            assertThat(sut.getLastMsgSeq(ROOM_ID, MEMBER_ID)).contains(10L);
-            assertThat(sut.listLatestActive(MEMBER_ID, 10).hits())
+            assertThat(sut.getLastReadSeq(ROOM_ID, MEMBER_ID)).contains(10L);
+            assertThat(sut.listLatestActiveRooms(MEMBER_ID, 10).hits())
                     .extracting(ChatRoom::getId)
                     .contains(ROOM_ID);
 
             // when
-            boolean result = sut.leave(ROOM_ID, MEMBER_ID);
+            boolean result = sut.leaveMembership(ROOM_ID, MEMBER_ID);
 
             // then
             assertThat(result).isTrue();
@@ -383,8 +383,8 @@ class RedisChatRoomAdapterTest {
             ChatRoom found = sut.findById(ROOM_ID).orElseThrow();
 
             assertThat(found.getMemberIds()).containsExactly(HOST_ID);
-            assertThat(sut.getLastMsgSeq(ROOM_ID, MEMBER_ID)).isEmpty();
-            assertThat(sut.listLatestActive(MEMBER_ID, 10).hits())
+            assertThat(sut.getLastReadSeq(ROOM_ID, MEMBER_ID)).isEmpty();
+            assertThat(sut.listLatestActiveRooms(MEMBER_ID, 10).hits())
                     .extracting(ChatRoom::getId)
                     .doesNotContain(ROOM_ID);
         }
@@ -402,10 +402,10 @@ class RedisChatRoomAdapterTest {
             sut.save(room);
 
             // when
-            sut.updateLastRead(ROOM_ID, HOST_ID, 15L);
+            sut.updateLastReadSeq(ROOM_ID, HOST_ID, 15L);
 
             // then
-            assertThat(sut.getLastMsgSeq(ROOM_ID, HOST_ID)).contains(15L);
+            assertThat(sut.getLastReadSeq(ROOM_ID, HOST_ID)).contains(15L);
         }
 
         @Test
@@ -416,10 +416,10 @@ class RedisChatRoomAdapterTest {
             sut.save(room);
 
             // when
-            sut.updateRecentScore(ROOM_ID, HOST_ID, 1_717_000_000_000L);
+            sut.updateActivityScore(ROOM_ID, HOST_ID, 1_717_000_000_000L);
 
             // then
-            ChatRoomCacheLookupResult result = sut.listLatestActive(HOST_ID, 10);
+            ChatRoomCacheLookupResult result = sut.listLatestActiveRooms(HOST_ID, 10);
 
             assertThat(result.isAllHit()).isTrue();
             assertThat(result.hits())
@@ -434,15 +434,15 @@ class RedisChatRoomAdapterTest {
             ChatRoom room = newRoom(ROOM_ID, "테스트방");
             sut.save(room);
 
-            sut.updateLastRead(ROOM_ID, HOST_ID, 10L);
-            sut.updateRecentScore(ROOM_ID, HOST_ID, 1_717_000_000_000L);
+            sut.updateLastReadSeq(ROOM_ID, HOST_ID, 10L);
+            sut.updateActivityScore(ROOM_ID, HOST_ID, 1_717_000_000_000L);
 
             // when
-            sut.invalidateActivity(ROOM_ID, HOST_ID);
+            sut.invalidateMembershipActivity(ROOM_ID, HOST_ID);
 
             // then
-            assertThat(sut.getLastMsgSeq(ROOM_ID, HOST_ID)).isEmpty();
-            assertThat(sut.listLatestActive(HOST_ID, 10).hits())
+            assertThat(sut.getLastReadSeq(ROOM_ID, HOST_ID)).isEmpty();
+            assertThat(sut.listLatestActiveRooms(HOST_ID, 10).hits())
                     .extracting(ChatRoom::getId)
                     .doesNotContain(ROOM_ID);
         }
@@ -458,16 +458,16 @@ class RedisChatRoomAdapterTest {
             // given
             ChatRoom room = newRoom(ROOM_ID, "삭제방");
             sut.save(room);
-            sut.join(ROOM_ID, MEMBER_ID);
+            sut.joinMembership(ROOM_ID, MEMBER_ID);
 
-            sut.updateRecentScore(ROOM_ID, HOST_ID, 1_717_000_000_000L);
-            sut.updateRecentScore(ROOM_ID, MEMBER_ID, 1_717_000_000_001L);
+            sut.updateActivityScore(ROOM_ID, HOST_ID, 1_717_000_000_000L);
+            sut.updateActivityScore(ROOM_ID, MEMBER_ID, 1_717_000_000_001L);
 
             assertThat(sut.findById(ROOM_ID)).isPresent();
             assertThat(sut.existsByTitle("삭제방")).contains(true);
 
             // when
-            sut.delete(
+            sut.deleteRoom(
                     ROOM_ID,
                     category,
                     "삭제방",
@@ -478,15 +478,15 @@ class RedisChatRoomAdapterTest {
             assertThat(sut.findById(ROOM_ID)).isEmpty();
             assertThat(sut.existsByTitle("삭제방")).contains(false);
 
-            assertThat(sut.listMostPopular(category, 10).hits())
+            assertThat(sut.listPopularRooms(category, 10).hits())
                     .extracting(ChatRoom::getId)
                     .doesNotContain(ROOM_ID);
 
-            assertThat(sut.listLatestActive(HOST_ID, 10).hits())
+            assertThat(sut.listLatestActiveRooms(HOST_ID, 10).hits())
                     .extracting(ChatRoom::getId)
                     .doesNotContain(ROOM_ID);
 
-            assertThat(sut.listLatestActive(MEMBER_ID, 10).hits())
+            assertThat(sut.listLatestActiveRooms(MEMBER_ID, 10).hits())
                     .extracting(ChatRoom::getId)
                     .doesNotContain(ROOM_ID);
         }
@@ -501,7 +501,7 @@ class RedisChatRoomAdapterTest {
             assertThat(sut.findById(ROOM_ID)).isPresent();
 
             // when
-            sut.invalidateInfo(ROOM_ID);
+            sut.invalidateRoomInfo(ROOM_ID);
 
             // then
             assertThat(sut.findById(ROOM_ID)).isEmpty();
@@ -514,15 +514,15 @@ class RedisChatRoomAdapterTest {
             ChatRoom room = newRoom(ROOM_ID, "테스트방");
             sut.save(room);
 
-            assertThat(sut.listMostPopular(category, 10).hits())
+            assertThat(sut.listPopularRooms(category, 10).hits())
                     .extracting(ChatRoom::getId)
                     .contains(ROOM_ID);
 
             // when
-            sut.invalidateInfo(ROOM_ID);
+            sut.invalidateRoomInfo(ROOM_ID);
 
             // then
-            ChatRoomCacheLookupResult result = sut.listMostPopular(category, 10);
+            ChatRoomCacheLookupResult result = sut.listPopularRooms(category, 10);
 
             assertThat(result.orderedIds()).contains(ROOM_ID);
             assertThat(result.hits()).isEmpty();
@@ -535,17 +535,17 @@ class RedisChatRoomAdapterTest {
             // given
             ChatRoom room = newRoom(ROOM_ID, "테스트방");
             sut.save(room);
-            sut.updateRecentScore(ROOM_ID, HOST_ID, 1_717_000_000_000L);
+            sut.updateActivityScore(ROOM_ID, HOST_ID, 1_717_000_000_000L);
 
-            assertThat(sut.listLatestActive(HOST_ID, 10).hits())
+            assertThat(sut.listLatestActiveRooms(HOST_ID, 10).hits())
                     .extracting(ChatRoom::getId)
                     .contains(ROOM_ID);
 
             // when
-            sut.invalidateInfo(ROOM_ID);
+            sut.invalidateRoomInfo(ROOM_ID);
 
             // then
-            ChatRoomCacheLookupResult result = sut.listLatestActive(HOST_ID, 10);
+            ChatRoomCacheLookupResult result = sut.listLatestActiveRooms(HOST_ID, 10);
 
             assertThat(result.orderedIds()).contains(ROOM_ID);
             assertThat(result.hits()).isEmpty();
@@ -576,7 +576,7 @@ class RedisChatRoomAdapterTest {
                     .build();
 
             // when
-            sut.recoverUpdate(recovered, "기존제목");
+            sut.recoverRoomUpdate(recovered, "기존제목");
 
             // then
             ChatRoom found = sut.findById(ROOM_ID).orElseThrow();
@@ -589,7 +589,7 @@ class RedisChatRoomAdapterTest {
             assertThat(sut.existsByTitle("기존제목")).contains(false);
             assertThat(sut.existsByTitle("복구제목")).contains(true);
 
-            assertThat(sut.listMostPopular(category, 10).hits())
+            assertThat(sut.listPopularRooms(category, 10).hits())
                     .extracting(ChatRoom::getId)
                     .contains(ROOM_ID);
         }
@@ -613,7 +613,7 @@ class RedisChatRoomAdapterTest {
 
             // when
             ChatRoomCacheLookupResult result =
-                    sut.listNextPopular(category, "room-c", 0L, 2);
+                    sut.listPopularRoomsAfter(category, "room-c", 0L, 2);
 
             // then
             assertThat(result.isAllHit()).isTrue();
@@ -634,13 +634,13 @@ class RedisChatRoomAdapterTest {
             sut.save(roomB);
             sut.save(roomC);
 
-            sut.updateRecentScore("room-a", HOST_ID, 1000L);
-            sut.updateRecentScore("room-b", HOST_ID, 1000L);
-            sut.updateRecentScore("room-c", HOST_ID, 1000L);
+            sut.updateActivityScore("room-a", HOST_ID, 1000L);
+            sut.updateActivityScore("room-b", HOST_ID, 1000L);
+            sut.updateActivityScore("room-c", HOST_ID, 1000L);
 
             // when
             ChatRoomCacheLookupResult result =
-                    sut.listActiveBefore(HOST_ID, "room-c", 1000L, 2);
+                    sut.listActiveRoomsBefore(HOST_ID, "room-c", 1000L, 2);
 
             // then
             assertThat(result.isAllHit()).isTrue();

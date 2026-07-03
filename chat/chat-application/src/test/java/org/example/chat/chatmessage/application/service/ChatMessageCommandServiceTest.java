@@ -311,7 +311,7 @@ class ChatMessageCommandServiceTest {
 
             // then
             verify(chatMessagePersistencePort).hardDelete(messageId);
-            verify(chatRoomPersistencePort).decrementMsgCnt(roomId);
+            verify(chatRoomPersistencePort).decrementMessageCount(roomId);
             verify(chatMessagePersistencePort).findLatestExcluding(roomId, messageId);
             verify(chatRoomPersistencePort).refreshMembershipScores(roomId, latestCreatedAtMillis);
             verify(chatMessageCachePort).hardDelete(messageId, roomId, chatRoomMembershipScores);
@@ -330,7 +330,7 @@ class ChatMessageCommandServiceTest {
             // then
             verify(chatMessagePersistencePort).hardDelete(messageId);
 
-            verify(chatRoomPersistencePort, never()).decrementMsgCnt(anyString());
+            verify(chatRoomPersistencePort, never()).decrementMessageCount(anyString());
             verify(chatMessagePersistencePort, never()).findLatestExcluding(anyString(), anyString());
             verify(chatRoomPersistencePort, never()).refreshMembershipScores(anyString(), anyLong());
             verify(chatMessageCachePort, never()).hardDelete(anyString(), anyString(), anyList());
@@ -359,7 +359,7 @@ class ChatMessageCommandServiceTest {
 
             // then
             verify(chatMessagePersistencePort).hardDelete(messageId);
-            verify(chatRoomPersistencePort).decrementMsgCnt(roomId);
+            verify(chatRoomPersistencePort).decrementMessageCount(roomId);
             verify(chatMessagePersistencePort).findLatestExcluding(roomId, messageId);
             verify(chatRoomPersistencePort).refreshMembershipScores(roomId, 0L);
             verify(chatMessageCachePort).hardDelete(messageId, roomId, chatRoomMembershipScores);
@@ -393,7 +393,7 @@ class ChatMessageCommandServiceTest {
                     .doesNotThrowAnyException();
 
             verify(chatMessagePersistencePort).hardDelete(messageId);
-            verify(chatRoomPersistencePort).decrementMsgCnt(roomId);
+            verify(chatRoomPersistencePort).decrementMessageCount(roomId);
             verify(chatMessagePersistencePort).findLatestExcluding(roomId, messageId);
             verify(chatRoomPersistencePort).refreshMembershipScores(roomId, latestCreatedAtMillis);
             verify(chatMessageCachePort).hardDelete(messageId, roomId, chatRoomMembershipScores);
@@ -413,7 +413,7 @@ class ChatMessageCommandServiceTest {
                     .isSameAs(exception);
 
             verify(chatMessagePersistencePort).hardDelete(messageId);
-            verify(chatRoomPersistencePort, never()).decrementMsgCnt(anyString());
+            verify(chatRoomPersistencePort, never()).decrementMessageCount(anyString());
             verify(chatMessagePersistencePort, never()).findLatestExcluding(anyString(), anyString());
             verify(chatRoomPersistencePort, never()).refreshMembershipScores(anyString(), anyLong());
             verify(chatMessageCachePort, never()).hardDelete(anyString(), anyString(), anyList());
@@ -430,14 +430,14 @@ class ChatMessageCommandServiceTest {
 
             doThrow(exception)
                     .when(chatRoomPersistencePort)
-                    .decrementMsgCnt(roomId);
+                    .decrementMessageCount(roomId);
 
             // when & then
             assertThatThrownBy(() -> sut.hardDelete(messageId, roomId))
                     .isSameAs(exception);
 
             verify(chatMessagePersistencePort).hardDelete(messageId);
-            verify(chatRoomPersistencePort).decrementMsgCnt(roomId);
+            verify(chatRoomPersistencePort).decrementMessageCount(roomId);
 
             verify(chatMessagePersistencePort, never()).findLatestExcluding(anyString(), anyString());
             verify(chatRoomPersistencePort, never()).refreshMembershipScores(anyString(), anyLong());
@@ -465,7 +465,7 @@ class ChatMessageCommandServiceTest {
                     .isSameAs(exception);
 
             verify(chatMessagePersistencePort).hardDelete(messageId);
-            verify(chatRoomPersistencePort).decrementMsgCnt(roomId);
+            verify(chatRoomPersistencePort).decrementMessageCount(roomId);
             verify(chatMessagePersistencePort).findLatestExcluding(roomId, messageId);
             verify(chatRoomPersistencePort).refreshMembershipScores(roomId, latestCreatedAtMillis);
 

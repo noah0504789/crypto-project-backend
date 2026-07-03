@@ -83,7 +83,7 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
             return;
         }
 
-        chatRoomPersistencePort.decrementMsgCnt(roomId);
+        chatRoomPersistencePort.decrementMessageCount(roomId);
 
         Long fallbackMsgCreatedAt = chatMessagePersistencePort.findLatestExcluding(roomId, messageId)
                 .map(ChatMessage::toEpochMillis)
