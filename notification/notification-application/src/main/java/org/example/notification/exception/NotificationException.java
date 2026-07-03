@@ -1,4 +1,4 @@
-package org.example.notification.common.exception;
+package org.example.notification.exception;
 
 import org.example.common.exception.InfrastructureException;
 

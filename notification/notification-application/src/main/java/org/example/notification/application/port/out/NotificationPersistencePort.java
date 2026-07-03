@@ -9,12 +9,12 @@ import java.util.UUID;
 
 public interface NotificationPersistencePort {
 
-    List<NotificationInboxItem> listLatest(UUID receiverId, int limit);
+    List<NotificationInboxItem> listLatestInboxItems(UUID receiverId, int limit);
 
-    List<NotificationInboxItem> listPrev(
+    List<NotificationInboxItem> listInboxItemsBefore(
             UUID receiverId,
             String lastRecipientId,
-            Long lastDeliveredAtMillis,
+            Long lastDeliveredAtMs,
             int limit
     );
 

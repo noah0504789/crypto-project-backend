@@ -8,7 +8,7 @@ import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
 import org.example.notification.application.port.in.PriceAlertNotificationCommandUseCase;
 import org.example.notification.application.port.out.PriceAlertRecipientQueryPort;
 import org.example.notification.application.service.command.PriceAlertNotificationCreateCommand;
-import org.example.notification.common.exception.NotificationPersistException;
+import org.example.notification.application.exception.NotificationPersistException;
 import org.example.notification.domain.model.Notification;
 import org.example.notification.domain.model.NotificationRecipient;
 import org.springframework.stereotype.Service;
