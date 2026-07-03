@@ -83,7 +83,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
     @Override
     @CacheFailOpen
     public ChatRoomCacheLookupResult listPopularRooms(ChatRoomCategory category, int limit) {
-        String popularKey = POPULAR_CHAT_ROOM_BY_CATEGORY_INDEX.keyFor(category.name());
+        String popularKey = CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX.keyFor(category.name());
 
         List<String> orderedIds = registry.getReplicaZSet(popularKey).reverseRange(0, limit - 1).stream()
                 .filter(Objects::nonNull)
@@ -97,7 +97,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
     public ChatRoomCacheLookupResult listPopularRoomsAfter(ChatRoomCategory category, String lastRoomId, Long lastPopularity, int limit) {
         ZSetOperations<String, String> zOps = replicaHashRedisTemplate.opsForZSet();
 
-        String popularKey = POPULAR_CHAT_ROOM_BY_CATEGORY_INDEX.keyFor(category.name());
+        String popularKey = CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX.keyFor(category.name());
         int buffer = limit * 2;
 
         Stream<String> s1 = zOps.reverseRangeByScore(
@@ -129,7 +129,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
     @Override
     @CacheFailOpen
     public ChatRoomCacheLookupResult listLatestActiveRooms(String memberId, int limit) {
-        String recentRoomKey = RECENT_CHAT_ROOM_BY_MEMBER_INDEX.keyFor(memberId);
+        String recentRoomKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(memberId);
 
         List<String> orderedIds = registry.getMasterZSet(recentRoomKey).reverseRange(0, limit - 1).stream()
                 .filter(Objects::nonNull)
@@ -143,7 +143,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
     public ChatRoomCacheLookupResult listActiveRoomsBefore(String memberId, String lastRoomId, Long lastScore, int limit) {
         ZSetOperations<String, String> zOps = masterHashRedisTemplate.opsForZSet();
 
-        String recentRoomKey = RECENT_CHAT_ROOM_BY_MEMBER_INDEX.keyFor(memberId);
+        String recentRoomKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(memberId);
         int buffer = limit * 2;
 
         Stream<String> s1 = zOps.reverseRangeByScore(
@@ -207,7 +207,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
     @Override
     @CacheFailOpen
     public Optional<Long> getLastReadSeq(String roomId, String memberId) {
-        String lastReadKey = CHAT_ROOM_LAST_READ.keyFor(roomId);
+        String lastReadKey = CHAT_ROOM_LAST_READ_SEQ.keyFor(roomId);
         String lastReadSeq = hash.findField(lastReadKey, memberId);
 
         return lastReadSeq == null || lastReadSeq.isBlank() ? Optional.empty() : Optional.of(Long.parseLong(lastReadSeq));
@@ -220,8 +220,8 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
 
         String infoKey = CHAT_ROOM_INFO.keyFor(id);
         String titleKey = CHAT_ROOM_TITLE_UNIQUE_INDEX.keyFor();
-        String topKey = POPULAR_CHAT_ROOM_BY_CATEGORY_INDEX.keyFor(category.name());
-        String lastReadKey = CHAT_ROOM_LAST_READ.keyFor(id);
+        String topKey = CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX.keyFor(category.name());
+        String lastReadKey = CHAT_ROOM_LAST_READ_SEQ.keyFor(id);
         List<String> keys = List.of(infoKey, titleKey, topKey, lastReadKey);
 
         List<String> args = new ArrayList<>();
@@ -250,7 +250,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
 
         String infoKey = CHAT_ROOM_INFO.keyFor(id);
         String titleKey = CHAT_ROOM_TITLE_UNIQUE_INDEX.keyFor();
-        String topKey = POPULAR_CHAT_ROOM_BY_CATEGORY_INDEX.keyFor(category.name());
+        String topKey = CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX.keyFor(category.name());
         List<String> keys = List.of(infoKey, titleKey, topKey);
 
         List<String> args = new ArrayList<>();
@@ -281,7 +281,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
 
             String infoKey = CHAT_ROOM_INFO.keyFor(id);
             String titleKey = CHAT_ROOM_TITLE_UNIQUE_INDEX.keyFor();
-            String topKey = POPULAR_CHAT_ROOM_BY_CATEGORY_INDEX.keyFor(category.name());
+            String topKey = CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX.keyFor(category.name());
             Collections.addAll(keys, infoKey, titleKey, topKey);
 
             args.add(id);
@@ -346,8 +346,8 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
     @Override
     public boolean leaveMembership(String id, String memberId) {
         String infoKey = CHAT_ROOM_INFO.keyFor(id);
-        String lastReadKey = CHAT_ROOM_LAST_READ.keyFor(id);
-        String recentRoomKey = RECENT_CHAT_ROOM_BY_MEMBER_INDEX.keyFor(memberId);
+        String lastReadKey = CHAT_ROOM_LAST_READ_SEQ.keyFor(id);
+        String recentRoomKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(memberId);
 
         List<String> keys = List.of(infoKey, lastReadKey, recentRoomKey);
         List<String> args = List.of(id, memberId);
@@ -362,13 +362,13 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
         String messageKey = CHAT_MESSAGE.keyFor(id);
         String messageAccessKey = ACCESS_CHAT_MESSAGE_BY_ROOM.keyFor(id);
         String roomInfoKey = CHAT_ROOM_INFO.keyFor(id);
-        String roomLastReadKey = CHAT_ROOM_LAST_READ.keyFor(id);
-        String roomTopKey = POPULAR_CHAT_ROOM_BY_CATEGORY_INDEX.keyFor(category.name());
+        String roomLastReadKey = CHAT_ROOM_LAST_READ_SEQ.keyFor(id);
+        String roomTopKey = CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX.keyFor(category.name());
         String roomTitleKey = CHAT_ROOM_TITLE_UNIQUE_INDEX.keyFor();
         Collections.addAll(keys, messageKey, messageAccessKey, roomInfoKey, roomLastReadKey, roomTopKey, roomTitleKey);
 
         memberIds.stream()
-                .map(RECENT_CHAT_ROOM_BY_MEMBER_INDEX::keyFor)
+                .map(CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX::keyFor)
                 .forEach(keys::add);
 
         if (!masterHashRedisTemplate.execute(deleteChatRoom_lua, keys, id, title)) {
@@ -378,13 +378,13 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
 
     @Override
     public void updateLastReadSeq(String id, String memberId, Long lastReadSeq) {
-        String lastReadKey = CHAT_ROOM_LAST_READ.keyFor(id);
+        String lastReadKey = CHAT_ROOM_LAST_READ_SEQ.keyFor(id);
         hash.update(lastReadKey, memberId, String.valueOf(lastReadSeq));
     }
 
     @Override
     public void updateActivityScore(String id, String memberId, Long score) {
-        String recentRoomKey = RECENT_CHAT_ROOM_BY_MEMBER_INDEX.keyFor(memberId);
+        String recentRoomKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(memberId);
         registry.getMasterZSet(recentRoomKey).add(id, score);
     }
 
@@ -395,7 +395,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
 
         String infoKey = CHAT_ROOM_INFO.keyFor(id);
         String titleKey = CHAT_ROOM_TITLE_UNIQUE_INDEX.keyFor();
-        String topKey = POPULAR_CHAT_ROOM_BY_CATEGORY_INDEX.keyFor(category.name());
+        String topKey = CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX.keyFor(category.name());
         List<String> keys = List.of(infoKey, titleKey, topKey);
 
         List<String> args = new ArrayList<>();
@@ -416,8 +416,8 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
 
     @Override
     public void invalidateMembershipActivity(String id, String memberId) {
-        String lastReadKey = CHAT_ROOM_LAST_READ.keyFor(id);
-        String recentRoomKey = RECENT_CHAT_ROOM_BY_MEMBER_INDEX.keyFor(memberId);
+        String lastReadKey = CHAT_ROOM_LAST_READ_SEQ.keyFor(id);
+        String recentRoomKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(memberId);
 
         List<String> keys = List.of(lastReadKey, recentRoomKey);
         List<String> args = List.of(id, memberId);

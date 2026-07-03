@@ -109,15 +109,15 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
         String messageKey = CHAT_MESSAGE.keyFor(roomId);
         String messageAccessKey = ACCESS_CHAT_MESSAGE_BY_ROOM.keyFor(roomId);
         String roomInfoKey = CHAT_ROOM_INFO.keyFor(roomId);
-        String roomPopularKey = POPULAR_CHAT_ROOM_BY_CATEGORY_INDEX.keyFor(category.name());
-        String writerRecentKey = RECENT_CHAT_ROOM_BY_MEMBER_INDEX.keyFor(writerId);
+        String roomPopularKey = CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX.keyFor(category.name());
+        String writerRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(writerId);
 
         Collections.addAll(keys, messageKey, messageAccessKey, roomInfoKey, roomPopularKey, writerRecentKey);
 
         Set<String> memberIds = new HashSet<>(memberIds_);
         memberIds.remove(writerId);
         memberIds.stream()
-                .map(RECENT_CHAT_ROOM_BY_MEMBER_INDEX::keyFor)
+                .map(CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX::keyFor)
                 .forEach(keys::add);
 
         List<String> args = new ArrayList<>();
@@ -169,7 +169,7 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
         Collections.addAll(keys, messageKey, messageAccessKey, roomInfoKey);
         validScores.stream()
                 .map(ChatRoomMembershipScore::memberId)
-                .map(RECENT_CHAT_ROOM_BY_MEMBER_INDEX::keyFor)
+                .map(CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX::keyFor)
                 .forEach(keys::add);
 
         List<String> args = new ArrayList<>();
