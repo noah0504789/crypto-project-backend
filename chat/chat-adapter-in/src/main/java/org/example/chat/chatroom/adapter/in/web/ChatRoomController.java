@@ -14,6 +14,7 @@ import org.example.chat.chatroom.application.port.in.ChatRoomQueryUseCase;
 import org.example.chat.chatroom.application.service.result.MyChatRoomSummary;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
+import org.example.common.dto.CursorPages;
 import org.example.common.enums.HttpHeaderKey;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -57,7 +58,9 @@ public class ChatRoomController {
 
         List<ChatRoom> result = chatRoomQueryUseCase.listPopularRooms(query);
 
-        return toCursorPage(result, limit, ChatRoomResponse::fromDomain);
+        return ResponseEntity.ok(
+                CursorPages.from(result, limit, ChatRoomResponse::fromDomain)
+        );
     }
 
     @GetMapping("${api-path.chat.rooms-me:/rooms/me}")
@@ -74,7 +77,9 @@ public class ChatRoomController {
 
         List<MyChatRoomSummary> result = chatRoomQueryUseCase.listMyRooms(query);
 
-        return toCursorPage(result, limit, MyChatRoomResponse::from);
+        return ResponseEntity.ok(
+                CursorPages.from(result, limit, MyChatRoomResponse::from)
+        );
     }
 
     @GetMapping("${api-path.chat.room:/room/{roomId}}")
@@ -129,7 +134,6 @@ public class ChatRoomController {
         return ResponseEntity.noContent().build();
     }
 
-
     // TODO: 여기 아래로부터 인가 처리하기
     @PostMapping("${api-path.chat.room-create:/room}")
     public ResponseEntity<Void> create(
@@ -160,28 +164,5 @@ public class ChatRoomController {
         chatRoomCommandUseCase.delete(roomId);
 
         return ResponseEntity.noContent().build();
-    }
-
-    private <T, R> ResponseEntity<CursorPage<R>> toCursorPage(
-            List<T> result,
-            int limit,
-            Function<T, R> mapper
-    ) {
-        if (result.isEmpty()) {
-            return ResponseEntity.ok(new CursorPage<>(null, false));
-        }
-
-        boolean hasNext = result.size() > limit;
-
-        List<T> pageItems = hasNext ? result.subList(0, limit) : result;
-
-        return ResponseEntity.ok(
-                new CursorPage<>(
-                        pageItems.stream()
-                                .map(mapper)
-                                .toList(),
-                        hasNext
-                )
-        );
     }
 }

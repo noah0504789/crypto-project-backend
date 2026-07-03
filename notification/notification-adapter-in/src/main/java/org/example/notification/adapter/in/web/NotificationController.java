@@ -2,16 +2,19 @@ package org.example.notification.adapter.in.web;
 
 import lombok.RequiredArgsConstructor;
 import org.example.common.dto.CursorPage;
+import org.example.common.dto.CursorPages;
 import org.example.notification.adapter.in.web.dto.NotificationCursor;
 import org.example.notification.adapter.in.web.dto.NotificationResponse;
 import org.example.notification.application.port.in.NotificationCommandUseCase;
 import org.example.notification.application.port.in.NotificationQueryUseCase;
+import org.example.notification.application.service.query.ListNotificationInboxItemsQuery;
 import org.example.notification.application.service.result.NotificationInboxItem;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Function;
 
 import static org.example.common.enums.HttpHeaderKey.USER_ID_VALUE;
 
@@ -28,30 +31,16 @@ public class NotificationController {
             @ModelAttribute NotificationCursor cursor,
             @RequestParam(value = "limit", defaultValue = "10") Integer limit
     ) {
-        int safeLimit = limit == null || limit <= 0 ? 10 : limit;
-        int limitPlus1 = safeLimit + 1;
+        int limitPlus1 = limit + 1;
 
-        List<NotificationInboxItem> items = cursor.isNull()
-                ? notificationQueryUseCase.listLatest(receiverId, limitPlus1)
-                : notificationQueryUseCase.listPrev(receiverId, cursor.lastRecipientId(), cursor.lastDeliveredAtMillis(), limitPlus1);
+        ListNotificationInboxItemsQuery query = cursor.isNull()
+                ? ListNotificationInboxItemsQuery.firstPage(receiverId, limitPlus1)
+                : ListNotificationInboxItemsQuery.prevPage(receiverId, cursor.lastRecipientId(), cursor.lastDeliveredAtMs(), limitPlus1);
 
-        if (items.isEmpty()) {
-            return ResponseEntity.ok(new CursorPage<>(null, false));
-        }
-
-        boolean hasNext = items.size() > safeLimit;
-
-        if (hasNext) {
-            items = items.subList(0, safeLimit);
-        }
+        List<NotificationInboxItem> items = notificationQueryUseCase.listInboxItems(query);
 
         return ResponseEntity.ok(
-                new CursorPage<>(
-                        items.stream()
-                                .map(NotificationResponse::from)
-                                .toList(),
-                        hasNext
-                )
+                CursorPages.from(items, limit, NotificationResponse::from)
         );
     }
 
