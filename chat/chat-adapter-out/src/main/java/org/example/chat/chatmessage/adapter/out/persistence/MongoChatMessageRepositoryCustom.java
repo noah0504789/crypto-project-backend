@@ -8,13 +8,18 @@ import java.util.Optional;
 
 public interface MongoChatMessageRepositoryCustom {
 
-    List<MongoChatMessage> listPrev(ObjectId roomId, ObjectId lastId, Instant lastCreated, int limit);
+    Optional<MongoChatMessage> findLatestMessageExcluding(String roomId, String excludedMsgId);
+
+    List<MongoChatMessage> listMessagesBefore(
+            ObjectId roomId,
+            ObjectId lastMsgId,
+            Instant lastCreatedAt,
+            int limit
+    );
+
+    List<MongoChatMessage> listLatestMessagesByRoomIds(List<ObjectId> roomIds);
 
     void softDeleteByRoomId(ObjectId roomId);
 
-    boolean hardDelete(ObjectId id);
-
-    Optional<MongoChatMessage> findLatestExcluding(String roomId, String id);
-
-    List<MongoChatMessage> findLatestByRoomIds(List<ObjectId> roomIds);
+    boolean hardDeleteById(ObjectId id);
 }

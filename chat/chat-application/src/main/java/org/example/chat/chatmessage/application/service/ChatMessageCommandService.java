@@ -72,7 +72,7 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
     )
     @Transactional("chatMongoTransactionManager")
     public void hardDelete(String messageId, String roomId) {
-        boolean deleted = chatMessagePersistencePort.hardDelete(messageId);
+        boolean deleted = chatMessagePersistencePort.hardDeleteById(messageId);
 
         if (!deleted) {
             log.warn(
@@ -85,7 +85,7 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
 
         chatRoomPersistencePort.decrementMessageCount(roomId);
 
-        Long fallbackMsgCreatedAt = chatMessagePersistencePort.findLatestExcluding(roomId, messageId)
+        Long fallbackMsgCreatedAt = chatMessagePersistencePort.findLatestMessageExcluding(roomId, messageId)
                 .map(ChatMessage::toEpochMillis)
                 .orElse(0L);
 

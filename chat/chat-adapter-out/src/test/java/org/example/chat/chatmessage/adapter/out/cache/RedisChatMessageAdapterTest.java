@@ -102,7 +102,7 @@ class RedisChatMessageAdapterTest {
             assertThat(accessScoreAfterSave.longValue()).isEqualTo(message.toEpochMillis());
 
             // then: message zset 조회
-            List<ChatMessage> latest = sut.listLatest(ROOM_ID, 10);
+            List<ChatMessage> latest = sut.listLatestMessages(ROOM_ID, 10);
 
             assertThat(latest)
                     .extracting(ChatMessage::getId)
@@ -163,7 +163,7 @@ class RedisChatMessageAdapterTest {
             sut.save(message, category, memberIds);
 
             // then
-            List<ChatMessage> latest = sut.listLatest(ROOM_ID, 10);
+            List<ChatMessage> latest = sut.listLatestMessages(ROOM_ID, 10);
 
             assertThat(latest)
                     .extracting(ChatMessage::getId)
@@ -253,7 +253,7 @@ class RedisChatMessageAdapterTest {
             sut.warmUpList(List.of(oldMessage, midMessage, latestMessage), ROOM_ID);
 
             // when
-            List<ChatMessage> result = sut.listLatest(ROOM_ID, 2);
+            List<ChatMessage> result = sut.listLatestMessages(ROOM_ID, 2);
 
             // then
             assertThat(result)
@@ -268,7 +268,7 @@ class RedisChatMessageAdapterTest {
         @DisplayName("메시지가 없으면 빈 목록을 반환한다")
         void listLatestEmpty() {
             // when
-            List<ChatMessage> result = sut.listLatest(ROOM_ID, 10);
+            List<ChatMessage> result = sut.listLatestMessages(ROOM_ID, 10);
 
             // then
             assertThat(result).isEmpty();
@@ -291,7 +291,7 @@ class RedisChatMessageAdapterTest {
             sut.warmUpList(List.of(message1, message2, message3, message4), ROOM_ID);
 
             // when
-            List<ChatMessage> result = sut.listPrev(
+            List<ChatMessage> result = sut.listMessagesBefore(
                     ROOM_ID,
                     MESSAGE_ID_4,
                     message4.toEpochMillis(),
@@ -316,7 +316,7 @@ class RedisChatMessageAdapterTest {
             sut.warmUpList(List.of(message1), ROOM_ID);
 
             // when
-            List<ChatMessage> result = sut.listPrev(
+            List<ChatMessage> result = sut.listMessagesBefore(
                     ROOM_ID,
                     MESSAGE_ID_1,
                     message1.toEpochMillis(),
@@ -359,7 +359,7 @@ class RedisChatMessageAdapterTest {
             sut.hardDelete(MESSAGE_ID_2, ROOM_ID, chatRoomMembershipScores);
 
             // then
-            List<ChatMessage> latest = sut.listLatest(ROOM_ID, 10);
+            List<ChatMessage> latest = sut.listLatestMessages(ROOM_ID, 10);
 
             assertThat(latest)
                     .extracting(ChatMessage::getId)
@@ -394,7 +394,7 @@ class RedisChatMessageAdapterTest {
             sut.hardDelete(MESSAGE_ID_2, ROOM_ID, List.of());
 
             // then
-            List<ChatMessage> latest = sut.listLatest(ROOM_ID, 10);
+            List<ChatMessage> latest = sut.listLatestMessages(ROOM_ID, 10);
 
             assertThat(latest)
                     .extracting(ChatMessage::getId)
@@ -420,7 +420,7 @@ class RedisChatMessageAdapterTest {
             sut.hardDelete(MESSAGE_ID_1, ROOM_ID, null);
 
             // then
-            assertThat(sut.listLatest(ROOM_ID, 10)).isEmpty();
+            assertThat(sut.listLatestMessages(ROOM_ID, 10)).isEmpty();
 
             Object msgCnt = masterHashRedisTemplate.opsForHash()
                     .get(roomInfoKey, "msg_cnt");

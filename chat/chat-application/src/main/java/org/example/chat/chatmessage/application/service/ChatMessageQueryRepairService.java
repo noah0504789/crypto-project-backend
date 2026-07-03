@@ -26,7 +26,7 @@ public class ChatMessageQueryRepairService {
         return distributedLockExecutor.execute(
                 "chatmessage:listLatest:" + roomId + ":" + limit,
                 () -> repairCachedMessages(
-                        cache.listLatest(roomId, limit),
+                        cache.listLatestMessages(roomId, limit),
                         () -> loadLatestAndWarmUp(roomId, limit)
                 ),
                 DistributedLockPolicy.CACHE_WARM_UP
@@ -35,9 +35,9 @@ public class ChatMessageQueryRepairService {
 
     public List<ChatMessage> repairPrev(ListChatMessagesQuery query) {
         return distributedLockExecutor.execute(
-                "chatmessage:listPrev:" + query.roomId() + ":" + query.lastId() + ":" + query.cursorCreatedAtMillis() + ":" + query.limit(),
+                "chatmessage:listPrev:" + query.roomId() + ":" + query.lastMsgId() + ":" + query.cursorCreatedAtMs() + ":" + query.limit(),
                 () -> repairCachedMessages(
-                        cache.listPrev(query.roomId(), query.lastId(), query.cursorCreatedAtMillis(), query.limit()),
+                        cache.listMessagesBefore(query.roomId(), query.lastMsgId(), query.cursorCreatedAtMs(), query.limit()),
                         () -> loadPrevAndWarmUp(query)
                 ),
                 DistributedLockPolicy.CACHE_WARM_UP
@@ -53,7 +53,7 @@ public class ChatMessageQueryRepairService {
     }
 
     private List<ChatMessage> loadLatestAndWarmUp(String roomId, int limit) {
-        List<ChatMessage> stored = persistence.listLatest(roomId, limit);
+        List<ChatMessage> stored = persistence.listLatestMessages(roomId, limit);
 
         if (stored.isEmpty()) {
             return List.of();
@@ -65,7 +65,7 @@ public class ChatMessageQueryRepairService {
     }
 
     private List<ChatMessage> loadPrevAndWarmUp(ListChatMessagesQuery query) {
-        List<ChatMessage> stored = persistence.listPrev(query.roomId(), query.lastId(), query.cursorCreatedAtMillis(), query.limit());
+        List<ChatMessage> stored = persistence.listMessagesBefore(query.roomId(), query.lastMsgId(), query.cursorCreatedAtMs(), query.limit());
 
         if (stored.isEmpty()) {
             return List.of();

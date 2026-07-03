@@ -1,8 +1,6 @@
 package org.example.chat.chatmessage.application.service;
 
 import org.example.chat.chatmessage.application.service.query.ListChatMessagesQuery;
-import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
-import org.example.chat.chatmessage.domain.event.ChatMessageEventList;
 import org.example.chat.chatmessage.application.port.out.ChatMessageCachePort;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.junit.jupiter.api.DisplayName;
@@ -14,12 +12,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.example.common.time.ServiceZoneUtils.ZONE_ID;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -62,7 +57,7 @@ class ChatMessageQueryServiceTest {
                     chatMessage("100000000000000000000001", "cached-1", time1)
             );
 
-            given(cache.listLatest(roomId, limit))
+            given(cache.listLatestMessages(roomId, limit))
                     .willReturn(cached);
 
             // when
@@ -77,8 +72,8 @@ class ChatMessageQueryServiceTest {
                             "100000000000000000000001"
                     );
 
-            verify(cache).listLatest(roomId, limit);
-            verify(cache, never()).listPrev(anyString(), anyString(), anyLong(), anyInt());
+            verify(cache).listLatestMessages(roomId, limit);
+            verify(cache, never()).listMessagesBefore(anyString(), anyString(), anyLong(), anyInt());
             verify(queryRepairService, never()).repairLatest(anyString(), anyInt());
             verify(queryRepairService, never()).repairPrev(any());
         }
@@ -94,7 +89,7 @@ class ChatMessageQueryServiceTest {
                     chatMessage("100000000000000000000001", "repaired-1", time1)
             );
 
-            given(cache.listLatest(roomId, limit))
+            given(cache.listLatestMessages(roomId, limit))
                     .willReturn(List.of());
 
             given(queryRepairService.repairLatest(roomId, limit))
@@ -109,8 +104,8 @@ class ChatMessageQueryServiceTest {
                     .extracting(ChatMessage::getContent)
                     .containsExactly("repaired-2", "repaired-1");
 
-            verify(cache).listLatest(roomId, limit);
-            verify(cache, never()).listPrev(anyString(), anyString(), anyLong(), anyInt());
+            verify(cache).listLatestMessages(roomId, limit);
+            verify(cache, never()).listMessagesBefore(anyString(), anyString(), anyLong(), anyInt());
             verify(queryRepairService).repairLatest(roomId, limit);
             verify(queryRepairService, never()).repairPrev(any());
         }
@@ -121,7 +116,7 @@ class ChatMessageQueryServiceTest {
             // given
             ListChatMessagesQuery query = firstPageQuery();
 
-            given(cache.listLatest(roomId, limit))
+            given(cache.listLatestMessages(roomId, limit))
                     .willReturn(List.of());
 
             given(queryRepairService.repairLatest(roomId, limit))
@@ -133,8 +128,8 @@ class ChatMessageQueryServiceTest {
             // then
             assertThat(result).isEmpty();
 
-            verify(cache).listLatest(roomId, limit);
-            verify(cache, never()).listPrev(anyString(), anyString(), anyLong(), anyInt());
+            verify(cache).listLatestMessages(roomId, limit);
+            verify(cache, never()).listMessagesBefore(anyString(), anyString(), anyLong(), anyInt());
             verify(queryRepairService).repairLatest(roomId, limit);
             verify(queryRepairService, never()).repairPrev(any());
         }
@@ -155,7 +150,7 @@ class ChatMessageQueryServiceTest {
                     chatMessage("100000000000000000000001", "cached-1", time1)
             );
 
-            given(cache.listPrev(roomId, lastId, lastCreatedAtMillis, limit))
+            given(cache.listMessagesBefore(roomId, lastId, lastCreatedAtMillis, limit))
                     .willReturn(cached);
 
             // when
@@ -170,8 +165,8 @@ class ChatMessageQueryServiceTest {
                             "100000000000000000000001"
                     );
 
-            verify(cache, never()).listLatest(anyString(), anyInt());
-            verify(cache).listPrev(roomId, lastId, lastCreatedAtMillis, limit);
+            verify(cache, never()).listLatestMessages(anyString(), anyInt());
+            verify(cache).listMessagesBefore(roomId, lastId, lastCreatedAtMillis, limit);
             verify(queryRepairService, never()).repairLatest(anyString(), anyInt());
             verify(queryRepairService, never()).repairPrev(any());
         }
@@ -187,7 +182,7 @@ class ChatMessageQueryServiceTest {
                     chatMessage("100000000000000000000001", "repaired-1", time1)
             );
 
-            given(cache.listPrev(roomId, lastId, lastCreatedAtMillis, limit))
+            given(cache.listMessagesBefore(roomId, lastId, lastCreatedAtMillis, limit))
                     .willReturn(List.of());
 
             given(queryRepairService.repairPrev(query))
@@ -202,8 +197,8 @@ class ChatMessageQueryServiceTest {
                     .extracting(ChatMessage::getContent)
                     .containsExactly("repaired-2", "repaired-1");
 
-            verify(cache, never()).listLatest(anyString(), anyInt());
-            verify(cache).listPrev(roomId, lastId, lastCreatedAtMillis, limit);
+            verify(cache, never()).listLatestMessages(anyString(), anyInt());
+            verify(cache).listMessagesBefore(roomId, lastId, lastCreatedAtMillis, limit);
             verify(queryRepairService, never()).repairLatest(anyString(), anyInt());
             verify(queryRepairService).repairPrev(query);
         }
@@ -214,7 +209,7 @@ class ChatMessageQueryServiceTest {
             // given
             ListChatMessagesQuery query = prevPageQuery();
 
-            given(cache.listPrev(roomId, lastId, lastCreatedAtMillis, limit))
+            given(cache.listMessagesBefore(roomId, lastId, lastCreatedAtMillis, limit))
                     .willReturn(List.of());
 
             given(queryRepairService.repairPrev(query))
@@ -226,8 +221,8 @@ class ChatMessageQueryServiceTest {
             // then
             assertThat(result).isEmpty();
 
-            verify(cache, never()).listLatest(anyString(), anyInt());
-            verify(cache).listPrev(roomId, lastId, lastCreatedAtMillis, limit);
+            verify(cache, never()).listLatestMessages(anyString(), anyInt());
+            verify(cache).listMessagesBefore(roomId, lastId, lastCreatedAtMillis, limit);
             verify(queryRepairService, never()).repairLatest(anyString(), anyInt());
             verify(queryRepairService).repairPrev(query);
         }
@@ -243,7 +238,7 @@ class ChatMessageQueryServiceTest {
                     limit
             );
 
-            given(cache.listPrev(roomId, lastId, 0L, limit))
+            given(cache.listMessagesBefore(roomId, lastId, 0L, limit))
                     .willReturn(List.of());
 
             given(queryRepairService.repairPrev(query))
@@ -255,7 +250,7 @@ class ChatMessageQueryServiceTest {
             // then
             assertThat(result).isEmpty();
 
-            verify(cache).listPrev(roomId, lastId, 0L, limit);
+            verify(cache).listMessagesBefore(roomId, lastId, 0L, limit);
             verify(queryRepairService).repairPrev(query);
         }
     }

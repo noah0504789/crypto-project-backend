@@ -22,15 +22,15 @@ public class ChatMessageQueryService implements ChatMessageQueryUseCase {
     @Override
     @Transactional(transactionManager = "chatMongoTransactionManager", readOnly = true)
     public List<ChatMessage> listMessages(ListChatMessagesQuery query) {
-        List<ChatMessage> cached = query.firstPage()
-                ? cache.listLatest(query.roomId(), query.limit())
-                : cache.listPrev(query.roomId(), query.lastId(), query.cursorCreatedAtMillis(), query.limit());
+        List<ChatMessage> cached = query.hasNoCursor()
+                ? cache.listLatestMessages(query.roomId(), query.limit())
+                : cache.listMessagesBefore(query.roomId(), query.lastMsgId(), query.cursorCreatedAtMs(), query.limit());
 
         if (!cached.isEmpty()) {
             return cached;
         }
 
-        return query.firstPage()
+        return query.hasNoCursor()
                 ? queryRepairService.repairLatest(query.roomId(), query.limit())
                 : queryRepairService.repairPrev(query);
     }

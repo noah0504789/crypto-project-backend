@@ -56,7 +56,7 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
 
     @Override
     @CacheFailOpen
-    public List<ChatMessage> listLatest(String roomId, int limit) {
+    public List<ChatMessage> listLatestMessages(String roomId, int limit) {
         String messageKey = CHAT_MESSAGE.keyFor(roomId);
 
         return registry.getMasterZSet(messageKey).reverseRange(0, limit - 1).stream()
@@ -68,7 +68,7 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
 
     @Override
     @CacheFailOpen
-    public List<ChatMessage> listPrev(String roomId, String lastId, Long lastCreatedAtMillis, int limit) {
+    public List<ChatMessage> listMessagesBefore(String roomId, String lastMsgId, Long lastCreatedAtMs, int limit) {
         ZSetOperations<String, String> zOps = replicaHashRedisTemplate.opsForZSet();
         String messageKey = CHAT_MESSAGE.keyFor(roomId);
         int buffer = limit * 2;
@@ -76,7 +76,7 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
         Set<String> messageIds = zOps.reverseRangeByScore(
                 messageKey,
                 Double.NEGATIVE_INFINITY,
-                Math.nextDown(lastCreatedAtMillis.doubleValue()),
+                Math.nextDown(lastCreatedAtMs.doubleValue()),
                 0L,
                 buffer
         );
@@ -86,9 +86,9 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
                 .map(redisChatMessageCodec::read)
                 .filter(message -> {
                     long ts = message.toEpochMillis();
-                    if (ts < lastCreatedAtMillis) return true;
-                    if (ts > lastCreatedAtMillis) return false;
-                    return message.getId().compareTo(lastId) < 0;
+                    if (ts < lastCreatedAtMs) return true;
+                    if (ts > lastCreatedAtMs) return false;
+                    return message.getId().compareTo(lastMsgId) < 0;
                 })
                 .limit(limit)
                 .peek(this::updateLastAccessedAt)
@@ -96,13 +96,13 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
     }
 
     @Override
-    public void save(ChatMessage domain, ChatRoomCategory category, Set<String> memberIds_) {
-        String id = domain.getId();
-        String roomId = domain.getRoomId();
-        Instant createdAt = domain.toInstant();
-        long createdMs = domain.toEpochMillis();
-        String content = domain.getContent();
-        String writerId = domain.getWriterId();
+    public void save(ChatMessage message, ChatRoomCategory category, Set<String> memberIds_) {
+        String id = message.getId();
+        String roomId = message.getRoomId();
+        Instant createdAt = message.toInstant();
+        long createdMs = message.toEpochMillis();
+        String content = message.getContent();
+        String writerId = message.getWriterId();
         double scoreIncrement = 1.0;
 
         List<String> keys = new ArrayList<>();
@@ -128,7 +128,7 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
         args.add(String.valueOf(scoreIncrement));
         args.add(content);
         args.add(writerId);
-        args.add(redisChatMessageCodec.write(domain));
+        args.add(redisChatMessageCodec.write(message));
 
         if (!masterHashRedisTemplate.execute(storeChatMessage_lua, keys, args.toArray())) {
             throw new ChatCacheException("[redis] chatmessage save failed!");
@@ -136,14 +136,14 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
     }
 
     @Override
-    public void warmUpList(List<ChatMessage> list, String roomId) {
+    public void warmUpList(List<ChatMessage> messages, String roomId) {
         String messageKey = CHAT_MESSAGE.keyFor(roomId);
 
         List<String> keys = List.of(messageKey);
         List<String> args = new ArrayList<>();
-        args.add(list.size()+"");
+        args.add(messages.size()+"");
 
-        for (ChatMessage msg : list) {
+        for (ChatMessage msg : messages) {
             args.add(String.valueOf(msg.toEpochMillis()));
             args.add(redisChatMessageCodec.write(msg));
         }
@@ -154,10 +154,10 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
     }
 
     @Override
-    public void hardDelete(String id, String roomId, List<ChatRoomMembershipScore> chatRoomMembershipScores) {
-        List<ChatRoomMembershipScore> validScores = chatRoomMembershipScores == null
+    public void hardDelete(String id, String roomId, List<ChatRoomMembershipScore> membershipScores) {
+        List<ChatRoomMembershipScore> validScores = membershipScores == null
                 ? List.of()
-                : chatRoomMembershipScores.stream()
+                : membershipScores.stream()
                     .filter(Objects::nonNull)
                     .filter(score -> score.memberId() != null)
                     .toList();

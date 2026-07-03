@@ -297,10 +297,10 @@ class ChatMessageCommandServiceTest {
                     new ChatRoomMembershipScore(memberId2, 0L)
             );
 
-            given(chatMessagePersistencePort.hardDelete(messageId))
+            given(chatMessagePersistencePort.hardDeleteById(messageId))
                     .willReturn(true);
 
-            given(chatMessagePersistencePort.findLatestExcluding(roomId, messageId))
+            given(chatMessagePersistencePort.findLatestMessageExcluding(roomId, messageId))
                     .willReturn(Optional.of(latestMessage));
 
             given(chatRoomPersistencePort.refreshMembershipScores(roomId, latestCreatedAtMillis))
@@ -310,9 +310,9 @@ class ChatMessageCommandServiceTest {
             sut.hardDelete(messageId, roomId);
 
             // then
-            verify(chatMessagePersistencePort).hardDelete(messageId);
+            verify(chatMessagePersistencePort).hardDeleteById(messageId);
             verify(chatRoomPersistencePort).decrementMessageCount(roomId);
-            verify(chatMessagePersistencePort).findLatestExcluding(roomId, messageId);
+            verify(chatMessagePersistencePort).findLatestMessageExcluding(roomId, messageId);
             verify(chatRoomPersistencePort).refreshMembershipScores(roomId, latestCreatedAtMillis);
             verify(chatMessageCachePort).hardDelete(messageId, roomId, chatRoomMembershipScores);
         }
@@ -321,17 +321,17 @@ class ChatMessageCommandServiceTest {
         @DisplayName("Mongo에서 삭제할 메시지가 없으면 이후 작업을 수행하지 않는다")
         void hardDeleteSkippedWhenMongoMessageNotFound() {
             // given
-            given(chatMessagePersistencePort.hardDelete(messageId))
+            given(chatMessagePersistencePort.hardDeleteById(messageId))
                     .willReturn(false);
 
             // when
             sut.hardDelete(messageId, roomId);
 
             // then
-            verify(chatMessagePersistencePort).hardDelete(messageId);
+            verify(chatMessagePersistencePort).hardDeleteById(messageId);
 
             verify(chatRoomPersistencePort, never()).decrementMessageCount(anyString());
-            verify(chatMessagePersistencePort, never()).findLatestExcluding(anyString(), anyString());
+            verify(chatMessagePersistencePort, never()).findLatestMessageExcluding(anyString(), anyString());
             verify(chatRoomPersistencePort, never()).refreshMembershipScores(anyString(), anyLong());
             verify(chatMessageCachePort, never()).hardDelete(anyString(), anyString(), anyList());
         }
@@ -345,10 +345,10 @@ class ChatMessageCommandServiceTest {
                     new ChatRoomMembershipScore(memberId2, 0L)
             );
 
-            given(chatMessagePersistencePort.hardDelete(messageId))
+            given(chatMessagePersistencePort.hardDeleteById(messageId))
                     .willReturn(true);
 
-            given(chatMessagePersistencePort.findLatestExcluding(roomId, messageId))
+            given(chatMessagePersistencePort.findLatestMessageExcluding(roomId, messageId))
                     .willReturn(Optional.empty());
 
             given(chatRoomPersistencePort.refreshMembershipScores(roomId, 0L))
@@ -358,9 +358,9 @@ class ChatMessageCommandServiceTest {
             sut.hardDelete(messageId, roomId);
 
             // then
-            verify(chatMessagePersistencePort).hardDelete(messageId);
+            verify(chatMessagePersistencePort).hardDeleteById(messageId);
             verify(chatRoomPersistencePort).decrementMessageCount(roomId);
-            verify(chatMessagePersistencePort).findLatestExcluding(roomId, messageId);
+            verify(chatMessagePersistencePort).findLatestMessageExcluding(roomId, messageId);
             verify(chatRoomPersistencePort).refreshMembershipScores(roomId, 0L);
             verify(chatMessageCachePort).hardDelete(messageId, roomId, chatRoomMembershipScores);
         }
@@ -375,10 +375,10 @@ class ChatMessageCommandServiceTest {
                     new ChatRoomMembershipScore(memberId1, latestCreatedAtMillis)
             );
 
-            given(chatMessagePersistencePort.hardDelete(messageId))
+            given(chatMessagePersistencePort.hardDeleteById(messageId))
                     .willReturn(true);
 
-            given(chatMessagePersistencePort.findLatestExcluding(roomId, messageId))
+            given(chatMessagePersistencePort.findLatestMessageExcluding(roomId, messageId))
                     .willReturn(Optional.of(latestMessage));
 
             given(chatRoomPersistencePort.refreshMembershipScores(roomId, latestCreatedAtMillis))
@@ -392,9 +392,9 @@ class ChatMessageCommandServiceTest {
             assertThatCode(() -> sut.hardDelete(messageId, roomId))
                     .doesNotThrowAnyException();
 
-            verify(chatMessagePersistencePort).hardDelete(messageId);
+            verify(chatMessagePersistencePort).hardDeleteById(messageId);
             verify(chatRoomPersistencePort).decrementMessageCount(roomId);
-            verify(chatMessagePersistencePort).findLatestExcluding(roomId, messageId);
+            verify(chatMessagePersistencePort).findLatestMessageExcluding(roomId, messageId);
             verify(chatRoomPersistencePort).refreshMembershipScores(roomId, latestCreatedAtMillis);
             verify(chatMessageCachePort).hardDelete(messageId, roomId, chatRoomMembershipScores);
         }
@@ -405,16 +405,16 @@ class ChatMessageCommandServiceTest {
             // given
             RuntimeException exception = new RuntimeException("mongo hardDelete failed");
 
-            given(chatMessagePersistencePort.hardDelete(messageId))
+            given(chatMessagePersistencePort.hardDeleteById(messageId))
                     .willThrow(exception);
 
             // when & then
             assertThatThrownBy(() -> sut.hardDelete(messageId, roomId))
                     .isSameAs(exception);
 
-            verify(chatMessagePersistencePort).hardDelete(messageId);
+            verify(chatMessagePersistencePort).hardDeleteById(messageId);
             verify(chatRoomPersistencePort, never()).decrementMessageCount(anyString());
-            verify(chatMessagePersistencePort, never()).findLatestExcluding(anyString(), anyString());
+            verify(chatMessagePersistencePort, never()).findLatestMessageExcluding(anyString(), anyString());
             verify(chatRoomPersistencePort, never()).refreshMembershipScores(anyString(), anyLong());
             verify(chatMessageCachePort, never()).hardDelete(anyString(), anyString(), anyList());
         }
@@ -425,7 +425,7 @@ class ChatMessageCommandServiceTest {
             // given
             RuntimeException exception = new RuntimeException("decrement failed");
 
-            given(chatMessagePersistencePort.hardDelete(messageId))
+            given(chatMessagePersistencePort.hardDeleteById(messageId))
                     .willReturn(true);
 
             doThrow(exception)
@@ -436,10 +436,10 @@ class ChatMessageCommandServiceTest {
             assertThatThrownBy(() -> sut.hardDelete(messageId, roomId))
                     .isSameAs(exception);
 
-            verify(chatMessagePersistencePort).hardDelete(messageId);
+            verify(chatMessagePersistencePort).hardDeleteById(messageId);
             verify(chatRoomPersistencePort).decrementMessageCount(roomId);
 
-            verify(chatMessagePersistencePort, never()).findLatestExcluding(anyString(), anyString());
+            verify(chatMessagePersistencePort, never()).findLatestMessageExcluding(anyString(), anyString());
             verify(chatRoomPersistencePort, never()).refreshMembershipScores(anyString(), anyLong());
             verify(chatMessageCachePort, never()).hardDelete(anyString(), anyString(), anyList());
         }
@@ -451,10 +451,10 @@ class ChatMessageCommandServiceTest {
             ChatMessage latestMessage = chatMessage("100000000000000000000002", latestCreatedAt);
             RuntimeException exception = new RuntimeException("refresh membership failed");
 
-            given(chatMessagePersistencePort.hardDelete(messageId))
+            given(chatMessagePersistencePort.hardDeleteById(messageId))
                     .willReturn(true);
 
-            given(chatMessagePersistencePort.findLatestExcluding(roomId, messageId))
+            given(chatMessagePersistencePort.findLatestMessageExcluding(roomId, messageId))
                     .willReturn(Optional.of(latestMessage));
 
             given(chatRoomPersistencePort.refreshMembershipScores(roomId, latestCreatedAtMillis))
@@ -464,9 +464,9 @@ class ChatMessageCommandServiceTest {
             assertThatThrownBy(() -> sut.hardDelete(messageId, roomId))
                     .isSameAs(exception);
 
-            verify(chatMessagePersistencePort).hardDelete(messageId);
+            verify(chatMessagePersistencePort).hardDeleteById(messageId);
             verify(chatRoomPersistencePort).decrementMessageCount(roomId);
-            verify(chatMessagePersistencePort).findLatestExcluding(roomId, messageId);
+            verify(chatMessagePersistencePort).findLatestMessageExcluding(roomId, messageId);
             verify(chatRoomPersistencePort).refreshMembershipScores(roomId, latestCreatedAtMillis);
 
             verify(chatMessageCachePort, never()).hardDelete(anyString(), anyString(), anyList());

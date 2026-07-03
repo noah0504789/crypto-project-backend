@@ -2,8 +2,8 @@ package org.example.chat.chatmessage.application.service.query;
 
 public record ListChatMessagesQuery(
         String roomId,
-        String lastId,
-        Long lastCreatedAtMillis,
+        String lastMsgId,
+        Long lastCreatedAtMs,
         int limit
 ) {
 
@@ -13,18 +13,18 @@ public record ListChatMessagesQuery(
 
     public static ListChatMessagesQuery prevPage(
         String roomId,
-        String lastId,
-        Long lastCreatedAtMillis,
+        String lastMsgId,
+        Long lastCreatedAtMs,
         int limit
     ) {
-        return new ListChatMessagesQuery(roomId, lastId, lastCreatedAtMillis, limit);
+        return new ListChatMessagesQuery(roomId, lastMsgId, lastCreatedAtMs, limit);
     }
 
-    public boolean firstPage() {
-        return lastId == null || lastId.isBlank();
+    public boolean hasNoCursor() {
+        return lastMsgId == null || lastMsgId.isBlank();
     }
 
-    public long cursorCreatedAtMillis() {
-        return lastCreatedAtMillis == null ? 0L : lastCreatedAtMillis;
+    public long cursorCreatedAtMs() {
+        return lastCreatedAtMs == null ? 0L : lastCreatedAtMs;
     }
 }
