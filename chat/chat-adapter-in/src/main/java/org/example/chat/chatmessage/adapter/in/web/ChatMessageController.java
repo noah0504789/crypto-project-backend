@@ -3,7 +3,6 @@ package org.example.chat.chatmessage.adapter.in.web;
 import lombok.RequiredArgsConstructor;
 import org.example.chat.chatmessage.adapter.in.web.dto.ChatMessageResponse;
 import org.example.chat.chatmessage.application.service.query.ListChatMessagesQuery;
-import org.example.chat.chatroom.adapter.in.web.dto.ChatRoomResponse;
 import org.example.common.dto.CursorPage;
 import org.example.chat.chatmessage.adapter.in.web.dto.ChatMessageCursor;
 import org.example.chat.chatmessage.application.port.in.ChatMessageQueryUseCase;
@@ -18,7 +17,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.function.Function;
 
 @RestController
 @RequestMapping("${api-path.chat.base:/chat}")
@@ -37,7 +35,7 @@ public class ChatMessageController {
 
         ListChatMessagesQuery query = cursor.isNull()
                 ? ListChatMessagesQuery.firstPage(roomId, limitPlus1)
-                : ListChatMessagesQuery.prevPage(roomId, cursor.lastId(), cursor.lastCreatedAtMillis(), limitPlus1);
+                : ListChatMessagesQuery.prevPage(roomId, cursor.lastMsgId(), cursor.lastCreatedAtMs(), limitPlus1);
 
         List<ChatMessage> result = chatMessageQueryUseCase.listMessages(query);
 

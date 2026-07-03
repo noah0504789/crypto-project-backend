@@ -119,7 +119,7 @@ class ChatRoomControllerMvcTest {
             mockMvc.perform(get("/chat/rooms/popular")
                             .param("category", category.name())
                             .param("limit", "2")
-                            .param("lastMsgId", roomId3)
+                            .param("lastRoomId", roomId3)
                             .param("lastPopularity", "10"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.hasNext").value(false))
@@ -194,12 +194,13 @@ class ChatRoomControllerMvcTest {
         void myChatRoomsNextPage() throws Exception {
             // given
             Instant lastMsgCreatedAt = Instant.parse("2026-01-01T03:00:00Z");
+            long lastMsgCreatedAtMs = lastMsgCreatedAt.toEpochMilli();
 
             ListMyChatRoomsQuery query = ListMyChatRoomsQuery.nextPage(
                     USER_ID,
                     roomId3,
                     true,
-                    lastMsgCreatedAt.toEpochMilli(),
+                    lastMsgCreatedAtMs,
                     3
             );
 
@@ -212,9 +213,9 @@ class ChatRoomControllerMvcTest {
             mockMvc.perform(get("/chat/rooms/me")
                             .header("X-User-Id", USER_ID)
                             .param("limit", "2")
-                            .param("lastMsgId", roomId3)
+                            .param("lastRoomId", roomId3)
                             .param("lastUnreadFlag", "true")
-                            .param("lastMsgCreatedAtMs", lastMsgCreatedAt.toString()))
+                            .param("lastMsgCreatedAtMs", String.valueOf(lastMsgCreatedAtMs)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.hasNext").value(false))
                     .andExpect(jsonPath("$.items", hasSize(1)))
