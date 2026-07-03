@@ -7,7 +7,7 @@ import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
 import org.example.market.application.port.in.MarketCommandUseCase;
 import org.example.market.application.port.out.MarketPersistencePort;
 import org.example.market.application.service.command.ChangeMarketsCommand;
-import org.example.market.common.exception.MarketPersistException;
+import org.example.market.application.exception.MarketPersistException;
 import org.example.market.domain.model.Market;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,11 +27,21 @@ public class MarketCommandService implements MarketCommandUseCase {
             return;
         }
 
-        marketPersistencePort.changeMarkets(command);
+        if (command.hasDeletes()) {
+            marketPersistencePort.deleteMarketsByIds(command.deleteIds());
+        }
 
-        Market market = Market.eventSource();
+        if (command.hasUpdates()) {
+            marketPersistencePort.updateMarkets(command.updates());
+        }
 
-        publishMarketChangedEvent(market);
+        if (command.hasCreates()) {
+            marketPersistencePort.createMarkets(command.creates());
+        }
+
+        publishMarketChangedEvent(
+                Market.eventSource()
+        );
     }
 
     private void publishMarketChangedEvent(Market market) {

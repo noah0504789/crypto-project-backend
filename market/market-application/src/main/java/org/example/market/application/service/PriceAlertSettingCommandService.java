@@ -22,6 +22,16 @@ public class PriceAlertSettingCommandService implements PriceAlertSettingCommand
             return;
         }
 
-        priceAlertSettingPersistencePort.changeSettings(userPublicId, command);
+        if (command.hasDeletes()) {
+            priceAlertSettingPersistencePort.deleteSettingsByCodes(userPublicId, command.deleteCodes());
+        }
+
+        if (command.hasUpdates()) {
+            priceAlertSettingPersistencePort.updateSettings(userPublicId, command.updates());
+        }
+
+        if (command.hasCreates()) {
+            priceAlertSettingPersistencePort.createSettings(userPublicId, command.creates());
+        }
     }
 }

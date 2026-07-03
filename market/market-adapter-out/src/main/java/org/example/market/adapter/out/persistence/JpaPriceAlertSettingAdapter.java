@@ -39,64 +39,30 @@ public class JpaPriceAlertSettingAdapter implements PriceAlertSettingPersistence
     }
 
     @Override
-    public void changeSettings(UUID userPublicId, ChangePriceAlertSettingsCommand command) {
-        if (command.isEmpty()) {
+    public void deleteSettingsByCodes(UUID userPublicId, List<String> codes) {
+        Map<String, JpaPriceAlertSetting> existingSettingMap = findExistingSettingMap(userPublicId, Set.copyOf(codes));
+
+        List<Long> ids = codes.stream()
+                .map(existingSettingMap::get)
+                .filter(Objects::nonNull)
+                .map(JpaPriceAlertSetting::getId)
+                .toList();
+
+        if (ids.isEmpty()) {
             return;
         }
 
-        Set<String> enabledTargetCodes = collectEnabledTargetCodes(command);
-        Map<String, JpaMarket> enabledMarketMap = findEnabledMarketMap(enabledTargetCodes);
-
-        Set<String> settingTargetCodes = collectSettingTargetCodes(command);
-        Map<String, JpaPriceAlertSetting> existingSettingMap = findExistingSettingMap(userPublicId, settingTargetCodes);
-
-        deleteSettings(command.deletes(), existingSettingMap);
-        updateSettings(command.updates(), enabledMarketMap, existingSettingMap);
-        createSettings(userPublicId, command.creates(), enabledMarketMap, existingSettingMap);
+        priceAlertSettingRepository.deleteAllByIdInBatch(ids);
     }
 
-    private void createSettings(
-            UUID userPublicId,
-            List<CreatePriceAlertSettingCommand> commands,
-            Map<String, JpaMarket> enabledMarketMap,
-            Map<String, JpaPriceAlertSetting> existingSettingMap
-    ) {
-        if (commands.isEmpty()) {
-            return;
-        }
+    @Override
+    public void updateSettings(UUID userPublicId, List<UpdatePriceAlertSettingCommand> commands) {
+        Set<String> codes = commands.stream()
+                .map(UpdatePriceAlertSettingCommand::code)
+                .collect(Collectors.toSet());
 
-        List<JpaPriceAlertSetting> jpaSettings = new ArrayList<>();
-
-        for (CreatePriceAlertSettingCommand command : commands) {
-            JpaMarket market = enabledMarketMap.get(command.code());
-
-            if (market == null) {
-                continue;
-            }
-
-            if (existingSettingMap.containsKey(command.code())) {
-                continue;
-            }
-
-            JpaPriceAlertSetting entity = JpaPriceAlertSetting.create(userPublicId, market, command.enabled(), command.targetChangeRate());
-            jpaSettings.add(entity);
-        }
-
-        if (jpaSettings.isEmpty()) {
-            return;
-        }
-
-        priceAlertSettingRepository.saveAll(jpaSettings);
-    }
-
-    private void updateSettings(
-            List<UpdatePriceAlertSettingCommand> commands,
-            Map<String, JpaMarket> enabledMarketMap,
-            Map<String, JpaPriceAlertSetting> existingSettingMap
-    ) {
-        if (commands.isEmpty()) {
-            return;
-        }
+        Map<String, JpaMarket> enabledMarketMap = findEnabledMarketMap(codes);
+        Map<String, JpaPriceAlertSetting> existingSettingMap = findExistingSettingMap(userPublicId, codes);
 
         for (UpdatePriceAlertSettingCommand command : commands) {
             if (!enabledMarketMap.containsKey(command.code())) {
@@ -113,60 +79,43 @@ public class JpaPriceAlertSettingAdapter implements PriceAlertSettingPersistence
         }
     }
 
-    private void deleteSettings(List<DeletePriceAlertSettingCommand> commands, Map<String, JpaPriceAlertSetting> existingSettingMap) {
-        if (commands.isEmpty()) {
+    @Override
+    public void createSettings(UUID userPublicId, List<CreatePriceAlertSettingCommand> commands) {
+        Set<String> codes = commands.stream()
+                .map(CreatePriceAlertSettingCommand::code)
+                .collect(Collectors.toSet());
+
+        Map<String, JpaMarket> enabledMarketMap = findEnabledMarketMap(codes);
+        Map<String, JpaPriceAlertSetting> existingSettingMap = findExistingSettingMap(userPublicId, codes);
+
+        List<JpaPriceAlertSetting> jpaSettings = new ArrayList<>();
+
+        for (CreatePriceAlertSettingCommand command : commands) {
+            JpaMarket market = enabledMarketMap.get(command.code());
+
+            if (market == null) {
+                continue;
+            }
+
+            if (existingSettingMap.containsKey(command.code())) {
+                continue;
+            }
+
+            JpaPriceAlertSetting entity = JpaPriceAlertSetting.create(
+                    userPublicId,
+                    market,
+                    command.enabled(),
+                    command.targetChangeRate()
+            );
+
+            jpaSettings.add(entity);
+        }
+
+        if (jpaSettings.isEmpty()) {
             return;
         }
 
-        List<Long> ids = commands.stream()
-                .map(DeletePriceAlertSettingCommand::code)
-                .map(existingSettingMap::get)
-                .filter(Objects::nonNull)
-                .map(JpaPriceAlertSetting::getId)
-                .toList();
-
-        if (ids.isEmpty()) {
-            return;
-        }
-
-        priceAlertSettingRepository.deleteAllByIdInBatch(ids);
-    }
-
-    private Set<String> collectEnabledTargetCodes(ChangePriceAlertSettingsCommand command) {
-        Set<String> codes = new HashSet<>();
-
-        command.creates()
-                .stream()
-                .map(CreatePriceAlertSettingCommand::code)
-                .forEach(codes::add);
-
-        command.updates()
-                .stream()
-                .map(UpdatePriceAlertSettingCommand::code)
-                .forEach(codes::add);
-
-        return codes;
-    }
-
-    private Set<String> collectSettingTargetCodes(ChangePriceAlertSettingsCommand command) {
-        Set<String> codes = new HashSet<>();
-
-        command.creates()
-                .stream()
-                .map(CreatePriceAlertSettingCommand::code)
-                .forEach(codes::add);
-
-        command.updates()
-                .stream()
-                .map(UpdatePriceAlertSettingCommand::code)
-                .forEach(codes::add);
-
-        command.deletes()
-                .stream()
-                .map(DeletePriceAlertSettingCommand::code)
-                .forEach(codes::add);
-
-        return codes;
+        priceAlertSettingRepository.saveAll(jpaSettings);
     }
 
     private Map<String, JpaMarket> findEnabledMarketMap(Set<String> marketCodes) {
@@ -187,7 +136,8 @@ public class JpaPriceAlertSettingAdapter implements PriceAlertSettingPersistence
             return Map.of();
         }
 
-        return priceAlertSettingRepository.findAllByUserPublicIdAndMarketCodeIn(userPublicId, marketCodes)
+        return priceAlertSettingRepository.findAllByUserPublicIdAndMarketCodeIn(userPublicId, marketCodes
+                )
                 .stream()
                 .collect(Collectors.toMap(
                         setting -> setting.getMarket().getMarketCode(),

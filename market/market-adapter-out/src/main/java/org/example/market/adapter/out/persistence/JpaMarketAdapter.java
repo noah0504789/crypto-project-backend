@@ -42,17 +42,7 @@ public class JpaMarketAdapter implements MarketPersistencePort {
     }
 
     @Override
-    public void changeMarkets(ChangeMarketsCommand command) {
-        deleteMarkets(command.deletes());
-        updateMarkets(command.updates());
-        createMarkets(command.creates());
-    }
-
-    private void createMarkets(List<CreateMarketCommand> commands) {
-        if (commands.isEmpty()) {
-            return;
-        }
-
+    public void createMarkets(List<CreateMarketCommand> commands) {
         List<JpaMarket> markets = commands.stream()
                 .map(command -> JpaMarket.create(
                         command.marketCode(),
@@ -66,11 +56,8 @@ public class JpaMarketAdapter implements MarketPersistencePort {
         marketRepository.saveAll(markets);
     }
 
-    private void updateMarkets(List<UpdateMarketCommand> commands) {
-        if (commands.isEmpty()) {
-            return;
-        }
-
+    @Override
+    public void updateMarkets(List<UpdateMarketCommand> commands) {
         Map<Long, UpdateMarketCommand> commandMap = commands.stream()
                 .collect(Collectors.toMap(
                         UpdateMarketCommand::id,
@@ -96,15 +83,8 @@ public class JpaMarketAdapter implements MarketPersistencePort {
         }
     }
 
-    private void deleteMarkets(List<DeleteMarketCommand> commands) {
-        if (commands.isEmpty()) {
-            return;
-        }
-
-        List<Long> ids = commands.stream()
-                .map(DeleteMarketCommand::id)
-                .toList();
-
-        marketRepository.deleteAllByIdInBatch(ids);
+    @Override
+    public void deleteMarketsByIds(List<Long> marketIds) {
+        marketRepository.deleteAllByIdInBatch(marketIds);
     }
 }

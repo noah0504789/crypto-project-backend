@@ -15,5 +15,9 @@ public interface PriceAlertSettingPersistencePort {
 
     List<UUID> findReceiverIds(String marketCode, BigDecimal targetChangeRate);
 
-    void changeSettings(UUID userPublicId, ChangePriceAlertSettingsCommand command);
+    void deleteSettingsByCodes(UUID userPublicId, List<String> codes);
+
+    void updateSettings(UUID userPublicId, List<ChangePriceAlertSettingsCommand.UpdatePriceAlertSettingCommand> commands);
+
+    void createSettings(UUID userPublicId, List<ChangePriceAlertSettingsCommand.CreatePriceAlertSettingCommand> commands);
 }
