@@ -6,9 +6,14 @@ public interface MongoChatRoomMembershipRepositoryCustom {
 
     void upsert(MongoChatRoomMembership entity);
 
-    List<MongoChatRoomMembership> listLatestActive(String memberId, int limit);
+    List<MongoChatRoomMembership> listLatestActiveMemberships(String memberId, int limit);
 
-    List<MongoChatRoomMembership> listActiveBefore(String memberId, String lastId, Long score, int limit);
+    List<MongoChatRoomMembership> listActiveMembershipsBefore(
+            String memberId,
+            String lastRoomId,
+            Long score,
+            int limit
+    );
 
-    void refresh(String id, long score);
+    void updateScore(String id, long score);
 }

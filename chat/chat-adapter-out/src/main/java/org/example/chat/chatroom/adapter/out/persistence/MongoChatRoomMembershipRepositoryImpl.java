@@ -41,7 +41,7 @@ public class MongoChatRoomMembershipRepositoryImpl implements MongoChatRoomMembe
     }
 
     @Override
-    public void refresh(String id, long score) {
+    public void updateScore(String id, long score) {
         Query query = new Query(Criteria.where("_id").is(id));
         Update update = new Update().set("score", score);
 
@@ -51,7 +51,7 @@ public class MongoChatRoomMembershipRepositoryImpl implements MongoChatRoomMembe
     // TODO: Popularity Spec
 
     @Override
-    public List<MongoChatRoomMembership> listLatestActive(String memberId, int limit) {
+    public List<MongoChatRoomMembership> listLatestActiveMemberships(String memberId, int limit) {
         Criteria criteria = Criteria.where("memberId").is(memberId);
         Query query = new Query(criteria)
                 .with(sortScoreDesc().and(sortIdDesc()))
@@ -63,13 +63,13 @@ public class MongoChatRoomMembershipRepositoryImpl implements MongoChatRoomMembe
     }
 
     @Override
-    public List<MongoChatRoomMembership> listActiveBefore(String memberId, String lastId, Long score, int limit) {
+    public List<MongoChatRoomMembership> listActiveMembershipsBefore(String memberId, String lastRoomId, Long score, int limit) {
         Criteria criteria = Criteria.where("memberId").is(memberId);
         Criteria after = new Criteria().orOperator(
                 Criteria.where("score").lt(score),
                 new Criteria().andOperator(
                         Criteria.where("score").is(score),
-                        Criteria.where("roomId").lt(new ObjectId(lastId))
+                        Criteria.where("roomId").lt(new ObjectId(lastRoomId))
                 )
         );
 

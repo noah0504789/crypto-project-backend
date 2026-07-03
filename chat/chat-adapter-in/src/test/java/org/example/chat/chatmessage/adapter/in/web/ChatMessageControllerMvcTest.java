@@ -2,8 +2,6 @@ package org.example.chat.chatmessage.adapter.in.web;
 
 import org.example.chat.chatmessage.application.service.query.ListChatMessagesQuery;
 import org.example.common.test.config.TestBootApplication;
-import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
-import org.example.chat.chatmessage.domain.event.ChatMessageEventList;
 import org.example.chat.chatmessage.application.port.in.ChatMessageQueryUseCase;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.junit.jupiter.api.DisplayName;
@@ -16,7 +14,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.hamcrest.Matchers.hasSize;
@@ -122,8 +119,8 @@ class ChatMessageControllerMvcTest {
             // when & then
             mockMvc.perform(get("/chat/room/{roomId}/messages", ROOM_ID)
                             .param("limit", "2")
-                            .param("lastId", MESSAGE_ID_3)
-                            .param("lastCreatedAtMillis", String.valueOf(lastCreatedAtMillis)))
+                            .param("lastMsgId", MESSAGE_ID_3)
+                            .param("lastCreatedAtMs", String.valueOf(lastCreatedAtMillis)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.hasNext").value(false))
                     .andExpect(jsonPath("$.items", hasSize(2)))

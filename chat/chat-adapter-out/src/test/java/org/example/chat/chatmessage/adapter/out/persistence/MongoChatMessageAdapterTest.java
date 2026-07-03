@@ -84,7 +84,7 @@ class MongoChatMessageAdapterTest {
                     .willReturn(List.of(latest, second));
 
             // when
-            List<ChatMessage> result = sut.listLatest(ROOM_ID, limit);
+            List<ChatMessage> result = sut.listLatestMessages(ROOM_ID, limit);
 
             // then
             assertThat(result)
@@ -117,7 +117,7 @@ class MongoChatMessageAdapterTest {
                     .willReturn(List.of());
 
             // when
-            List<ChatMessage> result = sut.listLatest(ROOM_ID, 10);
+            List<ChatMessage> result = sut.listLatestMessages(ROOM_ID, 10);
 
             // then
             assertThat(result).isEmpty();
@@ -128,7 +128,7 @@ class MongoChatMessageAdapterTest {
         @DisplayName("잘못된 roomId이면 InvalidResourceRequestException을 던진다")
         void listLatestThrowsInvalidResourceRequestExceptionWhenRoomIdIsInvalid() {
             // when & then
-            assertThatThrownBy(() -> sut.listLatest("invalid-room-id", 10))
+            assertThatThrownBy(() -> sut.listLatestMessages("invalid-room-id", 10))
                     .isInstanceOf(InvalidResourceRequestException.class)
                     .hasMessageContaining("invalid ObjectId")
                     .hasMessageContaining("roomId");
@@ -147,7 +147,7 @@ class MongoChatMessageAdapterTest {
                     .willThrow(exception);
 
             // when & then
-            assertThatThrownBy(() -> sut.listLatest(ROOM_ID, 10))
+            assertThatThrownBy(() -> sut.listLatestMessages(ROOM_ID, 10))
                     .isInstanceOf(TemporaryChatPersistenceException.class)
                     .hasMessageContaining("failed to list latest chat messages")
                     .hasCause(exception);
@@ -165,7 +165,7 @@ class MongoChatMessageAdapterTest {
                     .willThrow(exception);
 
             // when & then
-            assertThatThrownBy(() -> sut.listLatest(ROOM_ID, 10))
+            assertThatThrownBy(() -> sut.listLatestMessages(ROOM_ID, 10))
                     .isInstanceOf(ChatPersistenceException.class)
                     .isNotInstanceOf(TemporaryChatPersistenceException.class)
                     .hasMessageContaining("failed to list latest chat messages")
@@ -189,11 +189,11 @@ class MongoChatMessageAdapterTest {
             MongoChatMessage message2 = mongoMessage(messageId2, CONTENT_2, time2);
             MongoChatMessage message1 = mongoMessage(messageId1, CONTENT_1, time1);
 
-            given(repository.listPrev(roomId, messageId3, time3, limit))
+            given(repository.listMessagesBefore(roomId, messageId3, time3, limit))
                     .willReturn(List.of(message2, message1));
 
             // when
-            List<ChatMessage> result = sut.listPrev(
+            List<ChatMessage> result = sut.listMessagesBefore(
                     ROOM_ID,
                     MESSAGE_ID_3,
                     lastCreatedAtMillis,
@@ -207,18 +207,18 @@ class MongoChatMessageAdapterTest {
 
             assertThat(result.get(0).getCreatedAt()).isEqualTo(domainTime2);
 
-            verify(repository).listPrev(roomId, messageId3, time3, limit);
+            verify(repository).listMessagesBefore(roomId, messageId3, time3, limit);
         }
 
         @Test
         @DisplayName("cursor 이전 메시지가 없으면 빈 리스트를 반환한다")
         void listPrevEmpty() {
             // given
-            given(repository.listPrev(roomId, messageId1, time1, 10))
+            given(repository.listMessagesBefore(roomId, messageId1, time1, 10))
                     .willReturn(List.of());
 
             // when
-            List<ChatMessage> result = sut.listPrev(
+            List<ChatMessage> result = sut.listMessagesBefore(
                     ROOM_ID,
                     MESSAGE_ID_1,
                     time1.toEpochMilli(),
@@ -227,14 +227,14 @@ class MongoChatMessageAdapterTest {
 
             // then
             assertThat(result).isEmpty();
-            verify(repository).listPrev(roomId, messageId1, time1, 10);
+            verify(repository).listMessagesBefore(roomId, messageId1, time1, 10);
         }
 
         @Test
         @DisplayName("잘못된 roomId이면 InvalidResourceRequestException을 던진다")
         void listPrevThrowsInvalidResourceRequestExceptionWhenRoomIdIsInvalid() {
             // when & then
-            assertThatThrownBy(() -> sut.listPrev(
+            assertThatThrownBy(() -> sut.listMessagesBefore(
                     "invalid-room-id",
                     MESSAGE_ID_3,
                     time3.toEpochMilli(),
@@ -244,14 +244,14 @@ class MongoChatMessageAdapterTest {
                     .hasMessageContaining("invalid ObjectId")
                     .hasMessageContaining("roomId");
 
-            verify(repository, never()).listPrev(any(), any(), any(), anyInt());
+            verify(repository, never()).listMessagesBefore(any(), any(), any(), anyInt());
         }
 
         @Test
         @DisplayName("잘못된 lastId이면 InvalidResourceRequestException을 던진다")
         void listPrevThrowsInvalidResourceRequestExceptionWhenLastIdIsInvalid() {
             // when & then
-            assertThatThrownBy(() -> sut.listPrev(
+            assertThatThrownBy(() -> sut.listMessagesBefore(
                     ROOM_ID,
                     "invalid-message-id",
                     time3.toEpochMilli(),
@@ -259,9 +259,9 @@ class MongoChatMessageAdapterTest {
             ))
                     .isInstanceOf(InvalidResourceRequestException.class)
                     .hasMessageContaining("invalid ObjectId")
-                    .hasMessageContaining("lastId");
+                    .hasMessageContaining("lastMsgId");
 
-            verify(repository, never()).listPrev(any(), any(), any(), anyInt());
+            verify(repository, never()).listMessagesBefore(any(), any(), any(), anyInt());
         }
 
         @Test
@@ -271,11 +271,11 @@ class MongoChatMessageAdapterTest {
             TransientDataAccessResourceException exception =
                     new TransientDataAccessResourceException("temporary mongo failure");
 
-            given(repository.listPrev(roomId, messageId3, time3, 10))
+            given(repository.listMessagesBefore(roomId, messageId3, time3, 10))
                     .willThrow(exception);
 
             // when & then
-            assertThatThrownBy(() -> sut.listPrev(
+            assertThatThrownBy(() -> sut.listMessagesBefore(
                     ROOM_ID,
                     MESSAGE_ID_3,
                     time3.toEpochMilli(),
@@ -285,7 +285,7 @@ class MongoChatMessageAdapterTest {
                     .hasMessageContaining("failed to list previous chat messages")
                     .hasCause(exception);
 
-            verify(repository).listPrev(roomId, messageId3, time3, 10);
+            verify(repository).listMessagesBefore(roomId, messageId3, time3, 10);
         }
     }
 
@@ -391,40 +391,40 @@ class MongoChatMessageAdapterTest {
         @DisplayName("repository.hardDelete 결과가 true면 true를 반환한다")
         void hardDeleteSuccess() {
             // given
-            given(repository.hardDelete(messageId1)).willReturn(true);
+            given(repository.hardDeleteById(messageId1)).willReturn(true);
 
             // when
-            boolean result = sut.hardDelete(MESSAGE_ID_1);
+            boolean result = sut.hardDeleteById(MESSAGE_ID_1);
 
             // then
             assertThat(result).isTrue();
-            verify(repository).hardDelete(messageId1);
+            verify(repository).hardDeleteById(messageId1);
         }
 
         @Test
         @DisplayName("repository.hardDelete 결과가 false면 false를 반환한다")
         void hardDeleteNotFound() {
             // given
-            given(repository.hardDelete(messageId1)).willReturn(false);
+            given(repository.hardDeleteById(messageId1)).willReturn(false);
 
             // when
-            boolean result = sut.hardDelete(MESSAGE_ID_1);
+            boolean result = sut.hardDeleteById(MESSAGE_ID_1);
 
             // then
             assertThat(result).isFalse();
-            verify(repository).hardDelete(messageId1);
+            verify(repository).hardDeleteById(messageId1);
         }
 
         @Test
         @DisplayName("잘못된 messageId이면 InvalidResourceRequestException을 던진다")
         void hardDeleteThrowsInvalidResourceRequestExceptionWhenMessageIdIsInvalid() {
             // when & then
-            assertThatThrownBy(() -> sut.hardDelete("invalid-message-id"))
+            assertThatThrownBy(() -> sut.hardDeleteById("invalid-message-id"))
                     .isInstanceOf(InvalidResourceRequestException.class)
                     .hasMessageContaining("invalid ObjectId")
                     .hasMessageContaining("messageId");
 
-            verify(repository, never()).hardDelete(any());
+            verify(repository, never()).hardDeleteById(any());
         }
 
         @Test
@@ -434,16 +434,16 @@ class MongoChatMessageAdapterTest {
             TransientDataAccessResourceException exception =
                     new TransientDataAccessResourceException("temporary mongo failure");
 
-            given(repository.hardDelete(messageId1))
+            given(repository.hardDeleteById(messageId1))
                     .willThrow(exception);
 
             // when & then
-            assertThatThrownBy(() -> sut.hardDelete(MESSAGE_ID_1))
+            assertThatThrownBy(() -> sut.hardDeleteById(MESSAGE_ID_1))
                     .isInstanceOf(TemporaryChatPersistenceException.class)
                     .hasMessageContaining("failed to hard delete chat message")
                     .hasCause(exception);
 
-            verify(repository).hardDelete(messageId1);
+            verify(repository).hardDeleteById(messageId1);
         }
 
         @Test
@@ -452,17 +452,17 @@ class MongoChatMessageAdapterTest {
             // given
             RuntimeException exception = new RuntimeException("unexpected mongo failure");
 
-            given(repository.hardDelete(messageId1))
+            given(repository.hardDeleteById(messageId1))
                     .willThrow(exception);
 
             // when & then
-            assertThatThrownBy(() -> sut.hardDelete(MESSAGE_ID_1))
+            assertThatThrownBy(() -> sut.hardDeleteById(MESSAGE_ID_1))
                     .isInstanceOf(ChatPersistenceException.class)
                     .isNotInstanceOf(TemporaryChatPersistenceException.class)
                     .hasMessageContaining("failed to hard delete chat message")
                     .hasCause(exception);
 
-            verify(repository).hardDelete(messageId1);
+            verify(repository).hardDeleteById(messageId1);
         }
     }
 
@@ -476,11 +476,11 @@ class MongoChatMessageAdapterTest {
             // given
             MongoChatMessage latest = mongoMessage(messageId2, CONTENT_2, time2);
 
-            given(repository.findLatestExcluding(ROOM_ID, MESSAGE_ID_1))
+            given(repository.findLatestMessageExcluding(ROOM_ID, MESSAGE_ID_1))
                     .willReturn(Optional.of(latest));
 
             // when
-            Optional<ChatMessage> result = sut.findLatestExcluding(ROOM_ID, MESSAGE_ID_1);
+            Optional<ChatMessage> result = sut.findLatestMessageExcluding(ROOM_ID, MESSAGE_ID_1);
 
             // then
             assertThat(result).isPresent();
@@ -488,22 +488,22 @@ class MongoChatMessageAdapterTest {
             assertThat(result.orElseThrow().getContent()).isEqualTo(CONTENT_2);
             assertThat(result.orElseThrow().getCreatedAt()).isEqualTo(domainTime2);
 
-            verify(repository).findLatestExcluding(ROOM_ID, MESSAGE_ID_1);
+            verify(repository).findLatestMessageExcluding(ROOM_ID, MESSAGE_ID_1);
         }
 
         @Test
         @DisplayName("조회 결과가 없으면 Optional.empty를 반환한다")
         void findLatestExcludingEmpty() {
             // given
-            given(repository.findLatestExcluding(ROOM_ID, MESSAGE_ID_1))
+            given(repository.findLatestMessageExcluding(ROOM_ID, MESSAGE_ID_1))
                     .willReturn(Optional.empty());
 
             // when
-            Optional<ChatMessage> result = sut.findLatestExcluding(ROOM_ID, MESSAGE_ID_1);
+            Optional<ChatMessage> result = sut.findLatestMessageExcluding(ROOM_ID, MESSAGE_ID_1);
 
             // then
             assertThat(result).isEmpty();
-            verify(repository).findLatestExcluding(ROOM_ID, MESSAGE_ID_1);
+            verify(repository).findLatestMessageExcluding(ROOM_ID, MESSAGE_ID_1);
         }
 
         @Test
@@ -513,16 +513,16 @@ class MongoChatMessageAdapterTest {
             TransientDataAccessResourceException exception =
                     new TransientDataAccessResourceException("temporary mongo failure");
 
-            given(repository.findLatestExcluding(ROOM_ID, MESSAGE_ID_1))
+            given(repository.findLatestMessageExcluding(ROOM_ID, MESSAGE_ID_1))
                     .willThrow(exception);
 
             // when & then
-            assertThatThrownBy(() -> sut.findLatestExcluding(ROOM_ID, MESSAGE_ID_1))
+            assertThatThrownBy(() -> sut.findLatestMessageExcluding(ROOM_ID, MESSAGE_ID_1))
                     .isInstanceOf(TemporaryChatPersistenceException.class)
                     .hasMessageContaining("failed to find latest excluding chat message")
                     .hasCause(exception);
 
-            verify(repository).findLatestExcluding(ROOM_ID, MESSAGE_ID_1);
+            verify(repository).findLatestMessageExcluding(ROOM_ID, MESSAGE_ID_1);
         }
 
         @Test
@@ -531,17 +531,17 @@ class MongoChatMessageAdapterTest {
             // given
             RuntimeException exception = new RuntimeException("unexpected mongo failure");
 
-            given(repository.findLatestExcluding(ROOM_ID, MESSAGE_ID_1))
+            given(repository.findLatestMessageExcluding(ROOM_ID, MESSAGE_ID_1))
                     .willThrow(exception);
 
             // when & then
-            assertThatThrownBy(() -> sut.findLatestExcluding(ROOM_ID, MESSAGE_ID_1))
+            assertThatThrownBy(() -> sut.findLatestMessageExcluding(ROOM_ID, MESSAGE_ID_1))
                     .isInstanceOf(ChatPersistenceException.class)
                     .isNotInstanceOf(TemporaryChatPersistenceException.class)
                     .hasMessageContaining("failed to find latest excluding chat message")
                     .hasCause(exception);
 
-            verify(repository).findLatestExcluding(ROOM_ID, MESSAGE_ID_1);
+            verify(repository).findLatestMessageExcluding(ROOM_ID, MESSAGE_ID_1);
         }
     }
 

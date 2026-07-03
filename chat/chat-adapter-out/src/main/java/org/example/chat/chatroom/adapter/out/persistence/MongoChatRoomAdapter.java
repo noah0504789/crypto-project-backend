@@ -36,27 +36,27 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
     }
 
     @Override
-    public ChatRoom updateAndReturn(String id, Map<String, Object> updated) {
-        return chatRoomRepository.updateAndReturn(new ObjectId(id), updated)
+    public ChatRoom updateRoomAndReturn(String id, Map<String, Object> updates) {
+        return chatRoomRepository.updateRoomAndReturn(new ObjectId(id), updates)
                 .map(this::toDomain)
                 .orElseThrow(() -> new ChatRoomNotFoundException(id));
     }
 
     @Override
-    public void updateMembershipScores(String id, Set<String> memberIds, long lastMsgCreatedAt) {
-        long score = MyChatRoomScoreCalculator.unread(lastMsgCreatedAt);
+    public void updateMembershipScores(String id, Set<String> memberIds, long lastMsgCreatedAtMs) {
+        long score = MyChatRoomScoreCalculator.unread(lastMsgCreatedAtMs);
 
         memberIds.forEach(memberId -> membershipRepository.upsert(MongoChatRoomMembership.ofUnreadActivity(id, memberId, score)));
     }
 
     @Override
-    public List<ChatRoomMembershipScore> refreshMembershipScores(String id, long fallbackMsgCreatedAt) {
+    public List<ChatRoomMembershipScore> refreshMembershipScores(String id, long fallbackMsgCreatedAtMs) {
         return membershipRepository.findAllByRoomId(new ObjectId(id))
                 .stream()
                 .map(membership -> {
                     long score = membership.getScore() == null ? 0L : membership.getScore();
-                    long newScore = MyChatRoomScoreCalculator.rescoreKeepingUnreadState(score, fallbackMsgCreatedAt);
-                    membershipRepository.refresh(membership.getId(), newScore);
+                    long newScore = MyChatRoomScoreCalculator.rescoreKeepingUnreadState(score, fallbackMsgCreatedAtMs);
+                    membershipRepository.updateScore(membership.getId(), newScore);
 
                     return new ChatRoomMembershipScore(membership.getMemberId(), newScore);
                 })
@@ -64,29 +64,29 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
     }
 
     @Override
-    public void incrementMsgCnt(String id) {
-        chatRoomRepository.incrementField(new ObjectId(id), "msgCnt", 1);
+    public void incrementMessageCount(String id) {
+        chatRoomRepository.incrementRoomField(new ObjectId(id), "msgCnt", 1);
     }
 
     @Override
-    public void decrementMsgCnt(String id) {
-        chatRoomRepository.incrementField(new ObjectId(id), "msgCnt", -1);
+    public void decrementMessageCount(String id) {
+        chatRoomRepository.incrementRoomField(new ObjectId(id), "msgCnt", -1);
     }
 
     @Override
-    public void active(String id, String memberId, Long lastMsgReadSeq, Long lastMsgCreatedAt) {
-        long score = MyChatRoomScoreCalculator.read(lastMsgCreatedAt);
+    public void activateMembership(String id, String memberId, Long lastMsgReadSeq, Long lastMsgCreatedAtMs) {
+        long score = MyChatRoomScoreCalculator.read(lastMsgCreatedAtMs);
 
         membershipRepository.save(MongoChatRoomMembership.ofReadActivity(id, memberId, lastMsgReadSeq, score));
     }
 
     @Override
-    public void join(String id, String memberId) {
+    public void joinMembership(String id, String memberId) {
         chatRoomRepository.addMember(new ObjectId(id), memberId);
     }
 
     @Override
-    public void leave(String id, String memberId) {
+    public void leaveMembership(String id, String memberId) {
         chatRoomRepository.removeMember(new ObjectId(id), memberId);
         membershipRepository.deleteByRoomIdAndMemberId(new ObjectId(id), memberId);
     }
@@ -105,7 +105,7 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
     }
 
     @Override
-    public Optional<ChatRoom> findByIdWithLatest(String id) {
+    public Optional<ChatRoom> findByIdWithLatestMessage(String id) {
         ObjectId roomId = new ObjectId(id);
 
         return chatRoomRepository.findByIdAndDeletedFalse(roomId)
@@ -130,33 +130,33 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
     }
 
     @Override
-    public List<ChatRoom> listMostPopular(ChatRoomCategory category, int limit) {
-        List<MongoChatRoom> rooms = chatRoomRepository.listMostPopular(category, 0, limit);
+    public List<ChatRoom> listPopularRooms(ChatRoomCategory category, int limit) {
+        List<MongoChatRoom> rooms = chatRoomRepository.listPopularRooms(category, 0, limit);
 
         return attachLatestMessages(rooms);
     }
 
     @Override
-    public List<ChatRoom> listNextPopular(ChatRoomCategory category, String lastId, Long lastPopularity, int limit) {
-        List<MongoChatRoom> rooms = chatRoomRepository.listNextPopular(category, lastId, lastPopularity, limit);
+    public List<ChatRoom> listPopularRoomsAfter(ChatRoomCategory category, String lastRoomId, Long lastPopularity, int limit) {
+        List<MongoChatRoom> rooms = chatRoomRepository.listPopularRoomsAfter(category, lastRoomId, lastPopularity, limit);
 
         return attachLatestMessages(rooms);
     }
 
     @Override
-    public List<ChatRoom> listLatestActive(String memberId, int limit) {
-        return membershipRepository.listLatestActive(memberId, limit).stream()
+    public List<ChatRoom> listLatestActiveRooms(String memberId, int limit) {
+        return membershipRepository.listLatestActiveMemberships(memberId, limit).stream()
                 .map(membership -> membership.getRoomId().toHexString())
-                .map(this::findByIdWithLatest)
+                .map(this::findByIdWithLatestMessage)
                 .flatMap(Optional::stream)
                 .toList();
     }
 
     @Override
-    public List<ChatRoom> listActiveBefore(String memberId, String lastId, Long score, int limit) {
-        return membershipRepository.listActiveBefore(memberId, lastId, score, limit).stream()
+    public List<ChatRoom> listActiveRoomsBefore(String memberId, String lastRoomId, Long score, int limit) {
+        return membershipRepository.listActiveMembershipsBefore(memberId, lastRoomId, score, limit).stream()
                 .map(membership -> membership.getRoomId().toHexString())
-                .map(this::findByIdWithLatest)
+                .map(this::findByIdWithLatestMessage)
                 .flatMap(Optional::stream)
                 .toList();
     }
@@ -165,7 +165,7 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
         if (rooms.isEmpty()) return List.of();
 
         List<ObjectId> roomIds = rooms.stream().map(MongoChatRoom::getId).toList();
-        Map<ObjectId, MongoChatMessage> latestMsgMap = chatMessageRepository.findLatestByRoomIds(roomIds).stream()
+        Map<ObjectId, MongoChatMessage> latestMsgMap = chatMessageRepository.listLatestMessagesByRoomIds(roomIds).stream()
                 .collect(Collectors.toMap(MongoChatMessage::getRoomId, Function.identity()));
 
         return rooms.stream()

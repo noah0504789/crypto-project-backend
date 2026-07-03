@@ -54,17 +54,17 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
 
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomUpdatedEvent event, String txId) {
-        persistence.updateAndReturn(event.getId(), event.getUpdated().toUpdateMap());
+        persistence.updateRoomAndReturn(event.getId(), event.getUpdated().toUpdateMap());
     }
 
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomJoinedEvent event, String txId) {
-        persistence.join(event.getId(), event.getMemberId());
+        persistence.joinMembership(event.getId(), event.getMemberId());
     }
 
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomLeavedEvent event, String txId) {
-        persistence.leave(event.getId(), event.getMemberId());
+        persistence.leaveMembership(event.getId(), event.getMemberId());
     }
 
     @Transactional("chatMongoTransactionManager")
@@ -74,14 +74,14 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
 
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomActiveEvent event, String txId) {
-        persistence.active(event.getId(), event.getMemberId(), event.getLastMsgSeq(), event.getLastMsgMs());
+        persistence.activateMembership(event.getId(), event.getMemberId(), event.getLastMsgSeq(), event.getLastMsgMs());
     }
 
     @Transactional(transactionManager = "chatMongoTransactionManager", readOnly = true)
     public void handle(ChatRoomCacheSaveEvent event, String txId) {
         String id = event.getId();
 
-        persistence.findByIdWithLatest(id)
+        persistence.findByIdWithLatestMessage(id)
                 .ifPresent(cache::warmUp);
     }
 
@@ -90,20 +90,20 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
         String id = event.getId();
         String oldTitle = event.getOldTitle();
 
-        persistence.findByIdWithLatest(id)
-                .ifPresent(chatRoom -> cache.recoverUpdate(chatRoom, oldTitle));
+        persistence.findByIdWithLatestMessage(id)
+                .ifPresent(chatRoom -> cache.recoverRoomUpdate(chatRoom, oldTitle));
     }
 
     public void handle(ChatRoomCacheDeleteEvent event, String txId) {
-        cache.delete(event.getId(), event.getCategory(), event.getTitle(), event.getMemberids());
+        cache.deleteRoom(event.getId(), event.getCategory(), event.getTitle(), event.getMemberids());
     }
 
     public void handle(ChatRoomCacheActivityInvalidateEvent event, String txId) {
-        cache.invalidateActivity(event.getId(), event.getMemberId());
+        cache.invalidateMembershipActivity(event.getId(), event.getMemberId());
     }
 
     public void handle(ChatRoomCacheInfoInvalidateEvent event, String txId) {
-        cache.invalidateInfo(event.getId());
+        cache.invalidateRoomInfo(event.getId());
     }
 
     @Recover

@@ -79,7 +79,7 @@ class MongoChatMessageRepositoryImplTest {
             saveMessage(messageId4, roomId1, "message-4", time4, false);
 
             // when
-            List<MongoChatMessage> result = sut.listPrev(
+            List<MongoChatMessage> result = sut.listMessagesBefore(
                     roomId1,
                     messageId4,
                     time4,
@@ -99,7 +99,7 @@ class MongoChatMessageRepositoryImplTest {
             saveMessage(messageId3, roomId1, "high-id", time3, false);
 
             // when
-            List<MongoChatMessage> result = sut.listPrev(
+            List<MongoChatMessage> result = sut.listMessagesBefore(
                     roomId1,
                     messageId3,
                     time3,
@@ -119,7 +119,7 @@ class MongoChatMessageRepositoryImplTest {
             saveMessage(messageId3, roomId1, "alive-new", time3, false);
 
             // when
-            List<MongoChatMessage> result = sut.listPrev(
+            List<MongoChatMessage> result = sut.listMessagesBefore(
                     roomId1,
                     messageId3,
                     time3,
@@ -139,7 +139,7 @@ class MongoChatMessageRepositoryImplTest {
             saveMessage(messageId3, roomId1, "room1-new", time3, false);
 
             // when
-            List<MongoChatMessage> result = sut.listPrev(
+            List<MongoChatMessage> result = sut.listMessagesBefore(
                     roomId1,
                     messageId3,
                     time3,
@@ -160,7 +160,7 @@ class MongoChatMessageRepositoryImplTest {
             saveMessage(messageId4, roomId1, "message-4", time4, false);
 
             // when
-            List<MongoChatMessage> result = sut.listPrev(
+            List<MongoChatMessage> result = sut.listMessagesBefore(
                     roomId1,
                     messageId4,
                     time4,
@@ -178,7 +178,7 @@ class MongoChatMessageRepositoryImplTest {
             saveMessage(messageId1, roomId1, "oldest", time1, false);
 
             // when
-            List<MongoChatMessage> result = sut.listPrev(
+            List<MongoChatMessage> result = sut.listMessagesBefore(
                     roomId1,
                     messageId1,
                     time1,
@@ -232,7 +232,7 @@ class MongoChatMessageRepositoryImplTest {
             saveMessage(messageId1, roomId1, "delete-target", time1, false);
 
             // when
-            boolean result = sut.hardDelete(messageId1);
+            boolean result = sut.hardDeleteById(messageId1);
 
             // then
             assertThat(result).isTrue();
@@ -243,7 +243,7 @@ class MongoChatMessageRepositoryImplTest {
         @DisplayName("존재하지 않는 메시지를 삭제하면 false를 반환한다")
         void hardDeleteNotFound() {
             // when
-            boolean result = sut.hardDelete(messageId1);
+            boolean result = sut.hardDeleteById(messageId1);
 
             // then
             assertThat(result).isFalse();
@@ -262,7 +262,7 @@ class MongoChatMessageRepositoryImplTest {
             MongoChatMessage latest = saveMessage(messageId2, roomId1, "latest", time2, false);
 
             // when
-            Optional<MongoChatMessage> result = sut.findLatestExcluding(
+            Optional<MongoChatMessage> result = sut.findLatestMessageExcluding(
                     roomId1.toHexString(),
                     messageId1.toHexString()
             );
@@ -280,7 +280,7 @@ class MongoChatMessageRepositoryImplTest {
             saveMessage(messageId2, roomId1, "latest", time2, false);
 
             // when
-            Optional<MongoChatMessage> result = sut.findLatestExcluding(
+            Optional<MongoChatMessage> result = sut.findLatestMessageExcluding(
                     roomId1.toHexString(),
                     messageId2.toHexString()
             );
@@ -298,7 +298,7 @@ class MongoChatMessageRepositoryImplTest {
             saveMessage(messageId2, roomId1, "deleted-latest", time2, true);
 
             // when
-            Optional<MongoChatMessage> result = sut.findLatestExcluding(
+            Optional<MongoChatMessage> result = sut.findLatestMessageExcluding(
                     roomId1.toHexString(),
                     messageId5.toHexString()
             );
@@ -316,7 +316,7 @@ class MongoChatMessageRepositoryImplTest {
             saveMessage(messageId2, roomId2, "room2-latest", time2, false);
 
             // when
-            Optional<MongoChatMessage> result = sut.findLatestExcluding(
+            Optional<MongoChatMessage> result = sut.findLatestMessageExcluding(
                     roomId1.toHexString(),
                     messageId5.toHexString()
             );
@@ -333,7 +333,7 @@ class MongoChatMessageRepositoryImplTest {
             saveMessage(messageId1, roomId1, "only-message", time1, false);
 
             // when
-            Optional<MongoChatMessage> result = sut.findLatestExcluding(
+            Optional<MongoChatMessage> result = sut.findLatestMessageExcluding(
                     roomId1.toHexString(),
                     messageId1.toHexString()
             );
@@ -358,7 +358,7 @@ class MongoChatMessageRepositoryImplTest {
             MongoChatMessage room2Latest = saveMessage(messageId4, roomId2, "room2-latest", time3, false);
 
             // when
-            List<MongoChatMessage> result = sut.findLatestByRoomIds(List.of(roomId1, roomId2));
+            List<MongoChatMessage> result = sut.listLatestMessagesByRoomIds(List.of(roomId1, roomId2));
 
             // then
             assertThat(result)
@@ -377,7 +377,7 @@ class MongoChatMessageRepositoryImplTest {
             MongoChatMessage highId = saveMessage(messageId2, roomId1, "high-id", time1, false);
 
             // when
-            List<MongoChatMessage> result = sut.findLatestByRoomIds(List.of(roomId1));
+            List<MongoChatMessage> result = sut.listLatestMessagesByRoomIds(List.of(roomId1));
 
             // then
             assertThat(result).hasSize(1);
@@ -392,7 +392,7 @@ class MongoChatMessageRepositoryImplTest {
             saveMessage(messageId2, roomId1, "deleted-latest", time2, true);
 
             // when
-            List<MongoChatMessage> result = sut.findLatestByRoomIds(List.of(roomId1));
+            List<MongoChatMessage> result = sut.listLatestMessagesByRoomIds(List.of(roomId1));
 
             // then
             assertThat(result).hasSize(1);
@@ -403,7 +403,7 @@ class MongoChatMessageRepositoryImplTest {
         @DisplayName("대상 roomId가 없으면 빈 목록을 반환한다")
         void findLatestByRoomIdsEmptyRoomIds() {
             // when
-            List<MongoChatMessage> result = sut.findLatestByRoomIds(List.of());
+            List<MongoChatMessage> result = sut.listLatestMessagesByRoomIds(List.of());
 
             // then
             assertThat(result).isEmpty();

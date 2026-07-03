@@ -9,13 +9,13 @@ import org.example.common.exception.InfrastructureException;
 public enum RedisKey {
 
     CHAT_ROOM_INFO("{chat}:room:%s", 1),
-    CHAT_ROOM_LAST_READ("{chat}:room:%s:last_read", 1),
+    CHAT_ROOM_LAST_READ_SEQ("{chat}:room:%s:last_read", 1),
     CHAT_ROOM_TITLE_UNIQUE_INDEX("{chat}:room:title:idx", 0),
-    POPULAR_CHAT_ROOM_BY_CATEGORY_INDEX("{chat}:popular-room:%s", 1),
-    RECENT_CHAT_ROOM_BY_MEMBER_INDEX("{chat}:recent-room:%s", 1),
+    CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX("{chat}:popular-room:%s", 1),
+    CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX("{chat}:active-room:%s", 1),
 
-    CHAT_MESSAGE("{chat}:message:%s", 1),
-    ACCESS_CHAT_MESSAGE_BY_ROOM("{chat}:room:%s:message-access", 1),
+    CHAT_MESSAGE_INFO("{chat}:message:%s", 1),
+    CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX("{chat}:room:%s:message-access", 1),
 
     // Auth
     ACCESS_TOKEN("{auth}:accesstoken:%s:%s", 2),

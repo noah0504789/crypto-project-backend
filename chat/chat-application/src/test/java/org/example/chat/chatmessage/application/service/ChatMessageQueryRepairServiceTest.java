@@ -1,8 +1,6 @@
 package org.example.chat.chatmessage.application.service;
 
 import org.example.chat.chatmessage.application.service.query.ListChatMessagesQuery;
-import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
-import org.example.chat.chatmessage.domain.event.ChatMessageEventList;
 import org.example.chat.chatmessage.application.port.out.ChatMessageCachePort;
 import org.example.chat.chatmessage.application.port.out.ChatMessagePersistencePort;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
@@ -18,13 +16,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.example.common.time.ServiceZoneUtils.ZONE_ID;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
@@ -79,7 +75,7 @@ class ChatMessageQueryRepairServiceTest {
                     chatMessage("100000000000000000000001", "cached-1", time1)
             );
 
-            given(cache.listLatest(roomId, limit))
+            given(cache.listLatestMessages(roomId, limit))
                     .willReturn(cached);
 
             // when
@@ -94,8 +90,8 @@ class ChatMessageQueryRepairServiceTest {
                             "100000000000000000000001"
                     );
 
-            verify(cache).listLatest(roomId, limit);
-            verify(persistence, never()).listLatest(anyString(), anyInt());
+            verify(cache).listLatestMessages(roomId, limit);
+            verify(persistence, never()).listLatestMessages(anyString(), anyInt());
             verify(cache, never()).warmUpList(anyList(), anyString());
 
             verify(distributedLockExecutor).execute(
@@ -114,9 +110,9 @@ class ChatMessageQueryRepairServiceTest {
                     chatMessage("100000000000000000000001", "stored-1", time1)
             );
 
-            given(cache.listLatest(roomId, limit))
+            given(cache.listLatestMessages(roomId, limit))
                     .willReturn(List.of());
-            given(persistence.listLatest(roomId, limit))
+            given(persistence.listLatestMessages(roomId, limit))
                     .willReturn(stored);
 
             // when
@@ -128,8 +124,8 @@ class ChatMessageQueryRepairServiceTest {
                     .extracting(ChatMessage::getContent)
                     .containsExactly("stored-2", "stored-1");
 
-            verify(cache).listLatest(roomId, limit);
-            verify(persistence).listLatest(roomId, limit);
+            verify(cache).listLatestMessages(roomId, limit);
+            verify(persistence).listLatestMessages(roomId, limit);
             verify(cache).warmUpList(stored, roomId);
         }
 
@@ -137,9 +133,9 @@ class ChatMessageQueryRepairServiceTest {
         @DisplayName("캐시와 DB가 모두 비어 있으면 빈 리스트를 반환하고 warmUp하지 않는다")
         void repairLatestReturnsEmptyWhenPersistenceEmpty() {
             // given
-            given(cache.listLatest(roomId, limit))
+            given(cache.listLatestMessages(roomId, limit))
                     .willReturn(List.of());
-            given(persistence.listLatest(roomId, limit))
+            given(persistence.listLatestMessages(roomId, limit))
                     .willReturn(List.of());
 
             // when
@@ -148,8 +144,8 @@ class ChatMessageQueryRepairServiceTest {
             // then
             assertThat(result).isEmpty();
 
-            verify(cache).listLatest(roomId, limit);
-            verify(persistence).listLatest(roomId, limit);
+            verify(cache).listLatestMessages(roomId, limit);
+            verify(persistence).listLatestMessages(roomId, limit);
             verify(cache, never()).warmUpList(anyList(), anyString());
         }
 
@@ -161,9 +157,9 @@ class ChatMessageQueryRepairServiceTest {
                     chatMessage("100000000000000000000001", "stored-1", time1)
             );
 
-            given(cache.listLatest(roomId, limit))
+            given(cache.listLatestMessages(roomId, limit))
                     .willReturn(List.of());
-            given(persistence.listLatest(roomId, limit))
+            given(persistence.listLatestMessages(roomId, limit))
                     .willReturn(stored);
 
             doThrow(new RuntimeException("redis warmUp failed"))
@@ -196,7 +192,7 @@ class ChatMessageQueryRepairServiceTest {
                     chatMessage("100000000000000000000001", "cached-1", time1)
             );
 
-            given(cache.listPrev(roomId, lastId, lastCreatedAtMillis, limit))
+            given(cache.listMessagesBefore(roomId, lastId, lastCreatedAtMillis, limit))
                     .willReturn(cached);
 
             // when
@@ -211,8 +207,8 @@ class ChatMessageQueryRepairServiceTest {
                             "100000000000000000000001"
                     );
 
-            verify(cache).listPrev(roomId, lastId, lastCreatedAtMillis, limit);
-            verify(persistence, never()).listPrev(anyString(), anyString(), anyLong(), anyInt());
+            verify(cache).listMessagesBefore(roomId, lastId, lastCreatedAtMillis, limit);
+            verify(persistence, never()).listMessagesBefore(anyString(), anyString(), anyLong(), anyInt());
             verify(cache, never()).warmUpList(anyList(), anyString());
 
             verify(distributedLockExecutor).execute(
@@ -233,9 +229,9 @@ class ChatMessageQueryRepairServiceTest {
                     chatMessage("100000000000000000000001", "stored-1", time1)
             );
 
-            given(cache.listPrev(roomId, lastId, lastCreatedAtMillis, limit))
+            given(cache.listMessagesBefore(roomId, lastId, lastCreatedAtMillis, limit))
                     .willReturn(List.of());
-            given(persistence.listPrev(roomId, lastId, lastCreatedAtMillis, limit))
+            given(persistence.listMessagesBefore(roomId, lastId, lastCreatedAtMillis, limit))
                     .willReturn(stored);
 
             // when
@@ -247,8 +243,8 @@ class ChatMessageQueryRepairServiceTest {
                     .extracting(ChatMessage::getContent)
                     .containsExactly("stored-2", "stored-1");
 
-            verify(cache).listPrev(roomId, lastId, lastCreatedAtMillis, limit);
-            verify(persistence).listPrev(roomId, lastId, lastCreatedAtMillis, limit);
+            verify(cache).listMessagesBefore(roomId, lastId, lastCreatedAtMillis, limit);
+            verify(persistence).listMessagesBefore(roomId, lastId, lastCreatedAtMillis, limit);
             verify(cache).warmUpList(stored, roomId);
         }
 
@@ -258,9 +254,9 @@ class ChatMessageQueryRepairServiceTest {
             // given
             ListChatMessagesQuery query = prevPageQuery();
 
-            given(cache.listPrev(roomId, lastId, lastCreatedAtMillis, limit))
+            given(cache.listMessagesBefore(roomId, lastId, lastCreatedAtMillis, limit))
                     .willReturn(List.of());
-            given(persistence.listPrev(roomId, lastId, lastCreatedAtMillis, limit))
+            given(persistence.listMessagesBefore(roomId, lastId, lastCreatedAtMillis, limit))
                     .willReturn(List.of());
 
             // when
@@ -269,8 +265,8 @@ class ChatMessageQueryRepairServiceTest {
             // then
             assertThat(result).isEmpty();
 
-            verify(cache).listPrev(roomId, lastId, lastCreatedAtMillis, limit);
-            verify(persistence).listPrev(roomId, lastId, lastCreatedAtMillis, limit);
+            verify(cache).listMessagesBefore(roomId, lastId, lastCreatedAtMillis, limit);
+            verify(persistence).listMessagesBefore(roomId, lastId, lastCreatedAtMillis, limit);
             verify(cache, never()).warmUpList(anyList(), anyString());
         }
 
@@ -284,9 +280,9 @@ class ChatMessageQueryRepairServiceTest {
                     chatMessage("100000000000000000000001", "stored-1", time1)
             );
 
-            given(cache.listPrev(roomId, lastId, lastCreatedAtMillis, limit))
+            given(cache.listMessagesBefore(roomId, lastId, lastCreatedAtMillis, limit))
                     .willReturn(List.of());
-            given(persistence.listPrev(roomId, lastId, lastCreatedAtMillis, limit))
+            given(persistence.listMessagesBefore(roomId, lastId, lastCreatedAtMillis, limit))
                     .willReturn(stored);
 
             doThrow(new RuntimeException("redis warmUp failed"))
@@ -314,9 +310,9 @@ class ChatMessageQueryRepairServiceTest {
                     limit
             );
 
-            given(cache.listPrev(roomId, lastId, 0L, limit))
+            given(cache.listMessagesBefore(roomId, lastId, 0L, limit))
                     .willReturn(List.of());
-            given(persistence.listPrev(roomId, lastId, 0L, limit))
+            given(persistence.listMessagesBefore(roomId, lastId, 0L, limit))
                     .willReturn(List.of());
 
             // when
@@ -325,8 +321,8 @@ class ChatMessageQueryRepairServiceTest {
             // then
             assertThat(result).isEmpty();
 
-            verify(cache).listPrev(roomId, lastId, 0L, limit);
-            verify(persistence).listPrev(roomId, lastId, 0L, limit);
+            verify(cache).listMessagesBefore(roomId, lastId, 0L, limit);
+            verify(persistence).listMessagesBefore(roomId, lastId, 0L, limit);
 
             verify(distributedLockExecutor).execute(
                     eq("chatmessage:listPrev:" + roomId + ":" + lastId + ":0:" + limit),

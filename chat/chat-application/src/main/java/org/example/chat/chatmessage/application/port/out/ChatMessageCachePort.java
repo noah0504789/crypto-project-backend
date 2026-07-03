@@ -9,13 +9,26 @@ import java.util.Set;
 
 public interface ChatMessageCachePort {
 
-    void save(ChatMessage domain, ChatRoomCategory category, Set<String> memberIds);
+    List<ChatMessage> listLatestMessages(String roomId, int limit);
 
-    void warmUpList(List<ChatMessage> list, String roomId);
+    List<ChatMessage> listMessagesBefore(
+            String roomId,
+            String lastMsgId,
+            Long lastCreatedAtMs,
+            int limit
+    );
 
-    List<ChatMessage> listLatest(String roomId, int limit);
+    void save(
+            ChatMessage message,
+            ChatRoomCategory category,
+            Set<String> memberIds
+    );
 
-    List<ChatMessage> listPrev(String roomId, String lastId, Long lastCreatedAtMillis, int limit);
+    void warmUpList(List<ChatMessage> messages, String roomId);
 
-    void hardDelete(String id, String roomId, List<ChatRoomMembershipScore> chatRoomMembershipScores);
+    void hardDelete(
+            String id,
+            String roomId,
+            List<ChatRoomMembershipScore> membershipScores
+    );
 }

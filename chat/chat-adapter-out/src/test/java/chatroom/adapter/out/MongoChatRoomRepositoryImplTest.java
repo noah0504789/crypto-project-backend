@@ -81,7 +81,7 @@ class MongoChatRoomRepositoryImplTest {
             saveDeletedRoom(roomId4, TITLE_DELETED, 100);
 
             // when
-            List<MongoChatRoom> result = sut.listMostPopular(category, 0, 10);
+            List<MongoChatRoom> result = sut.listPopularRooms(category, 0, 10);
 
             // then
             assertRoomIds(result, roomId2, roomId3, roomId1);
@@ -96,7 +96,7 @@ class MongoChatRoomRepositoryImplTest {
             saveRoom(roomId3, "높은ID", 10);
 
             // when
-            List<MongoChatRoom> result = sut.listMostPopular(category, 0, 10);
+            List<MongoChatRoom> result = sut.listPopularRooms(category, 0, 10);
 
             // then
             assertRoomIds(result, roomId3, roomId2, roomId1);
@@ -111,7 +111,7 @@ class MongoChatRoomRepositoryImplTest {
             saveRoom(roomId3, TITLE_3, 20);
 
             // when
-            List<MongoChatRoom> result = sut.listMostPopular(category, 1, 1);
+            List<MongoChatRoom> result = sut.listPopularRooms(category, 1, 1);
 
             // then
             assertRoomIds(result, roomId3);
@@ -131,7 +131,7 @@ class MongoChatRoomRepositoryImplTest {
             saveRoom(roomId1, "하", 10);
 
             // when
-            List<MongoChatRoom> result = sut.listNextPopular(
+            List<MongoChatRoom> result = sut.listPopularRoomsAfter(
                     category,
                     roomId3.toHexString(),
                     30L,
@@ -151,7 +151,7 @@ class MongoChatRoomRepositoryImplTest {
             saveRoom(roomId3, "높은ID", 10);
 
             // when
-            List<MongoChatRoom> result = sut.listNextPopular(
+            List<MongoChatRoom> result = sut.listPopularRoomsAfter(
                     category,
                     roomId3.toHexString(),
                     10L,
@@ -171,7 +171,7 @@ class MongoChatRoomRepositoryImplTest {
             saveDeletedRoom(roomId1, TITLE_DELETED, 10);
 
             // when
-            List<MongoChatRoom> result = sut.listNextPopular(
+            List<MongoChatRoom> result = sut.listPopularRoomsAfter(
                     category,
                     roomId4.toHexString(),
                     30L,
@@ -192,7 +192,7 @@ class MongoChatRoomRepositoryImplTest {
             saveRoom(roomId2, "방3", 20);
 
             // when
-            List<MongoChatRoom> result = sut.listNextPopular(
+            List<MongoChatRoom> result = sut.listPopularRoomsAfter(
                     category,
                     roomId5.toHexString(),
                     50L,
@@ -215,7 +215,7 @@ class MongoChatRoomRepositoryImplTest {
             saveRoom(roomId1, "카운트방", 0);
 
             // when
-            sut.incrementField(roomId1, "msgCnt", 3);
+            sut.incrementRoomField(roomId1, "msgCnt", 3);
 
             // then
             MongoChatRoom found = sut.findById(roomId1).orElseThrow();
@@ -229,7 +229,7 @@ class MongoChatRoomRepositoryImplTest {
             saveRoom(roomId1, "카운트방", 3);
 
             // when
-            sut.incrementField(roomId1, "msgCnt", -1);
+            sut.incrementRoomField(roomId1, "msgCnt", -1);
 
             // then
             MongoChatRoom found = sut.findById(roomId1).orElseThrow();
@@ -243,7 +243,7 @@ class MongoChatRoomRepositoryImplTest {
             saveRoom(roomId1, "기존제목", 0);
 
             // when
-            MongoChatRoom updated = sut.updateAndReturn(
+            MongoChatRoom updated = sut.updateRoomAndReturn(
                     roomId1,
                     Map.of(
                             "title", "수정제목",
@@ -267,7 +267,7 @@ class MongoChatRoomRepositoryImplTest {
             ObjectId notFoundId = new ObjectId("999999999999999999999999");
 
             // when
-            Optional<MongoChatRoom> result = sut.updateAndReturn(
+            Optional<MongoChatRoom> result = sut.updateRoomAndReturn(
                     notFoundId,
                     Map.of("title", "수정제목")
             );

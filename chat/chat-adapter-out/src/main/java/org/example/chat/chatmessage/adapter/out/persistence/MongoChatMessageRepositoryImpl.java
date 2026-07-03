@@ -22,12 +22,12 @@ public class MongoChatMessageRepositoryImpl implements MongoChatMessageRepositor
     private final MongoTemplate mongoTemplate;
 
     @Override
-    public List<MongoChatMessage> listPrev(ObjectId roomId, ObjectId lastId, Instant lastCreated, int limit) {
+    public List<MongoChatMessage> listMessagesBefore(ObjectId roomId, ObjectId lastMsgId, Instant lastCreatedAt, int limit) {
         Criteria base = Criteria.where("roomId").is(roomId).and("deleted").is(false);
 
-        Criteria createdAtLt = Criteria.where("createdAt").lt(lastCreated);
-        Criteria createdAtIs = Criteria.where("createdAt").is(lastCreated);
-        Criteria idLt = Criteria.where("_id").lt(lastId);
+        Criteria createdAtLt = Criteria.where("createdAt").lt(lastCreatedAt);
+        Criteria createdAtIs = Criteria.where("createdAt").is(lastCreatedAt);
+        Criteria idLt = Criteria.where("_id").lt(lastMsgId);
         Criteria tieBreak = new Criteria().andOperator(createdAtIs, idLt);
 
         Criteria cursor = new Criteria().orOperator(createdAtLt, tieBreak);
@@ -53,10 +53,10 @@ public class MongoChatMessageRepositoryImpl implements MongoChatMessageRepositor
     }
 
     @Override
-    public Optional<MongoChatMessage> findLatestExcluding(String roomId, String id) {
+    public Optional<MongoChatMessage> findLatestMessageExcluding(String roomId, String excludedMsgId) {
         Query query = new Query();
         query.addCriteria(Criteria.where("roomId").is(new ObjectId(roomId)))
-                .addCriteria(Criteria.where("_id").ne(new ObjectId(id)))
+                .addCriteria(Criteria.where("_id").ne(new ObjectId(excludedMsgId)))
                 .addCriteria(Criteria.where("deleted").is(false))
                 .with(Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("_id")))
                 .limit(1);
@@ -67,7 +67,7 @@ public class MongoChatMessageRepositoryImpl implements MongoChatMessageRepositor
     }
 
     @Override
-    public List<MongoChatMessage> findLatestByRoomIds(List<ObjectId> roomIds) {
+    public List<MongoChatMessage> listLatestMessagesByRoomIds(List<ObjectId> roomIds) {
         Aggregation aggregation = Aggregation.newAggregation(
                 Aggregation.match(Criteria.where("roomId").in(roomIds).and("deleted").is(false)),
                 Aggregation.sort(Sort.by(
@@ -84,7 +84,7 @@ public class MongoChatMessageRepositoryImpl implements MongoChatMessageRepositor
     }
 
     @Override
-    public boolean hardDelete(ObjectId id) {
+    public boolean hardDeleteById(ObjectId id) {
         Query query = new Query(Criteria.where("_id").is(id));
 
         DeleteResult result = mongoTemplate.remove(query, MongoChatMessage.class);

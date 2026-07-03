@@ -10,7 +10,6 @@ import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.common.redis.lock.DistributedLockExecutor;
 import org.example.common.redis.lock.DistributedLockPolicy;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -77,7 +76,7 @@ class ChatRoomQueryRepairServiceTest {
                     any(),
                     eq(distributedLockPolicy)
             );
-            verify(persistence, never()).findByIdWithLatest(anyString());
+            verify(persistence, never()).findByIdWithLatestMessage(anyString());
             verify(cache, never()).warmUp(any());
         }
 
@@ -89,7 +88,7 @@ class ChatRoomQueryRepairServiceTest {
 
             when(cache.findById("room-1"))
                     .thenReturn(Optional.empty());
-            when(persistence.findByIdWithLatest("room-1"))
+            when(persistence.findByIdWithLatestMessage("room-1"))
                     .thenReturn(Optional.of(room));
 
             // when
@@ -98,7 +97,7 @@ class ChatRoomQueryRepairServiceTest {
             // then
             assertThat(result).isSameAs(room);
 
-            verify(persistence, times(1)).findByIdWithLatest("room-1");
+            verify(persistence, times(1)).findByIdWithLatestMessage("room-1");
             verify(cache, times(1)).warmUp(room);
         }
 
@@ -110,7 +109,7 @@ class ChatRoomQueryRepairServiceTest {
 
             when(cache.findById("room-1"))
                     .thenReturn(Optional.empty());
-            when(persistence.findByIdWithLatest("room-1"))
+            when(persistence.findByIdWithLatestMessage("room-1"))
                     .thenReturn(Optional.of(room));
             doThrow(new RuntimeException("redis failed"))
                     .when(cache)
@@ -122,7 +121,7 @@ class ChatRoomQueryRepairServiceTest {
             // then
             assertThat(result).isSameAs(room);
 
-            verify(persistence, times(1)).findByIdWithLatest("room-1");
+            verify(persistence, times(1)).findByIdWithLatestMessage("room-1");
             verify(cache, times(1)).warmUp(room);
         }
 
@@ -134,7 +133,7 @@ class ChatRoomQueryRepairServiceTest {
 
             when(cache.findById("room-1"))
                     .thenReturn(Optional.empty());
-            when(persistence.findByIdWithLatest("room-1"))
+            when(persistence.findByIdWithLatestMessage("room-1"))
                     .thenReturn(Optional.empty());
 
             // when & then
@@ -157,12 +156,12 @@ class ChatRoomQueryRepairServiceTest {
 
             when(cache.findById("room-1"))
                     .thenReturn(Optional.empty());
-            when(persistence.findByIdWithLatest("room-1"))
+            when(persistence.findByIdWithLatestMessage("room-1"))
                     .thenReturn(Optional.of(room));
 
             when(cache.findById("room-2"))
                     .thenReturn(Optional.empty());
-            when(persistence.findByIdWithLatest("room-2"))
+            when(persistence.findByIdWithLatestMessage("room-2"))
                     .thenReturn(Optional.of(room2));
 
             // when
@@ -171,8 +170,8 @@ class ChatRoomQueryRepairServiceTest {
             // then
             assertThat(result).containsExactly(room, room2);
 
-            verify(persistence).findByIdWithLatest("room-1");
-            verify(persistence).findByIdWithLatest("room-2");
+            verify(persistence).findByIdWithLatestMessage("room-1");
+            verify(persistence).findByIdWithLatestMessage("room-2");
             verify(cache).warmUp(room);
             verify(cache).warmUp(room2);
         }
@@ -185,12 +184,12 @@ class ChatRoomQueryRepairServiceTest {
 
             when(cache.findById("room-1"))
                     .thenReturn(Optional.empty());
-            when(persistence.findByIdWithLatest("room-1"))
+            when(persistence.findByIdWithLatestMessage("room-1"))
                     .thenReturn(Optional.of(room));
 
             when(cache.findById("dead-room"))
                     .thenReturn(Optional.empty());
-            when(persistence.findByIdWithLatest("dead-room"))
+            when(persistence.findByIdWithLatestMessage("dead-room"))
                     .thenReturn(Optional.empty());
 
             // when
@@ -240,7 +239,7 @@ class ChatRoomQueryRepairServiceTest {
 
             ChatRoomCacheLookupResult cached = allHit(List.of("room-1"), List.of(room));
 
-            when(cache.listMostPopular(ChatRoomCategory.FREE, 10))
+            when(cache.listPopularRooms(ChatRoomCategory.FREE, 10))
                     .thenReturn(cached);
 
             // when
@@ -249,7 +248,7 @@ class ChatRoomQueryRepairServiceTest {
             // then
             assertThat(result).containsExactly(room);
 
-            verify(persistence, never()).listMostPopular(any(), anyInt());
+            verify(persistence, never()).listPopularRooms(any(), anyInt());
             verify(cache, never()).warmUpList(anyList(), anyMap());
         }
 
@@ -267,9 +266,9 @@ class ChatRoomQueryRepairServiceTest {
 
             List<ChatRoom> stored = List.of(room, room2);
 
-            when(cache.listMostPopular(ChatRoomCategory.FREE, 10))
+            when(cache.listPopularRooms(ChatRoomCategory.FREE, 10))
                     .thenReturn(noIndex());
-            when(persistence.listMostPopular(ChatRoomCategory.FREE, 10))
+            when(persistence.listPopularRooms(ChatRoomCategory.FREE, 10))
                     .thenReturn(stored);
 
             // when
@@ -280,7 +279,7 @@ class ChatRoomQueryRepairServiceTest {
 
             ArgumentCaptor<Map<String, Double>> popularityCaptor = popularityCaptor();
 
-            verify(persistence, times(1)).listMostPopular(ChatRoomCategory.FREE, 10);
+            verify(persistence, times(1)).listPopularRooms(ChatRoomCategory.FREE, 10);
             verify(cache, times(1)).warmUpList(eq(stored), popularityCaptor.capture());
 
             assertThat(popularityCaptor.getValue())
@@ -303,11 +302,11 @@ class ChatRoomQueryRepairServiceTest {
                     List.of("room-2")
             );
 
-            when(cache.listMostPopular(ChatRoomCategory.FREE, 10))
+            when(cache.listPopularRooms(ChatRoomCategory.FREE, 10))
                     .thenReturn(cached);
             when(cache.findById("room-2"))
                     .thenReturn(Optional.empty());
-            when(persistence.findByIdWithLatest("room-2"))
+            when(persistence.findByIdWithLatestMessage("room-2"))
                     .thenReturn(Optional.of(room2));
 
             // when
@@ -316,8 +315,8 @@ class ChatRoomQueryRepairServiceTest {
             // then
             assertThat(result).containsExactly(room, room2);
 
-            verify(persistence, never()).listMostPopular(any(), anyInt());
-            verify(persistence).findByIdWithLatest("room-2");
+            verify(persistence, never()).listPopularRooms(any(), anyInt());
+            verify(persistence).findByIdWithLatestMessage("room-2");
             verify(cache).warmUp(room2);
         }
 
@@ -327,9 +326,9 @@ class ChatRoomQueryRepairServiceTest {
             // given
             givenLockExecutorRunsSupplier();
 
-            when(cache.listMostPopular(ChatRoomCategory.FREE, 10))
+            when(cache.listPopularRooms(ChatRoomCategory.FREE, 10))
                     .thenReturn(noIndex());
-            when(persistence.listMostPopular(ChatRoomCategory.FREE, 10))
+            when(persistence.listPopularRooms(ChatRoomCategory.FREE, 10))
                     .thenReturn(List.of());
 
             // when
@@ -355,9 +354,9 @@ class ChatRoomQueryRepairServiceTest {
 
             List<ChatRoom> stored = List.of(room, room2);
 
-            when(cache.listMostPopular(ChatRoomCategory.FREE, 10))
+            when(cache.listPopularRooms(ChatRoomCategory.FREE, 10))
                     .thenReturn(noIndex());
-            when(persistence.listMostPopular(ChatRoomCategory.FREE, 10))
+            when(persistence.listPopularRooms(ChatRoomCategory.FREE, 10))
                     .thenReturn(stored);
             doThrow(new RuntimeException("redis failed"))
                     .when(cache)
@@ -392,9 +391,9 @@ class ChatRoomQueryRepairServiceTest {
             List<ChatRoom> stored = List.of(room, room2);
             ListPopularChatRoomsQuery query = popularRoomsAfterQuery();
 
-            when(cache.listNextPopular(ChatRoomCategory.FREE, "last-room", 100L, 10))
+            when(cache.listPopularRoomsAfter(ChatRoomCategory.FREE, "last-room", 100L, 10))
                     .thenReturn(noIndex());
-            when(persistence.listNextPopular(ChatRoomCategory.FREE, "last-room", 100L, 10))
+            when(persistence.listPopularRoomsAfter(ChatRoomCategory.FREE, "last-room", 100L, 10))
                     .thenReturn(stored);
 
             // when
@@ -404,7 +403,7 @@ class ChatRoomQueryRepairServiceTest {
             assertThat(result).containsExactly(room, room2);
 
             verify(persistence, times(1))
-                    .listNextPopular(ChatRoomCategory.FREE, "last-room", 100L, 10);
+                    .listPopularRoomsAfter(ChatRoomCategory.FREE, "last-room", 100L, 10);
             verify(cache, times(1)).warmUpList(eq(stored), anyMap());
         }
 
@@ -425,11 +424,11 @@ class ChatRoomQueryRepairServiceTest {
 
             ListPopularChatRoomsQuery query = popularRoomsAfterQuery();
 
-            when(cache.listNextPopular(ChatRoomCategory.FREE, "last-room", 100L, 10))
+            when(cache.listPopularRoomsAfter(ChatRoomCategory.FREE, "last-room", 100L, 10))
                     .thenReturn(cached);
             when(cache.findById("room-2"))
                     .thenReturn(Optional.empty());
-            when(persistence.findByIdWithLatest("room-2"))
+            when(persistence.findByIdWithLatestMessage("room-2"))
                     .thenReturn(Optional.of(room2));
 
             // when
@@ -438,8 +437,8 @@ class ChatRoomQueryRepairServiceTest {
             // then
             assertThat(result).containsExactly(room, room2);
 
-            verify(persistence, never()).listNextPopular(any(), anyString(), anyLong(), anyInt());
-            verify(persistence).findByIdWithLatest("room-2");
+            verify(persistence, never()).listPopularRoomsAfter(any(), anyString(), anyLong(), anyInt());
+            verify(persistence).findByIdWithLatestMessage("room-2");
             verify(cache).warmUp(room2);
         }
     }
@@ -456,7 +455,7 @@ class ChatRoomQueryRepairServiceTest {
 
             ChatRoomCacheLookupResult cached = allHit(List.of("room-1"), List.of(room));
 
-            when(cache.listLatestActive("member-1", 10))
+            when(cache.listLatestActiveRooms("member-1", 10))
                     .thenReturn(cached);
 
             // when
@@ -465,7 +464,7 @@ class ChatRoomQueryRepairServiceTest {
             // then
             assertThat(result).containsExactly(room);
 
-            verify(persistence, never()).listLatestActive(anyString(), anyInt());
+            verify(persistence, never()).listLatestActiveRooms(anyString(), anyInt());
             verify(cache, never()).warmUpList(anyList(), anyMap());
         }
 
@@ -483,9 +482,9 @@ class ChatRoomQueryRepairServiceTest {
 
             List<ChatRoom> stored = List.of(room, room2);
 
-            when(cache.listLatestActive("member-1", 10))
+            when(cache.listLatestActiveRooms("member-1", 10))
                     .thenReturn(noIndex());
-            when(persistence.listLatestActive("member-1", 10))
+            when(persistence.listLatestActiveRooms("member-1", 10))
                     .thenReturn(stored);
 
             // when
@@ -494,7 +493,7 @@ class ChatRoomQueryRepairServiceTest {
             // then
             assertThat(result).containsExactly(room, room2);
 
-            verify(persistence, times(1)).listLatestActive("member-1", 10);
+            verify(persistence, times(1)).listLatestActiveRooms("member-1", 10);
             verify(cache, times(1)).warmUpList(eq(stored), anyMap());
         }
 
@@ -513,11 +512,11 @@ class ChatRoomQueryRepairServiceTest {
                     List.of("room-2")
             );
 
-            when(cache.listLatestActive("member-1", 10))
+            when(cache.listLatestActiveRooms("member-1", 10))
                     .thenReturn(cached);
             when(cache.findById("room-2"))
                     .thenReturn(Optional.empty());
-            when(persistence.findByIdWithLatest("room-2"))
+            when(persistence.findByIdWithLatestMessage("room-2"))
                     .thenReturn(Optional.of(room2));
 
             // when
@@ -526,8 +525,8 @@ class ChatRoomQueryRepairServiceTest {
             // then
             assertThat(result).containsExactly(room, room2);
 
-            verify(persistence, never()).listLatestActive(anyString(), anyInt());
-            verify(persistence).findByIdWithLatest("room-2");
+            verify(persistence, never()).listLatestActiveRooms(anyString(), anyInt());
+            verify(persistence).findByIdWithLatestMessage("room-2");
             verify(cache).warmUp(room2);
         }
     }
@@ -551,9 +550,9 @@ class ChatRoomQueryRepairServiceTest {
             List<ChatRoom> stored = List.of(room, room2);
             ListMyChatRoomsQuery query = myRoomsBeforeQuery();
 
-            when(cache.listActiveBefore("member-1", "last-room", 1234L, 10))
+            when(cache.listActiveRoomsBefore("member-1", "last-room", 1234L, 10))
                     .thenReturn(noIndex());
-            when(persistence.listActiveBefore("member-1", "last-room", 1234L, 10))
+            when(persistence.listActiveRoomsBefore("member-1", "last-room", 1234L, 10))
                     .thenReturn(stored);
 
             // when
@@ -563,7 +562,7 @@ class ChatRoomQueryRepairServiceTest {
             assertThat(result).containsExactly(room, room2);
 
             verify(persistence, times(1))
-                    .listActiveBefore("member-1", "last-room", 1234L, 10);
+                    .listActiveRoomsBefore("member-1", "last-room", 1234L, 10);
             verify(cache, times(1)).warmUpList(eq(stored), anyMap());
         }
 
@@ -584,11 +583,11 @@ class ChatRoomQueryRepairServiceTest {
 
             ListMyChatRoomsQuery query = myRoomsBeforeQuery();
 
-            when(cache.listActiveBefore("member-1", "last-room", 1234L, 10))
+            when(cache.listActiveRoomsBefore("member-1", "last-room", 1234L, 10))
                     .thenReturn(cached);
             when(cache.findById("room-2"))
                     .thenReturn(Optional.empty());
-            when(persistence.findByIdWithLatest("room-2"))
+            when(persistence.findByIdWithLatestMessage("room-2"))
                     .thenReturn(Optional.of(room2));
 
             // when
@@ -597,8 +596,8 @@ class ChatRoomQueryRepairServiceTest {
             // then
             assertThat(result).containsExactly(room, room2);
 
-            verify(persistence, never()).listActiveBefore(anyString(), anyString(), anyLong(), anyInt());
-            verify(persistence).findByIdWithLatest("room-2");
+            verify(persistence, never()).listActiveRoomsBefore(anyString(), anyString(), anyLong(), anyInt());
+            verify(persistence).findByIdWithLatestMessage("room-2");
             verify(cache).warmUp(room2);
         }
     }

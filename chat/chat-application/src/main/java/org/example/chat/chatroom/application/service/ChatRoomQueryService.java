@@ -2,7 +2,6 @@ package org.example.chat.chatroom.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.example.chat.chatroom.application.service.query.GetMyChatRoomQuery;
 import org.example.chat.chatroom.application.service.query.ListMyChatRoomsQuery;
 import org.example.chat.chatroom.application.service.query.ListPopularChatRoomsQuery;
@@ -49,13 +48,13 @@ public class ChatRoomQueryService implements ChatRoomQueryUseCase {
     @Override
     @Transactional(transactionManager = "chatMongoTransactionManager", readOnly = true)
     public List<ChatRoom> listPopularRooms(ListPopularChatRoomsQuery query) {
-        ChatRoomCacheLookupResult cached = query.firstPage()
-                ? cache.listMostPopular(query.category(), query.limit())
-                : cache.listNextPopular(query.category(), query.lastId(), query.lastPopularity(), query.limit());
+        ChatRoomCacheLookupResult cached = query.hasNoCursor()
+                ? cache.listPopularRooms(query.category(), query.limit())
+                : cache.listPopularRoomsAfter(query.category(), query.lastRoomId(), query.lastPopularity(), query.limit());
 
         return resolveRooms(
                 cached,
-                () -> query.firstPage()
+                () -> query.hasNoCursor()
                         ? queryRepairService.repairPopularRooms(query.category(), query.limit())
                         : queryRepairService.repairPopularRoomsAfter(query),
                 query.limit()
@@ -65,7 +64,7 @@ public class ChatRoomQueryService implements ChatRoomQueryUseCase {
     @Override
     @Transactional(transactionManager = "chatMongoTransactionManager", readOnly = true)
     public List<MyChatRoomSummary> listMyRooms(ListMyChatRoomsQuery query) {
-        return query.firstPage() ? listLatestMyRooms(query) : listMyRoomsBefore(query);
+        return query.hasNoCursor() ? listLatestMyRooms(query) : listMyRoomsBefore(query);
     }
 
     @Override
@@ -77,7 +76,7 @@ public class ChatRoomQueryService implements ChatRoomQueryUseCase {
 
     private List<MyChatRoomSummary> listLatestMyRooms(ListMyChatRoomsQuery query) {
         return resolveMyRooms(
-                cache.listLatestActive(query.memberId(), query.limit()),
+                cache.listLatestActiveRooms(query.memberId(), query.limit()),
                 () -> queryRepairService.repairMyRooms(query.memberId(), query.limit()),
                 query
         );
@@ -87,7 +86,7 @@ public class ChatRoomQueryService implements ChatRoomQueryUseCase {
         Long score = calculateCursorScore(query);
 
         return resolveMyRooms(
-                cache.listActiveBefore(query.memberId(), query.lastId(), score, query.limit()),
+                cache.listActiveRoomsBefore(query.memberId(), query.lastMsgId(), score, query.limit()),
                 () -> queryRepairService.repairMyRoomsBefore(query, score),
                 query
         );
@@ -158,14 +157,14 @@ public class ChatRoomQueryService implements ChatRoomQueryUseCase {
     }
 
     private LastReadResult getLastReadSeq(String roomId, String memberId) {
-        return cache.getLastMsgSeq(roomId, memberId)
+        return cache.getLastReadSeq(roomId, memberId)
                 .map(LastReadResult::hit)
                 .orElseGet(() -> LastReadResult.miss(persistence.getLastReadSeq(roomId, memberId)));
     }
 
     private void refreshActiveCacheSafely(ChatRoom room, String memberId, Long lastReadSeq) {
         try {
-            cache.updateLastRead(room.getId(), memberId, lastReadSeq);
+            cache.updateLastReadSeq(room.getId(), memberId, lastReadSeq);
 
             boolean unread = room.hasUnread(lastReadSeq);
 
@@ -173,7 +172,7 @@ public class ChatRoomQueryService implements ChatRoomQueryUseCase {
                     ? MyChatRoomScoreCalculator.unread(room.getLastMsgCreatedAtMs())
                     : MyChatRoomScoreCalculator.read(room.getLastMsgCreatedAtMs());
 
-            cache.updateRecentScore(room.getId(), memberId, score);
+            cache.updateActivityScore(room.getId(), memberId, score);
         } catch (RuntimeException e) {
             log.warn(
                     "[cache] chatroom active cache refresh failed. roomId={}, memberId={}, lastReadSeq={}",

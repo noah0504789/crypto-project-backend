@@ -180,7 +180,7 @@ class MongoChatRoomAdapterTest {
             sut.save(chatRoom(roomId1, TITLE_1));
 
             // when
-            ChatRoom updated = sut.updateAndReturn(
+            ChatRoom updated = sut.updateRoomAndReturn(
                     roomId1.toHexString(),
                     Map.of(
                             "title", "수정제목",
@@ -206,7 +206,7 @@ class MongoChatRoomAdapterTest {
 
             // when & then
             assertThatThrownBy(() ->
-                    sut.updateAndReturn(notFoundId, Map.of("title", "수정제목"))
+                    sut.updateRoomAndReturn(notFoundId, Map.of("title", "수정제목"))
             ).isInstanceOf(ChatRoomNotFoundException.class);
         }
 
@@ -217,8 +217,8 @@ class MongoChatRoomAdapterTest {
             sut.save(chatRoom(roomId1, TITLE_1));
 
             // when
-            sut.incrementMsgCnt(roomId1.toHexString());
-            sut.incrementMsgCnt(roomId1.toHexString());
+            sut.incrementMessageCount(roomId1.toHexString());
+            sut.incrementMessageCount(roomId1.toHexString());
 
             // then
             ChatRoom found = sut.findById(roomId1.toHexString()).orElseThrow();
@@ -230,11 +230,11 @@ class MongoChatRoomAdapterTest {
         void decrementMsgCnt() {
             // given
             sut.save(chatRoom(roomId1, TITLE_1));
-            sut.incrementMsgCnt(roomId1.toHexString());
-            sut.incrementMsgCnt(roomId1.toHexString());
+            sut.incrementMessageCount(roomId1.toHexString());
+            sut.incrementMessageCount(roomId1.toHexString());
 
             // when
-            sut.decrementMsgCnt(roomId1.toHexString());
+            sut.decrementMessageCount(roomId1.toHexString());
 
             // then
             ChatRoom found = sut.findById(roomId1.toHexString()).orElseThrow();
@@ -253,7 +253,7 @@ class MongoChatRoomAdapterTest {
             sut.save(chatRoom(roomId1, TITLE_1));
 
             // when
-            sut.join(roomId1.toHexString(), MEMBER_ID);
+            sut.joinMembership(roomId1.toHexString(), MEMBER_ID);
 
             // then
             ChatRoom found = sut.findById(roomId1.toHexString()).orElseThrow();
@@ -268,8 +268,8 @@ class MongoChatRoomAdapterTest {
             sut.save(chatRoom(roomId1, TITLE_1));
 
             // when
-            sut.join(roomId1.toHexString(), MEMBER_ID);
-            sut.join(roomId1.toHexString(), MEMBER_ID);
+            sut.joinMembership(roomId1.toHexString(), MEMBER_ID);
+            sut.joinMembership(roomId1.toHexString(), MEMBER_ID);
 
             // then
             ChatRoom found = sut.findById(roomId1.toHexString()).orElseThrow();
@@ -284,7 +284,7 @@ class MongoChatRoomAdapterTest {
             sut.save(chatRoom(roomId1, TITLE_1));
 
             // when
-            sut.active(roomId1.toHexString(), MEMBER_ID, READ_SEQ_10, SCORE_1000);
+            sut.activateMembership(roomId1.toHexString(), MEMBER_ID, READ_SEQ_10, SCORE_1000);
 
             // then
             MongoChatRoomMembership found = findMembership(roomId1, MEMBER_ID);
@@ -300,7 +300,7 @@ class MongoChatRoomAdapterTest {
         void getLastReadSeq() {
             // given
             sut.save(chatRoom(roomId1, TITLE_1));
-            sut.active(roomId1.toHexString(), MEMBER_ID, READ_SEQ_77, SCORE_1000);
+            sut.activateMembership(roomId1.toHexString(), MEMBER_ID, READ_SEQ_77, SCORE_1000);
 
             // when
             Long lastReadSeq = sut.getLastReadSeq(roomId1.toHexString(), MEMBER_ID);
@@ -314,11 +314,11 @@ class MongoChatRoomAdapterTest {
         void leave() {
             // given
             sut.save(chatRoom(roomId1, TITLE_1));
-            sut.join(roomId1.toHexString(), MEMBER_ID);
-            sut.active(roomId1.toHexString(), MEMBER_ID, READ_SEQ_10, SCORE_1000);
+            sut.joinMembership(roomId1.toHexString(), MEMBER_ID);
+            sut.activateMembership(roomId1.toHexString(), MEMBER_ID, READ_SEQ_10, SCORE_1000);
 
             // when
-            sut.leave(roomId1.toHexString(), MEMBER_ID);
+            sut.leaveMembership(roomId1.toHexString(), MEMBER_ID);
 
             // then
             ChatRoom found = sut.findById(roomId1.toHexString()).orElseThrow();
@@ -395,7 +395,7 @@ class MongoChatRoomAdapterTest {
             MongoChatMessage latest = saveMessage(messageId2, roomId1, "latest", latestTime, false);
 
             // when
-            ChatRoom found = sut.findByIdWithLatest(roomId1.toHexString()).orElseThrow();
+            ChatRoom found = sut.findByIdWithLatestMessage(roomId1.toHexString()).orElseThrow();
 
             // then
             assertThat(found.getId()).isEqualTo(roomId1.toHexString());
@@ -414,7 +414,7 @@ class MongoChatRoomAdapterTest {
             saveMessage(messageId2, roomId1, "deleted-latest", latestTime, true);
 
             // when
-            ChatRoom found = sut.findByIdWithLatest(roomId1.toHexString()).orElseThrow();
+            ChatRoom found = sut.findByIdWithLatestMessage(roomId1.toHexString()).orElseThrow();
 
             // then
             assertThat(found.getLastMsgId()).isEqualTo(alive.getId().toHexString());
@@ -428,7 +428,7 @@ class MongoChatRoomAdapterTest {
             sut.save(chatRoom(roomId1, TITLE_1));
 
             // when
-            ChatRoom found = sut.findByIdWithLatest(roomId1.toHexString()).orElseThrow();
+            ChatRoom found = sut.findByIdWithLatestMessage(roomId1.toHexString()).orElseThrow();
 
             // then
             assertThat(found.getLastMsgId()).isEqualTo("");
@@ -448,16 +448,16 @@ class MongoChatRoomAdapterTest {
             sut.save(chatRoom(roomId1, TITLE_1));
             sut.save(chatRoom(roomId2, TITLE_2));
 
-            sut.incrementMsgCnt(roomId1.toHexString());
-            sut.incrementMsgCnt(roomId2.toHexString());
-            sut.incrementMsgCnt(roomId2.toHexString());
+            sut.incrementMessageCount(roomId1.toHexString());
+            sut.incrementMessageCount(roomId2.toHexString());
+            sut.incrementMessageCount(roomId2.toHexString());
 
             saveMessage(messageId1, roomId1, "room1-latest", latestTime, false);
             saveMessage(messageId2, roomId2, "room2-old", oldTime, false);
             MongoChatMessage room2Latest = saveMessage(messageId3, roomId2, "room2-latest", latestTime, false);
 
             // when
-            List<ChatRoom> result = sut.listMostPopular(category, 10);
+            List<ChatRoom> result = sut.listPopularRooms(category, 10);
 
             // then
             assertRoomIds(result, roomId2, roomId1);
@@ -483,7 +483,7 @@ class MongoChatRoomAdapterTest {
             saveMessage(messageId1, roomId2, "room2-latest", latestTime, false);
 
             // when
-            List<ChatRoom> result = sut.listNextPopular(
+            List<ChatRoom> result = sut.listPopularRoomsAfter(
                     category,
                     roomId3.toHexString(),
                     3L,
@@ -510,7 +510,7 @@ class MongoChatRoomAdapterTest {
             saveMessage(messageId1, roomId2, "room2-latest", latestTime, false);
 
             // when
-            List<ChatRoom> result = sut.listLatestActive(MEMBER_ID, 10);
+            List<ChatRoom> result = sut.listLatestActiveRooms(MEMBER_ID, 10);
 
             // then
             assertRoomIds(result, roomId2, roomId3, roomId1);
@@ -532,7 +532,7 @@ class MongoChatRoomAdapterTest {
             saveMembership(readMembership(roomId1, MEMBER_ID, READ_SEQ_0, SCORE_1000));
 
             // when
-            List<ChatRoom> result = sut.listActiveBefore(
+            List<ChatRoom> result = sut.listActiveRoomsBefore(
                     MEMBER_ID,
                     roomId4.toHexString(),
                     SCORE_4000,
@@ -643,7 +643,7 @@ class MongoChatRoomAdapterTest {
 
     private void setMsgCnt(ObjectId roomId, int count) {
         for (int i = 0; i < count; i++) {
-            sut.incrementMsgCnt(roomId.toHexString());
+            sut.incrementMessageCount(roomId.toHexString());
         }
     }
 

@@ -53,7 +53,7 @@ public class ChatRoomQueryRepairService {
         return distributedLockExecutor.execute(
                 "chatroom:listMostPopular:" + category.name() + ":" + limit,
                 () -> repairCachedRooms(
-                        cache.listMostPopular(category, limit),
+                        cache.listPopularRooms(category, limit),
                         () -> loadPopularRoomsAndWarmUp(category, limit),
                         limit
                 ),
@@ -63,10 +63,10 @@ public class ChatRoomQueryRepairService {
 
     public List<ChatRoom> repairPopularRoomsAfter(ListPopularChatRoomsQuery query) {
         return distributedLockExecutor.execute(
-                "chatroom:listNextPopular:" + query.category().name() + ":" + query.lastId() + ":" + query.lastPopularity() + ":" + query.limit(),
+                "chatroom:listNextPopular:" + query.category().name() + ":" + query.lastRoomId() + ":" + query.lastPopularity() + ":" + query.limit(),
                 () -> repairCachedRooms(
-                        cache.listNextPopular(query.category(), query.lastId(), query.lastPopularity(), query.limit()),
-                        () -> loadPopularRoomsAfterAndWarmUp(query.category(), query.lastId(), query.lastPopularity(), query.limit()),
+                        cache.listPopularRoomsAfter(query.category(), query.lastRoomId(), query.lastPopularity(), query.limit()),
+                        () -> loadPopularRoomsAfterAndWarmUp(query.category(), query.lastRoomId(), query.lastPopularity(), query.limit()),
                         query.limit()
                 ),
                 DistributedLockPolicy.CACHE_WARM_UP
@@ -77,7 +77,7 @@ public class ChatRoomQueryRepairService {
         return distributedLockExecutor.execute(
                 "chatroom:listLatestActive:" + memberId + ":" + limit,
                 () -> repairCachedRooms(
-                        cache.listLatestActive(memberId, limit),
+                        cache.listLatestActiveRooms(memberId, limit),
                         () -> loadMyRoomsAndWarmUp(memberId, limit),
                         limit
                 ),
@@ -87,10 +87,10 @@ public class ChatRoomQueryRepairService {
 
     public List<ChatRoom> repairMyRoomsBefore(ListMyChatRoomsQuery query, Long score) {
         return distributedLockExecutor.execute(
-                "chatroom:listActiveBefore:" + query.memberId() + ":" + query.lastId() + ":" + score + ":" + query.limit(),
+                "chatroom:listActiveBefore:" + query.memberId() + ":" + query.lastMsgId() + ":" + score + ":" + query.limit(),
                 () -> repairCachedRooms(
-                        cache.listActiveBefore(query.memberId(), query.lastId(), score, query.limit()),
-                        () -> loadMyRoomsBeforeAndWarmUp(query.memberId(), query.lastId(), score, query.limit()),
+                        cache.listActiveRoomsBefore(query.memberId(), query.lastMsgId(), score, query.limit()),
+                        () -> loadMyRoomsBeforeAndWarmUp(query.memberId(), query.lastMsgId(), score, query.limit()),
                         query.limit()
                 ),
                 DistributedLockPolicy.CACHE_WARM_UP
@@ -121,7 +121,7 @@ public class ChatRoomQueryRepairService {
     }
 
     private ChatRoom loadRoomAndWarmUp(String roomId) {
-        ChatRoom stored = persistence.findByIdWithLatest(roomId)
+        ChatRoom stored = persistence.findByIdWithLatestMessage(roomId)
                 .orElseThrow(() -> new ChatRoomNotFoundException(roomId));
 
         warmUpSafely(stored);
@@ -130,7 +130,7 @@ public class ChatRoomQueryRepairService {
     }
 
     private List<ChatRoom> loadPopularRoomsAndWarmUp(ChatRoomCategory category, int limit) {
-        return warmUpAndReturn(persistence.listMostPopular(category, limit));
+        return warmUpAndReturn(persistence.listPopularRooms(category, limit));
     }
 
     private List<ChatRoom> loadPopularRoomsAfterAndWarmUp(
@@ -140,12 +140,12 @@ public class ChatRoomQueryRepairService {
             int limit
     ) {
         return warmUpAndReturn(
-                persistence.listNextPopular(category, lastId, lastPopularity, limit)
+                persistence.listPopularRoomsAfter(category, lastId, lastPopularity, limit)
         );
     }
 
     private List<ChatRoom> loadMyRoomsAndWarmUp(String memberId, int limit) {
-        return warmUpAndReturn(persistence.listLatestActive(memberId, limit));
+        return warmUpAndReturn(persistence.listLatestActiveRooms(memberId, limit));
     }
 
     private List<ChatRoom> loadMyRoomsBeforeAndWarmUp(
@@ -155,7 +155,7 @@ public class ChatRoomQueryRepairService {
             int limit
     ) {
         return warmUpAndReturn(
-                persistence.listActiveBefore(memberId, lastId, score, limit)
+                persistence.listActiveRoomsBefore(memberId, lastId, score, limit)
         );
     }
 

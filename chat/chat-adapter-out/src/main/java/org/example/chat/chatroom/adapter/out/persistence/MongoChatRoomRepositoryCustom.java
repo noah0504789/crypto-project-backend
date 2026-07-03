@@ -9,13 +9,26 @@ import java.util.Optional;
 
 public interface MongoChatRoomRepositoryCustom {
 
-    List<MongoChatRoom> listMostPopular(ChatRoomCategory category, int offset, int limit);
+    List<MongoChatRoom> listPopularRooms(
+            ChatRoomCategory category,
+            int offset,
+            int limit
+    );
 
-    List<MongoChatRoom> listNextPopular(ChatRoomCategory category, String lastId, long lastPopularity, int limit);
+    List<MongoChatRoom> listPopularRoomsAfter(
+            ChatRoomCategory category,
+            String lastRoomId,
+            long lastPopularity,
+            int limit)
+    ;
 
-    Optional<MongoChatRoom> updateAndReturn(ObjectId roomId, Map<String, Object> updated);
+    Optional<MongoChatRoom> updateRoomAndReturn(ObjectId roomId, Map<String, Object> updates);
 
-    void incrementField(ObjectId roomId, String field, Integer delta);
+    void incrementRoomField(
+            ObjectId roomId,
+            String field,
+            Integer delta
+    );
 
     void addMember(ObjectId roomId, String userId);
 

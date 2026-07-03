@@ -94,7 +94,7 @@ class RedisChatMessageAdapterTest {
             sut.save(message, category, memberIds);
 
             // then: save 직후 access score는 message createdAt 기준
-            String messageAccessKey = ACCESS_CHAT_MESSAGE_BY_ROOM.keyFor(ROOM_ID);
+            String messageAccessKey = CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX.keyFor(ROOM_ID);
             Double accessScoreAfterSave = masterHashRedisTemplate.opsForZSet()
                     .score(messageAccessKey, MESSAGE_ID_1);
 
@@ -102,7 +102,7 @@ class RedisChatMessageAdapterTest {
             assertThat(accessScoreAfterSave.longValue()).isEqualTo(message.toEpochMillis());
 
             // then: message zset 조회
-            List<ChatMessage> latest = sut.listLatest(ROOM_ID, 10);
+            List<ChatMessage> latest = sut.listLatestMessages(ROOM_ID, 10);
 
             assertThat(latest)
                     .extracting(ChatMessage::getId)
@@ -123,27 +123,27 @@ class RedisChatMessageAdapterTest {
 
             assertThat(msgCnt).isEqualTo("1");
 
-            String popularKey = POPULAR_CHAT_ROOM_BY_CATEGORY_INDEX.keyFor(category.name());
+            String popularKey = CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX.keyFor(category.name());
             Double popularScore = masterHashRedisTemplate.opsForZSet()
                     .score(popularKey, ROOM_ID);
 
             assertThat(popularScore).isEqualTo(1.0);
 
-            String writerRecentKey = RECENT_CHAT_ROOM_BY_MEMBER_INDEX.keyFor(WRITER_ID);
+            String writerRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(WRITER_ID);
             Double writerRecentScore = masterHashRedisTemplate.opsForZSet()
                     .score(writerRecentKey, ROOM_ID);
 
             assertThat(writerRecentScore).isNotNull();
             assertThat(writerRecentScore.longValue()).isEqualTo(message.toEpochMillis());
 
-            String memberRecentKey = RECENT_CHAT_ROOM_BY_MEMBER_INDEX.keyFor(MEMBER_ID);
+            String memberRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(MEMBER_ID);
             Double memberRecentScore = masterHashRedisTemplate.opsForZSet()
                     .score(memberRecentKey, ROOM_ID);
 
             assertThat(memberRecentScore).isNotNull();
             assertThat(memberRecentScore.longValue()).isEqualTo(UNREAD_BOOST + message.toEpochMillis());
 
-            String otherMemberRecentKey = RECENT_CHAT_ROOM_BY_MEMBER_INDEX.keyFor(OTHER_MEMBER_ID);
+            String otherMemberRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(OTHER_MEMBER_ID);
             Double otherMemberRecentScore = masterHashRedisTemplate.opsForZSet()
                     .score(otherMemberRecentKey, ROOM_ID);
 
@@ -163,7 +163,7 @@ class RedisChatMessageAdapterTest {
             sut.save(message, category, memberIds);
 
             // then
-            List<ChatMessage> latest = sut.listLatest(ROOM_ID, 10);
+            List<ChatMessage> latest = sut.listLatestMessages(ROOM_ID, 10);
 
             assertThat(latest)
                     .extracting(ChatMessage::getId)
@@ -187,20 +187,20 @@ class RedisChatMessageAdapterTest {
             sut.save(message, category, memberIds);
 
             // then
-            String writerRecentKey = RECENT_CHAT_ROOM_BY_MEMBER_INDEX.keyFor(WRITER_ID);
+            String writerRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(WRITER_ID);
             Double writerRecentScore = masterHashRedisTemplate.opsForZSet()
                     .score(writerRecentKey, ROOM_ID);
 
             assertThat(writerRecentScore).isNotNull();
             assertThat(writerRecentScore.longValue()).isEqualTo(message.toEpochMillis());
 
-            String memberRecentKey = RECENT_CHAT_ROOM_BY_MEMBER_INDEX.keyFor(MEMBER_ID);
+            String memberRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(MEMBER_ID);
             Double memberRecentScore = masterHashRedisTemplate.opsForZSet()
                     .score(memberRecentKey, ROOM_ID);
 
             assertThat(memberRecentScore).isNull();
 
-            String otherMemberRecentKey = RECENT_CHAT_ROOM_BY_MEMBER_INDEX.keyFor(OTHER_MEMBER_ID);
+            String otherMemberRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(OTHER_MEMBER_ID);
             Double otherMemberRecentScore = masterHashRedisTemplate.opsForZSet()
                     .score(otherMemberRecentKey, ROOM_ID);
 
@@ -253,7 +253,7 @@ class RedisChatMessageAdapterTest {
             sut.warmUpList(List.of(oldMessage, midMessage, latestMessage), ROOM_ID);
 
             // when
-            List<ChatMessage> result = sut.listLatest(ROOM_ID, 2);
+            List<ChatMessage> result = sut.listLatestMessages(ROOM_ID, 2);
 
             // then
             assertThat(result)
@@ -268,7 +268,7 @@ class RedisChatMessageAdapterTest {
         @DisplayName("메시지가 없으면 빈 목록을 반환한다")
         void listLatestEmpty() {
             // when
-            List<ChatMessage> result = sut.listLatest(ROOM_ID, 10);
+            List<ChatMessage> result = sut.listLatestMessages(ROOM_ID, 10);
 
             // then
             assertThat(result).isEmpty();
@@ -291,7 +291,7 @@ class RedisChatMessageAdapterTest {
             sut.warmUpList(List.of(message1, message2, message3, message4), ROOM_ID);
 
             // when
-            List<ChatMessage> result = sut.listPrev(
+            List<ChatMessage> result = sut.listMessagesBefore(
                     ROOM_ID,
                     MESSAGE_ID_4,
                     message4.toEpochMillis(),
@@ -316,7 +316,7 @@ class RedisChatMessageAdapterTest {
             sut.warmUpList(List.of(message1), ROOM_ID);
 
             // when
-            List<ChatMessage> result = sut.listPrev(
+            List<ChatMessage> result = sut.listMessagesBefore(
                     ROOM_ID,
                     MESSAGE_ID_1,
                     message1.toEpochMillis(),
@@ -344,8 +344,8 @@ class RedisChatMessageAdapterTest {
             String roomInfoKey = CHAT_ROOM_INFO.keyFor(ROOM_ID);
             masterHashRedisTemplate.opsForHash().put(roomInfoKey, "msg_cnt", "2");
 
-            String memberRecentKey = RECENT_CHAT_ROOM_BY_MEMBER_INDEX.keyFor(MEMBER_ID);
-            String otherMemberRecentKey = RECENT_CHAT_ROOM_BY_MEMBER_INDEX.keyFor(OTHER_MEMBER_ID);
+            String memberRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(MEMBER_ID);
+            String otherMemberRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(OTHER_MEMBER_ID);
 
             masterHashRedisTemplate.opsForZSet().add(memberRecentKey, ROOM_ID, 9999D);
             masterHashRedisTemplate.opsForZSet().add(otherMemberRecentKey, ROOM_ID, 8888D);
@@ -359,7 +359,7 @@ class RedisChatMessageAdapterTest {
             sut.hardDelete(MESSAGE_ID_2, ROOM_ID, chatRoomMembershipScores);
 
             // then
-            List<ChatMessage> latest = sut.listLatest(ROOM_ID, 10);
+            List<ChatMessage> latest = sut.listLatestMessages(ROOM_ID, 10);
 
             assertThat(latest)
                     .extracting(ChatMessage::getId)
@@ -394,7 +394,7 @@ class RedisChatMessageAdapterTest {
             sut.hardDelete(MESSAGE_ID_2, ROOM_ID, List.of());
 
             // then
-            List<ChatMessage> latest = sut.listLatest(ROOM_ID, 10);
+            List<ChatMessage> latest = sut.listLatestMessages(ROOM_ID, 10);
 
             assertThat(latest)
                     .extracting(ChatMessage::getId)
@@ -420,7 +420,7 @@ class RedisChatMessageAdapterTest {
             sut.hardDelete(MESSAGE_ID_1, ROOM_ID, null);
 
             // then
-            assertThat(sut.listLatest(ROOM_ID, 10)).isEmpty();
+            assertThat(sut.listLatestMessages(ROOM_ID, 10)).isEmpty();
 
             Object msgCnt = masterHashRedisTemplate.opsForHash()
                     .get(roomInfoKey, "msg_cnt");
@@ -449,7 +449,7 @@ class RedisChatMessageAdapterTest {
     }
 
     private void assertAccessed(String messageId) {
-        String messageAccessKey = ACCESS_CHAT_MESSAGE_BY_ROOM.keyFor(ROOM_ID);
+        String messageAccessKey = CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX.keyFor(ROOM_ID);
 
         Double score = masterHashRedisTemplate.opsForZSet()
                 .score(messageAccessKey, messageId);

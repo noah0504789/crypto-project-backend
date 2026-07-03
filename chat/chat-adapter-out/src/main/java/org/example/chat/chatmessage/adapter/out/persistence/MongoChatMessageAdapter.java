@@ -23,7 +23,7 @@ public class MongoChatMessageAdapter implements ChatMessagePersistencePort {
     private final MongoChatMessageRepository repository;
 
     @Override
-    public List<ChatMessage> listLatest(String roomId, int limit) {
+    public List<ChatMessage> listLatestMessages(String roomId, int limit) {
         return execute(
                 "failed to list latest chat messages. roomId=" + roomId,
                 () -> {
@@ -44,18 +44,18 @@ public class MongoChatMessageAdapter implements ChatMessagePersistencePort {
     }
 
     @Override
-    public List<ChatMessage> listPrev(
+    public List<ChatMessage> listMessagesBefore(
             String roomId,
-            String lastId,
-            Long lastCreatedAtMillis,
+            String lastMsgId,
+            Long lastCreatedAtMs,
             int limit
     ) {
         return execute(
-                "failed to list previous chat messages. roomId=" + roomId + ", lastId=" + lastId,
-                () -> repository.listPrev(
+                "failed to list previous chat messages. roomId=" + roomId + ", lastMsgId=" + lastMsgId,
+                () -> repository.listMessagesBefore(
                                 objectId(roomId, "roomId"),
-                                objectId(lastId, "lastId"),
-                                Instant.ofEpochMilli(lastCreatedAtMillis),
+                                objectId(lastMsgId, "lastMsgId"),
+                                Instant.ofEpochMilli(lastCreatedAtMs),
                                 limit
                         )
                         .stream()
@@ -79,18 +79,18 @@ public class MongoChatMessageAdapter implements ChatMessagePersistencePort {
     }
 
     @Override
-    public boolean hardDelete(String id) {
+    public boolean hardDeleteById(String id) {
         return execute(
                 "failed to hard delete chat message. messageId=" + id,
-                () -> repository.hardDelete(objectId(id, "messageId"))
+                () -> repository.hardDeleteById(objectId(id, "messageId"))
         );
     }
 
     @Override
-    public Optional<ChatMessage> findLatestExcluding(String roomId, String id) {
+    public Optional<ChatMessage> findLatestMessageExcluding(String roomId, String id) {
         return execute(
                 "failed to find latest excluding chat message. roomId=" + roomId + ", messageId=" + id,
-                () -> repository.findLatestExcluding(roomId, id)
+                () -> repository.findLatestMessageExcluding(roomId, id)
                         .map(this::toDomain)
         );
     }

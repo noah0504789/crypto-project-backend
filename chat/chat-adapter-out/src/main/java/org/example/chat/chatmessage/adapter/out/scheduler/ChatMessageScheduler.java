@@ -19,8 +19,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import static org.example.common.enums.RedisKey.CHAT_MESSAGE;
-import static org.example.common.enums.RedisKey.ACCESS_CHAT_MESSAGE_BY_ROOM;
+import static org.example.common.enums.RedisKey.CHAT_MESSAGE_INFO;
+import static org.example.common.enums.RedisKey.CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX;
 
 @Slf4j
 @Component
@@ -49,7 +49,7 @@ public class ChatMessageScheduler {
         Instant now = clockService.now();
         long cutoff = now.toEpochMilli() - ttlMillis;
 
-        String messageAccessKeyPattern = ACCESS_CHAT_MESSAGE_BY_ROOM.keyFor("*");
+        String messageAccessKeyPattern = CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX.keyFor("*");
 
         try (Cursor<String> cursor = redisTemplate.scan(
                 ScanOptions.scanOptions()
@@ -66,8 +66,8 @@ public class ChatMessageScheduler {
                     continue;
                 }
 
-                String roomId = ACCESS_CHAT_MESSAGE_BY_ROOM.extractIdentifier(messageAccessKey);
-                String messageKey = CHAT_MESSAGE.keyFor(roomId);
+                String roomId = CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX.extractIdentifier(messageAccessKey);
+                String messageKey = CHAT_MESSAGE_INFO.keyFor(roomId);
 
                 Set<String> cachedMessages = registry.getMasterZSet(messageKey).range(0, -1);
 

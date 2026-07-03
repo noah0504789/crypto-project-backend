@@ -2,7 +2,7 @@ package org.example.chat.chatroom.application.service.query;
 
 public record ListMyChatRoomsQuery(
         String memberId,
-        String lastId,
+        String lastMsgId,
         Boolean lastUnreadFlag,
         Long lastMsgCreatedAt,
         int limit
@@ -14,16 +14,16 @@ public record ListMyChatRoomsQuery(
 
     public static ListMyChatRoomsQuery nextPage(
         String memberId,
-        String lastId,
+        String lastRoomId,
         Boolean lastUnreadFlag,
         Long lastMsgCreatedAt,
         int limit
     ) {
-        return new ListMyChatRoomsQuery(memberId, lastId, lastUnreadFlag, lastMsgCreatedAt, limit);
+        return new ListMyChatRoomsQuery(memberId, lastRoomId, lastUnreadFlag, lastMsgCreatedAt, limit);
     }
 
-    public boolean firstPage() {
-        return lastId == null || lastId.isBlank();
+    public boolean hasNoCursor() {
+        return lastMsgId == null || lastMsgId.isBlank();
     }
 
     public long cursorLastMsgCreatedAt() {

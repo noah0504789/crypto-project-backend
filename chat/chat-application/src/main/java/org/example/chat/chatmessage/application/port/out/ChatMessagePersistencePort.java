@@ -7,13 +7,18 @@ import java.util.Optional;
 
 public interface ChatMessagePersistencePort {
 
-    List<ChatMessage> listLatest(String roomId, int limit);
-
-    List<ChatMessage> listPrev(String roomId, String lastId, Long lastCreatedAtMillis, int limit);
-
     ChatMessage save(ChatMessage chatMessage);
 
-    boolean hardDelete(String id);
+    boolean hardDeleteById(String id);
 
-    Optional<ChatMessage> findLatestExcluding(String roomId, String id);
+    Optional<ChatMessage> findLatestMessageExcluding(String roomId, String id);
+
+    List<ChatMessage> listLatestMessages(String roomId, int limit);
+
+    List<ChatMessage> listMessagesBefore(
+            String roomId,
+            String lastMsgId,
+            Long lastCreatedAtMs,
+            int limit
+    );
 }
