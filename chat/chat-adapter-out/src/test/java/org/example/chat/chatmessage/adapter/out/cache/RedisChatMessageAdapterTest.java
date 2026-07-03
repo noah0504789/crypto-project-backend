@@ -94,7 +94,7 @@ class RedisChatMessageAdapterTest {
             sut.save(message, category, memberIds);
 
             // then: save 직후 access score는 message createdAt 기준
-            String messageAccessKey = ACCESS_CHAT_MESSAGE_BY_ROOM.keyFor(ROOM_ID);
+            String messageAccessKey = CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX.keyFor(ROOM_ID);
             Double accessScoreAfterSave = masterHashRedisTemplate.opsForZSet()
                     .score(messageAccessKey, MESSAGE_ID_1);
 
@@ -449,7 +449,7 @@ class RedisChatMessageAdapterTest {
     }
 
     private void assertAccessed(String messageId) {
-        String messageAccessKey = ACCESS_CHAT_MESSAGE_BY_ROOM.keyFor(ROOM_ID);
+        String messageAccessKey = CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX.keyFor(ROOM_ID);
 
         Double score = masterHashRedisTemplate.opsForZSet()
                 .score(messageAccessKey, messageId);

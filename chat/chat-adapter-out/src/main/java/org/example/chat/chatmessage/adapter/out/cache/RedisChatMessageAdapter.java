@@ -57,7 +57,7 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
     @Override
     @CacheFailOpen
     public List<ChatMessage> listLatestMessages(String roomId, int limit) {
-        String messageKey = CHAT_MESSAGE.keyFor(roomId);
+        String messageKey = CHAT_MESSAGE_INFO.keyFor(roomId);
 
         return registry.getMasterZSet(messageKey).reverseRange(0, limit - 1).stream()
                 .filter(Objects::nonNull)
@@ -70,7 +70,7 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
     @CacheFailOpen
     public List<ChatMessage> listMessagesBefore(String roomId, String lastMsgId, Long lastCreatedAtMs, int limit) {
         ZSetOperations<String, String> zOps = replicaHashRedisTemplate.opsForZSet();
-        String messageKey = CHAT_MESSAGE.keyFor(roomId);
+        String messageKey = CHAT_MESSAGE_INFO.keyFor(roomId);
         int buffer = limit * 2;
 
         Set<String> messageIds = zOps.reverseRangeByScore(
@@ -106,8 +106,8 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
         double scoreIncrement = 1.0;
 
         List<String> keys = new ArrayList<>();
-        String messageKey = CHAT_MESSAGE.keyFor(roomId);
-        String messageAccessKey = ACCESS_CHAT_MESSAGE_BY_ROOM.keyFor(roomId);
+        String messageKey = CHAT_MESSAGE_INFO.keyFor(roomId);
+        String messageAccessKey = CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX.keyFor(roomId);
         String roomInfoKey = CHAT_ROOM_INFO.keyFor(roomId);
         String roomPopularKey = CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX.keyFor(category.name());
         String writerRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(writerId);
@@ -137,7 +137,7 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
 
     @Override
     public void warmUpList(List<ChatMessage> messages, String roomId) {
-        String messageKey = CHAT_MESSAGE.keyFor(roomId);
+        String messageKey = CHAT_MESSAGE_INFO.keyFor(roomId);
 
         List<String> keys = List.of(messageKey);
         List<String> args = new ArrayList<>();
@@ -163,8 +163,8 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
                     .toList();
 
         List<String> keys = new ArrayList<>();
-        String messageKey = CHAT_MESSAGE.keyFor(roomId);
-        String messageAccessKey = ACCESS_CHAT_MESSAGE_BY_ROOM.keyFor(roomId);
+        String messageKey = CHAT_MESSAGE_INFO.keyFor(roomId);
+        String messageAccessKey = CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX.keyFor(roomId);
         String roomInfoKey = CHAT_ROOM_INFO.keyFor(roomId);
         Collections.addAll(keys, messageKey, messageAccessKey, roomInfoKey);
         validScores.stream()
@@ -197,7 +197,7 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
     }
 
     private void updateLastAccessedAt(ChatMessage message) {
-        String messageAccessKey = ACCESS_CHAT_MESSAGE_BY_ROOM.keyFor(message.getRoomId());
+        String messageAccessKey = CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX.keyFor(message.getRoomId());
         long epochMilli = ((Instant) instantClock.now()).toEpochMilli();
 
         registry.getMasterZSet(messageAccessKey).add(message.getId(), epochMilli);

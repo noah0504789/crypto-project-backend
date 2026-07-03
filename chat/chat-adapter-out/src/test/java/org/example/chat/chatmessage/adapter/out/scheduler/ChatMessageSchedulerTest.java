@@ -23,8 +23,8 @@ import java.time.LocalDateTime;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.example.common.enums.RedisKey.ACCESS_CHAT_MESSAGE_BY_ROOM;
-import static org.example.common.enums.RedisKey.CHAT_MESSAGE;
+import static org.example.common.enums.RedisKey.CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX;
+import static org.example.common.enums.RedisKey.CHAT_MESSAGE_INFO;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
@@ -68,8 +68,8 @@ class ChatMessageSchedulerTest {
     @DisplayName("access 기준으로 만료된 메시지를 message zset과 access zset에서 제거한다")
     void removeExpiringMessages() {
         // given
-        String messageAccessKey = ACCESS_CHAT_MESSAGE_BY_ROOM.keyFor(ROOM_ID);
-        String messageKey = CHAT_MESSAGE.keyFor(ROOM_ID);
+        String messageAccessKey = CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX.keyFor(ROOM_ID);
+        String messageKey = CHAT_MESSAGE_INFO.keyFor(ROOM_ID);
 
         Cursor<String> cursor = cursorOf(messageAccessKey);
 
@@ -107,7 +107,7 @@ class ChatMessageSchedulerTest {
     @DisplayName("만료 메시지가 없으면 삭제 작업을 하지 않는다")
     void removeExpiringMessagesWithoutExpiredMessages() {
         // given
-        String messageAccessKey = ACCESS_CHAT_MESSAGE_BY_ROOM.keyFor(ROOM_ID);
+        String messageAccessKey = CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX.keyFor(ROOM_ID);
 
         Cursor<String> cursor = cursorOf(messageAccessKey);
 
@@ -133,8 +133,8 @@ class ChatMessageSchedulerTest {
     @DisplayName("message zset이 비어 있어도 access zset의 만료 id는 제거한다")
     void removeExpiredAccessOnlyWhenMessageCacheIsEmpty() {
         // given
-        String messageAccessKey = ACCESS_CHAT_MESSAGE_BY_ROOM.keyFor(ROOM_ID);
-        String messageKey = CHAT_MESSAGE.keyFor(ROOM_ID);
+        String messageAccessKey = CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX.keyFor(ROOM_ID);
+        String messageKey = CHAT_MESSAGE_INFO.keyFor(ROOM_ID);
 
         Cursor<String> cursor = cursorOf(messageAccessKey);
 

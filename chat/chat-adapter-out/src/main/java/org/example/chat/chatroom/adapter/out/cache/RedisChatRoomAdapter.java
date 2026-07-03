@@ -359,8 +359,8 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
     public void deleteRoom(String id, ChatRoomCategory category, String title, Set<String> memberIds) {
         List<String> keys = new ArrayList<>();
 
-        String messageKey = CHAT_MESSAGE.keyFor(id);
-        String messageAccessKey = ACCESS_CHAT_MESSAGE_BY_ROOM.keyFor(id);
+        String messageKey = CHAT_MESSAGE_INFO.keyFor(id);
+        String messageAccessKey = CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX.keyFor(id);
         String roomInfoKey = CHAT_ROOM_INFO.keyFor(id);
         String roomLastReadKey = CHAT_ROOM_LAST_READ_SEQ.keyFor(id);
         String roomTopKey = CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX.keyFor(category.name());
@@ -440,7 +440,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
 
     @CacheFailOpen
     private Optional<ChatMessage> findLastMessage(String roomId) {
-        String infoKey = CHAT_MESSAGE.keyFor(roomId);
+        String infoKey = CHAT_MESSAGE_INFO.keyFor(roomId);
 
         return registry.getMasterZSet(infoKey)
                 .reverseRange(0, 0)

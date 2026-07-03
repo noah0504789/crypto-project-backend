@@ -14,8 +14,8 @@ public enum RedisKey {
     CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX("{chat}:popular-room:%s", 1),
     CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX("{chat}:active-room:%s", 1),
 
-    CHAT_MESSAGE("{chat}:message:%s", 1),
-    ACCESS_CHAT_MESSAGE_BY_ROOM("{chat}:room:%s:message-access", 1),
+    CHAT_MESSAGE_INFO("{chat}:message:%s", 1),
+    CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX("{chat}:room:%s:message-access", 1),
 
     // Auth
     ACCESS_TOKEN("{auth}:accesstoken:%s:%s", 2),
