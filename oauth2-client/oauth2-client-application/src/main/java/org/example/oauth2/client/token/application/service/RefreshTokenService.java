@@ -8,7 +8,7 @@ import org.example.common.enums.AuthTokenKey;
 import org.example.oauth2.client.properties.InternalAuthServerProperties;
 import org.example.common.properties.JwtProperties;
 import org.example.oauth2.client.exception.OAuth2ClientInfrastructureException;
-import org.example.oauth2.client.token.application.port.out.AuthServerTokenClientPort;
+import org.example.oauth2.client.token.application.port.out.AuthServerTokenPort;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.oauth2.client.endpoint.OAuth2AccessTokenResponseClient;
 import org.springframework.security.oauth2.client.endpoint.OAuth2RefreshTokenGrantRequest;
@@ -28,14 +28,14 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 public class RefreshTokenService {
 
-    private final AuthServerTokenClientPort authServerTokenClientPort;
+    private final AuthServerTokenPort authServerTokenPort;
     private final JwtProperties jwtProperties;
     private final ClientRegistrationRepository clientRegistrationRepository;
     private final OAuth2AccessTokenResponseClient<OAuth2RefreshTokenGrantRequest> refreshTokenResponseClient;
     private final InternalAuthServerProperties internalAuthServerProperties;
 
     public String findValue(String clientRegistrationId, String username) {
-        return authServerTokenClientPort.findRefreshToken(clientRegistrationId, username);
+        return authServerTokenPort.findRefreshToken(clientRegistrationId, username);
     }
 
     public OAuth2AccessTokenResponse reissue(String refreshTokenValue) {
