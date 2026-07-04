@@ -2,7 +2,7 @@ package org.example.oauth2.client.token.application.port.out;
 
 import java.util.Map;
 
-public interface AuthServerTokenClientPort {
+public interface AuthServerTokenPort {
 
     String findAccessToken(String clientRegistrationId, String username);
 
