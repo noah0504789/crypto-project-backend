@@ -2,7 +2,7 @@ package org.example.oauth2.client.user.adapter.out.grpc;
 
 import lombok.RequiredArgsConstructor;
 import org.example.contract.user.UserResponse;
-import org.example.oauth2.client.user.port.out.UserClientPort;
+import org.example.oauth2.client.user.port.out.UserPort;
 import org.example.user.client.UserClient;
 import org.springframework.stereotype.Service;
 
@@ -10,7 +10,7 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class GrpcUserClientAdapter implements UserClientPort {
+public class GrpcUserAdapter implements UserPort {
 
     private final UserClient userClient;
 
