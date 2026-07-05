@@ -5,7 +5,7 @@ import org.example.chat.chatroom.application.service.query.ListPopularChatRoomsQ
 import org.example.chat.chatroom.application.service.result.ChatRoomCacheLookupResult;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
-import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
+import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.common.redis.lock.DistributedLockExecutor;

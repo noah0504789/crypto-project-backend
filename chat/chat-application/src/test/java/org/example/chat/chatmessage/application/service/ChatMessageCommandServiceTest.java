@@ -3,27 +3,25 @@ package org.example.chat.chatmessage.application.service;
 import org.example.chat.chatmessage.application.exception.ChatMessageCacheException;
 import org.example.chat.chatmessage.application.service.command.ChatMessageSaveCommand;
 import org.example.chat.chatmessage.application.service.result.ChatMessageSaveResult;
-import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
-import org.example.chat.chatmessage.domain.event.ChatMessageEventList;
+import org.example.chat.chatmessage.application.event.ChatMessageEventList;
 import org.example.chat.chatmessage.application.port.out.ChatMessageCachePort;
 import org.example.chat.chatmessage.application.port.out.ChatMessagePersistencePort;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.chatroom.application.service.result.ChatRoomMembershipScore;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.domain.exception.ChatRoomMembershipNotFoundException;
-import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
+import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.chat.chatmessage.application.exception.ChatMessagePersistException;
+import org.example.chat.exception.TemporaryChatPersistenceException;
 import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
-import org.example.common.outbox.domain.event.AbstractOutboxEventList;
 import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
-import org.example.common.time.ServiceZoneUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -37,6 +35,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -64,28 +63,24 @@ class ChatMessageCommandServiceTest {
     private final String clientMessageId = "client-msg-1";
 
     private final Instant latestCreatedAt = Instant.parse("2026-01-01T03:00:00Z");
-    private final long latestCreatedAtMillis = latestCreatedAt.toEpochMilli();
+    private final long latestCreatedAtMs = latestCreatedAt.toEpochMilli();
 
     private final String memberId1 = "member-1";
     private final String memberId2 = "member-2";
+
+    private final ChatRoomCategory category = ChatRoomCategory.FREE;
 
     @Nested
     @DisplayName("save")
     class SaveTest {
 
         @Test
-        @DisplayName("채팅방이 존재하고 작성자가 멤버이면 outbox 이벤트를 발행하고 cache에 저장한 뒤 결과를 반환한다")
-        void saveSuccess() {
+        @DisplayName("채팅방이 존재하고 작성 가능한 멤버이면 메시지 이벤트를 발행하고 캐시에 저장한 뒤 결과를 반환한다")
+        void save_shouldPublishEventsSaveCacheAndReturnResult() {
             // given
-            ChatRoom chatRoom = chatRoom(Set.of(writerId, "user-2"));
+            ChatMessageSaveCommand command = saveCommand();
 
-            ChatMessageSaveCommand command = new ChatMessageSaveCommand(
-                    messageId,
-                    roomId,
-                    writerId,
-                    content,
-                    clientMessageId
-            );
+            ChatRoom chatRoom = chatRoomWithMembers(writerId, memberId1, memberId2);
 
             given(chatRoomPersistencePort.findById(roomId))
                     .willReturn(Optional.of(chatRoom));
@@ -94,47 +89,43 @@ class ChatMessageCommandServiceTest {
             ChatMessageSaveResult result = sut.save(command);
 
             // then
+            assertThat(result).isNotNull();
             assertThat(result.id()).isEqualTo(messageId);
-            assertThat(result.ts()).isGreaterThan(0L);
+            assertThat(result.ts()).isPositive();
 
-            ArgumentCaptor<AbstractOutboxEventList> eventListCaptor =
-                    ArgumentCaptor.forClass(AbstractOutboxEventList.class);
-            ArgumentCaptor<ChatMessage> messageCaptor =
-                    ArgumentCaptor.forClass(ChatMessage.class);
-
-            verify(chatRoomPersistencePort).findById(roomId);
-            verify(outboxEventListPublishPort).publish(eventListCaptor.capture());
-            verify(chatMessageCachePort).save(
-                    messageCaptor.capture(),
-                    eq(chatRoom.getCategory()),
-                    eq(chatRoom.getMemberIds())
+            InOrder inOrder = inOrder(
+                    chatRoomPersistencePort,
+                    outboxEventListPublishPort,
+                    chatMessageCachePort
             );
 
-            verify(chatMessagePersistencePort, never()).save(any(ChatMessage.class));
+            inOrder.verify(chatRoomPersistencePort)
+                    .findById(roomId);
 
-            AbstractOutboxEventList publishedEventList = eventListCaptor.getValue();
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatMessageEventList.class));
 
-            assertThat(publishedEventList.getEventList()).hasSize(3);
+            inOrder.verify(chatMessageCachePort)
+                    .save(
+                            argThat(message ->
+                                    message.getId().equals(messageId)
+                                            && message.getRoomId().equals(roomId)
+                                            && message.getWriterId().equals(writerId)
+                                            && message.getContent().equals(content)
+                            ),
+                            eq(category),
+                            eq(chatRoom.getMemberIds())
+                    );
 
-            ChatMessage cachedMessage = messageCaptor.getValue();
-
-            assertThat(cachedMessage.getId()).isEqualTo(messageId);
-            assertThat(cachedMessage.getRoomId()).isEqualTo(roomId);
-            assertThat(cachedMessage.getWriterId()).isEqualTo(writerId);
-            assertThat(cachedMessage.getContent()).isEqualTo(content);
+            then(chatMessagePersistencePort)
+                    .shouldHaveNoInteractions();
         }
 
         @Test
-        @DisplayName("채팅방이 없으면 ChatRoomNotFoundException을 던지고 outbox 발행과 cache 저장을 수행하지 않는다")
-        void saveThrowsWhenChatRoomNotFound() {
+        @DisplayName("채팅방이 없으면 ChatRoomNotFoundException이 발생하고 이벤트와 캐시 저장은 수행하지 않는다")
+        void save_shouldThrow_whenChatRoomNotFound() {
             // given
-            ChatMessageSaveCommand command = new ChatMessageSaveCommand(
-                    messageId,
-                    roomId,
-                    writerId,
-                    content,
-                    clientMessageId
-            );
+            ChatMessageSaveCommand command = saveCommand();
 
             given(chatRoomPersistencePort.findById(roomId))
                     .willReturn(Optional.empty());
@@ -143,26 +134,27 @@ class ChatMessageCommandServiceTest {
             assertThatThrownBy(() -> sut.save(command))
                     .isInstanceOf(ChatRoomNotFoundException.class);
 
-            verify(chatRoomPersistencePort).findById(roomId);
-            verify(outboxEventListPublishPort, never()).publish(any(AbstractOutboxEventList.class));
-            verify(chatMessageCachePort, never())
-                    .save(any(ChatMessage.class), any(ChatRoomCategory.class), anySet());
-            verify(chatMessagePersistencePort, never()).save(any(ChatMessage.class));
+            then(chatRoomPersistencePort)
+                    .should()
+                    .findById(roomId);
+
+            then(outboxEventListPublishPort)
+                    .shouldHaveNoInteractions();
+
+            then(chatMessageCachePort)
+                    .shouldHaveNoInteractions();
+
+            then(chatMessagePersistencePort)
+                    .shouldHaveNoInteractions();
         }
 
         @Test
-        @DisplayName("작성자가 채팅방 멤버가 아니면 ChatRoomMembershipNotFoundException을 던지고 outbox 발행과 cache 저장을 수행하지 않는다")
-        void saveThrowsWhenWriterIsNotMember() {
+        @DisplayName("작성자가 채팅방 멤버가 아니면 ChatRoomMembershipNotFoundException이 발생하고 이벤트와 캐시 저장은 수행하지 않는다")
+        void save_shouldThrow_whenWriterIsNotMember() {
             // given
-            ChatRoom chatRoom = chatRoom(Set.of("other-user"));
+            ChatMessageSaveCommand command = saveCommand();
 
-            ChatMessageSaveCommand command = new ChatMessageSaveCommand(
-                    messageId,
-                    roomId,
-                    writerId,
-                    content,
-                    clientMessageId
-            );
+            ChatRoom chatRoom = chatRoomWithMembers(memberId1, memberId2);
 
             given(chatRoomPersistencePort.findById(roomId))
                     .willReturn(Optional.of(chatRoom));
@@ -171,67 +163,69 @@ class ChatMessageCommandServiceTest {
             assertThatThrownBy(() -> sut.save(command))
                     .isInstanceOf(ChatRoomMembershipNotFoundException.class);
 
-            verify(chatRoomPersistencePort).findById(roomId);
-            verify(outboxEventListPublishPort, never()).publish(any(AbstractOutboxEventList.class));
-            verify(chatMessageCachePort, never())
-                    .save(any(ChatMessage.class), any(ChatRoomCategory.class), anySet());
-            verify(chatMessagePersistencePort, never()).save(any(ChatMessage.class));
+            then(chatRoomPersistencePort)
+                    .should()
+                    .findById(roomId);
+
+            then(outboxEventListPublishPort)
+                    .shouldHaveNoInteractions();
+
+            then(chatMessageCachePort)
+                    .shouldHaveNoInteractions();
+
+            then(chatMessagePersistencePort)
+                    .shouldHaveNoInteractions();
         }
 
         @Test
-        @DisplayName("outbox 발행 중 TemporaryOutboxPersistenceException이 발생하면 그대로 전파하고 cache 저장을 수행하지 않는다")
-        void saveThrowsTemporaryOutboxPersistenceExceptionWhenOutboxPublishTemporarilyFails() {
+        @DisplayName("Outbox 일시 장애가 발생하면 TemporaryOutboxPersistenceException을 그대로 전파하고 캐시는 저장하지 않는다")
+        void save_shouldRethrowTemporaryOutboxException() {
             // given
-            ChatRoom chatRoom = chatRoom(Set.of(writerId, "user-2"));
-            TemporaryOutboxPersistenceException exception = new TemporaryOutboxPersistenceException("temporary outbox failure", new RuntimeException());
+            ChatMessageSaveCommand command = saveCommand();
 
-            ChatMessageSaveCommand command = new ChatMessageSaveCommand(
-                    messageId,
-                    roomId,
-                    writerId,
-                    content,
-                    clientMessageId
-            );
+            ChatRoom chatRoom = chatRoomWithMembers(writerId, memberId1);
+
+            TemporaryOutboxPersistenceException exception =
+                    new TemporaryOutboxPersistenceException(
+                            "temporary outbox failure",
+                            new RuntimeException("temporary")
+                    );
 
             given(chatRoomPersistencePort.findById(roomId))
                     .willReturn(Optional.of(chatRoom));
 
             doThrow(exception)
                     .when(outboxEventListPublishPort)
-                    .publish(any(AbstractOutboxEventList.class));
+                    .publish(any(ChatMessageEventList.class));
 
             // when & then
             assertThatThrownBy(() -> sut.save(command))
                     .isSameAs(exception);
 
-            verify(chatRoomPersistencePort).findById(roomId);
-            verify(outboxEventListPublishPort).publish(any(AbstractOutboxEventList.class));
-            verify(chatMessageCachePort, never())
-                    .save(any(ChatMessage.class), any(ChatRoomCategory.class), anySet());
-            verify(chatMessagePersistencePort, never()).save(any(ChatMessage.class));
+            then(outboxEventListPublishPort)
+                    .should()
+                    .publish(any(ChatMessageEventList.class));
+
+            then(chatMessageCachePort)
+                    .shouldHaveNoInteractions();
         }
 
         @Test
-        @DisplayName("outbox 발행 중 일반 예외가 발생하면 ChatMessagePersistException으로 감싸고 cache 저장을 수행하지 않는다")
-        void saveThrowsChatMessagePersistExceptionWhenOutboxPublishFails() {
+        @DisplayName("Outbox 일반 장애가 발생하면 ChatMessagePersistException으로 감싸서 전파하고 캐시는 저장하지 않는다")
+        void save_shouldWrapUnexpectedOutboxException() {
             // given
-            ChatRoom chatRoom = chatRoom(Set.of(writerId, "user-2"));
-            RuntimeException exception = new RuntimeException("outbox publish failed");
+            ChatMessageSaveCommand command = saveCommand();
 
-            ChatMessageSaveCommand command = new ChatMessageSaveCommand(
-                    messageId,
-                    roomId,
-                    writerId,
-                    content,
-                    clientMessageId
-            );
+            ChatRoom chatRoom = chatRoomWithMembers(writerId, memberId1);
+
+            RuntimeException exception = new RuntimeException("outbox failed");
 
             given(chatRoomPersistencePort.findById(roomId))
                     .willReturn(Optional.of(chatRoom));
 
             doThrow(exception)
                     .when(outboxEventListPublishPort)
-                    .publish(any(AbstractOutboxEventList.class));
+                    .publish(any(ChatMessageEventList.class));
 
             // when & then
             assertThatThrownBy(() -> sut.save(command))
@@ -239,34 +233,30 @@ class ChatMessageCommandServiceTest {
                     .hasMessageContaining("failed during chat message persist event publish")
                     .hasCause(exception);
 
-            verify(chatRoomPersistencePort).findById(roomId);
-            verify(outboxEventListPublishPort).publish(any(AbstractOutboxEventList.class));
-            verify(chatMessageCachePort, never())
-                    .save(any(ChatMessage.class), any(ChatRoomCategory.class), anySet());
-            verify(chatMessagePersistencePort, never()).save(any(ChatMessage.class));
+            then(outboxEventListPublishPort)
+                    .should()
+                    .publish(any(ChatMessageEventList.class));
+
+            then(chatMessageCachePort)
+                    .shouldHaveNoInteractions();
         }
 
         @Test
-        @DisplayName("cache 저장 중 예외가 발생하면 ChatMessageCacheException을 던진다")
-        void saveThrowsChatMessageCacheExceptionWhenCacheSaveFails() {
+        @DisplayName("캐시 저장 중 예외가 발생하면 ChatMessageCacheException으로 감싸서 전파한다")
+        void save_shouldThrowChatMessageCacheException_whenCacheSaveFails() {
             // given
-            ChatRoom chatRoom = chatRoom(Set.of(writerId, "user-2"));
-            RuntimeException exception = new RuntimeException("cache save failed");
+            ChatMessageSaveCommand command = saveCommand();
 
-            ChatMessageSaveCommand command = new ChatMessageSaveCommand(
-                    messageId,
-                    roomId,
-                    writerId,
-                    content,
-                    clientMessageId
-            );
+            ChatRoom chatRoom = chatRoomWithMembers(writerId, memberId1);
+
+            RuntimeException exception = new RuntimeException("cache save failed");
 
             given(chatRoomPersistencePort.findById(roomId))
                     .willReturn(Optional.of(chatRoom));
 
             doThrow(exception)
                     .when(chatMessageCachePort)
-                    .save(any(ChatMessage.class), eq(chatRoom.getCategory()), eq(chatRoom.getMemberIds()));
+                    .save(any(ChatMessage.class), eq(category), eq(chatRoom.getMemberIds()));
 
             // when & then
             assertThatThrownBy(() -> sut.save(command))
@@ -274,11 +264,20 @@ class ChatMessageCommandServiceTest {
                     .hasMessageContaining("failed during cache save")
                     .hasCause(exception);
 
-            verify(chatRoomPersistencePort).findById(roomId);
-            verify(outboxEventListPublishPort).publish(any(AbstractOutboxEventList.class));
-            verify(chatMessageCachePort)
-                    .save(any(ChatMessage.class), eq(chatRoom.getCategory()), eq(chatRoom.getMemberIds()));
-            verify(chatMessagePersistencePort, never()).save(any(ChatMessage.class));
+            InOrder inOrder = inOrder(
+                    chatRoomPersistencePort,
+                    outboxEventListPublishPort,
+                    chatMessageCachePort
+            );
+
+            inOrder.verify(chatRoomPersistencePort)
+                    .findById(roomId);
+
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatMessageEventList.class));
+
+            inOrder.verify(chatMessageCachePort)
+                    .save(any(ChatMessage.class), eq(category), eq(chatRoom.getMemberIds()));
         }
     }
 
@@ -287,14 +286,14 @@ class ChatMessageCommandServiceTest {
     class HardDeleteTest {
 
         @Test
-        @DisplayName("메시지 hardDelete 성공 시 msgCnt 감소, membership score 갱신, cache 삭제를 수행한다")
-        void hardDeleteSuccess() {
+        @DisplayName("메시지 삭제에 성공하면 방 메시지 수를 감소시키고 최신 메시지 기준으로 멤버십 점수를 갱신한 뒤 캐시에서 삭제한다")
+        void hardDelete_shouldDeleteMessageRefreshScoresAndDeleteCache() {
             // given
-            ChatMessage latestMessage = chatMessage("100000000000000000000002", latestCreatedAt);
+            ChatMessage latestMessage = latestMessage();
 
-            List<ChatRoomMembershipScore> chatRoomMembershipScores = List.of(
-                    new ChatRoomMembershipScore(memberId1, latestCreatedAtMillis),
-                    new ChatRoomMembershipScore(memberId2, 0L)
+            List<ChatRoomMembershipScore> scores = List.of(
+                    mock(ChatRoomMembershipScore.class),
+                    mock(ChatRoomMembershipScore.class)
             );
 
             given(chatMessagePersistencePort.hardDeleteById(messageId))
@@ -303,23 +302,41 @@ class ChatMessageCommandServiceTest {
             given(chatMessagePersistencePort.findLatestMessageExcluding(roomId, messageId))
                     .willReturn(Optional.of(latestMessage));
 
-            given(chatRoomPersistencePort.refreshMembershipScores(roomId, latestCreatedAtMillis))
-                    .willReturn(chatRoomMembershipScores);
+            given(chatRoomPersistencePort.refreshMembershipScores(roomId, latestCreatedAtMs))
+                    .willReturn(scores);
 
             // when
             sut.hardDelete(messageId, roomId);
 
             // then
-            verify(chatMessagePersistencePort).hardDeleteById(messageId);
-            verify(chatRoomPersistencePort).decrementMessageCount(roomId);
-            verify(chatMessagePersistencePort).findLatestMessageExcluding(roomId, messageId);
-            verify(chatRoomPersistencePort).refreshMembershipScores(roomId, latestCreatedAtMillis);
-            verify(chatMessageCachePort).hardDelete(messageId, roomId, chatRoomMembershipScores);
+            InOrder inOrder = inOrder(
+                    chatMessagePersistencePort,
+                    chatRoomPersistencePort,
+                    chatMessageCachePort
+            );
+
+            inOrder.verify(chatMessagePersistencePort)
+                    .hardDeleteById(messageId);
+
+            inOrder.verify(chatRoomPersistencePort)
+                    .decrementMessageCount(roomId);
+
+            inOrder.verify(chatMessagePersistencePort)
+                    .findLatestMessageExcluding(roomId, messageId);
+
+            inOrder.verify(chatRoomPersistencePort)
+                    .refreshMembershipScores(roomId, latestCreatedAtMs);
+
+            inOrder.verify(chatMessageCachePort)
+                    .hardDelete(messageId, roomId, scores);
+
+            then(outboxEventListPublishPort)
+                    .shouldHaveNoInteractions();
         }
 
         @Test
-        @DisplayName("Mongo에서 삭제할 메시지가 없으면 이후 작업을 수행하지 않는다")
-        void hardDeleteSkippedWhenMongoMessageNotFound() {
+        @DisplayName("메시지가 존재하지 않아 삭제되지 않으면 이후 작업을 수행하지 않는다")
+        void hardDelete_shouldDoNothing_whenMessageWasNotDeleted() {
             // given
             given(chatMessagePersistencePort.hardDeleteById(messageId))
                     .willReturn(false);
@@ -328,21 +345,30 @@ class ChatMessageCommandServiceTest {
             sut.hardDelete(messageId, roomId);
 
             // then
-            verify(chatMessagePersistencePort).hardDeleteById(messageId);
+            then(chatMessagePersistencePort)
+                    .should()
+                    .hardDeleteById(messageId);
 
-            verify(chatRoomPersistencePort, never()).decrementMessageCount(anyString());
-            verify(chatMessagePersistencePort, never()).findLatestMessageExcluding(anyString(), anyString());
-            verify(chatRoomPersistencePort, never()).refreshMembershipScores(anyString(), anyLong());
-            verify(chatMessageCachePort, never()).hardDelete(anyString(), anyString(), anyList());
+            then(chatRoomPersistencePort)
+                    .shouldHaveNoMoreInteractions();
+
+            then(chatMessageCachePort)
+                    .shouldHaveNoInteractions();
+
+            then(outboxEventListPublishPort)
+                    .shouldHaveNoInteractions();
+
+            then(chatMessagePersistencePort)
+                    .should(never())
+                    .findLatestMessageExcluding(any(), any());
         }
 
         @Test
-        @DisplayName("삭제 후 남은 최신 메시지가 없으면 fallbackMsgCreatedAt=0으로 membership score를 갱신한다")
-        void hardDeleteWithNoLatestMessage() {
+        @DisplayName("삭제 후 남은 최신 메시지가 없으면 fallbackMsgCreatedAt을 0으로 점수 갱신한다")
+        void hardDelete_shouldUseZeroFallbackMsgCreatedAt_whenLatestMessageDoesNotExist() {
             // given
-            List<ChatRoomMembershipScore> chatRoomMembershipScores = List.of(
-                    new ChatRoomMembershipScore(memberId1, 0L),
-                    new ChatRoomMembershipScore(memberId2, 0L)
+            List<ChatRoomMembershipScore> scores = List.of(
+                    mock(ChatRoomMembershipScore.class)
             );
 
             given(chatMessagePersistencePort.hardDeleteById(messageId))
@@ -352,27 +378,42 @@ class ChatMessageCommandServiceTest {
                     .willReturn(Optional.empty());
 
             given(chatRoomPersistencePort.refreshMembershipScores(roomId, 0L))
-                    .willReturn(chatRoomMembershipScores);
+                    .willReturn(scores);
 
             // when
             sut.hardDelete(messageId, roomId);
 
             // then
-            verify(chatMessagePersistencePort).hardDeleteById(messageId);
-            verify(chatRoomPersistencePort).decrementMessageCount(roomId);
-            verify(chatMessagePersistencePort).findLatestMessageExcluding(roomId, messageId);
-            verify(chatRoomPersistencePort).refreshMembershipScores(roomId, 0L);
-            verify(chatMessageCachePort).hardDelete(messageId, roomId, chatRoomMembershipScores);
+            InOrder inOrder = inOrder(
+                    chatMessagePersistencePort,
+                    chatRoomPersistencePort,
+                    chatMessageCachePort
+            );
+
+            inOrder.verify(chatMessagePersistencePort)
+                    .hardDeleteById(messageId);
+
+            inOrder.verify(chatRoomPersistencePort)
+                    .decrementMessageCount(roomId);
+
+            inOrder.verify(chatMessagePersistencePort)
+                    .findLatestMessageExcluding(roomId, messageId);
+
+            inOrder.verify(chatRoomPersistencePort)
+                    .refreshMembershipScores(roomId, 0L);
+
+            inOrder.verify(chatMessageCachePort)
+                    .hardDelete(messageId, roomId, scores);
         }
 
         @Test
-        @DisplayName("cache hardDelete가 실패해도 예외를 전파하지 않는다")
-        void hardDeleteCacheFailsButDoesNotThrow() {
+        @DisplayName("캐시 hardDelete 실패는 로그만 남기고 예외를 전파하지 않는다")
+        void hardDelete_shouldSwallowException_whenCacheHardDeleteFails() {
             // given
-            ChatMessage latestMessage = chatMessage("100000000000000000000002", latestCreatedAt);
+            ChatMessage latestMessage = latestMessage();
 
-            List<ChatRoomMembershipScore> chatRoomMembershipScores = List.of(
-                    new ChatRoomMembershipScore(memberId1, latestCreatedAtMillis)
+            List<ChatRoomMembershipScore> scores = List.of(
+                    mock(ChatRoomMembershipScore.class)
             );
 
             given(chatMessagePersistencePort.hardDeleteById(messageId))
@@ -381,29 +422,28 @@ class ChatMessageCommandServiceTest {
             given(chatMessagePersistencePort.findLatestMessageExcluding(roomId, messageId))
                     .willReturn(Optional.of(latestMessage));
 
-            given(chatRoomPersistencePort.refreshMembershipScores(roomId, latestCreatedAtMillis))
-                    .willReturn(chatRoomMembershipScores);
+            given(chatRoomPersistencePort.refreshMembershipScores(roomId, latestCreatedAtMs))
+                    .willReturn(scores);
 
-            doThrow(new RuntimeException("redis delete failed"))
+            doThrow(new RuntimeException("cache hard delete failed"))
                     .when(chatMessageCachePort)
-                    .hardDelete(messageId, roomId, chatRoomMembershipScores);
+                    .hardDelete(messageId, roomId, scores);
 
             // when & then
             assertThatCode(() -> sut.hardDelete(messageId, roomId))
                     .doesNotThrowAnyException();
 
-            verify(chatMessagePersistencePort).hardDeleteById(messageId);
-            verify(chatRoomPersistencePort).decrementMessageCount(roomId);
-            verify(chatMessagePersistencePort).findLatestMessageExcluding(roomId, messageId);
-            verify(chatRoomPersistencePort).refreshMembershipScores(roomId, latestCreatedAtMillis);
-            verify(chatMessageCachePort).hardDelete(messageId, roomId, chatRoomMembershipScores);
+            then(chatMessageCachePort)
+                    .should()
+                    .hardDelete(messageId, roomId, scores);
         }
 
         @Test
-        @DisplayName("Mongo hardDelete 중 예외가 발생하면 예외를 전파한다")
-        void hardDeleteThrowsWhenMongoDeleteFails() {
+        @DisplayName("hardDeleteById에서 TemporaryChatPersistenceException이 발생하면 그대로 전파한다")
+        void hardDelete_shouldRethrowTemporaryChatPersistenceException_whenDeleteFailsTemporarily() {
             // given
-            RuntimeException exception = new RuntimeException("mongo hardDelete failed");
+            TemporaryChatPersistenceException exception =
+                    temporaryChatPersistenceException();
 
             given(chatMessagePersistencePort.hardDeleteById(messageId))
                     .willThrow(exception);
@@ -412,18 +452,19 @@ class ChatMessageCommandServiceTest {
             assertThatThrownBy(() -> sut.hardDelete(messageId, roomId))
                     .isSameAs(exception);
 
-            verify(chatMessagePersistencePort).hardDeleteById(messageId);
-            verify(chatRoomPersistencePort, never()).decrementMessageCount(anyString());
-            verify(chatMessagePersistencePort, never()).findLatestMessageExcluding(anyString(), anyString());
-            verify(chatRoomPersistencePort, never()).refreshMembershipScores(anyString(), anyLong());
-            verify(chatMessageCachePort, never()).hardDelete(anyString(), anyString(), anyList());
+            then(chatRoomPersistencePort)
+                    .shouldHaveNoInteractions();
+
+            then(chatMessageCachePort)
+                    .shouldHaveNoInteractions();
         }
 
         @Test
-        @DisplayName("msgCnt 감소 중 예외가 발생하면 이후 작업을 수행하지 않고 예외를 전파한다")
-        void hardDeleteThrowsWhenDecrementMsgCntFails() {
+        @DisplayName("decrementMessageCount에서 TemporaryChatPersistenceException이 발생하면 그대로 전파하고 이후 작업은 수행하지 않는다")
+        void hardDelete_shouldRethrowTemporaryChatPersistenceException_whenDecrementFailsTemporarily() {
             // given
-            RuntimeException exception = new RuntimeException("decrement failed");
+            TemporaryChatPersistenceException exception =
+                    temporaryChatPersistenceException();
 
             given(chatMessagePersistencePort.hardDeleteById(messageId))
                     .willReturn(true);
@@ -436,65 +477,87 @@ class ChatMessageCommandServiceTest {
             assertThatThrownBy(() -> sut.hardDelete(messageId, roomId))
                     .isSameAs(exception);
 
-            verify(chatMessagePersistencePort).hardDeleteById(messageId);
-            verify(chatRoomPersistencePort).decrementMessageCount(roomId);
+            InOrder inOrder = inOrder(
+                    chatMessagePersistencePort,
+                    chatRoomPersistencePort
+            );
 
-            verify(chatMessagePersistencePort, never()).findLatestMessageExcluding(anyString(), anyString());
-            verify(chatRoomPersistencePort, never()).refreshMembershipScores(anyString(), anyLong());
-            verify(chatMessageCachePort, never()).hardDelete(anyString(), anyString(), anyList());
+            inOrder.verify(chatMessagePersistencePort)
+                    .hardDeleteById(messageId);
+
+            inOrder.verify(chatRoomPersistencePort)
+                    .decrementMessageCount(roomId);
+
+            then(chatMessagePersistencePort)
+                    .should(never())
+                    .findLatestMessageExcluding(any(), any());
+
+            then(chatMessageCachePort)
+                    .shouldHaveNoInteractions();
         }
 
         @Test
-        @DisplayName("membership score refresh 중 예외가 발생하면 cache 삭제를 수행하지 않고 예외를 전파한다")
-        void hardDeleteThrowsWhenRefreshMembershipScoresFails() {
+        @DisplayName("recover는 hardDelete 재시도 소진 시 예외를 밖으로 던지지 않는다")
+        void recover_shouldNotThrow() {
             // given
-            ChatMessage latestMessage = chatMessage("100000000000000000000002", latestCreatedAt);
-            RuntimeException exception = new RuntimeException("refresh membership failed");
-
-            given(chatMessagePersistencePort.hardDeleteById(messageId))
-                    .willReturn(true);
-
-            given(chatMessagePersistencePort.findLatestMessageExcluding(roomId, messageId))
-                    .willReturn(Optional.of(latestMessage));
-
-            given(chatRoomPersistencePort.refreshMembershipScores(roomId, latestCreatedAtMillis))
-                    .willThrow(exception);
+            TemporaryChatPersistenceException exception =
+                    temporaryChatPersistenceException();
 
             // when & then
-            assertThatThrownBy(() -> sut.hardDelete(messageId, roomId))
-                    .isSameAs(exception);
+            assertThatCode(() -> sut.recover(exception, messageId, roomId))
+                    .doesNotThrowAnyException();
 
-            verify(chatMessagePersistencePort).hardDeleteById(messageId);
-            verify(chatRoomPersistencePort).decrementMessageCount(roomId);
-            verify(chatMessagePersistencePort).findLatestMessageExcluding(roomId, messageId);
-            verify(chatRoomPersistencePort).refreshMembershipScores(roomId, latestCreatedAtMillis);
+            then(chatMessagePersistencePort)
+                    .shouldHaveNoInteractions();
 
-            verify(chatMessageCachePort, never()).hardDelete(anyString(), anyString(), anyList());
+            then(chatRoomPersistencePort)
+                    .shouldHaveNoInteractions();
+
+            then(chatMessageCachePort)
+                    .shouldHaveNoInteractions();
+
+            then(outboxEventListPublishPort)
+                    .shouldHaveNoInteractions();
         }
     }
 
-    private ChatRoom chatRoom(Set<String> memberIds) {
-        return ChatRoom.rehydrate(
+    private ChatMessageSaveCommand saveCommand() {
+        return new ChatMessageSaveCommand(
+                messageId,
                 roomId,
-                "host-1",
-                "테스트방",
-                "테스트 설명",
-                ChatRoomCategory.FREE,
-                memberIds,
-                0L,
-                LocalDateTime.now()
+                writerId,
+                content,
+                clientMessageId
         );
     }
 
-    private ChatMessage chatMessage(String id, Instant createdAt) {
-        return ChatMessage.builder()
-                .id(id)
-                .roomId(roomId)
-                .writerId(writerId)
-                .content(content)
-                .createdAt(LocalDateTime.ofInstant(createdAt, ServiceZoneUtils.ZONE_ID))
-                .eventList(new ChatMessageEventList())
-                .dlqEventList(new ChatMessageDlqEventList())
-                .build();
+    private ChatRoom chatRoomWithMembers(String... memberIds) {
+        return ChatRoom.rehydrate(
+                roomId,
+                "host-1",
+                "room-title",
+                "description",
+                category,
+                Set.of(memberIds),
+                10L,
+                LocalDateTime.of(2026, 1, 1, 12, 0)
+        );
+    }
+
+    private ChatMessage latestMessage() {
+        return ChatMessage.rehydrate(
+                "latest-message-id",
+                roomId,
+                memberId1,
+                "latest message",
+                latestCreatedAt
+        );
+    }
+
+    private TemporaryChatPersistenceException temporaryChatPersistenceException() {
+        return new TemporaryChatPersistenceException(
+                "temporary persistence failure",
+                new RuntimeException("temporary")
+        );
     }
 }

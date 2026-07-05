@@ -7,13 +7,11 @@ import java.util.Arrays;
 
 public class NotificationEventList extends AbstractOutboxEventList {
 
-    private NotificationEventList() {}
+    private NotificationEventList() {
+        super();
+    }
 
     public static NotificationEventList of(AbstractOutboxEvent... events) {
-        NotificationEventList eventList = new NotificationEventList();
-
-        Arrays.stream(events).forEach(eventList::addEvent);
-
-        return eventList;
+        return AbstractOutboxEventList.of(NotificationEventList::new, events);
     }
 }

@@ -28,7 +28,7 @@ public record ChatRoomResponse(
                 .memberCnt(entity.getMemberIds().size())
                 .msgCnt(entity.getMsgCnt())
                 .popularity(entity.getPopularity())
-                .createdAt(entity.toInstant())
+                .createdAt(entity.getCreatedAtInstant())
                 .build();
     }
 }

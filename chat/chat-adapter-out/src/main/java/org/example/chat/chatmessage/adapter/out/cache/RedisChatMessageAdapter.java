@@ -99,7 +99,7 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
     public void save(ChatMessage message, ChatRoomCategory category, Set<String> memberIds_) {
         String id = message.getId();
         String roomId = message.getRoomId();
-        Instant createdAt = message.toInstant();
+        Instant createdAt = message.getCreatedAtInstant();
         long createdMs = message.toEpochMillis();
         String content = message.getContent();
         String writerId = message.getWriterId();

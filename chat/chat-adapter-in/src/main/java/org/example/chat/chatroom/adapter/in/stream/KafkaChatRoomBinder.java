@@ -1,8 +1,8 @@
 package org.example.chat.chatroom.adapter.in.stream;
 
 import lombok.extern.slf4j.Slf4j;
-import org.example.chat.chatroom.domain.event.handler.ChatRoomDlqHandler;
-import org.example.chat.chatroom.domain.event.handler.ChatRoomEventHandler;
+import org.example.chat.chatroom.application.port.in.ChatRoomDlqHandler;
+import org.example.chat.chatroom.application.port.in.ChatRoomEventHandler;
 import org.example.common.dlq.application.service.DlqService;
 import org.example.common.enums.KafkaHeaderKey;
 import org.example.common.event.HandleableEvent;

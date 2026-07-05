@@ -1,28 +1,29 @@
 package org.example.chat.chatroom.application.service;
 
-import org.example.chat.chatroom.domain.event.dlq.*;
-import org.example.chat.chatroom.domain.event.payload.ChatRoomPayload;
+import org.example.chat.chatroom.application.event.dlq.*;
+import org.example.chat.chatroom.application.event.payload.ChatRoomPersistPayload;
+import org.example.chat.chatroom.application.mapper.ChatRoomPayloadMapper;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
-import org.example.chat.chatroom.domain.event.payload.ChatRoomUpdatedPayload;
+import org.example.chat.chatroom.application.event.payload.ChatRoomUpdatedPayload;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,273 +36,441 @@ class ChatRoomDlqServiceTest {
     private ChatRoomCachePort cache;
 
     @InjectMocks
-    private ChatRoomDlqService service;
+    private ChatRoomDlqService sut;
 
     private static final String ROOM_ID = "room-1";
     private static final String HOST_ID = "host-1";
     private static final String MEMBER_ID = "member-1";
+    private static final String OLD_TITLE = "old-title";
+    private static final String TITLE = "title";
+    private static final String ERROR_MESSAGE = "dlq error";
+
+    private final ChatRoomCategory category = ChatRoomCategory.FREE;
 
     @Nested
-    @DisplayName("DLQ DB 이벤트 처리")
-    class PersistenceDlqEventTest {
+    @DisplayName("handle ChatRoomPersistedDlqEvent")
+    class HandlePersistedDlqEventTest {
 
         @Test
-        @DisplayName("채팅방 생성 DLQ 이벤트를 처리하면 payload를 ChatRoom으로 변환해 저장한다")
-        void handlePersistedDlqEvent() {
+        @DisplayName("payload를 ChatRoom 도메인으로 변환한 뒤 저장한다")
+        void handle_shouldSaveChatRoom_whenPersistedDlqEvent() {
             // given
-            ChatRoomPayload payload = ChatRoomPayload.builder()
-                    .id(ROOM_ID)
-                    .hostId(HOST_ID)
-                    .title("테스트 채팅방")
-                    .description("테스트 설명")
-                    .category(ChatRoomCategory.FREE)
-                    .memberIds(Set.of(HOST_ID, MEMBER_ID))
-                    .createdAt(Instant.now())
-                    .build();
-
-            ChatRoomPersistedDlqEvent event = mock(ChatRoomPersistedDlqEvent.class);
-            when(event.getPayload()).thenReturn(payload);
-
-            // when
-            service.handle(event);
-
-            // then
-            ArgumentCaptor<ChatRoom> captor = ArgumentCaptor.forClass(ChatRoom.class);
-            verify(persistence).save(captor.capture());
-
-            ChatRoom saved = captor.getValue();
-
-            assertThat(saved.getId()).isEqualTo(ROOM_ID);
-            assertThat(saved.getHostId()).isEqualTo(HOST_ID);
-            assertThat(saved.getTitle()).isEqualTo("테스트 채팅방");
-            assertThat(saved.getDescription()).isEqualTo("테스트 설명");
-            assertThat(saved.getCategory()).isEqualTo(ChatRoomCategory.FREE);
-            assertThat(saved.getMemberIds()).containsExactlyInAnyOrder(HOST_ID, MEMBER_ID);
-
-            verifyNoInteractions(cache);
-        }
-
-        @Test
-        @DisplayName("채팅방 수정 DLQ 이벤트를 처리하면 persistence.updateAndReturn을 호출한다")
-        void handleUpdatedDlqEvent() {
-            // given
-            ChatRoomUpdatedPayload updated = new ChatRoomUpdatedPayload(
-                    "수정된 제목",
-                    "수정된 설명",
-                    null
+            ChatRoom domain = ChatRoom.rehydrate(
+                    ROOM_ID,
+                    HOST_ID,
+                    TITLE,
+                    "description",
+                    category,
+                    Set.of(HOST_ID),
+                    0L,
+                    LocalDateTime.of(2026, 7, 7, 12, 0)
             );
 
-            ChatRoomUpdatedDlqEvent event = mock(ChatRoomUpdatedDlqEvent.class);
-            when(event.getId()).thenReturn(ROOM_ID);
-            when(event.getUpdated()).thenReturn(updated);
+            ChatRoomPersistPayload payload =
+                    ChatRoomPayloadMapper.fromDomain(domain);
+
+            ChatRoomPersistedDlqEvent event =
+                    new ChatRoomPersistedDlqEvent(payload, ERROR_MESSAGE);
 
             // when
-            service.handle(event);
+            sut.handle(event);
 
             // then
-            verify(persistence).updateRoomAndReturn(ROOM_ID, updated.toUpdateMap());
-            verifyNoInteractions(cache);
-        }
+            then(persistence)
+                    .should()
+                    .save(argThat(saved ->
+                            saved.getId().equals(ROOM_ID)
+                                    && saved.getHostId().equals(HOST_ID)
+                                    && saved.getTitle().equals(TITLE)
+                                    && saved.getDescription().equals("description")
+                                    && saved.getCategory() == category
+                                    && saved.getMemberIds().contains(HOST_ID)
+                                    && saved.getMsgCnt().equals(0L)
+                    ));
 
-        @Test
-        @DisplayName("채팅방 삭제 DLQ 이벤트를 처리하면 persistence.deleteById를 호출한다")
-        void handleDeletedDlqEvent() {
-            // given
-            ChatRoomDeletedDlqEvent event = mock(ChatRoomDeletedDlqEvent.class);
-            when(event.getId()).thenReturn(ROOM_ID);
-
-            // when
-            service.handle(event);
-
-            // then
-            verify(persistence).deleteById(ROOM_ID);
-            verifyNoInteractions(cache);
-        }
-
-        @Test
-        @DisplayName("채팅방 참여 DLQ 이벤트를 처리하면 persistence.join을 호출한다")
-        void handleJoinedDlqEvent() {
-            // given
-            ChatRoomJoinedDlqEvent event = mock(ChatRoomJoinedDlqEvent.class);
-            when(event.getId()).thenReturn(ROOM_ID);
-            when(event.getMemberId()).thenReturn(MEMBER_ID);
-
-            // when
-            service.handle(event);
-
-            // then
-            verify(persistence).joinMembership(ROOM_ID, MEMBER_ID);
-            verifyNoInteractions(cache);
-        }
-
-        @Test
-        @DisplayName("채팅방 퇴장 DLQ 이벤트를 처리하면 persistence.leave를 호출한다")
-        void handleLeavedDlqEvent() {
-            // given
-            ChatRoomLeavedDlqEvent event = mock(ChatRoomLeavedDlqEvent.class);
-            when(event.getId()).thenReturn(ROOM_ID);
-            when(event.getMemberId()).thenReturn(MEMBER_ID);
-
-            // when
-            service.handle(event);
-
-            // then
-            verify(persistence).leaveMembership(ROOM_ID, MEMBER_ID);
-            verifyNoInteractions(cache);
-        }
-
-        @Test
-        @DisplayName("채팅방 활성 DLQ 이벤트를 처리하면 persistence.active를 호출한다")
-        void handleActiveDlqEvent() {
-            // given
-            long lastMsgSeq = 10L;
-            long lastMsgMs = 1_717_000_000_000L;
-
-            ChatRoomActiveDlqEvent event = mock(ChatRoomActiveDlqEvent.class);
-            when(event.getId()).thenReturn(ROOM_ID);
-            when(event.getMemberId()).thenReturn(MEMBER_ID);
-            when(event.getLastMsgSeq()).thenReturn(lastMsgSeq);
-            when(event.getLastMsgMs()).thenReturn(lastMsgMs);
-
-            // when
-            service.handle(event);
-
-            // then
-            verify(persistence).activateMembership(ROOM_ID, MEMBER_ID, lastMsgSeq, lastMsgMs);
-            verifyNoInteractions(cache);
+            then(cache)
+                    .shouldHaveNoInteractions();
         }
     }
 
     @Nested
-    @DisplayName("DLQ 캐시 이벤트 처리")
-    class CacheDlqEventTest {
+    @DisplayName("handle ChatRoomUpdatedDlqEvent")
+    class HandleUpdatedDlqEventTest {
 
         @Test
-        @DisplayName("캐시 저장 DLQ 이벤트 처리 시 채팅방이 존재하면 cache.warmUp을 호출한다")
-        void handleCacheSaveDlqEvent_roomExists() {
+        @DisplayName("수정 payload를 updateMap으로 변환해서 채팅방을 수정한다")
+        void handle_shouldUpdateRoom_whenUpdatedDlqEvent() {
             // given
-            ChatRoomCacheSaveDlqEvent event = mock(ChatRoomCacheSaveDlqEvent.class);
-            ChatRoom chatRoom = mock(ChatRoom.class);
+            ChatRoomUpdatedPayload updatedPayload = mock(ChatRoomUpdatedPayload.class);
+            Map<String, Object> updateMap = Map.of("title", "new-title");
 
-            when(event.getId()).thenReturn(ROOM_ID);
-            when(persistence.findByIdWithLatestMessage(ROOM_ID)).thenReturn(Optional.of(chatRoom));
+            given(updatedPayload.toUpdateMap()).willReturn(updateMap);
+
+            ChatRoomUpdatedDlqEvent event =
+                    new ChatRoomUpdatedDlqEvent(
+                            ROOM_ID,
+                            updatedPayload,
+                            ERROR_MESSAGE
+                    );
 
             // when
-            service.handle(event);
+            sut.handle(event);
 
             // then
-            verify(persistence).findByIdWithLatestMessage(ROOM_ID);
-            verify(cache).warmUp(chatRoom);
+            then(persistence)
+                    .should()
+                    .updateRoomAndReturn(ROOM_ID, updateMap);
+
+            then(cache)
+                    .shouldHaveNoInteractions();
+        }
+    }
+
+    @Nested
+    @DisplayName("handle ChatRoomDeletedDlqEvent")
+    class HandleDeletedDlqEventTest {
+
+        @Test
+        @DisplayName("채팅방 id로 삭제한다")
+        void handle_shouldDeleteRoom_whenDeletedDlqEvent() {
+            // given
+            ChatRoomDeletedDlqEvent event =
+                    new ChatRoomDeletedDlqEvent(
+                            ROOM_ID,
+                            category,
+                            ERROR_MESSAGE
+                    );
+
+            // when
+            sut.handle(event);
+
+            // then
+            then(persistence)
+                    .should()
+                    .deleteById(ROOM_ID);
+
+            then(cache)
+                    .shouldHaveNoInteractions();
+        }
+    }
+
+    @Nested
+    @DisplayName("handle ChatRoomJoinedDlqEvent")
+    class HandleJoinedDlqEventTest {
+
+        @Test
+        @DisplayName("채팅방 멤버십을 추가한다")
+        void handle_shouldJoinMembership_whenJoinedDlqEvent() {
+            // given
+            ChatRoomJoinedDlqEvent event =
+                    new ChatRoomJoinedDlqEvent(
+                            ROOM_ID,
+                            MEMBER_ID,
+                            ERROR_MESSAGE
+                    );
+
+            // when
+            sut.handle(event);
+
+            // then
+            then(persistence)
+                    .should()
+                    .joinMembership(ROOM_ID, MEMBER_ID);
+
+            then(cache)
+                    .shouldHaveNoInteractions();
+        }
+    }
+
+    @Nested
+    @DisplayName("handle ChatRoomLeavedDlqEvent")
+    class HandleLeavedDlqEventTest {
+
+        @Test
+        @DisplayName("채팅방 멤버십을 제거한다")
+        void handle_shouldLeaveMembership_whenLeavedDlqEvent() {
+            // given
+            ChatRoomLeavedDlqEvent event =
+                    new ChatRoomLeavedDlqEvent(
+                            ROOM_ID,
+                            MEMBER_ID,
+                            ERROR_MESSAGE
+                    );
+
+            // when
+            sut.handle(event);
+
+            // then
+            then(persistence)
+                    .should()
+                    .leaveMembership(ROOM_ID, MEMBER_ID);
+
+            then(cache)
+                    .shouldHaveNoInteractions();
+        }
+    }
+
+    @Nested
+    @DisplayName("handle ChatRoomActiveDlqEvent")
+    class HandleActiveDlqEventTest {
+
+        @Test
+        @DisplayName("채팅방 멤버 활동 정보를 갱신한다")
+        void handle_shouldActivateMembership_whenActiveDlqEvent() {
+            // given
+            Long lastMsgSeq = 10L;
+            Long lastMsgMs = 100L;
+
+            ChatRoomActiveDlqEvent event =
+                    new ChatRoomActiveDlqEvent(
+                            ROOM_ID,
+                            MEMBER_ID,
+                            lastMsgSeq,
+                            lastMsgMs,
+                            ERROR_MESSAGE
+                    );
+
+            // when
+            sut.handle(event);
+
+            // then
+            then(persistence)
+                    .should()
+                    .activateMembership(
+                            ROOM_ID,
+                            MEMBER_ID,
+                            lastMsgSeq,
+                            lastMsgMs
+                    );
+
+            then(cache)
+                    .shouldHaveNoInteractions();
+        }
+    }
+
+    @Nested
+    @DisplayName("handle ChatRoomCacheSaveDlqEvent")
+    class HandleCacheSaveDlqEventTest {
+
+        @Test
+        @DisplayName("최신 메시지를 포함한 채팅방을 조회해서 캐시를 warmUp 한다")
+        void handle_shouldWarmUpCache_whenChatRoomExists() {
+            // given
+            ChatRoom domain = chatRoomWithLatest();
+
+            ChatRoomCacheSaveDlqEvent event =
+                    new ChatRoomCacheSaveDlqEvent(
+                            ROOM_ID,
+                            ERROR_MESSAGE
+                    );
+
+            given(persistence.findByIdWithLatestMessage(ROOM_ID))
+                    .willReturn(Optional.of(domain));
+
+            // when
+            sut.handle(event);
+
+            // then
+            then(persistence)
+                    .should()
+                    .findByIdWithLatestMessage(ROOM_ID);
+
+            then(cache)
+                    .should()
+                    .warmUp(domain);
         }
 
         @Test
-        @DisplayName("캐시 저장 DLQ 이벤트 처리 시 채팅방이 없으면 cache.warmUp을 호출하지 않는다")
-        void handleCacheSaveDlqEvent_roomNotFound() {
+        @DisplayName("채팅방이 없으면 캐시 warmUp을 수행하지 않는다")
+        void handle_shouldNotWarmUpCache_whenChatRoomDoesNotExist() {
             // given
-            ChatRoomCacheSaveDlqEvent event = mock(ChatRoomCacheSaveDlqEvent.class);
+            ChatRoomCacheSaveDlqEvent event =
+                    new ChatRoomCacheSaveDlqEvent(
+                            ROOM_ID,
+                            ERROR_MESSAGE
+                    );
 
-            when(event.getId()).thenReturn(ROOM_ID);
-            when(persistence.findByIdWithLatestMessage(ROOM_ID)).thenReturn(Optional.empty());
+            given(persistence.findByIdWithLatestMessage(ROOM_ID))
+                    .willReturn(Optional.empty());
 
             // when
-            service.handle(event);
+            sut.handle(event);
 
             // then
-            verify(persistence).findByIdWithLatestMessage(ROOM_ID);
-            verify(cache, never()).warmUp(any());
+            then(persistence)
+                    .should()
+                    .findByIdWithLatestMessage(ROOM_ID);
+
+            then(cache)
+                    .shouldHaveNoInteractions();
+        }
+    }
+
+    @Nested
+    @DisplayName("handle ChatRoomCacheUpdateDlqEvent")
+    class HandleCacheUpdateDlqEventTest {
+
+        @Test
+        @DisplayName("최신 메시지를 포함한 채팅방을 조회해서 캐시 수정 복구를 수행한다")
+        void handle_shouldRecoverRoomUpdate_whenChatRoomExists() {
+            // given
+            ChatRoom domain = chatRoomWithLatest();
+
+            ChatRoomCacheUpdateDlqEvent event =
+                    new ChatRoomCacheUpdateDlqEvent(
+                            ROOM_ID,
+                            OLD_TITLE,
+                            ERROR_MESSAGE
+                    );
+
+            given(persistence.findByIdWithLatestMessage(ROOM_ID))
+                    .willReturn(Optional.of(domain));
+
+            // when
+            sut.handle(event);
+
+            // then
+            then(persistence)
+                    .should()
+                    .findByIdWithLatestMessage(ROOM_ID);
+
+            then(cache)
+                    .should()
+                    .recoverRoomUpdate(domain, OLD_TITLE);
         }
 
         @Test
-        @DisplayName("캐시 수정 DLQ 이벤트 처리 시 채팅방이 존재하면 cache.recoverUpdate를 호출한다")
-        void handleCacheUpdateDlqEvent_roomExists() {
+        @DisplayName("채팅방이 없으면 캐시 수정 복구를 수행하지 않는다")
+        void handle_shouldNotRecoverRoomUpdate_whenChatRoomDoesNotExist() {
             // given
-            String oldTitle = "이전 제목";
-            ChatRoom chatRoom = mock(ChatRoom.class);
+            ChatRoomCacheUpdateDlqEvent event =
+                    new ChatRoomCacheUpdateDlqEvent(
+                            ROOM_ID,
+                            OLD_TITLE,
+                            ERROR_MESSAGE
+                    );
 
-            ChatRoomCacheUpdateDlqEvent event = mock(ChatRoomCacheUpdateDlqEvent.class);
-            when(event.getId()).thenReturn(ROOM_ID);
-            when(event.getOldTitle()).thenReturn(oldTitle);
-            when(persistence.findByIdWithLatestMessage(ROOM_ID)).thenReturn(Optional.of(chatRoom));
+            given(persistence.findByIdWithLatestMessage(ROOM_ID))
+                    .willReturn(Optional.empty());
 
             // when
-            service.handle(event);
+            sut.handle(event);
 
             // then
-            verify(persistence).findByIdWithLatestMessage(ROOM_ID);
-            verify(cache).recoverRoomUpdate(chatRoom, oldTitle);
+            then(persistence)
+                    .should()
+                    .findByIdWithLatestMessage(ROOM_ID);
+
+            then(cache)
+                    .shouldHaveNoInteractions();
         }
+    }
+
+    @Nested
+    @DisplayName("handle ChatRoomCacheDeleteDlqEvent")
+    class HandleCacheDeleteDlqEventTest {
 
         @Test
-        @DisplayName("캐시 수정 DLQ 이벤트 처리 시 채팅방이 없으면 cache.recoverUpdate를 호출하지 않는다")
-        void handleCacheUpdateDlqEvent_roomNotFound() {
+        @DisplayName("캐시에서 채팅방을 삭제한다")
+        void handle_shouldDeleteRoomFromCache_whenCacheDeleteDlqEvent() {
             // given
-            ChatRoomCacheUpdateDlqEvent event = mock(ChatRoomCacheUpdateDlqEvent.class);
+            Set<String> memberIds = Set.of(HOST_ID, MEMBER_ID);
 
-            when(event.getId()).thenReturn(ROOM_ID);
-            when(event.getOldTitle()).thenReturn("이전 제목");
-            when(persistence.findByIdWithLatestMessage(ROOM_ID)).thenReturn(Optional.empty());
+            ChatRoomCacheDeleteDlqEvent event =
+                    new ChatRoomCacheDeleteDlqEvent(
+                            ROOM_ID,
+                            category,
+                            TITLE,
+                            memberIds,
+                            ERROR_MESSAGE
+                    );
 
             // when
-            service.handle(event);
+            sut.handle(event);
 
             // then
-            verify(persistence).findByIdWithLatestMessage(ROOM_ID);
-            verify(cache, never()).recoverRoomUpdate(any(), anyString());
+            then(cache)
+                    .should()
+                    .deleteRoom(
+                            ROOM_ID,
+                            category,
+                            TITLE,
+                            memberIds
+                    );
+
+            then(persistence)
+                    .shouldHaveNoInteractions();
         }
+    }
+
+    @Nested
+    @DisplayName("handle ChatRoomCacheActivityInvalidateDlqEvent")
+    class HandleCacheActivityInvalidateDlqEventTest {
 
         @Test
-        @DisplayName("캐시 삭제 DLQ 이벤트를 처리하면 cache.delete를 호출한다")
-        void handleCacheDeleteDlqEvent() {
+        @DisplayName("멤버 활동 캐시를 무효화한다")
+        void handle_shouldInvalidateMembershipActivity_whenCacheActivityInvalidateDlqEvent() {
             // given
-            ChatRoomCategory category = ChatRoomCategory.FREE;
-            String title = "테스트 채팅방";
-            Set<String> memberIds = Set.of("member-1", "member-2");
-
-            ChatRoomCacheDeleteDlqEvent event = mock(ChatRoomCacheDeleteDlqEvent.class);
-            when(event.getId()).thenReturn(ROOM_ID);
-            when(event.getCategory()).thenReturn(category);
-            when(event.getTitle()).thenReturn(title);
-            when(event.getMemberIds()).thenReturn(memberIds);
+            ChatRoomCacheActivityInvalidateDlqEvent event =
+                    new ChatRoomCacheActivityInvalidateDlqEvent(
+                            ROOM_ID,
+                            MEMBER_ID,
+                            ERROR_MESSAGE
+                    );
 
             // when
-            service.handle(event);
+            sut.handle(event);
 
             // then
-            verify(cache).deleteRoom(ROOM_ID, category, title, memberIds);
-            verifyNoInteractions(persistence);
+            then(cache)
+                    .should()
+                    .invalidateMembershipActivity(ROOM_ID, MEMBER_ID);
+
+            then(persistence)
+                    .shouldHaveNoInteractions();
         }
+    }
+
+    @Nested
+    @DisplayName("handle ChatRoomCacheInfoInvalidateDlqEvent")
+    class HandleCacheInfoInvalidateDlqEventTest {
 
         @Test
-        @DisplayName("활동 캐시 무효화 DLQ 이벤트를 처리하면 cache.invalidateActivity를 호출한다")
-        void handleCacheActivityInvalidateDlqEvent() {
+        @DisplayName("채팅방 정보 캐시를 무효화한다")
+        void handle_shouldInvalidateRoomInfo_whenCacheInfoInvalidateDlqEvent() {
             // given
-            ChatRoomCacheActivityInvalidateDlqEvent event = mock(ChatRoomCacheActivityInvalidateDlqEvent.class);
-
-            when(event.getId()).thenReturn(ROOM_ID);
-            when(event.getMemberId()).thenReturn(MEMBER_ID);
+            ChatRoomCacheInfoInvalidateDlqEvent event =
+                    new ChatRoomCacheInfoInvalidateDlqEvent(
+                            ROOM_ID,
+                            ERROR_MESSAGE
+                    );
 
             // when
-            service.handle(event);
+            sut.handle(event);
 
             // then
-            verify(cache).invalidateMembershipActivity(ROOM_ID, MEMBER_ID);
-            verifyNoInteractions(persistence);
+            then(cache)
+                    .should()
+                    .invalidateRoomInfo(ROOM_ID);
+
+            then(persistence)
+                    .shouldHaveNoInteractions();
         }
+    }
 
-        @Test
-        @DisplayName("정보 캐시 무효화 DLQ 이벤트를 처리하면 cache.invalidateInfo를 호출한다")
-        void handleCacheInfoInvalidateDlqEvent() {
-            // given
-            ChatRoomCacheInfoInvalidateDlqEvent event = mock(ChatRoomCacheInfoInvalidateDlqEvent.class);
-
-            when(event.getId()).thenReturn(ROOM_ID);
-
-            // when
-            service.handle(event);
-
-            // then
-            verify(cache).invalidateRoomInfo(ROOM_ID);
-            verifyNoInteractions(persistence);
-        }
+    private ChatRoom chatRoomWithLatest() {
+        return ChatRoom.rehydrateWithLatest(
+                ROOM_ID,
+                HOST_ID,
+                TITLE,
+                "description",
+                category,
+                Set.of(HOST_ID, MEMBER_ID),
+                10L,
+                "message-1",
+                "hello",
+                Instant.parse("2026-07-07T03:00:00Z"),
+                LocalDateTime.of(2026, 7, 7, 12, 0)
+        );
     }
 }

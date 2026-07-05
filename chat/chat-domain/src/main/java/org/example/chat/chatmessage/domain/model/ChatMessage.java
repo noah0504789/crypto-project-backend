@@ -4,19 +4,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
-import org.example.chat.chatmessage.domain.event.payload.ChatMessagePayload;
-import org.example.chat.chatmessage.domain.event.ChatMessageBroadcastEvent;
-import org.example.chat.chatmessage.domain.event.ChatMessageEventList;
-import org.example.chat.chatmessage.domain.event.dlq.ChatMessagePersistDlqEvent;
-import org.example.chat.chatmessage.domain.event.ChatMessagePersistEvent;
-import org.example.chat.chatroom.domain.event.payload.MyChatRoomPayload;
-import org.example.chat.chatroom.domain.event.MyChatRoomBadgeEvent;
 import org.example.common.time.ServiceZoneUtils;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.Set;
 
 @Getter
 @Builder
@@ -29,18 +20,14 @@ public class ChatMessage {
     private String writerId;
     private String content;
     private LocalDateTime createdAt;
-    private ChatMessageEventList eventList;
-    private ChatMessageDlqEventList dlqEventList;
 
-    public static ChatMessage ofNewMessage(String id, String roomId, String writerId, String content) {
+    public static ChatMessage create(String id, String roomId, String writerId, String content) {
         return ChatMessage.builder()
                 .id(id)
                 .roomId(roomId)
                 .writerId(writerId)
                 .content(content)
                 .createdAt(LocalDateTime.now())
-                .eventList(new ChatMessageEventList())
-                .dlqEventList(new ChatMessageDlqEventList())
                 .build();
     }
 
@@ -51,60 +38,15 @@ public class ChatMessage {
                 .writerId(writerId)
                 .content(content)
                 .createdAt(LocalDateTime.ofInstant(createdAt, ServiceZoneUtils.ZONE_ID))
-                .eventList(new ChatMessageEventList())
-                .dlqEventList(new ChatMessageDlqEventList())
                 .build();
     }
 
-    public static ChatMessage fromPayload(ChatMessagePayload payload) {
-        return ChatMessage.builder()
-                .id(payload.id())
-                .roomId(payload.roomId())
-                .writerId(payload.writerId())
-                .content(payload.content())
-                .createdAt(LocalDateTime.ofInstant(payload.createdAt(), ServiceZoneUtils.ZONE_ID))
-                .eventList(new ChatMessageEventList())
-                .dlqEventList(new ChatMessageDlqEventList())
-                .build();
-    }
-
-    public void registerPersistEvents(Set<String> memberIds, String clientMessageId) {
-        ChatMessagePayload payload = ChatMessagePayload.fromDomain(this);
-
-        this.eventList
-                .addEvent(new ChatMessagePersistEvent(payload, memberIds))
-                .addEvent(new ChatMessageBroadcastEvent(payload, memberIds, clientMessageId))
-                .addEvent(new MyChatRoomBadgeEvent(
-                        MyChatRoomPayload.ofLastMessage(roomId, memberIds, content, this.toInstant())
-                ));
-    }
-
-    public void registerPersistDlqEvents(String errorMessage) {
-        this.dlqEventList.addEvent(
-                new ChatMessagePersistDlqEvent(ChatMessagePayload.fromDomain(this), errorMessage)
-        );
-    }
-
-    public ChatMessageEventList pullEventList() {
-        ChatMessageEventList pulledEventList = this.eventList;
-        this.eventList = new ChatMessageEventList();
-
-        return pulledEventList;
-    }
-
-    public ChatMessageDlqEventList pullDlqEventList() {
-        ChatMessageDlqEventList pulledEventList = this.dlqEventList;
-        this.dlqEventList = new ChatMessageDlqEventList();
-
-        return pulledEventList;
-    }
-
-    public Instant toInstant() {
+    public Instant getCreatedAtInstant() {
         return createdAt.atZone(ServiceZoneUtils.ZONE_ID).toInstant();
     }
 
     public long toEpochMillis() {
-        return toInstant().toEpochMilli();
+        return getCreatedAtInstant().toEpochMilli();
     }
 
     @Override

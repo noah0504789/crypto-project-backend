@@ -14,7 +14,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
 import java.time.Instant;
-import java.time.ZoneId;
 
 @Document("chat_message")
 @CompoundIndex(name = "idx_room_created_id", def = "{\"room_id\": 1, \"created_at\": -1, \"_id\": -1}", partialFilter = "{'deleted': false}")
@@ -48,7 +47,7 @@ public class MongoChatMessage {
                 .roomId(new ObjectId(domain.getRoomId()))
                 .writerId(domain.getWriterId())
                 .content(domain.getContent())
-                .createdAt(domain.toInstant())
+                .createdAt(domain.getCreatedAtInstant())
                 .build();
     }
 

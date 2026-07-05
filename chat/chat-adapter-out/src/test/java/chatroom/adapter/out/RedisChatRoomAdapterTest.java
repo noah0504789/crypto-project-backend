@@ -655,7 +655,7 @@ class RedisChatRoomAdapterTest {
     }
 
     private ChatRoom newRoom(String id, String hostId, String title) {
-        return ChatRoom.ofNewRoom(
+        return ChatRoom.create(
                 id,
                 hostId,
                 title,

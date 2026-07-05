@@ -1,7 +1,7 @@
 package org.example.chat.chatmessage.adapter.in.stream;
 
-import org.example.chat.chatmessage.domain.event.handler.ChatMessageDlqHandler;
-import org.example.chat.chatmessage.domain.event.handler.ChatMessageEventHandler;
+import org.example.chat.chatmessage.application.port.in.ChatMessageDlqHandler;
+import org.example.chat.chatmessage.application.port.in.ChatMessageEventHandler;
 import org.example.common.enums.KafkaHeaderKey;
 import org.example.common.event.HandleableEvent;
 import org.example.common.event.RecoverableEvent;

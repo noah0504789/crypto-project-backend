@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 public class ChatMessageBroadcastEventMapper {
 
     public ChatMessageBroadcastCommand toCommand(ChatMessageBroadcastEvent event) {
-        ChatMessagePayload payload = event.payload();
+        ChatMessagePayload payload = event.getPayload();
 
         return new ChatMessageBroadcastCommand(
                 payload.id(),
@@ -17,8 +17,8 @@ public class ChatMessageBroadcastEventMapper {
                 payload.writerId(),
                 payload.content(),
                 payload.createdAt() == null ? 0L : payload.createdAt().toEpochMilli(),
-                event.memberIds(),
-                event.clientMessageId()
+                event.getMemberIds(),
+                event.getClientMessageId()
         );
     }
 }

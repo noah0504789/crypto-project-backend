@@ -1,6 +1,6 @@
 package org.example.chat.chatroom.application.service.command;
 
-import org.example.chat.chatroom.domain.event.payload.ChatRoomUpdatedPayload;
+import org.example.chat.chatroom.application.event.payload.ChatRoomUpdatedPayload;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 
 public record ChatRoomUpdateCommand(

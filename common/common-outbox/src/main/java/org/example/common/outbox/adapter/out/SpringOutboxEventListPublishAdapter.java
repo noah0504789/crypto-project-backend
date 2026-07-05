@@ -24,8 +24,6 @@ public class SpringOutboxEventListPublishAdapter implements OutboxEventListPubli
         }
 
         try {
-            eventList.assignTxId();
-
             EventUtils.raise(eventList);
         } catch (OutboxPersistenceException e) {
             throw e;
