@@ -4,7 +4,4 @@ plugins {
 
 dependencies {
     api project(':common:common-core')
-    api project(':common:common-event')
-    api project(':common:common-outbox')
-    api project(':notification:notification-contract')
 }

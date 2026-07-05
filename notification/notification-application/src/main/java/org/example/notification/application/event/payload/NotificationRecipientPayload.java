@@ -1,4 +1,4 @@
-package org.example.notification.domain.event.payload;
+package org.example.notification.application.event.payload;
 
 import org.example.notification.domain.model.NotificationRecipient;
 
@@ -14,14 +14,18 @@ public record NotificationRecipientPayload(
         LocalDateTime deliveredAt
 ) {
 
-    public static NotificationRecipientPayload from(NotificationRecipient recipient) {
+    public static NotificationRecipientPayload of(
+            String notificationId,
+            UUID receiverId,
+            LocalDateTime deliveredAt
+    ) {
         return new NotificationRecipientPayload(
-                recipient.getId(),
-                recipient.getNotificationId(),
-                recipient.getReceiverId(),
-                recipient.isRead(),
-                recipient.getReadAt(),
-                recipient.getDeliveredAt()
+                null,
+                notificationId,
+                receiverId,
+                false,
+                null,
+                deliveredAt
         );
     }
 

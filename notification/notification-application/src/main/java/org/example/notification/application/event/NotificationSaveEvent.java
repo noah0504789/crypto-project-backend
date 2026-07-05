@@ -1,4 +1,4 @@
-package org.example.notification.domain.event;
+package org.example.notification.application.event;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -7,10 +7,10 @@ import lombok.ToString;
 import org.example.common.enums.KafkaTopic;
 import org.example.common.event.HandleableEvent;
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;
-import org.example.notification.domain.event.payload.NotificationPayload;
-import org.example.notification.domain.event.payload.NotificationRecipientPayload;
+import org.example.notification.application.event.payload.NotificationPayload;
+import org.example.notification.application.event.payload.NotificationRecipientPayload;
+import org.example.notification.application.port.in.NotificationEventHandler;
 import org.example.notification.domain.model.NotificationRecipient;
-import org.example.notification.domain.event.port.in.NotificationEventHandler;
 
 import java.util.List;
 
