@@ -1,4 +1,4 @@
-package org.example.market.domain.event;
+package org.example.market.application.event;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import lombok.Getter;
@@ -7,7 +7,7 @@ import org.example.common.enums.KafkaTopic;
 import org.example.common.event.HandleableEvent;
 import org.example.common.outbox.domain.OutboxDomainType;
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;
-import org.example.market.domain.event.port.in.MarketEventHandler;
+import org.example.market.application.port.in.MarketEventHandler;
 
 @Getter
 @ToString

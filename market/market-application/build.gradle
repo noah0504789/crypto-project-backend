@@ -3,6 +3,8 @@ plugins {
 }
 
 dependencies {
+    api project(':common:common-event')
+    api project(':common:common-outbox')
     api project(':market:market-domain')
 
     implementation project(':common:common-jpa')

@@ -8,7 +8,8 @@ import org.example.market.application.port.in.MarketCommandUseCase;
 import org.example.market.application.port.out.MarketPersistencePort;
 import org.example.market.application.service.command.ChangeMarketsCommand;
 import org.example.market.application.exception.MarketPersistException;
-import org.example.market.domain.model.Market;
+import org.example.market.application.event.MarketCatalogChangedEvent;
+import org.example.market.application.event.MarketEventList;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,16 +40,16 @@ public class MarketCommandService implements MarketCommandUseCase {
             marketPersistencePort.createMarkets(command.creates());
         }
 
-        publishMarketChangedEvent(
-                Market.eventSource()
-        );
+        publishMarketChangedEvent();
     }
 
-    private void publishMarketChangedEvent(Market market) {
-        market.catalogChanged();
-
+    private void publishMarketChangedEvent() {
         try {
-            outboxEventListPublishPort.publish(market.pullEventList());
+            outboxEventListPublishPort.publish(
+                MarketEventList.of(
+                    MarketCatalogChangedEvent.of()
+                )
+            );
         } catch (TemporaryOutboxPersistenceException e) {
             throw e;
         } catch (Exception e) {

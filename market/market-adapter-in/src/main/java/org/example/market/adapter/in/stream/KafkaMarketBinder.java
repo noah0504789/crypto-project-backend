@@ -3,7 +3,7 @@ package org.example.market.adapter.in.stream;
 import lombok.extern.slf4j.Slf4j;
 import org.example.common.enums.KafkaHeaderKey;
 import org.example.common.event.HandleableEvent;
-import org.example.market.domain.event.port.in.MarketEventHandler;
+import org.example.market.application.port.in.MarketEventHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.Message;

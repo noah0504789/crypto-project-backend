@@ -3,8 +3,8 @@ package org.example.market.application.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.market.application.cache.MarketCacheNames;
-import org.example.market.domain.event.MarketCatalogChangedEvent;
-import org.example.market.domain.event.port.in.MarketEventHandler;
+import org.example.market.application.event.MarketCatalogChangedEvent;
+import org.example.market.application.port.in.MarketEventHandler;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Component;
 
