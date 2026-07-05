@@ -1,13 +1,14 @@
 package org.example.websocket.gateway.notification.application.service.command;
 
+import java.util.Map;
+
 public record WebNotificationCommand(
         String receiverId,
-        String eventType,
+        String type,
         String title,
-        String message,
-        long createdAt,
+        String body,
+        long createdAtMs,
         String link,
-        String imageUrl,
-        Object typedPayload
+        Map<String, Object> data
 ) {
 }

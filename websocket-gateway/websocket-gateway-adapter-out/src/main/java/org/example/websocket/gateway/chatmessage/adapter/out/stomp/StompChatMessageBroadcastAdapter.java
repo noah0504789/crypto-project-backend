@@ -55,7 +55,7 @@ public class StompChatMessageBroadcastAdapter implements ChatMessageBroadcastPor
             stompTemplate.convertAndSend(destination, payload);
 
             log.debug(
-                    "STOMP chat message sent. txId={}, roomId={}, messageId={}, destination={}, serverId={}",
+                    "STOMP chat body sent. txId={}, roomId={}, messageId={}, destination={}, serverId={}",
                     txId,
                     command.roomId(),
                     command.messageId(),

@@ -3,8 +3,6 @@ plugins {
 }
 
 dependencies {
-    api project(':websocket-gateway:websocket-gateway-domain')
-
     implementation project(':common:common-grpc')
 
     implementation(libs.caffeine)

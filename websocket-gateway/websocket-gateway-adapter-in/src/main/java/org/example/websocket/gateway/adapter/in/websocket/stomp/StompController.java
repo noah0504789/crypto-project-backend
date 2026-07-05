@@ -4,7 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.websocket.gateway.adapter.in.websocket.stomp.mapper.StompChatMessageMapper;
 import org.example.websocket.gateway.chatmessage.application.port.in.ChatMessageSendUseCase;
-import org.example.websocket.gateway.stomp.dto.ChatMessageRequest;
+import org.example.websocket.gateway.adapter.in.websocket.stomp.dto.StompChatMessageSendRequest;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Controller;
@@ -17,7 +17,7 @@ public class StompController {
     private final StompChatMessageMapper stompChatMessageMapper;
 
     @MessageMapping("/chat.send")
-    public void chatMessage(@Payload @Valid ChatMessageRequest request) {
+    public void chatMessage(@Payload @Valid StompChatMessageSendRequest request) {
         chatMessageSendUseCase.send(stompChatMessageMapper.toCommand(request));
     }
 }

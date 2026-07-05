@@ -61,7 +61,6 @@ tasks.register("websocketGatewayCi") {
     description = "Runs build and tests for websocket gateway modules"
 
     dependsOn(
-            ":websocket-gateway:websocket-gateway-domain:build",
             ":websocket-gateway:websocket-gateway-application:build",
             ":websocket-gateway:websocket-gateway-adapter-in:build",
             ":websocket-gateway:websocket-gateway-adapter-out:build",

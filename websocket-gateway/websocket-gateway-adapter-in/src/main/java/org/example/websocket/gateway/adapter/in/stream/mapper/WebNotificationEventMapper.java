@@ -16,10 +16,9 @@ public class WebNotificationEventMapper {
                 payload.type(),
                 payload.title(),
                 payload.body(),
-                payload.createdAt(),
-                payload.targetType(),
-                payload.targetId(),
-                payload.data()
+                payload.createdAtMs(),
+                payload.link(),
+                payload.typedPayload().toMap()
         );
     }
 }

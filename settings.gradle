@@ -34,7 +34,6 @@ include 'chat:chat-adapter-out'
 include 'chat:chat-bootstrap'
 
 include 'websocket-gateway'
-include 'websocket-gateway:websocket-gateway-domain'
 include 'websocket-gateway:websocket-gateway-application'
 include 'websocket-gateway:websocket-gateway-adapter-in'
 include 'websocket-gateway:websocket-gateway-adapter-out'

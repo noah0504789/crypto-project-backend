@@ -49,7 +49,7 @@ class ChatMessageSendServiceTest {
 
         ChatMessageSendResult result = new ChatMessageSendResult(
                 true,
-                "message-id",
+                "body-id",
                 12345L
         );
 
@@ -65,8 +65,8 @@ class ChatMessageSendServiceTest {
 
         ChatMessageAckResult ack = ackCaptor.getValue();
 
-        assertThat(ack.messageId()).isEqualTo("message-id");
-        assertThat(ack.clientMessageId()).isEqualTo("client-message-id");
+        assertThat(ack.messageId()).isEqualTo("body-id");
+        assertThat(ack.clientMessageId()).isEqualTo("client-body-id");
         assertThat(ack.success()).isTrue();
         assertThat(ack.timestamp()).isEqualTo(12345L);
 
@@ -97,12 +97,12 @@ class ChatMessageSendServiceTest {
 
         ChatMessageHardDeleteCommand hardDeleteCommand = hardDeleteCaptor.getValue();
 
-        assertThat(hardDeleteCommand.messageId()).isEqualTo("message-id");
+        assertThat(hardDeleteCommand.messageId()).isEqualTo("body-id");
         assertThat(hardDeleteCommand.roomId()).isEqualTo("room-id");
 
         verify(chatMessageAckPort).failure(
                 "writer-id",
-                "client-message-id",
+                "client-body-id",
                 GrpcFailureCode.DEADLINE_EXCEEDED.name()
         );
 
@@ -125,7 +125,7 @@ class ChatMessageSendServiceTest {
 
         verify(chatMessageAckPort).failure(
                 "writer-id",
-                "client-message-id",
+                "client-body-id",
                 GrpcFailureCode.CANCELLED.name()
         );
 
@@ -147,7 +147,7 @@ class ChatMessageSendServiceTest {
 
         verify(chatMessageAckPort).failure(
                 "writer-id",
-                "client-message-id",
+                "client-body-id",
                 GrpcFailureCode.UNKNOWN.name()
         );
 
@@ -172,15 +172,15 @@ class ChatMessageSendServiceTest {
 
         verify(chatMessageAckPort).failure(
                 "writer-id",
-                "client-message-id",
+                "client-body-id",
                 GrpcFailureCode.DEADLINE_EXCEEDED.name()
         );
     }
 
     private ChatMessageSendCommand command() {
         return new ChatMessageSendCommand(
-                "client-message-id",
-                "message-id",
+                "client-body-id",
+                "body-id",
                 "room-id",
                 "writer-id",
                 "hello"
@@ -190,7 +190,7 @@ class ChatMessageSendServiceTest {
     private ChatMessageHardDeleteResult hardDeleteResult() {
         return new ChatMessageHardDeleteResult(
                 true,
-                "message-id",
+                "body-id",
                 true,
                 false,
                 false

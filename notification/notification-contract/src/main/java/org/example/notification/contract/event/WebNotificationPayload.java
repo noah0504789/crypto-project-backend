@@ -6,33 +6,29 @@ public record WebNotificationPayload(
         String type,
         String title,
         String body,
-        long createdAt,
-        String targetType,
-        String targetId,
-        TypedPayload data
+        long createdAtMs,
+        String link,
+        TypedPayload typedPayload
 ) {
 
     public WebNotificationPayload {
-        data = data == null ? TypedPayload.empty() : data;
+        typedPayload = typedPayload == null ? TypedPayload.empty() : typedPayload;
     }
 
-    public static WebNotificationPayload of(
+    public static WebNotificationPayload withoutLink(
             String type,
             String title,
             String body,
-            long createdAt,
-            String targetType,
-            String targetId,
-            TypedPayload data
+            long createdAtMs,
+            TypedPayload typedPayload
     ) {
         return new WebNotificationPayload(
                 type,
                 title,
                 body,
-                createdAt,
-                targetType,
-                targetId,
-                data
+                createdAtMs,
+                null,
+                typedPayload
         );
     }
 }
