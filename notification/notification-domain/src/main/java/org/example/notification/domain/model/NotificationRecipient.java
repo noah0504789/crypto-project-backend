@@ -24,16 +24,6 @@ public class NotificationRecipient {
 
     private LocalDateTime deliveredAt;
 
-    public static NotificationRecipient create(String notificationId, UUID receiverId, LocalDateTime deliveredAt) {
-        return NotificationRecipient.builder()
-                .notificationId(notificationId)
-                .receiverId(receiverId)
-                .read(false)
-                .readAt(null)
-                .deliveredAt(deliveredAt)
-                .build();
-    }
-
     public static NotificationRecipient rehydrate(
             String id,
             String notificationId,
