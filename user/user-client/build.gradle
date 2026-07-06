@@ -3,10 +3,10 @@ plugins {
 }
 
 dependencies {
-    api project(':user:user-contract')
+    api project(':protobuf')
 
     implementation project(':common:common-core')
-    implementation project(':protobuf')
+    implementation project(':user:user-contract')
 
     implementation(libs.grpc.client.spring.boot.starter)
 }

@@ -3,9 +3,9 @@ plugins {
 }
 
 dependencies {
-    api project(':protobuf')
-    api project(':common:common-grpc')
     api project(':websocket-gateway:websocket-gateway-domain')
+
+    implementation project(':common:common-grpc')
 
     implementation(libs.caffeine)
 }
