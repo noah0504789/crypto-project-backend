@@ -1,4 +1,4 @@
-package org.example.user.account.domain.exception;
+package org.example.user.account.application.exception;
 
 import org.example.common.exception.ResourceNotFoundException;
 

@@ -5,7 +5,7 @@ import org.example.user.account.application.port.in.UserCommandUseCase;
 import org.example.user.account.application.port.in.UserQueryUseCase;
 import org.example.user.account.application.service.command.SignUpLocalCommand;
 import org.example.user.account.application.service.command.UpdateProfileCommand;
-import org.example.user.account.domain.exception.UserNotFoundException;
+import org.example.user.account.application.exception.UserNotFoundException;
 import org.example.user.account.adapter.in.web.dto.UserCreateRequest;
 import org.example.user.account.adapter.in.web.dto.UserResponse;
 import org.example.user.role.domain.model.RoleEnum;
