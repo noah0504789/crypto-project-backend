@@ -266,7 +266,7 @@ class ChatRoomTest {
             );
 
             // when
-            Double popularity = chatRoom.getPopularity();
+            Double popularity = chatRoom.popularity();
 
             // then
             assertThat(popularity).isEqualTo(15.0);
@@ -288,7 +288,7 @@ class ChatRoomTest {
             );
 
             // when
-            Double popularity = chatRoom.getPopularity();
+            Double popularity = chatRoom.popularity();
 
             // then
             assertThat(popularity).isZero();
@@ -296,12 +296,12 @@ class ChatRoomTest {
     }
 
     @Nested
-    @DisplayName("getLastMsgCreatedAtMs")
-    class GetLastMsgCreatedAtMsTest {
+    @DisplayName("lastMsgCreatedAtMs")
+    class lastMsgCreatedAtMsTest {
 
         @Test
         @DisplayName("lastMsgCreatedAt이 있으면 epoch milli를 반환한다")
-        void getLastMsgCreatedAtMs_shouldReturnEpochMilli() {
+        void lastMsgCreatedAtMs_shouldReturnEpochMilli() {
             // given
             Instant lastMsgCreatedAt = Instant.parse("2026-07-07T03:00:00Z");
 
@@ -320,7 +320,7 @@ class ChatRoomTest {
             );
 
             // when
-            long result = chatRoom.getLastMsgCreatedAtMs();
+            long result = chatRoom.lastMsgCreatedAtMs();
 
             // then
             assertThat(result).isEqualTo(lastMsgCreatedAt.toEpochMilli());
@@ -328,7 +328,7 @@ class ChatRoomTest {
 
         @Test
         @DisplayName("lastMsgCreatedAt이 null이면 0을 반환한다")
-        void getLastMsgCreatedAtMs_shouldReturnZero_whenLastMsgCreatedAtIsNull() {
+        void lastMsgCreatedAtMs_shouldReturnZero_whenLastMsgCreatedAtIsNull() {
             // given
             ChatRoom chatRoom = ChatRoom.create(
                     ROOM_ID,
@@ -339,7 +339,7 @@ class ChatRoomTest {
             );
 
             // when
-            long result = chatRoom.getLastMsgCreatedAtMs();
+            long result = chatRoom.lastMsgCreatedAtMs();
 
             // then
             assertThat(result).isZero();
@@ -347,12 +347,12 @@ class ChatRoomTest {
     }
 
     @Nested
-    @DisplayName("getCreatedAtInstant")
-    class GetCreatedAtInstantTest {
+    @DisplayName("createdAtInstant")
+    class createdAtInstantTest {
 
         @Test
         @DisplayName("createdAt을 서비스 Zone 기준 Instant로 변환한다")
-        void getCreatedAtInstant_shouldConvertCreatedAtToInstant() {
+        void createdAtInstant_shouldConvertCreatedAtToInstant() {
             // given
             LocalDateTime createdAt = LocalDateTime.of(2026, 7, 7, 12, 0);
 
@@ -368,7 +368,7 @@ class ChatRoomTest {
             );
 
             // when
-            Instant result = chatRoom.getCreatedAtInstant();
+            Instant result = chatRoom.createdAtInstant();
 
             // then
             assertThat(result).isEqualTo(

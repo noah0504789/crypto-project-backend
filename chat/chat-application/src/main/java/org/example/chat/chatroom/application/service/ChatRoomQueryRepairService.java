@@ -204,7 +204,7 @@ public class ChatRoomQueryRepairService {
 
     private Map<String, Double> toPopularityScores(List<ChatRoom> rooms) {
         Map<String, Double> popularities = new HashMap<>();
-        rooms.forEach(room -> popularities.put(room.getId(), room.getPopularity()));
+        rooms.forEach(room -> popularities.put(room.getId(), room.popularity()));
 
         return popularities;
     }

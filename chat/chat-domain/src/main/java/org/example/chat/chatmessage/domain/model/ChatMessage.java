@@ -41,12 +41,12 @@ public class ChatMessage {
                 .build();
     }
 
-    public Instant getCreatedAtInstant() {
+    public Instant createdAtInstant() {
         return createdAt.atZone(ServiceZoneUtils.ZONE_ID).toInstant();
     }
 
     public long toEpochMillis() {
-        return getCreatedAtInstant().toEpochMilli();
+        return createdAtInstant().toEpochMilli();
     }
 
     @Override

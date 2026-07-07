@@ -123,7 +123,7 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
     ) {
         try {
             ChatMessagePayload chatMessagePayload = ChatMessagePayloadMapper.fromDomain(message);
-            MyChatRoomBadgePayload myChatRoomBadgePayload = MyChatRoomBadgePayload.ofLastMessage(message.getRoomId(), memberIds, message.getContent(), message.getCreatedAtInstant());
+            MyChatRoomBadgePayload myChatRoomBadgePayload = MyChatRoomBadgePayload.ofLastMessage(message.getRoomId(), memberIds, message.getContent(), message.createdAtInstant());
 
             ChatMessageEventList chatMessageEventList =
                     ChatMessageEventList.of(

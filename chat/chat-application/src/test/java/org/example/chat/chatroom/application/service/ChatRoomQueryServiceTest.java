@@ -125,7 +125,7 @@ class ChatRoomQueryServiceTest {
             GetMyChatRoomQuery query = getMyChatRoomQuery();
 
             when(room.getId()).thenReturn(ROOM_ID);
-            when(room.getLastMsgCreatedAtMs()).thenReturn(1_000L);
+            when(room.lastMsgCreatedAtMs()).thenReturn(1_000L);
             when(room.hasUnread(10L)).thenReturn(true);
 
             when(cache.findById(ROOM_ID))
@@ -157,7 +157,7 @@ class ChatRoomQueryServiceTest {
             GetMyChatRoomQuery query = getMyChatRoomQuery();
 
             when(room.getId()).thenReturn(ROOM_ID);
-            when(room.getLastMsgCreatedAtMs()).thenReturn(1_000L);
+            when(room.lastMsgCreatedAtMs()).thenReturn(1_000L);
             when(room.hasUnread(20L)).thenReturn(false);
 
             when(cache.findById(ROOM_ID))
@@ -417,7 +417,7 @@ class ChatRoomQueryServiceTest {
 
             when(room.getId()).thenReturn("room-1");
             when(room2.getId()).thenReturn("room-2");
-            when(room2.getLastMsgCreatedAtMs()).thenReturn(2_000L);
+            when(room2.lastMsgCreatedAtMs()).thenReturn(2_000L);
             when(room2.hasUnread(2L)).thenReturn(false);
 
             ChatRoomCacheLookupResult cached = new ChatRoomCacheLookupResult(
@@ -460,11 +460,11 @@ class ChatRoomQueryServiceTest {
             ListMyChatRoomsQuery query = firstMyRoomsQuery();
 
             when(room.getId()).thenReturn("room-1");
-            when(room.getLastMsgCreatedAtMs()).thenReturn(1_000L);
+            when(room.lastMsgCreatedAtMs()).thenReturn(1_000L);
             when(room.hasUnread(1L)).thenReturn(true);
 
             when(room2.getId()).thenReturn("room-2");
-            when(room2.getLastMsgCreatedAtMs()).thenReturn(2_000L);
+            when(room2.lastMsgCreatedAtMs()).thenReturn(2_000L);
             when(room2.hasUnread(2L)).thenReturn(false);
 
             List<ChatRoom> repaired = List.of(room, room2);
@@ -625,7 +625,7 @@ class ChatRoomQueryServiceTest {
             Long score = MyChatRoomScoreCalculator.unread(1_000L);
 
             when(room.getId()).thenReturn("room-1");
-            when(room.getLastMsgCreatedAtMs()).thenReturn(1_000L);
+            when(room.lastMsgCreatedAtMs()).thenReturn(1_000L);
             when(room.hasUnread(10L)).thenReturn(false);
 
             when(cache.listActiveRoomsBefore(MEMBER_ID, "last-room", score, 10))
@@ -661,7 +661,7 @@ class ChatRoomQueryServiceTest {
 
             when(room.getId()).thenReturn("room-1");
             when(room2.getId()).thenReturn("room-2");
-            when(room2.getLastMsgCreatedAtMs()).thenReturn(2_000L);
+            when(room2.lastMsgCreatedAtMs()).thenReturn(2_000L);
             when(room2.hasUnread(2L)).thenReturn(false);
 
             ChatRoomCacheLookupResult cached = new ChatRoomCacheLookupResult(
