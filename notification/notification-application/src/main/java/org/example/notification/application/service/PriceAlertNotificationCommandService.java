@@ -3,14 +3,22 @@ package org.example.notification.application.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.common.clock.Clock;
+import org.example.common.enums.PriceAlertChangeRateThreshold;
+import org.example.common.event.TypedPayload;
 import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
 import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
+import org.example.notification.application.event.NotificationEventList;
+import org.example.notification.application.event.NotificationSaveEvent;
+import org.example.notification.application.event.payload.NotificationPayload;
+import org.example.notification.application.event.payload.NotificationRecipientPayload;
 import org.example.notification.application.port.in.PriceAlertNotificationCommandUseCase;
+import org.example.notification.application.port.out.PriceAlertNotificationIdGeneratorPort;
 import org.example.notification.application.port.out.PriceAlertRecipientQueryPort;
 import org.example.notification.application.service.command.PriceAlertNotificationCreateCommand;
 import org.example.notification.application.exception.NotificationPersistException;
+import org.example.notification.contract.event.WebNotificationEvent;
+import org.example.notification.contract.event.WebNotificationPayload;
 import org.example.notification.domain.model.Notification;
-import org.example.notification.domain.model.NotificationRecipient;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -23,33 +31,93 @@ import java.util.UUID;
 public class PriceAlertNotificationCommandService implements PriceAlertNotificationCommandUseCase {
 
     private final Clock clock;
+    private final PriceAlertNotificationIdGeneratorPort idGeneratorPort;
     private final PriceAlertRecipientQueryPort priceAlertRecipientQueryPort;
     private final OutboxEventListPublishPort outboxEventListPublishPort;
 
     @Override
     public void create(PriceAlertNotificationCreateCommand command) {
-        LocalDateTime deliveredAt = clock.nowLocalDateTime();
+        String id = idGeneratorPort.generate();
+        LocalDateTime createdAt = clock.nowLocalDateTime();
 
-        Notification newNotification = Notification.createPriceAlert(command.code(), command.changeRate(), command.toPayload(), deliveredAt);
+        Notification notification = Notification.createPriceAlert(
+                id,
+                command.code(),
+                command.changeRate(),
+                command.toPayload(),
+                createdAt
+        );
 
-        List<UUID> receiverIds = priceAlertRecipientQueryPort.findReceiverIds(command.code(), command.threshold());
+        List<NotificationRecipientPayload> recipientPayloads = createRecipientPayloads(
+                notification.getId(),
+                command.code(),
+                command.threshold(),
+                createdAt
+        );
 
-        List<NotificationRecipient> recipients = receiverIds.stream()
-                .map(receiverId -> NotificationRecipient.create(newNotification.getId(), receiverId, deliveredAt))
-                .toList();
+        NotificationEventList eventList = createPriceAlertNotificationEvents(
+                notification,
+                recipientPayloads,
+                command.typedPayload(),
+                command.partitionKey()
+        );
 
-        newNotification.save(command.typedPayload(), command.routingKey(), recipients);
-
-        publishNotificationEvent(newNotification);
+        publishNotificationEvents(eventList);
     }
 
-    private void publishNotificationEvent(Notification notification) {
+    private List<NotificationRecipientPayload> createRecipientPayloads(
+            String notificationId,
+            String code,
+            String threshold,
+            LocalDateTime deliveredAt
+    ) {
+        List<UUID> receiverIds = priceAlertRecipientQueryPort.findReceiverIds(code, threshold);
+
+        return receiverIds.stream()
+                .map(receiverId -> NotificationRecipientPayload.of(notificationId, receiverId, deliveredAt))
+                .toList();
+    }
+
+    private NotificationEventList createPriceAlertNotificationEvents(
+            Notification notification,
+            List<NotificationRecipientPayload> recipientPayloads,
+            TypedPayload typedPayload,
+            String partitionKey
+    ) {
+        NotificationSaveEvent saveEvent = NotificationSaveEvent.from(
+                NotificationPayload.from(notification),
+                recipientPayloads
+        );
+
+        WebNotificationEvent webEvent = WebNotificationEvent.of(
+                createWebNotificationPayload(notification, typedPayload),
+                notification.getId(),
+                partitionKey
+        );
+
+        return NotificationEventList.of(saveEvent, webEvent);
+    }
+
+    private WebNotificationPayload createWebNotificationPayload(Notification notification, TypedPayload typedPayload) {
+        return WebNotificationPayload.withoutLink(
+                notification.getType().name(),
+                notification.getTitle(),
+                notification.getMessage(),
+                notification.getCreatedAtMs(),
+                typedPayload
+        );
+    }
+
+    private void publishNotificationEvents(NotificationEventList eventList) {
         try {
-            outboxEventListPublishPort.publish(notification.pullEventList());
+            outboxEventListPublishPort.publish(eventList);
         } catch (TemporaryOutboxPersistenceException e) {
             throw e;
         } catch (Exception e) {
-            throw new NotificationPersistException("failed to publish notification event", e);
+            throw new NotificationPersistException(
+                    "failed to publish notification events",
+                    e
+            );
         }
     }
 }

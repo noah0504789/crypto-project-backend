@@ -31,6 +31,7 @@ public class Notification {
     private LocalDateTime createdAt;
 
     public static Notification createPriceAlert(
+            String id,
             String marketCode,
             Double changeRate,
             Map<String, Object> payload,
@@ -55,12 +56,13 @@ public class Notification {
         );
 
         return Notification.builder()
+                .id(id)
                 .type(NotificationType.PRICE_ALERT)
                 .title(title)
                 .message(message)
                 .messageParts(messageParts)
                 .link(null)
-                .payload(payload)
+                .payload(payload == null ? Map.of() : Map.copyOf(payload))
                 .deleted(false)
                 .deletedAt(null)
                 .createdAt(createdAt)

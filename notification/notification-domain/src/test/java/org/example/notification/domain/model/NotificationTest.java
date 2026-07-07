@@ -15,6 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ExtendWith(MockitoExtension.class)
 class NotificationTest {
 
+    private static final String ID = "notification-id-1";
     private static final String MARKET_CODE = "KRW-BTC";
     private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, 1, 1, 10, 0);
 
@@ -33,6 +34,7 @@ class NotificationTest {
 
             // when
             Notification notification = Notification.createPriceAlert(
+                    ID,
                     MARKET_CODE,
                     0.05,
                     payload,
@@ -40,6 +42,7 @@ class NotificationTest {
             );
 
             // then
+            assertThat(notification.getId()).isEqualTo(ID);
             assertThat(notification.getType()).isEqualTo(NotificationType.PRICE_ALERT);
             assertThat(notification.getTitle()).isEqualTo("가격 알림");
             assertThat(notification.getMessage()).isEqualTo("KRW-BTC이 5.0% 이상 상승했습니다.");
@@ -72,6 +75,7 @@ class NotificationTest {
 
             // when
             Notification notification = Notification.createPriceAlert(
+                    ID,
                     MARKET_CODE,
                     -0.037,
                     payload,
@@ -79,6 +83,7 @@ class NotificationTest {
             );
 
             // then
+            assertThat(notification.getId()).isEqualTo(ID);
             assertThat(notification.getType()).isEqualTo(NotificationType.PRICE_ALERT);
             assertThat(notification.getTitle()).isEqualTo("가격 알림");
             assertThat(notification.getMessage()).isEqualTo("KRW-BTC이 3.7% 이상 하락했습니다.");
@@ -100,6 +105,7 @@ class NotificationTest {
         void createPriceAlert_should_treat_null_change_rate_as_zero() {
             // when
             Notification notification = Notification.createPriceAlert(
+                    ID,
                     MARKET_CODE,
                     null,
                     null,
@@ -107,6 +113,7 @@ class NotificationTest {
             );
 
             // then
+            assertThat(notification.getId()).isEqualTo(ID);
             assertThat(notification.getType()).isEqualTo(NotificationType.PRICE_ALERT);
             assertThat(notification.getTitle()).isEqualTo("가격 알림");
             assertThat(notification.getMessage()).isEqualTo("KRW-BTC이 0.0% 이상 상승했습니다.");
@@ -133,6 +140,7 @@ class NotificationTest {
 
             // when
             Notification notification = Notification.createPriceAlert(
+                    ID,
                     MARKET_CODE,
                     0.05,
                     payload,

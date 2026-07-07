@@ -26,7 +26,7 @@ public record PriceAlertNotificationCreateCommand(
         return typedPayload.toMap();
     }
 
-    public String routingKey() {
+    public String partitionKey() {
         return "price-alert/%s/%s".formatted(code, threshold);
     }
 }
