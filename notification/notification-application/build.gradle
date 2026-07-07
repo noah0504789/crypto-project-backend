@@ -3,12 +3,11 @@ plugins {
 }
 
 dependencies {
-    api project(':common:common-event')
-    api project(':common:common-outbox')
-    api project(':notification:notification-contract')
     api project(':notification:notification-domain')
 
+    implementation project(':common:common-outbox')
     implementation project(':common:common-mongo')
+    implementation project(':notification:notification-contract')
 
     implementation(libs.caffeine)
     implementation(libs.spring.boot.starter.cache)

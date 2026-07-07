@@ -4,15 +4,12 @@ plugins {
 
 dependencies {
     implementation project(':common:common-web')
+    implementation project(':common:common-outbox')
     implementation project(':common:common-grpc')
-    implementation project(':chat:chat-application')
     implementation project(':protobuf')
+    implementation project(':chat:chat-application')
 
-    implementation platform(libs.grpc.bom)
-    implementation(libs.grpc.stub)
     implementation(libs.grpc.server.spring.boot.starter)
-    implementation(libs.spring.boot.starter.web)
-    implementation(libs.spring.boot.starter.validation)
     implementation(libs.spring.cloud.starter.stream.kafka)
     implementation(libs.spring.integration.core)
 

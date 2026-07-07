@@ -3,6 +3,10 @@ plugins {
 }
 
 dependencies {
+    runtimeOnly(libs.mysql.connector.j) {
+        exclude group: 'com.google.protobuf', module: 'protobuf-java'
+    }
+
     api(libs.spring.boot.starter.data.jpa)
     api(libs.spring.boot.starter.aop)
 

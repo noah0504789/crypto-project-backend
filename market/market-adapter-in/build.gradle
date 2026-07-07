@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     implementation project(':common:common-web')
+    implementation project(':common:common-event')
     implementation project(':common:common-grpc')
     implementation project(':protobuf')
     implementation project(':market:market-application')

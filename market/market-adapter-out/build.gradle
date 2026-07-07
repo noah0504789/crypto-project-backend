@@ -3,12 +3,8 @@ plugins {
 }
 
 dependencies {
-    runtimeOnly(libs.mysql.connector.j) {
-        exclude group: 'com.google.protobuf', module: 'protobuf-java'
-    }
-
-    implementation project(':common:common-jpa')
     implementation project(':common:common-id')
+    implementation project(':common:common-jpa')
     implementation project(':market:market-application')
     implementation project(':market:market-client')
 }
