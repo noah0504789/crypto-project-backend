@@ -51,7 +51,6 @@ class SpringOutboxEventListPublishAdapterTest {
 
                 // then
                 verify(eventList).getEventList();
-                verify(eventList, never()).assignTxId();
 
                 eventUtils.verifyNoInteractions();
             }
@@ -73,7 +72,6 @@ class SpringOutboxEventListPublishAdapterTest {
 
                 // then
                 verify(eventList).getEventList();
-                verify(eventList).assignTxId();
 
                 eventUtils.verify(() -> EventUtils.raise(eventList));
             }
@@ -101,7 +99,6 @@ class SpringOutboxEventListPublishAdapterTest {
                 assertThatThrownBy(() -> sut.publish(eventList))
                         .isSameAs(exception);
 
-                verify(eventList).assignTxId();
                 eventUtils.verify(() -> EventUtils.raise(eventList));
             }
         }
@@ -133,7 +130,6 @@ class SpringOutboxEventListPublishAdapterTest {
                         .hasMessageContaining("txId=tx-1")
                         .hasCause(exception);
 
-                verify(eventList).assignTxId();
                 verify(eventList).getTxId();
 
                 eventUtils.verify(() -> EventUtils.raise(eventList));
@@ -167,7 +163,6 @@ class SpringOutboxEventListPublishAdapterTest {
                         .hasMessageContaining("txId=tx-1")
                         .hasCause(exception);
 
-                verify(eventList).assignTxId();
                 verify(eventList).getTxId();
 
                 eventUtils.verify(() -> EventUtils.raise(eventList));

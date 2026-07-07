@@ -5,14 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.example.common.event.TypedPayload;
 import org.example.common.time.ServiceZoneUtils;
-import org.example.notification.contract.event.WebNotificationEvent;
-import org.example.notification.contract.event.WebNotificationPayload;
-import org.example.notification.domain.event.NotificationEventList;
-import org.example.notification.domain.event.payload.NotificationRecipientPayload;
-import org.example.notification.domain.event.NotificationSaveEvent;
-import org.example.notification.domain.event.payload.NotificationPayload;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,7 +18,6 @@ import java.util.Map;
 public class Notification {
 
     private String id;
-
     private NotificationType type;
     private String title;
     private String message;
@@ -37,31 +29,6 @@ public class Notification {
     private LocalDateTime deletedAt;
 
     private LocalDateTime createdAt;
-
-    private NotificationEventList eventList;
-
-    public static Notification create(
-            NotificationType type,
-            String title,
-            String message,
-            List<NotificationMessagePart> messageParts,
-            String link,
-            Map<String, Object> payload,
-            LocalDateTime createdAt
-    ) {
-        return Notification.builder()
-                .type(type)
-                .title(title)
-                .message(message)
-                .messageParts(messageParts == null ? List.of() : List.copyOf(messageParts))
-                .link(link)
-                .payload(payload == null ? Map.of() : Map.copyOf(payload))
-                .deleted(false)
-                .deletedAt(null)
-                .createdAt(createdAt)
-                .eventList(new NotificationEventList())
-                .build();
-    }
 
     public static Notification createPriceAlert(
             String marketCode,
@@ -87,15 +54,17 @@ public class Notification {
                 NotificationMessagePart.plain("했습니다.")
         );
 
-        return Notification.create(
-                NotificationType.PRICE_ALERT,
-                title,
-                message,
-                messageParts,
-                null,
-                payload,
-                createdAt
-        );
+        return Notification.builder()
+                .type(NotificationType.PRICE_ALERT)
+                .title(title)
+                .message(message)
+                .messageParts(messageParts)
+                .link(null)
+                .payload(payload)
+                .deleted(false)
+                .deletedAt(null)
+                .createdAt(createdAt)
+                .build();
     }
 
     public static Notification rehydrate(
@@ -121,34 +90,10 @@ public class Notification {
                 .deleted(deleted)
                 .deletedAt(deletedAt)
                 .createdAt(createdAt)
-                .eventList(new NotificationEventList())
                 .build();
     }
 
-    public void save(TypedPayload typedPayload, String routingKey, List<NotificationRecipient> recipients) {
-        List<NotificationRecipientPayload> recipientPayloads = recipients == null ?
-                List.of() : recipients.stream().map(NotificationRecipientPayload::from).toList();
-
-        eventList()
-                .addEvent(NotificationSaveEvent.from(
-                        NotificationPayload.from(this),
-                        recipientPayloads
-                ))
-                .addEvent(WebNotificationEvent.of(
-                        createWebNotificationPayload(typedPayload),
-                        this.id,
-                        routingKey
-                ));
-    }
-
-    public NotificationEventList pullEventList() {
-        NotificationEventList pulledEventList = eventList();
-        this.eventList = new NotificationEventList();
-
-        return pulledEventList;
-    }
-
-    public long toMillis() {
+    public long getCreatedAtMs() {
         if (createdAt == null) {
             return 0L;
         }
@@ -157,25 +102,5 @@ public class Notification {
                 .atZone(ServiceZoneUtils.ZONE_ID)
                 .toInstant()
                 .toEpochMilli();
-    }
-
-    private WebNotificationPayload createWebNotificationPayload(TypedPayload typedPayload) {
-        return WebNotificationPayload.of(
-                this.type.name(),
-                this.title,
-                this.message,
-                this.toMillis(),
-                null,
-                null,
-                typedPayload
-        );
-    }
-
-    private NotificationEventList eventList() {
-        if (this.eventList == null) {
-            this.eventList = new NotificationEventList();
-        }
-
-        return this.eventList;
     }
 }

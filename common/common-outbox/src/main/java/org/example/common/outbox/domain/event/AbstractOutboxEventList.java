@@ -5,25 +5,34 @@ import org.example.common.event.EventUtils;
 import org.example.common.util.EventIdUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.function.Supplier;
 
 @Getter
 public abstract class AbstractOutboxEventList {
 
     private final List<AbstractOutboxEvent> eventList;
-    private String txId;
+    private final String txId;
 
-    public AbstractOutboxEventList() {
+    protected AbstractOutboxEventList() {
         this.eventList = new ArrayList<>();
-    }
-
-    public AbstractOutboxEventList addEvent(AbstractOutboxEvent event) {
-        this.eventList.add(event);
-        return this;
-    }
-
-    public void assignTxId() {
         this.txId = generateTxId();
+    }
+
+    public static <T extends AbstractOutboxEventList> T of(
+            Supplier<T> supplier,
+            AbstractOutboxEvent... events
+    ) {
+        T eventList = supplier.get();
+
+        Arrays.stream(events).forEach(eventList::addEvent);
+
+        return eventList;
+    }
+
+    public void addEvent(AbstractOutboxEvent event) {
+        this.eventList.add(event);
     }
 
     /**
@@ -32,8 +41,6 @@ public abstract class AbstractOutboxEventList {
      */
     @Deprecated
     public void publish() {
-        assignTxId();
-
         EventUtils.raise(this);
 
         eventList.clear();

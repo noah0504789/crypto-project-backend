@@ -2,6 +2,9 @@ package org.example.chat.chatmessage.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.chat.chatmessage.application.event.ChatMessageEventList;
+import org.example.chat.chatmessage.application.event.ChatMessagePersistEvent;
+import org.example.chat.chatmessage.application.mapper.ChatMessagePayloadMapper;
 import org.example.chat.chatmessage.application.port.in.ChatMessageCommandUseCase;
 import org.example.chat.chatmessage.application.exception.ChatMessageCacheException;
 import org.example.chat.chatmessage.application.service.command.ChatMessageSaveCommand;
@@ -11,13 +14,17 @@ import org.example.chat.chatmessage.application.port.out.ChatMessagePersistenceP
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.chatroom.application.service.result.ChatRoomMembershipScore;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
-import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
+import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.chat.chatmessage.application.exception.ChatMessagePersistException;
 import org.example.chat.exception.TemporaryChatPersistenceException;
 import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
 import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
+import org.example.contract.chatmessage.ChatMessageBroadcastEvent;
+import org.example.contract.chatmessage.ChatMessagePayload;
+import org.example.contract.chatroom.MyChatRoomBadgeEvent;
+import org.example.contract.chatroom.MyChatRoomBadgePayload;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
@@ -49,7 +56,7 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
 
         chatRoom.validateWritable(command.writerId());
 
-        ChatMessage message = ChatMessage.ofNewMessage(
+        ChatMessage message = ChatMessage.create(
                 command.messageId(),
                 command.roomId(),
                 command.writerId(),
@@ -115,9 +122,17 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
             String clientMessageId
     ) {
         try {
-            message.registerPersistEvents(memberIds, clientMessageId);
+            ChatMessagePayload chatMessagePayload = ChatMessagePayloadMapper.fromDomain(message);
+            MyChatRoomBadgePayload myChatRoomBadgePayload = MyChatRoomBadgePayload.ofLastMessage(message.getRoomId(), memberIds, message.getContent(), message.getCreatedAtInstant());
 
-            outboxEventListPublishPort.publish(message.pullEventList());
+            ChatMessageEventList chatMessageEventList =
+                    ChatMessageEventList.of(
+                            new ChatMessagePersistEvent(chatMessagePayload, memberIds),
+                            new ChatMessageBroadcastEvent(chatMessagePayload, memberIds, clientMessageId),
+                            new MyChatRoomBadgeEvent(myChatRoomBadgePayload)
+                    );
+
+            outboxEventListPublishPort.publish(chatMessageEventList);
         } catch (TemporaryOutboxPersistenceException e) {
             throw e;
         } catch (Exception e) {

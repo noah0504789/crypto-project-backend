@@ -4,11 +4,8 @@ import org.example.common.outbox.application.port.out.OutboxEventListPublishPort
 import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
 import org.example.market.application.port.out.MarketPersistencePort;
 import org.example.market.application.service.command.ChangeMarketsCommand;
-import org.example.market.application.service.command.ChangeMarketsCommand.UpdateMarketCommand;
-import org.example.market.application.service.command.ChangeMarketsCommand.CreateMarketCommand;
 import org.example.market.application.exception.MarketPersistException;
-import org.example.market.domain.event.MarketEventList;
-import org.example.market.domain.model.Market;
+import org.example.market.application.event.MarketEventList;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -46,18 +43,14 @@ class MarketCommandServiceTest {
 
             given(command.isEmpty()).willReturn(true);
 
-            try (MockedStatic<Market> mockedStatic = Mockito.mockStatic(Market.class)) {
-                // when
-                sut.changeMarkets(command);
+            // when
+            sut.changeMarkets(command);
 
-                // then
-                verify(marketPersistencePort, never()).deleteMarketsByIds(any());
-                verify(marketPersistencePort, never()).updateMarkets(any());
-                verify(marketPersistencePort, never()).createMarkets(any());
-                verify(outboxEventListPublishPort, never()).publish(any());
-
-                mockedStatic.verify(Market::eventSource, never());
-            }
+            // then
+            verify(marketPersistencePort, never()).deleteMarketsByIds(any());
+            verify(marketPersistencePort, never()).updateMarkets(any());
+            verify(marketPersistencePort, never()).createMarkets(any());
+            verify(outboxEventListPublishPort, never()).publish(any());
         }
 
         @Test
@@ -65,12 +58,12 @@ class MarketCommandServiceTest {
         void changeMarkets_shouldApplyChangesAndPublishMarketChangedEvent() {
             // given
             ChangeMarketsCommand command = mock(ChangeMarketsCommand.class);
-            Market market = mock(Market.class);
-            MarketEventList eventList = mock(MarketEventList.class);
 
             List<Long> deleteIds = List.of(1L, 2L);
-            List<UpdateMarketCommand> updates = List.of(mock(UpdateMarketCommand.class));
-            List<CreateMarketCommand> creates = List.of(mock(ChangeMarketsCommand.CreateMarketCommand.class));
+            List<ChangeMarketsCommand.UpdateMarketCommand> updates =
+                    List.of(mock(ChangeMarketsCommand.UpdateMarketCommand.class));
+            List<ChangeMarketsCommand.CreateMarketCommand> creates =
+                    List.of(mock(ChangeMarketsCommand.CreateMarketCommand.class));
 
             given(command.isEmpty()).willReturn(false);
             given(command.hasDeletes()).willReturn(true);
@@ -80,30 +73,19 @@ class MarketCommandServiceTest {
             given(command.updates()).willReturn(updates);
             given(command.creates()).willReturn(creates);
 
-            given(market.pullEventList()).willReturn(eventList);
+            // when
+            sut.changeMarkets(command);
 
-            try (MockedStatic<Market> mockedStatic = Mockito.mockStatic(Market.class)) {
-                mockedStatic.when(Market::eventSource).thenReturn(market);
+            // then
+            InOrder inOrder = inOrder(
+                    marketPersistencePort,
+                    outboxEventListPublishPort
+            );
 
-                // when
-                sut.changeMarkets(command);
-
-                // then
-                InOrder inOrder = inOrder(
-                        marketPersistencePort,
-                        market,
-                        outboxEventListPublishPort
-                );
-
-                inOrder.verify(marketPersistencePort).deleteMarketsByIds(deleteIds);
-                inOrder.verify(marketPersistencePort).updateMarkets(updates);
-                inOrder.verify(marketPersistencePort).createMarkets(creates);
-                inOrder.verify(market).catalogChanged();
-                inOrder.verify(market).pullEventList();
-                inOrder.verify(outboxEventListPublishPort).publish(eventList);
-
-                mockedStatic.verify(Market::eventSource);
-            }
+            inOrder.verify(marketPersistencePort).deleteMarketsByIds(deleteIds);
+            inOrder.verify(marketPersistencePort).updateMarkets(updates);
+            inOrder.verify(marketPersistencePort).createMarkets(creates);
+            inOrder.verify(outboxEventListPublishPort).publish(any(MarketEventList.class));
         }
 
         @Test
@@ -111,8 +93,6 @@ class MarketCommandServiceTest {
         void changeMarkets_shouldDeleteOnlyAndPublishMarketChangedEvent() {
             // given
             ChangeMarketsCommand command = mock(ChangeMarketsCommand.class);
-            Market market = mock(Market.class);
-            MarketEventList eventList = mock(MarketEventList.class);
 
             List<Long> deleteIds = List.of(1L, 2L);
 
@@ -122,25 +102,14 @@ class MarketCommandServiceTest {
             given(command.hasCreates()).willReturn(false);
             given(command.deleteIds()).willReturn(deleteIds);
 
-            given(market.pullEventList()).willReturn(eventList);
+            // when
+            sut.changeMarkets(command);
 
-            try (MockedStatic<Market> mockedStatic = Mockito.mockStatic(Market.class)) {
-                mockedStatic.when(Market::eventSource).thenReturn(market);
-
-                // when
-                sut.changeMarkets(command);
-
-                // then
-                verify(marketPersistencePort).deleteMarketsByIds(deleteIds);
-                verify(marketPersistencePort, never()).updateMarkets(any());
-                verify(marketPersistencePort, never()).createMarkets(any());
-
-                verify(market).catalogChanged();
-                verify(market).pullEventList();
-                verify(outboxEventListPublishPort).publish(eventList);
-
-                mockedStatic.verify(Market::eventSource);
-            }
+            // then
+            verify(marketPersistencePort).deleteMarketsByIds(deleteIds);
+            verify(marketPersistencePort, never()).updateMarkets(any());
+            verify(marketPersistencePort, never()).createMarkets(any());
+            verify(outboxEventListPublishPort).publish(any(MarketEventList.class));
         }
 
         @Test
@@ -148,10 +117,9 @@ class MarketCommandServiceTest {
         void changeMarkets_shouldUpdateOnlyAndPublishMarketChangedEvent() {
             // given
             ChangeMarketsCommand command = mock(ChangeMarketsCommand.class);
-            Market market = mock(Market.class);
-            MarketEventList eventList = mock(MarketEventList.class);
 
-            List<UpdateMarketCommand> updates = List.of(mock(UpdateMarketCommand.class));
+            List<ChangeMarketsCommand.UpdateMarketCommand> updates =
+                    List.of(mock(ChangeMarketsCommand.UpdateMarketCommand.class));
 
             given(command.isEmpty()).willReturn(false);
             given(command.hasDeletes()).willReturn(false);
@@ -159,25 +127,14 @@ class MarketCommandServiceTest {
             given(command.hasCreates()).willReturn(false);
             given(command.updates()).willReturn(updates);
 
-            given(market.pullEventList()).willReturn(eventList);
+            // when
+            sut.changeMarkets(command);
 
-            try (MockedStatic<Market> mockedStatic = Mockito.mockStatic(Market.class)) {
-                mockedStatic.when(Market::eventSource).thenReturn(market);
-
-                // when
-                sut.changeMarkets(command);
-
-                // then
-                verify(marketPersistencePort, never()).deleteMarketsByIds(any());
-                verify(marketPersistencePort).updateMarkets(updates);
-                verify(marketPersistencePort, never()).createMarkets(any());
-
-                verify(market).catalogChanged();
-                verify(market).pullEventList();
-                verify(outboxEventListPublishPort).publish(eventList);
-
-                mockedStatic.verify(Market::eventSource);
-            }
+            // then
+            verify(marketPersistencePort, never()).deleteMarketsByIds(any());
+            verify(marketPersistencePort).updateMarkets(updates);
+            verify(marketPersistencePort, never()).createMarkets(any());
+            verify(outboxEventListPublishPort).publish(any(MarketEventList.class));
         }
 
         @Test
@@ -185,10 +142,9 @@ class MarketCommandServiceTest {
         void changeMarkets_shouldCreateOnlyAndPublishMarketChangedEvent() {
             // given
             ChangeMarketsCommand command = mock(ChangeMarketsCommand.class);
-            Market market = mock(Market.class);
-            MarketEventList eventList = mock(MarketEventList.class);
 
-            List<CreateMarketCommand> creates = List.of(mock(CreateMarketCommand.class));
+            List<ChangeMarketsCommand.CreateMarketCommand> creates =
+                    List.of(mock(ChangeMarketsCommand.CreateMarketCommand.class));
 
             given(command.isEmpty()).willReturn(false);
             given(command.hasDeletes()).willReturn(false);
@@ -196,25 +152,14 @@ class MarketCommandServiceTest {
             given(command.hasCreates()).willReturn(true);
             given(command.creates()).willReturn(creates);
 
-            given(market.pullEventList()).willReturn(eventList);
+            // when
+            sut.changeMarkets(command);
 
-            try (MockedStatic<Market> mockedStatic = Mockito.mockStatic(Market.class)) {
-                mockedStatic.when(Market::eventSource).thenReturn(market);
-
-                // when
-                sut.changeMarkets(command);
-
-                // then
-                verify(marketPersistencePort, never()).deleteMarketsByIds(any());
-                verify(marketPersistencePort, never()).updateMarkets(any());
-                verify(marketPersistencePort).createMarkets(creates);
-
-                verify(market).catalogChanged();
-                verify(market).pullEventList();
-                verify(outboxEventListPublishPort).publish(eventList);
-
-                mockedStatic.verify(Market::eventSource);
-            }
+            // then
+            verify(marketPersistencePort, never()).deleteMarketsByIds(any());
+            verify(marketPersistencePort, never()).updateMarkets(any());
+            verify(marketPersistencePort).createMarkets(creates);
+            verify(outboxEventListPublishPort).publish(any(MarketEventList.class));
         }
 
         @Test
@@ -222,8 +167,6 @@ class MarketCommandServiceTest {
         void changeMarkets_shouldRethrowTemporaryOutboxException() {
             // given
             ChangeMarketsCommand command = mock(ChangeMarketsCommand.class);
-            Market market = mock(Market.class);
-            MarketEventList eventList = mock(MarketEventList.class);
 
             List<Long> deleteIds = List.of(1L);
 
@@ -239,32 +182,21 @@ class MarketCommandServiceTest {
             given(command.hasCreates()).willReturn(false);
             given(command.deleteIds()).willReturn(deleteIds);
 
-            given(market.pullEventList()).willReturn(eventList);
-
             doThrow(exception)
                     .when(outboxEventListPublishPort)
-                    .publish(eventList);
+                    .publish(any(MarketEventList.class));
 
-            try (MockedStatic<Market> mockedStatic = Mockito.mockStatic(Market.class)) {
-                mockedStatic.when(Market::eventSource).thenReturn(market);
+            // when & then
+            assertThatThrownBy(() -> sut.changeMarkets(command))
+                    .isSameAs(exception);
 
-                // when & then
-                assertThatThrownBy(() -> sut.changeMarkets(command))
-                        .isSameAs(exception);
+            InOrder inOrder = inOrder(
+                    marketPersistencePort,
+                    outboxEventListPublishPort
+            );
 
-                InOrder inOrder = inOrder(
-                        marketPersistencePort,
-                        market,
-                        outboxEventListPublishPort
-                );
-
-                inOrder.verify(marketPersistencePort).deleteMarketsByIds(deleteIds);
-                inOrder.verify(market).catalogChanged();
-                inOrder.verify(market).pullEventList();
-                inOrder.verify(outboxEventListPublishPort).publish(eventList);
-
-                mockedStatic.verify(Market::eventSource);
-            }
+            inOrder.verify(marketPersistencePort).deleteMarketsByIds(deleteIds);
+            inOrder.verify(outboxEventListPublishPort).publish(any(MarketEventList.class));
         }
 
         @Test
@@ -272,8 +204,6 @@ class MarketCommandServiceTest {
         void changeMarkets_shouldWrapUnexpectedOutboxException() {
             // given
             ChangeMarketsCommand command = mock(ChangeMarketsCommand.class);
-            Market market = mock(Market.class);
-            MarketEventList eventList = mock(MarketEventList.class);
 
             List<Long> deleteIds = List.of(1L);
 
@@ -285,38 +215,27 @@ class MarketCommandServiceTest {
             given(command.hasCreates()).willReturn(false);
             given(command.deleteIds()).willReturn(deleteIds);
 
-            given(market.pullEventList()).willReturn(eventList);
-
             doThrow(exception)
                     .when(outboxEventListPublishPort)
-                    .publish(eventList);
+                    .publish(any(MarketEventList.class));
 
-            try (MockedStatic<Market> mockedStatic = Mockito.mockStatic(Market.class)) {
-                mockedStatic.when(Market::eventSource).thenReturn(market);
+            // when & then
+            assertThatThrownBy(() -> sut.changeMarkets(command))
+                    .isInstanceOf(MarketPersistException.class)
+                    .hasMessageContaining("failed to publish market changed event")
+                    .hasCause(exception);
 
-                // when & then
-                assertThatThrownBy(() -> sut.changeMarkets(command))
-                        .isInstanceOf(MarketPersistException.class)
-                        .hasMessageContaining("failed to publish market changed event")
-                        .hasCause(exception);
+            InOrder inOrder = inOrder(
+                    marketPersistencePort,
+                    outboxEventListPublishPort
+            );
 
-                InOrder inOrder = inOrder(
-                        marketPersistencePort,
-                        market,
-                        outboxEventListPublishPort
-                );
-
-                inOrder.verify(marketPersistencePort).deleteMarketsByIds(deleteIds);
-                inOrder.verify(market).catalogChanged();
-                inOrder.verify(market).pullEventList();
-                inOrder.verify(outboxEventListPublishPort).publish(eventList);
-
-                mockedStatic.verify(Market::eventSource);
-            }
+            inOrder.verify(marketPersistencePort).deleteMarketsByIds(deleteIds);
+            inOrder.verify(outboxEventListPublishPort).publish(any(MarketEventList.class));
         }
 
         @Test
-        @DisplayName("마켓 변경 저장이 실패하면 이벤트를 생성하거나 발행하지 않는다")
+        @DisplayName("마켓 변경 저장이 실패하면 이벤트를 발행하지 않는다")
         void changeMarkets_shouldNotPublishEventWhenPersistenceFails() {
             // given
             ChangeMarketsCommand command = mock(ChangeMarketsCommand.class);
@@ -332,18 +251,14 @@ class MarketCommandServiceTest {
                     .when(marketPersistencePort)
                     .deleteMarketsByIds(deleteIds);
 
-            try (MockedStatic<Market> mockedStatic = Mockito.mockStatic(Market.class)) {
-                // when & then
-                assertThatThrownBy(() -> sut.changeMarkets(command))
-                        .isSameAs(exception);
+            // when & then
+            assertThatThrownBy(() -> sut.changeMarkets(command))
+                    .isSameAs(exception);
 
-                verify(marketPersistencePort).deleteMarketsByIds(deleteIds);
-                verify(marketPersistencePort, never()).updateMarkets(any());
-                verify(marketPersistencePort, never()).createMarkets(any());
-                verify(outboxEventListPublishPort, never()).publish(any());
-
-                mockedStatic.verify(Market::eventSource, never());
-            }
+            verify(marketPersistencePort).deleteMarketsByIds(deleteIds);
+            verify(marketPersistencePort, never()).updateMarkets(any());
+            verify(marketPersistencePort, never()).createMarkets(any());
+            verify(outboxEventListPublishPort, never()).publish(any());
         }
     }
 }

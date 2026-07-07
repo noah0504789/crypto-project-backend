@@ -1,30 +1,27 @@
 package org.example.chat.chatmessage.application.service;
 
-import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
-import org.example.chat.chatmessage.domain.event.ChatMessageEventList;
-import org.example.chat.chatmessage.domain.event.payload.ChatMessagePayload;
+import org.example.chat.chatmessage.application.exception.DuplicateChatMessageException;
+import org.example.chat.chatmessage.application.mapper.ChatMessagePayloadMapper;
 import org.example.chat.chatmessage.application.port.out.ChatMessagePersistencePort;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
-import org.example.chat.chatmessage.domain.event.ChatMessagePersistEvent;
+import org.example.chat.chatmessage.application.event.ChatMessagePersistEvent;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
-import org.example.chat.chatmessage.application.exception.DuplicateChatMessageException;
-import org.example.chat.exception.TemporaryChatPersistenceException;
+import org.example.contract.chatmessage.ChatMessagePayload;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Set;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,58 +45,138 @@ class ChatMessageEventServiceTest {
 
     private final String memberId1 = "member-1";
     private final String memberId2 = "member-2";
-
     private final Set<String> memberIds = Set.of(memberId1, memberId2);
 
-    private final LocalDateTime createdAt = LocalDateTime.of(2026, 1, 1, 10, 0);
+    private final Instant createdAt = Instant.parse("2026-01-01T01:00:00Z");
 
     @Nested
-    @DisplayName("handle")
-    class HandleTest {
+    @DisplayName("handle ChatMessagePersistEvent")
+    class HandleChatMessagePersistEventTest {
 
         @Test
-        @DisplayName("persist event를 처리하면 메시지를 저장하고 방 msgCnt와 membership score를 갱신한다")
-        void handleSuccess() {
+        @DisplayName("채팅 메시지 저장 이벤트를 처리하면 메시지를 저장하고 채팅방 메시지 수와 멤버십 점수를 갱신한다")
+        void handle_shouldSaveMessageAndUpdateRoomState_whenPersistEvent() {
             // given
-            ChatMessage domain = chatMessage();
-            ChatMessagePersistEvent event = persistEvent(domain, memberIds);
+            ChatMessage message = chatMessage();
+            ChatMessagePayload payload = ChatMessagePayloadMapper.fromDomain(message);
 
-            long createdAtMillis = domain.toEpochMillis();
+            ChatMessagePersistEvent event = new ChatMessagePersistEvent(
+                    payload,
+                    memberIds
+            );
 
             // when
             sut.handle(event, txId);
 
             // then
-            ArgumentCaptor<ChatMessage> messageCaptor =
-                    ArgumentCaptor.forClass(ChatMessage.class);
-
-            verify(chatMessagePersistencePort).save(messageCaptor.capture());
-
-            ChatMessage saved = messageCaptor.getValue();
-
-            assertThat(saved.getId()).isEqualTo(messageId);
-            assertThat(saved.getRoomId()).isEqualTo(roomId);
-            assertThat(saved.getWriterId()).isEqualTo(writerId);
-            assertThat(saved.getContent()).isEqualTo(content);
-
-            verify(chatRoomPersistencePort).incrementMessageCount(roomId);
-            verify(chatRoomPersistencePort).updateMembershipScores(
-                    roomId,
-                    memberIds,
-                    createdAtMillis
+            InOrder inOrder = inOrder(
+                    chatMessagePersistencePort,
+                    chatRoomPersistencePort
             );
+
+            inOrder.verify(chatMessagePersistencePort)
+                    .save(argThat(saved ->
+                            saved.getId().equals(messageId)
+                                    && saved.getRoomId().equals(roomId)
+                                    && saved.getWriterId().equals(writerId)
+                                    && saved.getContent().equals(content)
+                    ));
+
+            inOrder.verify(chatRoomPersistencePort)
+                    .incrementMessageCount(roomId);
+
+            inOrder.verify(chatRoomPersistencePort)
+                    .updateMembershipScores(
+                            eq(roomId),
+                            eq(memberIds),
+                            eq(message.toEpochMillis())
+                    );
         }
 
         @Test
-        @DisplayName("메시지 저장 중 DuplicateChatMessageException이 발생하면 중복 이벤트로 보고 이후 작업을 스킵한다")
-        void handleDuplicateChatMessageException() {
+        @DisplayName("메시지 저장 중 예외가 발생하면 이후 채팅방 갱신 작업을 수행하지 않고 예외를 전파한다")
+        void handle_shouldStopWhenMessageSaveFails() {
             // given
-            ChatMessage domain = chatMessage();
-            ChatMessagePersistEvent event = persistEvent(domain, memberIds);
+            RuntimeException exception = new RuntimeException("message save failed");
+
+            ChatMessage message = chatMessage();
+            ChatMessagePayload payload = ChatMessagePayloadMapper.fromDomain(message);
+
+            ChatMessagePersistEvent event = new ChatMessagePersistEvent(
+                    payload,
+                    memberIds
+            );
+
+            doThrow(exception)
+                    .when(chatMessagePersistencePort)
+                    .save(any(ChatMessage.class));
+
+            // when & then
+            assertThatThrownBy(() -> sut.handle(event, txId))
+                    .isSameAs(exception);
+
+            then(chatMessagePersistencePort)
+                    .should()
+                    .save(any(ChatMessage.class));
+
+            then(chatRoomPersistencePort)
+                    .shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("채팅방 메시지 수 증가 중 예외가 발생하면 멤버십 점수 갱신을 수행하지 않고 예외를 전파한다")
+        void handle_shouldStopWhenIncrementMessageCountFails() {
+            // given
+            RuntimeException exception =
+                    new RuntimeException("increment message count failed");
+
+            ChatMessage message = chatMessage();
+            ChatMessagePayload payload = ChatMessagePayloadMapper.fromDomain(message);
+
+            ChatMessagePersistEvent event = new ChatMessagePersistEvent(
+                    payload,
+                    memberIds
+            );
+
+            doThrow(exception)
+                    .when(chatRoomPersistencePort)
+                    .incrementMessageCount(roomId);
+
+            // when & then
+            assertThatThrownBy(() -> sut.handle(event, txId))
+                    .isSameAs(exception);
+
+            InOrder inOrder = inOrder(
+                    chatMessagePersistencePort,
+                    chatRoomPersistencePort
+            );
+
+            inOrder.verify(chatMessagePersistencePort)
+                    .save(any(ChatMessage.class));
+
+            inOrder.verify(chatRoomPersistencePort)
+                    .incrementMessageCount(roomId);
+
+            then(chatRoomPersistencePort)
+                    .should(never())
+                    .updateMembershipScores(any(), any(), anyLong());
+        }
+
+        @Test
+        @DisplayName("이미 처리된 메시지면 채팅방 갱신 작업을 수행하지 않고 정상 종료한다")
+        void handle_shouldReturn_whenDuplicateChatMessageExceptionOccurs() {
+            // given
+            ChatMessage message = chatMessage();
+            ChatMessagePayload payload = ChatMessagePayloadMapper.fromDomain(message);
+
+            ChatMessagePersistEvent event = new ChatMessagePersistEvent(
+                    payload,
+                    memberIds
+            );
 
             DuplicateChatMessageException exception =
                     new DuplicateChatMessageException(
-                            "duplicated chat message. messageId=" + messageId,
+                            "duplicate chat message. messageId=" + messageId,
                             new RuntimeException("duplicate key")
                     );
 
@@ -111,154 +188,22 @@ class ChatMessageEventServiceTest {
             sut.handle(event, txId);
 
             // then
-            verify(chatMessagePersistencePort).save(any(ChatMessage.class));
-
-            verify(chatRoomPersistencePort, never()).incrementMessageCount(anyString());
-            verify(chatRoomPersistencePort, never())
-                    .updateMembershipScores(anyString(), anySet(), anyLong());
-        }
-
-        @Test
-        @DisplayName("메시지 저장 중 TemporaryChatPersistenceException이 발생하면 예외를 전파하고 이후 작업을 하지 않는다")
-        void handleTemporaryChatPersistenceException() {
-            // given
-            ChatMessage domain = chatMessage();
-            ChatMessagePersistEvent event = persistEvent(domain, memberIds);
-
-            TemporaryChatPersistenceException exception =
-                    new TemporaryChatPersistenceException(
-                            "temporary mongo failure",
-                            new RuntimeException("mongo transaction failed")
-                    );
-
-            doThrow(exception)
-                    .when(chatMessagePersistencePort)
+            then(chatMessagePersistencePort)
+                    .should()
                     .save(any(ChatMessage.class));
 
-            // when & then
-            assertThatThrownBy(() -> sut.handle(event, txId))
-                    .isSameAs(exception);
-
-            verify(chatMessagePersistencePort).save(any(ChatMessage.class));
-            verify(chatRoomPersistencePort, never()).incrementMessageCount(anyString());
-            verify(chatRoomPersistencePort, never())
-                    .updateMembershipScores(anyString(), anySet(), anyLong());
-        }
-
-        @Test
-        @DisplayName("메시지 저장 중 일반 RuntimeException이 발생하면 예외를 전파하고 이후 작업을 하지 않는다")
-        void handleSaveRuntimeException() {
-            // given
-            ChatMessage domain = chatMessage();
-            ChatMessagePersistEvent event = persistEvent(domain, memberIds);
-
-            RuntimeException exception = new RuntimeException("mongo save failed");
-
-            doThrow(exception)
-                    .when(chatMessagePersistencePort)
-                    .save(any(ChatMessage.class));
-
-            // when & then
-            assertThatThrownBy(() -> sut.handle(event, txId))
-                    .isSameAs(exception);
-
-            verify(chatMessagePersistencePort).save(any(ChatMessage.class));
-            verify(chatRoomPersistencePort, never()).incrementMessageCount(anyString());
-            verify(chatRoomPersistencePort, never())
-                    .updateMembershipScores(anyString(), anySet(), anyLong());
-        }
-
-        @Test
-        @DisplayName("msgCnt 증가 중 예외가 발생하면 membership score 갱신을 수행하지 않고 예외를 전파한다")
-        void handleIncrementMsgCntException() {
-            // given
-            ChatMessage domain = chatMessage();
-            ChatMessagePersistEvent event = persistEvent(domain, memberIds);
-
-            RuntimeException exception = new RuntimeException("increment failed");
-
-            doThrow(exception)
-                    .when(chatRoomPersistencePort)
-                    .incrementMessageCount(roomId);
-
-            // when & then
-            assertThatThrownBy(() -> sut.handle(event, txId))
-                    .isSameAs(exception);
-
-            verify(chatMessagePersistencePort).save(any(ChatMessage.class));
-            verify(chatRoomPersistencePort).incrementMessageCount(roomId);
-            verify(chatRoomPersistencePort, never())
-                    .updateMembershipScores(anyString(), anySet(), anyLong());
-        }
-
-        @Test
-        @DisplayName("membership score 갱신 중 예외가 발생하면 예외를 전파한다")
-        void handleUpdateMembershipScoresException() {
-            // given
-            ChatMessage domain = chatMessage();
-            ChatMessagePersistEvent event = persistEvent(domain, memberIds);
-
-            RuntimeException exception =
-                    new RuntimeException("membership score update failed");
-
-            doThrow(exception)
-                    .when(chatRoomPersistencePort)
-                    .updateMembershipScores(
-                            eq(roomId),
-                            eq(memberIds),
-                            anyLong()
-                    );
-
-            // when & then
-            assertThatThrownBy(() -> sut.handle(event, txId))
-                    .isSameAs(exception);
-
-            verify(chatMessagePersistencePort).save(any(ChatMessage.class));
-            verify(chatRoomPersistencePort).incrementMessageCount(roomId);
-            verify(chatRoomPersistencePort).updateMembershipScores(
-                    eq(roomId),
-                    eq(memberIds),
-                    anyLong()
-            );
-        }
-    }
-
-    @Nested
-    @DisplayName("recover")
-    class RecoverTest {
-
-        @Test
-        @DisplayName("recover 호출 시 recoverPersist를 수행하고 예외 없이 종료한다")
-        void recover() {
-            // given
-            ChatMessage domain = chatMessage();
-            ChatMessagePersistEvent event = persistEvent(domain, memberIds);
-
-            TemporaryChatPersistenceException exception =
-                    new TemporaryChatPersistenceException(
-                            "mongo failed",
-                            new RuntimeException("temporary failure")
-                    );
-
-            // when & then
-            assertThatCode(() -> sut.recover(exception, event, txId))
-                    .doesNotThrowAnyException();
+            then(chatRoomPersistencePort)
+                    .shouldHaveNoInteractions();
         }
     }
 
     private ChatMessage chatMessage() {
-        return ChatMessage.builder()
-                .id(messageId)
-                .roomId(roomId)
-                .writerId(writerId)
-                .content(content)
-                .createdAt(createdAt)
-                .eventList(new ChatMessageEventList())
-                .dlqEventList(new ChatMessageDlqEventList())
-                .build();
-    }
-
-    private ChatMessagePersistEvent persistEvent(ChatMessage domain, Set<String> memberIds) {
-        return new ChatMessagePersistEvent(ChatMessagePayload.fromDomain(domain), memberIds);
+        return ChatMessage.rehydrate(
+                messageId,
+                roomId,
+                writerId,
+                content,
+                createdAt
+        );
     }
 }

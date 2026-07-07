@@ -40,7 +40,8 @@ class PriceAlertSettingCommandServiceTest {
         @DisplayName("변경할 설정이 없으면 아무 작업도 하지 않는다")
         void changeMySettings_shouldDoNothingWhenCommandIsEmpty() {
             // given
-            ChangePriceAlertSettingsCommand command = mock(ChangePriceAlertSettingsCommand.class);
+            ChangePriceAlertSettingsCommand command =
+                    mock(ChangePriceAlertSettingsCommand.class);
 
             given(command.isEmpty()).willReturn(true);
 
@@ -48,32 +49,43 @@ class PriceAlertSettingCommandServiceTest {
             sut.changeMySettings(userPublicId, command);
 
             // then
-            verify(priceAlertSettingPersistencePort, never()).deleteSettingsByCodes(any(), any());
-            verify(priceAlertSettingPersistencePort, never()).updateSettings(any(), any());
-            verify(priceAlertSettingPersistencePort, never()).createSettings(any(), any());
+            verify(priceAlertSettingPersistencePort, never())
+                    .deleteSettingsByCodes(any(), any());
+            verify(priceAlertSettingPersistencePort, never())
+                    .updateSettings(any(), any());
+            verify(priceAlertSettingPersistencePort, never())
+                    .createSettings(any(), any());
+
+            verify(command).isEmpty();
+            verifyNoMoreInteractions(priceAlertSettingPersistencePort);
         }
 
         @Test
         @DisplayName("삭제, 수정, 생성 요청이 있으면 순서대로 처리한다")
         void changeMySettings_shouldApplyDeletesUpdatesCreatesInOrder() {
             // given
-            ChangePriceAlertSettingsCommand command = mock(ChangePriceAlertSettingsCommand.class);
+            ChangePriceAlertSettingsCommand command =
+                    mock(ChangePriceAlertSettingsCommand.class);
 
             List<String> deleteCodes = List.of("KRW-BTC", "KRW-ETH");
-            List<UpdatePriceAlertSettingCommand> updates = List.of(
-                    new UpdatePriceAlertSettingCommand(
-                            "KRW-XRP",
-                            true,
-                            BigDecimal.valueOf(5)
-                    )
-            );
-            List<CreatePriceAlertSettingCommand> creates = List.of(
-                    new CreatePriceAlertSettingCommand(
-                            "KRW-SOL",
-                            true,
-                            BigDecimal.valueOf(7)
-                    )
-            );
+
+            List<ChangePriceAlertSettingsCommand.UpdatePriceAlertSettingCommand> updates =
+                    List.of(
+                            new ChangePriceAlertSettingsCommand.UpdatePriceAlertSettingCommand(
+                                    "KRW-XRP",
+                                    true,
+                                    BigDecimal.valueOf(5)
+                            )
+                    );
+
+            List<ChangePriceAlertSettingsCommand.CreatePriceAlertSettingCommand> creates =
+                    List.of(
+                            new ChangePriceAlertSettingsCommand.CreatePriceAlertSettingCommand(
+                                    "KRW-SOL",
+                                    true,
+                                    BigDecimal.valueOf(7)
+                            )
+                    );
 
             given(command.isEmpty()).willReturn(false);
             given(command.hasDeletes()).willReturn(true);
@@ -95,13 +107,16 @@ class PriceAlertSettingCommandServiceTest {
                     .updateSettings(userPublicId, updates);
             inOrder.verify(priceAlertSettingPersistencePort)
                     .createSettings(userPublicId, creates);
+
+            verifyNoMoreInteractions(priceAlertSettingPersistencePort);
         }
 
         @Test
         @DisplayName("삭제 요청만 있으면 삭제만 처리한다")
         void changeMySettings_shouldDeleteOnly() {
             // given
-            ChangePriceAlertSettingsCommand command = mock(ChangePriceAlertSettingsCommand.class);
+            ChangePriceAlertSettingsCommand command =
+                    mock(ChangePriceAlertSettingsCommand.class);
 
             List<String> deleteCodes = List.of("KRW-BTC", "KRW-ETH");
 
@@ -117,23 +132,29 @@ class PriceAlertSettingCommandServiceTest {
             // then
             verify(priceAlertSettingPersistencePort)
                     .deleteSettingsByCodes(userPublicId, deleteCodes);
-            verify(priceAlertSettingPersistencePort, never()).updateSettings(any(), any());
-            verify(priceAlertSettingPersistencePort, never()).createSettings(any(), any());
+            verify(priceAlertSettingPersistencePort, never())
+                    .updateSettings(any(), any());
+            verify(priceAlertSettingPersistencePort, never())
+                    .createSettings(any(), any());
+
+            verifyNoMoreInteractions(priceAlertSettingPersistencePort);
         }
 
         @Test
         @DisplayName("수정 요청만 있으면 수정만 처리한다")
         void changeMySettings_shouldUpdateOnly() {
             // given
-            ChangePriceAlertSettingsCommand command = mock(ChangePriceAlertSettingsCommand.class);
+            ChangePriceAlertSettingsCommand command =
+                    mock(ChangePriceAlertSettingsCommand.class);
 
-            List<UpdatePriceAlertSettingCommand> updates = List.of(
-                    new UpdatePriceAlertSettingCommand(
-                            "KRW-BTC",
-                            true,
-                            BigDecimal.valueOf(3)
-                    )
-            );
+            List<ChangePriceAlertSettingsCommand.UpdatePriceAlertSettingCommand> updates =
+                    List.of(
+                            new ChangePriceAlertSettingsCommand.UpdatePriceAlertSettingCommand(
+                                    "KRW-BTC",
+                                    true,
+                                    BigDecimal.valueOf(3)
+                            )
+                    );
 
             given(command.isEmpty()).willReturn(false);
             given(command.hasDeletes()).willReturn(false);
@@ -145,25 +166,31 @@ class PriceAlertSettingCommandServiceTest {
             sut.changeMySettings(userPublicId, command);
 
             // then
-            verify(priceAlertSettingPersistencePort, never()).deleteSettingsByCodes(any(), any());
+            verify(priceAlertSettingPersistencePort, never())
+                    .deleteSettingsByCodes(any(), any());
             verify(priceAlertSettingPersistencePort)
                     .updateSettings(userPublicId, updates);
-            verify(priceAlertSettingPersistencePort, never()).createSettings(any(), any());
+            verify(priceAlertSettingPersistencePort, never())
+                    .createSettings(any(), any());
+
+            verifyNoMoreInteractions(priceAlertSettingPersistencePort);
         }
 
         @Test
         @DisplayName("생성 요청만 있으면 생성만 처리한다")
         void changeMySettings_shouldCreateOnly() {
             // given
-            ChangePriceAlertSettingsCommand command = mock(ChangePriceAlertSettingsCommand.class);
+            ChangePriceAlertSettingsCommand command =
+                    mock(ChangePriceAlertSettingsCommand.class);
 
-            List<CreatePriceAlertSettingCommand> creates = List.of(
-                    new CreatePriceAlertSettingCommand(
-                            "KRW-BTC",
-                            true,
-                            BigDecimal.valueOf(5)
-                    )
-            );
+            List<ChangePriceAlertSettingsCommand.CreatePriceAlertSettingCommand> creates =
+                    List.of(
+                            new ChangePriceAlertSettingsCommand.CreatePriceAlertSettingCommand(
+                                    "KRW-BTC",
+                                    true,
+                                    BigDecimal.valueOf(5)
+                            )
+                    );
 
             given(command.isEmpty()).willReturn(false);
             given(command.hasDeletes()).willReturn(false);
@@ -175,17 +202,22 @@ class PriceAlertSettingCommandServiceTest {
             sut.changeMySettings(userPublicId, command);
 
             // then
-            verify(priceAlertSettingPersistencePort, never()).deleteSettingsByCodes(any(), any());
-            verify(priceAlertSettingPersistencePort, never()).updateSettings(any(), any());
+            verify(priceAlertSettingPersistencePort, never())
+                    .deleteSettingsByCodes(any(), any());
+            verify(priceAlertSettingPersistencePort, never())
+                    .updateSettings(any(), any());
             verify(priceAlertSettingPersistencePort)
                     .createSettings(userPublicId, creates);
+
+            verifyNoMoreInteractions(priceAlertSettingPersistencePort);
         }
 
         @Test
         @DisplayName("삭제 처리 중 예외가 발생하면 이후 작업을 수행하지 않고 예외를 전파한다")
         void changeMySettings_shouldStopWhenDeleteFails() {
             // given
-            ChangePriceAlertSettingsCommand command = mock(ChangePriceAlertSettingsCommand.class);
+            ChangePriceAlertSettingsCommand command =
+                    mock(ChangePriceAlertSettingsCommand.class);
 
             List<String> deleteCodes = List.of("KRW-BTC");
             RuntimeException exception = new RuntimeException("delete failed");
@@ -204,24 +236,32 @@ class PriceAlertSettingCommandServiceTest {
 
             verify(priceAlertSettingPersistencePort)
                     .deleteSettingsByCodes(userPublicId, deleteCodes);
-            verify(priceAlertSettingPersistencePort, never()).updateSettings(any(), any());
-            verify(priceAlertSettingPersistencePort, never()).createSettings(any(), any());
+            verify(priceAlertSettingPersistencePort, never())
+                    .updateSettings(any(), any());
+            verify(priceAlertSettingPersistencePort, never())
+                    .createSettings(any(), any());
+
+            verifyNoMoreInteractions(priceAlertSettingPersistencePort);
         }
 
         @Test
         @DisplayName("수정 처리 중 예외가 발생하면 생성 작업을 수행하지 않고 예외를 전파한다")
         void changeMySettings_shouldStopWhenUpdateFails() {
             // given
-            ChangePriceAlertSettingsCommand command = mock(ChangePriceAlertSettingsCommand.class);
+            ChangePriceAlertSettingsCommand command =
+                    mock(ChangePriceAlertSettingsCommand.class);
 
             List<String> deleteCodes = List.of("KRW-BTC");
-            List<UpdatePriceAlertSettingCommand> updates = List.of(
-                    new UpdatePriceAlertSettingCommand(
-                            "KRW-ETH",
-                            true,
-                            BigDecimal.valueOf(3)
-                    )
-            );
+
+            List<ChangePriceAlertSettingsCommand.UpdatePriceAlertSettingCommand> updates =
+                    List.of(
+                            new ChangePriceAlertSettingsCommand.UpdatePriceAlertSettingCommand(
+                                    "KRW-ETH",
+                                    true,
+                                    BigDecimal.valueOf(3)
+                            )
+                    );
+
             RuntimeException exception = new RuntimeException("update failed");
 
             given(command.isEmpty()).willReturn(false);
@@ -245,7 +285,67 @@ class PriceAlertSettingCommandServiceTest {
             inOrder.verify(priceAlertSettingPersistencePort)
                     .updateSettings(userPublicId, updates);
 
-            verify(priceAlertSettingPersistencePort, never()).createSettings(any(), any());
+            verify(priceAlertSettingPersistencePort, never())
+                    .createSettings(any(), any());
+
+            verifyNoMoreInteractions(priceAlertSettingPersistencePort);
+        }
+
+        @Test
+        @DisplayName("생성 처리 중 예외가 발생하면 예외를 그대로 전파한다")
+        void changeMySettings_shouldRethrowWhenCreateFails() {
+            // given
+            ChangePriceAlertSettingsCommand command =
+                    mock(ChangePriceAlertSettingsCommand.class);
+
+            List<String> deleteCodes = List.of("KRW-BTC");
+
+            List<ChangePriceAlertSettingsCommand.UpdatePriceAlertSettingCommand> updates =
+                    List.of(
+                            new ChangePriceAlertSettingsCommand.UpdatePriceAlertSettingCommand(
+                                    "KRW-ETH",
+                                    true,
+                                    BigDecimal.valueOf(3)
+                            )
+                    );
+
+            List<ChangePriceAlertSettingsCommand.CreatePriceAlertSettingCommand> creates =
+                    List.of(
+                            new ChangePriceAlertSettingsCommand.CreatePriceAlertSettingCommand(
+                                    "KRW-SOL",
+                                    true,
+                                    BigDecimal.valueOf(7)
+                            )
+                    );
+
+            RuntimeException exception = new RuntimeException("create failed");
+
+            given(command.isEmpty()).willReturn(false);
+            given(command.hasDeletes()).willReturn(true);
+            given(command.hasUpdates()).willReturn(true);
+            given(command.hasCreates()).willReturn(true);
+            given(command.deleteCodes()).willReturn(deleteCodes);
+            given(command.updates()).willReturn(updates);
+            given(command.creates()).willReturn(creates);
+
+            doThrow(exception)
+                    .when(priceAlertSettingPersistencePort)
+                    .createSettings(userPublicId, creates);
+
+            // when & then
+            assertThatThrownBy(() -> sut.changeMySettings(userPublicId, command))
+                    .isSameAs(exception);
+
+            InOrder inOrder = inOrder(priceAlertSettingPersistencePort);
+
+            inOrder.verify(priceAlertSettingPersistencePort)
+                    .deleteSettingsByCodes(userPublicId, deleteCodes);
+            inOrder.verify(priceAlertSettingPersistencePort)
+                    .updateSettings(userPublicId, updates);
+            inOrder.verify(priceAlertSettingPersistencePort)
+                    .createSettings(userPublicId, creates);
+
+            verifyNoMoreInteractions(priceAlertSettingPersistencePort);
         }
     }
 }

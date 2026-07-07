@@ -178,7 +178,7 @@ class MongoNotificationAdapterTest {
                 createdAt1
         );
 
-        long lastDeliveredAtMillis = toMillis(deliveredAt2);
+        long lastDeliveredAtMillis = getCreatedAtMs(deliveredAt2);
         Instant lastDeliveredAt = Instant.ofEpochMilli(lastDeliveredAtMillis);
 
         when(notificationRecipientRepository.listPrev(receiverId, recipientId2, lastDeliveredAt, 1))
@@ -210,7 +210,7 @@ class MongoNotificationAdapterTest {
         List<NotificationInboxItem> result = sut.listInboxItemsBefore(
                 receiverId,
                 "invalid-object-id",
-                toMillis(deliveredAt1),
+                getCreatedAtMs(deliveredAt1),
                 10
         );
 
@@ -383,7 +383,7 @@ class MongoNotificationAdapterTest {
         return MongoNotificationRecipient.fromDomain(recipient);
     }
 
-    private long toMillis(LocalDateTime dateTime) {
+    private long getCreatedAtMs(LocalDateTime dateTime) {
         return dateTime
                 .atZone(ServiceZoneUtils.ZONE_ID)
                 .toInstant()

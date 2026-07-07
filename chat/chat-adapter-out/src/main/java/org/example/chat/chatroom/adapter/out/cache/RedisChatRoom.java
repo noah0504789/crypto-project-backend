@@ -12,7 +12,6 @@ import org.example.common.time.ServiceZoneUtils;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Set;
 
 @ToString
@@ -48,7 +47,7 @@ public class RedisChatRoom {
                 .category(domain.getCategory())
                 .memberIds(domain.getMemberIds())
                 .msgCnt(domain.getMsgCnt() == null ? 0L : domain.getMsgCnt())
-                .createdAt(domain.toInstant())
+                .createdAt(domain.getCreatedAtInstant())
                 .build();
     }
 

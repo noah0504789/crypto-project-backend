@@ -2,6 +2,9 @@ package org.example.chat.chatroom.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.chat.chatroom.application.event.*;
+import org.example.chat.chatroom.application.exception.ChatRoomEventPublishException;
+import org.example.chat.chatroom.application.mapper.ChatRoomPayloadMapper;
 import org.example.chat.chatroom.application.service.command.ChatRoomActivityCommand;
 import org.example.chat.chatroom.application.service.command.ChatRoomUpdateCommand;
 import org.example.chat.chatroom.application.port.in.ChatRoomCommandUseCase;
@@ -9,11 +12,10 @@ import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomIdGeneratorPort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.application.service.command.ChatRoomCreateCommand;
-import org.example.chat.chatroom.domain.event.payload.ChatRoomUpdatedPayload;
+import org.example.chat.chatroom.application.event.payload.ChatRoomUpdatedPayload;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
-import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
-import org.example.chat.chatroom.application.exception.ChatRoomPersistException;
+import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException;
 import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
 import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
 import org.springframework.stereotype.Service;
@@ -34,7 +36,7 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
     public void create(ChatRoomCreateCommand command) {
         String id = idGenerator.generate();
 
-        ChatRoom domain = ChatRoom.ofNewRoom(
+        ChatRoom domain = ChatRoom.create(
                 id,
                 command.hostId(),
                 command.title(),
@@ -45,30 +47,44 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
         save(domain);
     }
 
+    @Override
     public void save(ChatRoom domain) {
-        domain.persist();
-        publishEvent(domain, "chatroom persist");
+        String id = domain.getId();
 
-        saveCacheSafely(domain);
+        publishChatRoomEvents(
+                id,
+                ChatRoomEventList.of(
+                        new ChatRoomPersistedEvent(ChatRoomPayloadMapper.fromDomain(domain))
+                ),
+                "chatroom persist"
+        );
 
-        activity(new ChatRoomActivityCommand(domain.getId(), domain.getHostId(), 0L, 0L));
+        cacheSaveSafely(domain);
+
+        activity(new ChatRoomActivityCommand(id, domain.getHostId(), 0L, 0L));
     }
 
     @Override
     public void update(ChatRoomUpdateCommand command) {
         String id = command.roomId();
+        ChatRoomUpdatedPayload updatedPayload = command.toPayload();
+
+        publishChatRoomEvents(
+                id,
+                ChatRoomEventList.of(
+                        new ChatRoomUpdatedEvent(id, updatedPayload)
+                ),
+                "chatroom update"
+        );
+
         ChatRoom domain = persistence.findById(id)
                 .orElseThrow(() -> new ChatRoomNotFoundException(id));
-
-        ChatRoomUpdatedPayload payload = command.toPayload();
         String oldTitle = domain.getTitle();
 
-        domain.update(payload);
-
-        publishEvent(domain, "chatroom update");
-        updateCacheSafely(domain, payload, oldTitle);
+        cacheUpdateSafely(id, updatedPayload, oldTitle);
     }
 
+    @Override
     public boolean join(String id, String memberId) {
         ChatRoom domain = persistence.findById(id)
                 .orElseThrow(() -> new ChatRoomNotFoundException(id));
@@ -79,13 +95,20 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
             return false;
         }
 
-        publishEvent(domain, "chatroom join");
+        publishChatRoomEvents(
+                id,
+                ChatRoomEventList.of(
+                        new ChatRoomJoinedEvent(id, memberId)
+                ),
+                "chatroom join"
+        );
 
-        joinCacheSafely(domain, memberId);
+        cacheJoinSafely(id, memberId);
 
         return true;
     }
 
+    @Override
     public void leave(String id, String memberId) {
         ChatRoom domain = persistence.findById(id)
                 .orElseThrow(() -> new ChatRoomNotFoundException(id));
@@ -95,31 +118,42 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
             return;
         }
 
-        domain.removeMember(memberId);
-        publishEvent(domain, "chatroom leave");
+        boolean isRemoved = domain.removeMember(memberId);
 
-        leaveCacheSafely(domain, memberId);
+        if (!isRemoved) {
+            return;
+        }
+
+        publishChatRoomEvents(
+                id,
+                ChatRoomEventList.of(
+                        new ChatRoomLeavedEvent(id, memberId)
+                ),
+                "chatroom leave"
+        );
+
+        cacheLeaveSafely(id, memberId);
     }
 
     @Override
     public void activity(ChatRoomActivityCommand command) {
-        ChatRoom domain = ChatRoom.ofId(command.roomId());
+        String id = command.roomId();
+        String memberId = command.memberId();
+        Long lastMsgSeq = command.lastMsgReadSeq();
+        Long lastMsgMs = command.lastMsgCreatedAtMs();
 
-        domain.active(
-                command.memberId(),
-                command.lastMsgReadSeq(),
-                command.lastMsgCreatedAtMs()
+        publishChatRoomEvents(
+                id,
+                ChatRoomEventList.of(
+                        new ChatRoomActiveEvent(id, memberId, lastMsgSeq, lastMsgMs)
+                ),
+                "chatroom activity"
         );
 
-        publishEvent(domain, "chatroom activity");
-        activityCacheSafely(
-                domain,
-                command.memberId(),
-                command.lastMsgReadSeq(),
-                command.lastMsgCreatedAtMs()
-        );
+        cacheActivitySafely(id, memberId, lastMsgSeq, lastMsgMs);
     }
 
+    @Override
     public void delete(String id) {
         ChatRoom domain = persistence.findById(id)
                 .orElseThrow(() -> new ChatRoomNotFoundException(id));
@@ -133,13 +167,32 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
         String title = domain.getTitle();
         Set<String> memberIds = domain.getMemberIds();
 
-        domain.delete();
-        publishEvent(domain, "chatroom delete");
+        publishChatRoomEvents(
+                id,
+                ChatRoomEventList.of(
+                        new ChatRoomDeletedEvent(id, category)
+                ),
+                "chatroom delete"
+        );
 
-        deleteCacheSafely(domain, id, category, title, memberIds);
+        cacheDeleteSafely(id, category, title, memberIds);
     }
 
-    private void saveCacheSafely(ChatRoom domain) {
+    private void publishChatRoomEvents(
+            String roomId,
+            ChatRoomEventList eventList,
+            String context
+    ) {
+        try {
+            outboxEventListPublishPort.publish(eventList);
+        } catch (TemporaryOutboxPersistenceException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ChatRoomEventPublishException(roomId, context, e);
+        }
+    }
+
+    private void cacheSaveSafely(ChatRoom domain) {
         try {
             cache.save(domain);
         } catch (RuntimeException e) {
@@ -149,113 +202,132 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
                     e
             );
 
-            domain.cacheSave();
-            publishEvent(domain, "chatroom cache save fallback");
+            publishChatRoomEvents(
+                    domain.getId(),
+                    ChatRoomEventList.of(
+                            new ChatRoomCacheSaveEvent(domain.getId())
+                    ),
+                    "chatroom cache save fallback"
+            );
         }
     }
 
-    private void updateCacheSafely(ChatRoom domain, ChatRoomUpdatedPayload payload, String oldTitle) {
+    private void cacheUpdateSafely(
+            String roomId,
+            ChatRoomUpdatedPayload payload,
+            String oldTitle
+    ) {
         try {
-            cache.updateRoom(domain.getId(), payload.toUpdateMap(), oldTitle);
+            cache.updateRoom(roomId, payload.toUpdateMap(), oldTitle);
         } catch (RuntimeException e) {
             log.warn(
                     "[cache] chatroom update failed. roomId={}",
-                    domain.getId(),
+                    roomId,
                     e
             );
 
-            domain.cacheUpdate(oldTitle);
-            publishEvent(domain, "chatroom cache update fallback");
+            publishChatRoomEvents(
+                    roomId,
+                    ChatRoomEventList.of(
+                            new ChatRoomCacheUpdateEvent(roomId, oldTitle)
+                    ),
+                    "chatroom cache update fallback"
+            );
         }
     }
 
-    private void joinCacheSafely(ChatRoom domain, String memberId) {
+    private void cacheJoinSafely(String roomId, String memberId) {
         try {
-            cache.joinMembership(domain.getId(), memberId);
+            cache.joinMembership(roomId, memberId);
         } catch (RuntimeException e) {
             log.warn(
                     "[cache] chatroom join failed. roomId={}, memberId={}",
-                    domain.getId(),
+                    roomId,
                     memberId,
                     e
             );
 
-            domain.cacheInfoInvalidate();
-            publishEvent(domain, "chatroom cache info invalidate");
+            publishChatRoomEvents(
+                    roomId,
+                    ChatRoomEventList.of(
+                            new ChatRoomCacheInfoInvalidateEvent(roomId)
+                    ),
+                    "chatroom cache info invalidate"
+            );
         }
     }
 
-    private void leaveCacheSafely(ChatRoom domain, String memberId) {
+    private void cacheLeaveSafely(String roomId, String memberId) {
         try {
-            cache.leaveMembership(domain.getId(), memberId);
+            cache.leaveMembership(roomId, memberId);
         } catch (RuntimeException e) {
             log.warn(
                     "[cache] chatroom leave failed. roomId={}, memberId={}",
-                    domain.getId(),
+                    roomId,
                     memberId,
                     e
             );
 
-            domain.cacheInfoInvalidate();
-            publishEvent(domain, "chatroom cache info invalidate");
+            publishChatRoomEvents(
+                    roomId,
+                    ChatRoomEventList.of(
+                            new ChatRoomCacheInfoInvalidateEvent(roomId)
+                    ),
+                    "chatroom cache info invalidate"
+            );
         }
     }
 
-    private void activityCacheSafely(
-            ChatRoom domain,
+    private void cacheActivitySafely(
+            String roomId,
             String memberId,
             Long lastMsgSeq,
             Long lastMsgMs
     ) {
         try {
-            cache.updateLastReadSeq(domain.getId(), memberId, lastMsgSeq);
-            cache.updateActivityScore(domain.getId(), memberId, lastMsgMs);
+            cache.updateLastReadSeq(roomId, memberId, lastMsgSeq);
+            cache.updateActivityScore(roomId, memberId, lastMsgMs);
         } catch (RuntimeException e) {
             log.warn(
                     "[cache] chatroom activity failed. roomId={}, memberId={}, lastMsgReadSeq={}, lastMsgCreatedAtMs={}",
-                    domain.getId(),
+                    roomId,
                     memberId,
                     lastMsgSeq,
                     lastMsgMs,
                     e
             );
 
-            domain.cacheActivityInvalidate(memberId);
-            publishEvent(domain, "chatroom cache activity invalidate");
+            publishChatRoomEvents(
+                    roomId,
+                    ChatRoomEventList.of(
+                            new ChatRoomCacheActivityInvalidateEvent(roomId, memberId)
+                    ),
+                    "chatroom cache activity invalidate"
+            );
         }
     }
 
-    private void deleteCacheSafely(
-            ChatRoom domain,
-            String id,
+    private void cacheDeleteSafely(
+            String roomId,
             ChatRoomCategory category,
             String title,
             Set<String> memberIds
     ) {
         try {
-            cache.deleteRoom(id, category, title, memberIds);
+            cache.deleteRoom(roomId, category, title, memberIds);
         } catch (RuntimeException e) {
             log.warn(
                     "[cache] chatroom delete failed. roomId={}",
-                    id,
+                    roomId,
                     e
             );
 
-            domain.cacheDelete();
-            publishEvent(domain, "chatroom cache delete fallback");
-        }
-    }
-
-    private void publishEvent(ChatRoom domain, String context) {
-        try {
-            outboxEventListPublishPort.publish(domain.pullEventList());
-        } catch (TemporaryOutboxPersistenceException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new ChatRoomPersistException(
-                    domain,
-                    "failed to publish chatroom event. context=" + context + ", roomId=" + domain.getId(),
-                    e
+            publishChatRoomEvents(
+                    roomId,
+                    ChatRoomEventList.of(
+                            new ChatRoomCacheDeleteEvent(roomId, category, title, memberIds)
+                    ),
+                    "chatroom cache delete fallback"
             );
         }
     }

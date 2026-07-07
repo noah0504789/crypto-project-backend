@@ -10,7 +10,7 @@ import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessageRepo
 import org.example.chat.chatroom.application.service.result.ChatRoomMembershipScore;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
-import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
+import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException;
 import org.example.chat.chatroom.domain.service.MyChatRoomScoreCalculator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -576,7 +576,7 @@ class MongoChatRoomAdapterTest {
     }
 
     private ChatRoom chatRoom(ObjectId id, String title) {
-        return ChatRoom.ofNewRoom(
+        return ChatRoom.create(
                 id.toHexString(),
                 HOST_ID,
                 title,

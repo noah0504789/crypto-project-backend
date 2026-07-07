@@ -24,8 +24,6 @@ public class SpringDlqEventListPublishAdapter implements DlqEventListPublishPort
         }
 
         try {
-            eventList.assignTxId();
-
             EventUtils.raise(eventList);
         } catch (DlqPersistenceException e) {
             throw e;

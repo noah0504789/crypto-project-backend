@@ -1,11 +1,12 @@
 package org.example.chat.chatroom.application.service;
 
 import lombok.RequiredArgsConstructor;
-import org.example.chat.chatroom.domain.event.dlq.*;
+import org.example.chat.chatroom.application.event.dlq.*;
+import org.example.chat.chatroom.application.mapper.ChatRoomPayloadMapper;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.domain.model.ChatRoom;
-import org.example.chat.chatroom.domain.event.handler.ChatRoomDlqHandler;
+import org.example.chat.chatroom.application.port.in.ChatRoomDlqHandler;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,7 +21,7 @@ public class ChatRoomDlqService implements ChatRoomDlqHandler {
 
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomPersistedDlqEvent event) {
-        ChatRoom domain = ChatRoom.fromPayload(event.getPayload());
+        ChatRoom domain = ChatRoomPayloadMapper.toDomain(event.getPayload());
 
         persistence.save(domain);
     }

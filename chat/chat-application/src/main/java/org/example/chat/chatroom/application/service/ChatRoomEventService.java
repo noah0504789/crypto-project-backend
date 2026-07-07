@@ -2,21 +2,26 @@ package org.example.chat.chatroom.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.chat.chatroom.application.event.dlq.*;
+import org.example.chat.chatroom.application.event.payload.ChatRoomPersistPayload;
+import org.example.chat.chatroom.application.event.payload.ChatRoomUpdatedPayload;
+import org.example.chat.chatroom.application.mapper.ChatRoomPayloadMapper;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
-import org.example.chat.chatroom.domain.event.ChatRoomActiveEvent;
-import org.example.chat.chatroom.domain.event.ChatRoomCacheActivityInvalidateEvent;
-import org.example.chat.chatroom.domain.event.ChatRoomCacheDeleteEvent;
-import org.example.chat.chatroom.domain.event.ChatRoomCacheInfoInvalidateEvent;
-import org.example.chat.chatroom.domain.event.ChatRoomCacheSaveEvent;
-import org.example.chat.chatroom.domain.event.ChatRoomCacheUpdateEvent;
-import org.example.chat.chatroom.domain.event.ChatRoomDeletedEvent;
-import org.example.chat.chatroom.domain.event.ChatRoomJoinedEvent;
-import org.example.chat.chatroom.domain.event.ChatRoomLeavedEvent;
-import org.example.chat.chatroom.domain.event.ChatRoomPersistedEvent;
-import org.example.chat.chatroom.domain.event.ChatRoomUpdatedEvent;
+import org.example.chat.chatroom.application.event.ChatRoomActiveEvent;
+import org.example.chat.chatroom.application.event.ChatRoomCacheActivityInvalidateEvent;
+import org.example.chat.chatroom.application.event.ChatRoomCacheDeleteEvent;
+import org.example.chat.chatroom.application.event.ChatRoomCacheInfoInvalidateEvent;
+import org.example.chat.chatroom.application.event.ChatRoomCacheSaveEvent;
+import org.example.chat.chatroom.application.event.ChatRoomCacheUpdateEvent;
+import org.example.chat.chatroom.application.event.ChatRoomDeletedEvent;
+import org.example.chat.chatroom.application.event.ChatRoomJoinedEvent;
+import org.example.chat.chatroom.application.event.ChatRoomLeavedEvent;
+import org.example.chat.chatroom.application.event.ChatRoomPersistedEvent;
+import org.example.chat.chatroom.application.event.ChatRoomUpdatedEvent;
 import org.example.chat.chatroom.domain.model.ChatRoom;
-import org.example.chat.chatroom.domain.event.handler.ChatRoomEventHandler;
+import org.example.chat.chatroom.application.port.in.ChatRoomEventHandler;
+import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.chat.exception.TemporaryChatCacheException;
 import org.example.chat.exception.TemporaryChatPersistenceException;
 import org.example.common.dlq.application.port.out.DlqEventListPublishPort;
@@ -27,6 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
+import java.util.Set;
 
 @Slf4j
 @Retryable(
@@ -47,24 +53,34 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
 
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomPersistedEvent event, String txId) {
-        ChatRoom domain = ChatRoom.fromPayload(event.getPayload());
+        ChatRoomPersistPayload payload = event.getPayload();
+        ChatRoom domain = ChatRoomPayloadMapper.toDomain(payload);
 
         persistence.save(domain);
     }
 
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomUpdatedEvent event, String txId) {
-        persistence.updateRoomAndReturn(event.getId(), event.getUpdated().toUpdateMap());
+        persistence.updateRoomAndReturn(
+                event.getId(),
+                event.getUpdated().toUpdateMap()
+        );
     }
 
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomJoinedEvent event, String txId) {
-        persistence.joinMembership(event.getId(), event.getMemberId());
+        persistence.joinMembership(
+                event.getId(),
+                event.getMemberId()
+        );
     }
 
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomLeavedEvent event, String txId) {
-        persistence.leaveMembership(event.getId(), event.getMemberId());
+        persistence.leaveMembership(
+                event.getId(),
+                event.getMemberId()
+        );
     }
 
     @Transactional("chatMongoTransactionManager")
@@ -74,10 +90,18 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
 
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomActiveEvent event, String txId) {
-        persistence.activateMembership(event.getId(), event.getMemberId(), event.getLastMsgSeq(), event.getLastMsgMs());
+        persistence.activateMembership(
+                event.getId(),
+                event.getMemberId(),
+                event.getLastMsgSeq(),
+                event.getLastMsgMs()
+        );
     }
 
-    @Transactional(transactionManager = "chatMongoTransactionManager", readOnly = true)
+    @Transactional(
+            transactionManager = "chatMongoTransactionManager",
+            readOnly = true
+    )
     public void handle(ChatRoomCacheSaveEvent event, String txId) {
         String id = event.getId();
 
@@ -85,7 +109,10 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
                 .ifPresent(cache::warmUp);
     }
 
-    @Transactional(transactionManager = "chatMongoTransactionManager", readOnly = true)
+    @Transactional(
+            transactionManager = "chatMongoTransactionManager",
+            readOnly = true
+    )
     public void handle(ChatRoomCacheUpdateEvent event, String txId) {
         String id = event.getId();
         String oldTitle = event.getOldTitle();
@@ -95,11 +122,19 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
     }
 
     public void handle(ChatRoomCacheDeleteEvent event, String txId) {
-        cache.deleteRoom(event.getId(), event.getCategory(), event.getTitle(), event.getMemberids());
+        cache.deleteRoom(
+                event.getId(),
+                event.getCategory(),
+                event.getTitle(),
+                event.getMemberids()
+        );
     }
 
     public void handle(ChatRoomCacheActivityInvalidateEvent event, String txId) {
-        cache.invalidateMembershipActivity(event.getId(), event.getMemberId());
+        cache.invalidateMembershipActivity(
+                event.getId(),
+                event.getMemberId()
+        );
     }
 
     public void handle(ChatRoomCacheInfoInvalidateEvent event, String txId) {
@@ -119,14 +154,17 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
                 e
         );
 
-        ChatRoom domain = ChatRoom.fromPayload(event.getPayload());
+        ChatRoomPersistPayload payload = event.getPayload();
+        String errorMessage = e.getMessage();
 
         runRecover(
                 "chatroom persist recover",
                 txId,
                 e,
-                () -> publishDlqEvent(domain, () -> domain.recoverPersist(e.getMessage())),
-                event.getPayload()
+                () -> publishDlqEvent(
+                        ChatRoomDlqEventList.of(new ChatRoomPersistedDlqEvent(payload, errorMessage))
+                ),
+                payload
         );
     }
 
@@ -136,23 +174,27 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
             ChatRoomUpdatedEvent event,
             String txId
     ) {
+        String id = event.getId();
+        ChatRoomUpdatedPayload updated = event.getUpdated();
+        String errorMessage = e.getMessage();
+
         log.error(
                 "❌ chatroom update retry exhausted. roomId={}, txId={}, error={}",
-                event.getId(),
+                id,
                 txId,
-                e.getMessage(),
+                errorMessage,
                 e
         );
-
-        ChatRoom domain = ChatRoom.ofId(event.getId());
 
         runRecover(
                 "chatroom update recover",
                 txId,
                 e,
-                () -> publishDlqEvent(domain, () -> domain.recoverUpdate(event, e.getMessage())),
-                event.getId(),
-                event.getUpdated()
+                () -> publishDlqEvent(
+                        ChatRoomDlqEventList.of(new ChatRoomUpdatedDlqEvent(id, updated, errorMessage))
+                ),
+                id,
+                updated
         );
     }
 
@@ -162,24 +204,28 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
             ChatRoomJoinedEvent event,
             String txId
     ) {
+        String id = event.getId();
+        String memberId = event.getMemberId();
+        String errorMessage = e.getMessage();
+
         log.error(
                 "❌ chatroom join retry exhausted. roomId={}, memberId={}, txId={}, error={}",
-                event.getId(),
-                event.getMemberId(),
+                id,
+                memberId,
                 txId,
-                e.getMessage(),
+                errorMessage,
                 e
         );
-
-        ChatRoom domain = ChatRoom.ofId(event.getId());
 
         runRecover(
                 "chatroom join recover",
                 txId,
                 e,
-                () -> publishDlqEvent(domain, () -> domain.recoverJoin(event, e.getMessage())),
-                event.getId(),
-                event.getMemberId()
+                () -> publishDlqEvent(
+                        ChatRoomDlqEventList.of(new ChatRoomJoinedDlqEvent(id, memberId, errorMessage))
+                ),
+                id,
+                memberId
         );
     }
 
@@ -189,24 +235,28 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
             ChatRoomLeavedEvent event,
             String txId
     ) {
+        String id = event.getId();
+        String memberId = event.getMemberId();
+        String errorMessage = e.getMessage();
+
         log.error(
                 "❌ chatroom leave retry exhausted. roomId={}, memberId={}, txId={}, error={}",
-                event.getId(),
-                event.getMemberId(),
+                id,
+                memberId,
                 txId,
-                e.getMessage(),
+                errorMessage,
                 e
         );
-
-        ChatRoom domain = ChatRoom.ofId(event.getId());
 
         runRecover(
                 "chatroom leave recover",
                 txId,
                 e,
-                () -> publishDlqEvent(domain, () -> domain.recoverLeave(event, e.getMessage())),
-                event.getId(),
-                event.getMemberId()
+                () -> publishDlqEvent(
+                        ChatRoomDlqEventList.of(new ChatRoomLeavedDlqEvent(id, memberId, errorMessage))
+                ),
+                id,
+                memberId
         );
     }
 
@@ -216,23 +266,27 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
             ChatRoomDeletedEvent event,
             String txId
     ) {
+        String id = event.getId();
+        ChatRoomCategory category = event.getCategory();
+        String errorMessage = e.getMessage();
+
         log.error(
                 "❌ chatroom delete retry exhausted. roomId={}, txId={}, error={}",
-                event.getId(),
+                id,
                 txId,
-                e.getMessage(),
+                errorMessage,
                 e
         );
-
-        ChatRoom domain = ChatRoom.ofIdAndCategory(event.getId(), event.getCategory());
 
         runRecover(
                 "chatroom delete recover",
                 txId,
                 e,
-                () -> publishDlqEvent(domain, () -> domain.recoverDelete(e.getMessage())),
-                event.getId(),
-                event.getCategory()
+                () -> publishDlqEvent(
+                        ChatRoomDlqEventList.of(new ChatRoomDeletedDlqEvent(id, category, errorMessage))
+                ),
+                id,
+                category
         );
     }
 
@@ -242,26 +296,32 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
             ChatRoomActiveEvent event,
             String txId
     ) {
+        String id = event.getId();
+        String memberId = event.getMemberId();
+        Long lastMsgSeq = event.getLastMsgSeq();
+        Long lastMsgMs = event.getLastMsgMs();
+        String errorMessage = e.getMessage();
+
         log.error(
                 "❌ chatroom active retry exhausted. roomId={}, memberId={}, txId={}, error={}",
-                event.getId(),
-                event.getMemberId(),
+                id,
+                memberId,
                 txId,
-                e.getMessage(),
+                errorMessage,
                 e
         );
-
-        ChatRoom domain = ChatRoom.ofId(event.getId());
 
         runRecover(
                 "chatroom active recover",
                 txId,
                 e,
-                () -> publishDlqEvent(domain, () -> domain.recoverActive(event, e.getMessage())),
-                event.getId(),
-                event.getMemberId(),
-                event.getLastMsgSeq(),
-                event.getLastMsgMs()
+                () -> publishDlqEvent(
+                        ChatRoomDlqEventList.of(new ChatRoomActiveDlqEvent(id, memberId, lastMsgSeq, lastMsgMs, errorMessage))
+                ),
+                id,
+                memberId,
+                lastMsgSeq,
+                lastMsgMs
         );
     }
 
@@ -271,22 +331,25 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
             ChatRoomCacheSaveEvent event,
             String txId
     ) {
+        String id = event.getId();
+        String errorMessage = e.getMessage();
+
         log.error(
                 "❌ chatroom cache save retry exhausted. roomId={}, txId={}, error={}",
-                event.getId(),
+                id,
                 txId,
-                e.getMessage(),
+                errorMessage,
                 e
         );
-
-        ChatRoom domain = ChatRoom.ofId(event.getId());
 
         runRecover(
                 "chatroom cache save recover",
                 txId,
                 e,
-                () -> publishDlqEvent(domain, () -> domain.recoverCacheSave(e.getMessage())),
-                event.getId()
+                () -> publishDlqEvent(
+                        ChatRoomDlqEventList.of(new ChatRoomCacheSaveDlqEvent(id, errorMessage))
+                ),
+                id
         );
     }
 
@@ -296,22 +359,27 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
             ChatRoomCacheUpdateEvent event,
             String txId
     ) {
+        String id = event.getId();
+        String oldTitle = event.getOldTitle();
+        String errorMessage = e.getMessage();
+
         log.error(
                 "❌ chatroom cache update retry exhausted. roomId={}, txId={}, error={}",
-                event.getId(),
+                id,
                 txId,
-                e.getMessage(),
+                errorMessage,
                 e
         );
-
-        ChatRoom domain = ChatRoom.ofId(event.getId());
 
         runRecover(
                 "chatroom cache update recover",
                 txId,
                 e,
-                () -> publishDlqEvent(domain, () -> domain.recoverCacheUpdate(event, e.getMessage())),
-                event.getId()
+                () -> publishDlqEvent(
+                        ChatRoomDlqEventList.of(new ChatRoomCacheUpdateDlqEvent(id, oldTitle, errorMessage))
+                ),
+                id,
+                oldTitle
         );
     }
 
@@ -321,22 +389,31 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
             ChatRoomCacheDeleteEvent event,
             String txId
     ) {
+        String id = event.getId();
+        ChatRoomCategory category = event.getCategory();
+        String title = event.getTitle();
+        Set<String> memberIds = event.getMemberids();
+        String errorMessage = e.getMessage();
+
         log.error(
                 "❌ chatroom cache delete retry exhausted. roomId={}, txId={}, error={}",
-                event.getId(),
+                id,
                 txId,
-                e.getMessage(),
+                errorMessage,
                 e
         );
-
-        ChatRoom domain = ChatRoom.ofId(event.getId());
 
         runRecover(
                 "chatroom cache delete recover",
                 txId,
                 e,
-                () -> publishDlqEvent(domain, () -> domain.recoverCacheDelete(event, e.getMessage())),
-                event.getId()
+                () -> publishDlqEvent(
+                        ChatRoomDlqEventList.of(new ChatRoomCacheDeleteDlqEvent(id, category, title, memberIds, errorMessage))
+                ),
+                id,
+                category,
+                title,
+                memberIds
         );
     }
 
@@ -346,24 +423,32 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
             ChatRoomCacheActivityInvalidateEvent event,
             String txId
     ) {
+        String id = event.getId();
+        String memberId = event.getMemberId();
+        String errorMessage = e.getMessage();
+
         log.error(
                 "❌ chatroom cache invalidate activity retry exhausted. roomId={}, memberId={}, txId={}, error={}",
-                event.getId(),
-                event.getMemberId(),
+                id,
+                memberId,
                 txId,
-                e.getMessage(),
+                errorMessage,
                 e
         );
-
-        ChatRoom domain = ChatRoom.ofId(event.getId());
 
         runRecover(
                 "chatroom cache invalidate activity recover",
                 txId,
                 e,
-                () -> publishDlqEvent(domain, () -> domain.recoverCacheInvalidateActivity(event, e.getMessage())),
-                event.getId(),
-                event.getMemberId()
+                () -> publishDlqEvent(
+                        ChatRoomDlqEventList.of(new ChatRoomCacheActivityInvalidateDlqEvent(
+                                id,
+                                memberId,
+                                errorMessage
+                        ))
+                ),
+                id,
+                memberId
         );
     }
 
@@ -373,29 +458,30 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
             ChatRoomCacheInfoInvalidateEvent event,
             String txId
     ) {
+        String id = event.getId();
+        String errorMessage = e.getMessage();
+
         log.error(
                 "❌ chatroom cache invalidate info retry exhausted. roomId={}, txId={}, error={}",
-                event.getId(),
+                id,
                 txId,
-                e.getMessage(),
+                errorMessage,
                 e
         );
-
-        ChatRoom domain = ChatRoom.ofId(event.getId());
 
         runRecover(
                 "chatroom cache invalidate info recover",
                 txId,
                 e,
-                () -> publishDlqEvent(domain, () -> domain.recoverCacheInvalidateInfo(event, e.getMessage())),
-                event.getId()
+                () -> publishDlqEvent(
+                        ChatRoomDlqEventList.of(new ChatRoomCacheInfoInvalidateDlqEvent(id, errorMessage))
+                ),
+                id
         );
     }
 
-    private void publishDlqEvent(ChatRoom domain, Runnable registerAction) {
-        registerAction.run();
-
-        dlqEventListPublishPort.publish(domain.pullDlqEventList());
+    private void publishDlqEvent(ChatRoomDlqEventList eventList) {
+        dlqEventListPublishPort.publish(eventList);
     }
 
     private void runRecover(

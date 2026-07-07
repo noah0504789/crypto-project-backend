@@ -4,8 +4,10 @@ plugins {
 
 dependencies {
     api project(':chat:chat-domain')
+    api project(':chat:chat-contract')
 
     implementation project(':common:common-core')
+    implementation project(':common:common-outbox')
     implementation project(':common:common-redis')
     implementation project(':common:common-redisson')
     implementation(libs.spring.boot.starter.data.jpa)

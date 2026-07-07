@@ -2,14 +2,18 @@ package org.example.chat.chatmessage.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.chat.chatmessage.application.event.dlq.ChatMessageDlqEventList;
+import org.example.chat.chatmessage.application.event.dlq.ChatMessagePersistDlqEvent;
+import org.example.chat.chatmessage.application.mapper.ChatMessagePayloadMapper;
 import org.example.chat.chatmessage.application.port.out.ChatMessagePersistencePort;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
-import org.example.chat.chatmessage.domain.event.ChatMessagePersistEvent;
-import org.example.chat.chatmessage.domain.event.handler.ChatMessageEventHandler;
+import org.example.chat.chatmessage.application.event.ChatMessagePersistEvent;
+import org.example.chat.chatmessage.application.port.in.ChatMessageEventHandler;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatmessage.application.exception.DuplicateChatMessageException;
 import org.example.chat.exception.TemporaryChatPersistenceException;
 import org.example.common.dlq.application.port.out.DlqEventListPublishPort;
+import org.example.contract.chatmessage.ChatMessagePayload;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
@@ -35,7 +39,8 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
     )
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatMessagePersistEvent event, String txId) {
-        ChatMessage domain = ChatMessage.fromPayload(event.getPayload());
+        ChatMessagePayload payload = event.getPayload();
+        ChatMessage domain = ChatMessagePayloadMapper.toDomain(payload);
         String id = domain.getId();
         String roomId = domain.getRoomId();
 
@@ -67,7 +72,8 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
                 e
         );
 
-        ChatMessage domain = ChatMessage.fromPayload(event.getPayload());
+        ChatMessagePayload payload = event.getPayload();
+        ChatMessage domain = ChatMessagePayloadMapper.toDomain(payload);
 
         runRecover(
                 txId,
@@ -99,8 +105,12 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
     }
 
     private void publishPersistDlqEvent(ChatMessage domain, String errorMessage) {
-        domain.registerPersistDlqEvents(errorMessage);
+        ChatMessagePayload chatMessagePayload = ChatMessagePayloadMapper.fromDomain(domain);
+        ChatMessageDlqEventList chatMessageDlqEventList =
+                ChatMessageDlqEventList.of(
+                    new ChatMessagePersistDlqEvent(chatMessagePayload, errorMessage)
+                );
 
-        dlqEventListPublishPort.publish(domain.pullDlqEventList());
+        dlqEventListPublishPort.publish(chatMessageDlqEventList);
     }
 }

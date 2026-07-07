@@ -7,11 +7,11 @@ import org.example.chat.chatmessage.application.exception.ChatMessageCacheExcept
 import org.example.chat.chatmessage.application.exception.ChatMessagePersistException;
 import org.example.chat.chatmessage.adapter.in.grpc.exception.GrpcChatMessageExceptionAdvice;
 import org.example.chat.chatmessage.adapter.in.grpc.exception.ChatMessageGrpcCancelledException;
-import org.example.chat.chatmessage.domain.event.dlq.ChatMessageDlqEventList;
-import org.example.chat.chatmessage.domain.event.ChatMessageEventList;
+import org.example.chat.chatmessage.application.event.dlq.ChatMessageDlqEventList;
+import org.example.chat.chatmessage.application.event.ChatMessageEventList;
 import org.example.chat.chatmessage.application.service.ChatMessageCommandService;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
-import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
+import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -264,8 +264,6 @@ class GrpcChatMessageExceptionAdviceTest {
                 .writerId("writer-1")
                 .content("hello")
                 .createdAt(LocalDateTime.of(2026, 1, 1, 10, 0))
-                .eventList(new ChatMessageEventList())
-                .dlqEventList(new ChatMessageDlqEventList())
                 .build();
     }
 }

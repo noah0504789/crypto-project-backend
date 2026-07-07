@@ -1,8 +1,8 @@
 package org.example.chat.chatmessage.adapter.in.stream;
 
 import lombok.extern.slf4j.Slf4j;
-import org.example.chat.chatmessage.domain.event.handler.ChatMessageDlqHandler;
-import org.example.chat.chatmessage.domain.event.handler.ChatMessageEventHandler;
+import org.example.chat.chatmessage.application.port.in.ChatMessageDlqHandler;
+import org.example.chat.chatmessage.application.port.in.ChatMessageEventHandler;
 import org.example.common.event.HandleableEvent;
 import org.example.common.event.RecoverableEvent;
 import org.example.common.enums.KafkaHeaderKey;

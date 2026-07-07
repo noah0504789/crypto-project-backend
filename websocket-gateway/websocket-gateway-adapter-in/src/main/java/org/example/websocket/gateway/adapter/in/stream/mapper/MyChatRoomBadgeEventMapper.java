@@ -1,6 +1,6 @@
 package org.example.websocket.gateway.adapter.in.stream.mapper;
 
-import org.example.contract.chatroom.MyChatRoomPayload;
+import org.example.contract.chatroom.MyChatRoomBadgePayload;
 import org.example.contract.chatroom.MyChatRoomBadgeEvent;
 import org.example.websocket.gateway.chatroom.application.service.command.MyChatRoomBadgeCommand;
 import org.springframework.stereotype.Component;
@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 public class MyChatRoomBadgeEventMapper {
 
     public MyChatRoomBadgeCommand toCommand(MyChatRoomBadgeEvent event) {
-        MyChatRoomPayload payload = event.payload();
+        MyChatRoomBadgePayload payload = event.getPayload();
 
         return new MyChatRoomBadgeCommand(
                 payload.id(),

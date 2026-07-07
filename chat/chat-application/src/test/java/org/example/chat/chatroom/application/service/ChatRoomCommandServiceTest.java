@@ -1,18 +1,19 @@
 package org.example.chat.chatroom.application.service;
 
+import org.example.chat.chatroom.application.exception.ChatRoomEventPublishException;
 import org.example.chat.chatroom.application.service.command.ChatRoomActivityCommand;
 import org.example.chat.chatroom.application.service.command.ChatRoomUpdateCommand;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomIdGeneratorPort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.application.service.command.ChatRoomCreateCommand;
-import org.example.chat.chatroom.domain.event.ChatRoomEventList;
-import org.example.chat.chatroom.domain.event.payload.ChatRoomUpdatedPayload;
+import org.example.chat.chatroom.application.event.ChatRoomEventList;
+import org.example.chat.chatroom.application.event.payload.ChatRoomUpdatedPayload;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
-import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
-import org.example.chat.chatroom.application.exception.ChatRoomPersistException;
+import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException;
 import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
+import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -20,15 +21,18 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -64,78 +68,46 @@ class ChatRoomCommandServiceTest {
     class CreateTest {
 
         @Test
-        @DisplayName("ID를 생성하고 커맨드 값으로 새 채팅방을 만든 뒤 저장한다")
-        void create_should_generate_id_create_chatroom_and_save() {
+        @DisplayName("채팅방 id를 생성하고 ChatRoom을 만든 뒤 save에 위임한다")
+        void create_shouldGenerateIdCreateDomainAndDelegateSave() {
             // given
-            ChatRoomCreateCommand command = new ChatRoomCreateCommand(
-                    hostId,
-                    "title",
-                    "description",
-                    category
-            );
+            ChatRoomCreateCommand command = mock(ChatRoomCreateCommand.class);
 
-            ChatRoom domain = mock(ChatRoom.class);
+            given(idGenerator.generate()).willReturn(id);
+            given(command.hostId()).willReturn(hostId);
+            given(command.title()).willReturn("title");
+            given(command.description()).willReturn("description");
+            given(command.category()).willReturn(category);
 
-            given(idGenerator.generate())
-                    .willReturn(id);
+            doNothing()
+                    .when(sut)
+                    .save(any(ChatRoom.class));
 
-            doNothing().when(sut).save(domain);
+            // when
+            sut.create(command);
 
-            try (MockedStatic<ChatRoom> mockedChatRoom = Mockito.mockStatic(ChatRoom.class)) {
-                mockedChatRoom.when(
-                        () -> ChatRoom.ofNewRoom(
-                                id,
-                                hostId,
-                                "title",
-                                "description",
-                                category
-                        )
-                ).thenReturn(domain);
+            // then
+            then(idGenerator)
+                    .should()
+                    .generate();
 
-                // when
-                sut.create(command);
+            then(sut)
+                    .should()
+                    .save(argThat(domain ->
+                            domain.getId().equals(id)
+                                    && domain.getHostId().equals(hostId)
+                                    && domain.getTitle().equals("title")
+                                    && domain.getDescription().equals("description")
+                                    && domain.getCategory() == category
+                                    && domain.getMsgCnt().equals(0L)
+                                    && domain.getMemberIds().contains(hostId)
+                    ));
 
-                // then
-                InOrder inOrder = inOrder(idGenerator, sut);
+            then(outboxEventListPublishPort)
+                    .shouldHaveNoInteractions();
 
-                inOrder.verify(idGenerator).generate();
-                inOrder.verify(sut).save(domain);
-
-                mockedChatRoom.verify(
-                        () -> ChatRoom.ofNewRoom(
-                                id,
-                                hostId,
-                                "title",
-                                "description",
-                                category
-                        )
-                );
-            }
-        }
-
-        @Test
-        @DisplayName("ID 생성이 실패하면 채팅방을 생성하거나 저장하지 않는다")
-        void create_should_throw_when_id_generate_fails() {
-            // given
-            ChatRoomCreateCommand command = new ChatRoomCreateCommand(
-                    hostId,
-                    "title",
-                    "description",
-                    category
-            );
-
-            given(idGenerator.generate())
-                    .willThrow(new RuntimeException("id generate failed"));
-
-            try (MockedStatic<ChatRoom> mockedChatRoom = Mockito.mockStatic(ChatRoom.class)) {
-                // when & then
-                assertThrows(RuntimeException.class, () -> sut.create(command));
-
-                verify(idGenerator).generate();
-                verify(sut, never()).save(any(ChatRoom.class));
-
-                mockedChatRoom.verifyNoInteractions();
-            }
+            then(cache)
+                    .shouldHaveNoInteractions();
         }
     }
 
@@ -144,246 +116,117 @@ class ChatRoomCommandServiceTest {
     class SaveTest {
 
         @Test
-        @DisplayName("채팅방을 저장하면 persist 이벤트 발행, 캐시 저장, activity 갱신을 수행한다")
-        void save_should_persist_publish_save_cache_and_call_activity() {
+        @DisplayName("채팅방 저장 이벤트를 발행하고 캐시에 저장한 뒤 activity를 호출한다")
+        void save_shouldPublishPersistedEventSaveCacheAndCallActivity() {
             // given
-            ChatRoom domain = mock(ChatRoom.class);
-            ChatRoomEventList eventList = mock(ChatRoomEventList.class);
+            ChatRoom domain = chatRoom();
 
-            when(domain.getId()).thenReturn(id);
-            when(domain.getHostId()).thenReturn(hostId);
-            when(domain.pullEventList()).thenReturn(eventList);
-
-            doNothing().when(sut).activity(new ChatRoomActivityCommand(id, hostId, 0L, 0L));
+            doNothing()
+                    .when(sut)
+                    .activity(any(ChatRoomActivityCommand.class));
 
             // when
             sut.save(domain);
 
             // then
-            InOrder inOrder = inOrder(domain, outboxEventListPublishPort, cache, sut);
+            InOrder inOrder = inOrder(
+                    outboxEventListPublishPort,
+                    cache,
+                    sut
+            );
 
-            inOrder.verify(domain).persist();
-            inOrder.verify(domain).pullEventList();
-            inOrder.verify(outboxEventListPublishPort).publish(eventList);
-            inOrder.verify(cache).save(domain);
-            inOrder.verify(sut).activity(new ChatRoomActivityCommand(id, hostId, 0L, 0L));
-
-            verify(domain, never()).cacheSave();
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
+            inOrder.verify(cache)
+                    .save(domain);
+            inOrder.verify(sut)
+                    .activity(argThat(command ->
+                            command.roomId().equals(id)
+                                    && command.memberId().equals(hostId)
+                                    && command.lastMsgReadSeq().equals(0L)
+                                    && command.lastMsgCreatedAtMs().equals(0L)
+                    ));
         }
 
         @Test
-        @DisplayName("캐시 저장이 실패하면 cacheSave 이벤트를 발행하고 activity를 수행한다")
-        void save_should_publish_cache_save_event_and_call_activity_even_if_cache_save_fails() {
+        @DisplayName("cache save 실패 시 fallback 이벤트를 발행하고 activity는 계속 수행한다")
+        void save_shouldPublishCacheSaveFallbackEvent_whenCacheSaveFails() {
             // given
-            ChatRoom domain = mock(ChatRoom.class);
-            ChatRoomEventList persistEventList = mock(ChatRoomEventList.class);
-            ChatRoomEventList cacheSaveEventList = mock(ChatRoomEventList.class);
+            ChatRoom domain = chatRoom();
 
-            when(domain.getId()).thenReturn(id);
-            when(domain.getHostId()).thenReturn(hostId);
-            when(domain.pullEventList()).thenReturn(persistEventList, cacheSaveEventList);
+            RuntimeException cacheException = new RuntimeException("cache save failed");
 
-            doThrow(new RuntimeException("cache save failed"))
+            doThrow(cacheException)
                     .when(cache)
                     .save(domain);
 
-            doNothing().when(sut).activity(new ChatRoomActivityCommand(id, hostId, 0L, 0L));
+            doNothing()
+                    .when(sut)
+                    .activity(any(ChatRoomActivityCommand.class));
 
-            // when & then
-            assertDoesNotThrow(() -> sut.save(domain));
+            // when
+            sut.save(domain);
 
-            InOrder inOrder = inOrder(domain, outboxEventListPublishPort, cache, sut);
+            // then
+            InOrder inOrder = inOrder(
+                    outboxEventListPublishPort,
+                    cache,
+                    sut
+            );
 
-            inOrder.verify(domain).persist();
-            inOrder.verify(domain).pullEventList();
-            inOrder.verify(outboxEventListPublishPort).publish(persistEventList);
-
-            inOrder.verify(cache).save(domain);
-
-            inOrder.verify(domain).cacheSave();
-            inOrder.verify(domain).pullEventList();
-            inOrder.verify(outboxEventListPublishPort).publish(cacheSaveEventList);
-
-            inOrder.verify(sut).activity(new ChatRoomActivityCommand(id, hostId, 0L, 0L));
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
+            inOrder.verify(cache)
+                    .save(domain);
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
+            inOrder.verify(sut)
+                    .activity(any(ChatRoomActivityCommand.class));
         }
 
         @Test
-        @DisplayName("도메인 persist가 실패하면 이벤트 발행, 캐시 저장, activity를 수행하지 않는다")
-        void save_should_throw_if_domain_persist_fails() {
+        @DisplayName("채팅방 저장 이벤트 발행 중 TemporaryOutboxPersistenceException이 발생하면 그대로 전파한다")
+        void save_shouldRethrowTemporaryOutboxException() {
             // given
-            ChatRoom domain = mock(ChatRoom.class);
+            ChatRoom domain = chatRoom();
 
-            doThrow(new RuntimeException("persist failed"))
-                    .when(domain)
-                    .persist();
+            TemporaryOutboxPersistenceException exception =
+                    new TemporaryOutboxPersistenceException(
+                            "temporary outbox failure",
+                            new RuntimeException("temporary")
+                    );
 
-            // when & then
-            assertThrows(RuntimeException.class, () -> sut.save(domain));
-
-            verify(domain).persist();
-            verify(domain, never()).pullEventList();
-            verify(outboxEventListPublishPort, never()).publish(any());
-            verify(cache, never()).save(any());
-            verify(sut, never()).activity(any(ChatRoomActivityCommand.class));
-        }
-
-        @Test
-        @DisplayName("persist 이벤트 발행이 실패하면 캐시 저장과 activity를 수행하지 않는다")
-        void save_should_throw_if_persist_event_publish_fails() {
-            // given
-            ChatRoom domain = mock(ChatRoom.class);
-            ChatRoomEventList eventList = mock(ChatRoomEventList.class);
-
-            when(domain.getId()).thenReturn(id);
-            when(domain.pullEventList()).thenReturn(eventList);
-
-            doThrow(new RuntimeException("outbox publish failed"))
+            doThrow(exception)
                     .when(outboxEventListPublishPort)
-                    .publish(eventList);
+                    .publish(any(ChatRoomEventList.class));
 
             // when & then
-            assertThrows(ChatRoomPersistException.class, () -> sut.save(domain));
+            assertThatThrownBy(() -> sut.save(domain))
+                    .isSameAs(exception);
 
-            verify(domain).persist();
-            verify(domain).pullEventList();
-            verify(outboxEventListPublishPort).publish(eventList);
-            verify(cache, never()).save(any());
-            verify(sut, never()).activity(any(ChatRoomActivityCommand.class));
-        }
-    }
-
-    @Nested
-    @DisplayName("activity")
-    class ActivityTest {
-
-        @Test
-        @DisplayName("채팅방 activity 이벤트를 발행하고 캐시 activity를 갱신한다")
-        void activity_should_publish_activity_event_and_update_cache() {
-            // given
-            ChatRoom domain = mock(ChatRoom.class);
-            ChatRoomEventList eventList = mock(ChatRoomEventList.class);
-
-            ChatRoomActivityCommand command = new ChatRoomActivityCommand(
-                    id,
-                    memberId,
-                    lastMsgSeq,
-                    lastMsgMs
-            );
-
-            try (MockedStatic<ChatRoom> mockedChatRoom = Mockito.mockStatic(ChatRoom.class)) {
-                mockedChatRoom.when(() -> ChatRoom.ofId(id))
-                        .thenReturn(domain);
-
-                when(domain.getId()).thenReturn(id);
-                when(domain.pullEventList()).thenReturn(eventList);
-
-                // when
-                sut.activity(command);
-
-                // then
-                InOrder inOrder = inOrder(
-                        domain,
-                        outboxEventListPublishPort,
-                        cache
-                );
-
-                mockedChatRoom.verify(() -> ChatRoom.ofId(id));
-
-                inOrder.verify(domain).active(memberId, lastMsgSeq, lastMsgMs);
-                inOrder.verify(domain).pullEventList();
-                inOrder.verify(outboxEventListPublishPort).publish(eventList);
-                inOrder.verify(cache).updateLastReadSeq(id, memberId, lastMsgSeq);
-                inOrder.verify(cache).updateActivityScore(id, memberId, lastMsgMs);
-
-                verify(domain, never()).cacheActivityInvalidate(anyString());
-            }
+            then(cache)
+                    .shouldHaveNoInteractions();
         }
 
         @Test
-        @DisplayName("캐시 activity 갱신이 실패하면 cacheActivityInvalidate 이벤트를 발행한다")
-        void activity_should_publish_cache_activity_invalidate_event_if_cache_activity_fails() {
+        @DisplayName("채팅방 저장 이벤트 발행 중 일반 예외가 발생하면 ChatRoomEventPublishException으로 감싼다")
+        void save_shouldWrapUnexpectedOutboxException() {
             // given
-            ChatRoom domain = mock(ChatRoom.class);
-            ChatRoomEventList activityEventList = mock(ChatRoomEventList.class);
-            ChatRoomEventList invalidateEventList = mock(ChatRoomEventList.class);
+            ChatRoom domain = chatRoom();
 
-            ChatRoomActivityCommand command = new ChatRoomActivityCommand(
-                    id,
-                    memberId,
-                    lastMsgSeq,
-                    lastMsgMs
-            );
+            RuntimeException exception = new RuntimeException("outbox failed");
 
-            try (MockedStatic<ChatRoom> mockedChatRoom = Mockito.mockStatic(ChatRoom.class)) {
-                mockedChatRoom.when(() -> ChatRoom.ofId(id))
-                        .thenReturn(domain);
+            doThrow(exception)
+                    .when(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
 
-                when(domain.getId()).thenReturn(id);
-                when(domain.pullEventList())
-                        .thenReturn(activityEventList, invalidateEventList);
+            // when & then
+            assertThatThrownBy(() -> sut.save(domain))
+                    .isInstanceOf(ChatRoomEventPublishException.class)
+                    .hasCause(exception);
 
-                doThrow(new RuntimeException("cache activity failed"))
-                        .when(cache)
-                        .updateLastReadSeq(id, memberId, lastMsgSeq);
-
-                // when & then
-                assertDoesNotThrow(() -> sut.activity(command));
-
-                InOrder inOrder = inOrder(
-                        domain,
-                        outboxEventListPublishPort,
-                        cache
-                );
-
-                mockedChatRoom.verify(() -> ChatRoom.ofId(id));
-
-                inOrder.verify(domain).active(memberId, lastMsgSeq, lastMsgMs);
-                inOrder.verify(domain).pullEventList();
-                inOrder.verify(outboxEventListPublishPort).publish(activityEventList);
-
-                inOrder.verify(cache).updateLastReadSeq(id, memberId, lastMsgSeq);
-
-                inOrder.verify(domain).cacheActivityInvalidate(memberId);
-                inOrder.verify(domain).pullEventList();
-                inOrder.verify(outboxEventListPublishPort).publish(invalidateEventList);
-
-                verify(cache, never()).updateActivityScore(id, memberId, lastMsgMs);
-            }
-        }
-
-        @Test
-        @DisplayName("도메인 active가 실패하면 이벤트 발행과 캐시 갱신을 수행하지 않는다")
-        void activity_should_throw_if_domain_active_fails() {
-            // given
-            ChatRoom domain = mock(ChatRoom.class);
-
-            ChatRoomActivityCommand command = new ChatRoomActivityCommand(
-                    id,
-                    memberId,
-                    lastMsgSeq,
-                    lastMsgMs
-            );
-
-            try (MockedStatic<ChatRoom> mockedChatRoom = Mockito.mockStatic(ChatRoom.class)) {
-                mockedChatRoom.when(() -> ChatRoom.ofId(id))
-                        .thenReturn(domain);
-
-                doThrow(new RuntimeException("domain active failed"))
-                        .when(domain)
-                        .active(memberId, lastMsgSeq, lastMsgMs);
-
-                // when & then
-                assertThrows(RuntimeException.class, () -> sut.activity(command));
-
-                mockedChatRoom.verify(() -> ChatRoom.ofId(id));
-
-                verify(domain).active(memberId, lastMsgSeq, lastMsgMs);
-                verify(domain, never()).pullEventList();
-                verify(outboxEventListPublishPort, never()).publish(any());
-                verify(cache, never()).updateLastReadSeq(anyString(), anyString(), anyLong());
-                verify(cache, never()).updateActivityScore(anyString(), anyString(), anyLong());
-                verify(domain, never()).cacheActivityInvalidate(anyString());
-            }
+            then(cache)
+                    .shouldHaveNoInteractions();
         }
     }
 
@@ -392,151 +235,104 @@ class ChatRoomCommandServiceTest {
     class UpdateTest {
 
         @Test
-        @DisplayName("채팅방을 수정하면 update 이벤트 발행 후 캐시 update를 수행한다")
-        void update_should_publish_update_event_and_update_cache() {
+        @DisplayName("채팅방 수정 이벤트를 발행하고 기존 채팅방 조회 후 캐시를 수정한다")
+        void update_shouldPublishUpdatedEventFindDomainAndUpdateCache() {
             // given
-            ChatRoom domain = mock(ChatRoom.class);
-            ChatRoomEventList eventList = mock(ChatRoomEventList.class);
+            ChatRoomUpdateCommand command = mock(ChatRoomUpdateCommand.class);
+            ChatRoomUpdatedPayload payload = mock(ChatRoomUpdatedPayload.class);
+            ChatRoom domain = chatRoomWithTitle(oldTitle);
 
-            ChatRoomUpdateCommand command = new ChatRoomUpdateCommand(
-                    id,
-                    "수정된 제목",
-                    "수정된 설명",
-                    category
-            );
+            Map<String, Object> updateMap = Map.of("title", newTitle);
 
-            ChatRoomUpdatedPayload payload = command.toPayload();
-            Map<String, Object> updated = payload.toUpdateMap();
-
-            when(persistence.findById(id)).thenReturn(Optional.of(domain));
-            when(domain.getId()).thenReturn(id);
-            when(domain.getTitle()).thenReturn(oldTitle);
-            when(domain.pullEventList()).thenReturn(eventList);
+            given(command.roomId()).willReturn(id);
+            given(command.toPayload()).willReturn(payload);
+            given(payload.toUpdateMap()).willReturn(updateMap);
+            given(persistence.findById(id)).willReturn(Optional.of(domain));
 
             // when
             sut.update(command);
 
             // then
             InOrder inOrder = inOrder(
-                    persistence,
-                    domain,
                     outboxEventListPublishPort,
+                    persistence,
                     cache
             );
 
-            inOrder.verify(persistence).findById(id);
-            inOrder.verify(domain).getTitle();
-            inOrder.verify(domain).update(payload);
-            inOrder.verify(domain).pullEventList();
-            inOrder.verify(outboxEventListPublishPort).publish(eventList);
-            inOrder.verify(cache).updateRoom(id, updated, oldTitle);
-
-            verify(domain, never()).cacheUpdate(anyString());
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
+            inOrder.verify(persistence)
+                    .findById(id);
+            inOrder.verify(cache)
+                    .updateRoom(id, updateMap, oldTitle);
         }
 
         @Test
-        @DisplayName("캐시 update가 실패하면 cacheUpdate 이벤트를 발행하고 예외를 삼킨다")
-        void update_should_publish_cache_update_event_if_cache_update_fails() {
+        @DisplayName("채팅방 수정 이벤트 발행 후 채팅방이 없으면 ChatRoomNotFoundException이 발생하고 캐시는 수정하지 않는다")
+        void update_shouldThrow_whenChatRoomNotFoundAfterEventPublished() {
             // given
-            ChatRoom domain = mock(ChatRoom.class);
-            ChatRoomEventList updateEventList = mock(ChatRoomEventList.class);
-            ChatRoomEventList cacheUpdateEventList = mock(ChatRoomEventList.class);
+            ChatRoomUpdateCommand command = mock(ChatRoomUpdateCommand.class);
+            ChatRoomUpdatedPayload payload = mock(ChatRoomUpdatedPayload.class);
 
-            ChatRoomUpdateCommand command = new ChatRoomUpdateCommand(
-                    id,
-                    "수정된 제목",
-                    "수정된 설명",
-                    category
+            given(command.roomId()).willReturn(id);
+            given(command.toPayload()).willReturn(payload);
+            given(persistence.findById(id)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> sut.update(command))
+                    .isInstanceOf(ChatRoomNotFoundException.class);
+
+            InOrder inOrder = inOrder(
+                    outboxEventListPublishPort,
+                    persistence
             );
 
-            ChatRoomUpdatedPayload payload = command.toPayload();
-            Map<String, Object> updated = payload.toUpdateMap();
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
+            inOrder.verify(persistence)
+                    .findById(id);
 
-            when(persistence.findById(id)).thenReturn(Optional.of(domain));
-            when(domain.getId()).thenReturn(id);
-            when(domain.getTitle()).thenReturn(oldTitle);
-            when(domain.pullEventList()).thenReturn(updateEventList, cacheUpdateEventList);
+            then(cache)
+                    .shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("cache update 실패 시 cache update fallback 이벤트를 발행한다")
+        void update_shouldPublishCacheUpdateFallbackEvent_whenCacheUpdateFails() {
+            // given
+            ChatRoomUpdateCommand command = mock(ChatRoomUpdateCommand.class);
+            ChatRoomUpdatedPayload payload = mock(ChatRoomUpdatedPayload.class);
+            ChatRoom domain = chatRoomWithTitle(oldTitle);
+
+            Map<String, Object> updateMap = Map.of("title", newTitle);
+
+            given(command.roomId()).willReturn(id);
+            given(command.toPayload()).willReturn(payload);
+            given(payload.toUpdateMap()).willReturn(updateMap);
+            given(persistence.findById(id)).willReturn(Optional.of(domain));
 
             doThrow(new RuntimeException("cache update failed"))
                     .when(cache)
-                    .updateRoom(id, updated, oldTitle);
+                    .updateRoom(id, updateMap, oldTitle);
 
-            // when & then
-            assertDoesNotThrow(() -> sut.update(command));
+            // when
+            sut.update(command);
 
+            // then
             InOrder inOrder = inOrder(
-                    persistence,
-                    domain,
                     outboxEventListPublishPort,
+                    persistence,
                     cache
             );
 
-            inOrder.verify(persistence).findById(id);
-            inOrder.verify(domain).getTitle();
-            inOrder.verify(domain).update(payload);
-            inOrder.verify(domain).pullEventList();
-            inOrder.verify(outboxEventListPublishPort).publish(updateEventList);
-
-            inOrder.verify(cache).updateRoom(id, updated, oldTitle);
-
-            inOrder.verify(domain).cacheUpdate(oldTitle);
-            inOrder.verify(domain).pullEventList();
-            inOrder.verify(outboxEventListPublishPort).publish(cacheUpdateEventList);
-        }
-
-        @Test
-        @DisplayName("수정할 채팅방이 없으면 ChatRoomNotFoundException을 던지고 이벤트 발행과 캐시 갱신을 수행하지 않는다")
-        void update_should_throw_if_domain_not_found() {
-            // given
-            ChatRoomUpdateCommand command = new ChatRoomUpdateCommand(
-                    id,
-                    "수정된 제목",
-                    "수정된 설명",
-                    category
-            );
-
-            when(persistence.findById(id)).thenReturn(Optional.empty());
-
-            // when & then
-            assertThrows(ChatRoomNotFoundException.class, () -> sut.update(command));
-
-            verify(persistence).findById(id);
-            verify(outboxEventListPublishPort, never()).publish(any());
-            verify(cache, never()).updateRoom(anyString(), anyMap(), anyString());
-        }
-
-        @Test
-        @DisplayName("도메인 update가 실패하면 이벤트 발행과 캐시 update를 수행하지 않는다")
-        void update_should_throw_if_domain_update_fails() {
-            // given
-            ChatRoom domain = mock(ChatRoom.class);
-
-            ChatRoomUpdateCommand command = new ChatRoomUpdateCommand(
-                    id,
-                    "수정된 제목",
-                    "수정된 설명",
-                    category
-            );
-
-            ChatRoomUpdatedPayload payload = command.toPayload();
-
-            when(persistence.findById(id)).thenReturn(Optional.of(domain));
-            when(domain.getTitle()).thenReturn(oldTitle);
-
-            doThrow(new RuntimeException("domain update failed"))
-                    .when(domain)
-                    .update(payload);
-
-            // when & then
-            assertThrows(RuntimeException.class, () -> sut.update(command));
-
-            verify(persistence).findById(id);
-            verify(domain).getTitle();
-            verify(domain).update(payload);
-            verify(domain, never()).pullEventList();
-            verify(outboxEventListPublishPort, never()).publish(any());
-            verify(cache, never()).updateRoom(anyString(), anyMap(), anyString());
-            verify(domain, never()).cacheUpdate(anyString());
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
+            inOrder.verify(persistence)
+                    .findById(id);
+            inOrder.verify(cache)
+                    .updateRoom(id, updateMap, oldTitle);
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
         }
     }
 
@@ -545,42 +341,50 @@ class ChatRoomCommandServiceTest {
     class JoinTest {
 
         @Test
-        @DisplayName("새 멤버가 입장하면 join 이벤트 발행 후 캐시에 join을 반영한다")
-        void join_should_publish_join_event_and_update_cache() {
+        @DisplayName("채팅방에 새 멤버가 가입하면 이벤트를 발행하고 캐시에 멤버십을 추가한 뒤 true를 반환한다")
+        void join_shouldAddMemberPublishEventUpdateCacheAndReturnTrue() {
             // given
-            ChatRoom domain = mock(ChatRoom.class);
-            ChatRoomEventList eventList = mock(ChatRoomEventList.class);
+            ChatRoom domain = chatRoom();
 
-            when(persistence.findById(id)).thenReturn(Optional.of(domain));
-            when(domain.addMember(memberId)).thenReturn(true);
-            when(domain.getId()).thenReturn(id);
-            when(domain.pullEventList()).thenReturn(eventList);
+            given(persistence.findById(id)).willReturn(Optional.of(domain));
 
             // when
             boolean result = sut.join(id, memberId);
 
             // then
             assertThat(result).isTrue();
+            assertThat(domain.getMemberIds()).contains(memberId);
 
-            InOrder inOrder = inOrder(persistence, domain, outboxEventListPublishPort, cache);
+            InOrder inOrder = inOrder(
+                    persistence,
+                    outboxEventListPublishPort,
+                    cache
+            );
 
-            inOrder.verify(persistence).findById(id);
-            inOrder.verify(domain).addMember(memberId);
-            inOrder.verify(domain).pullEventList();
-            inOrder.verify(outboxEventListPublishPort).publish(eventList);
-            inOrder.verify(cache).joinMembership(id, memberId);
-
-            verify(domain, never()).cacheInfoInvalidate();
+            inOrder.verify(persistence)
+                    .findById(id);
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
+            inOrder.verify(cache)
+                    .joinMembership(id, memberId);
         }
 
         @Test
-        @DisplayName("이미 참여한 멤버면 이벤트 발행과 캐시 join을 수행하지 않고 false를 반환한다")
-        void join_should_return_false_if_already_joined() {
+        @DisplayName("이미 가입된 멤버면 false를 반환하고 이벤트와 캐시 작업을 수행하지 않는다")
+        void join_shouldReturnFalse_whenAlreadyJoined() {
             // given
-            ChatRoom domain = mock(ChatRoom.class);
+            ChatRoom domain = ChatRoom.rehydrate(
+                    id,
+                    hostId,
+                    oldTitle,
+                    "description",
+                    category,
+                    Set.of(hostId, memberId),
+                    0L,
+                    LocalDateTime.now()
+            );
 
-            when(persistence.findById(id)).thenReturn(Optional.of(domain));
-            when(domain.addMember(memberId)).thenReturn(false);
+            given(persistence.findById(id)).willReturn(Optional.of(domain));
 
             // when
             boolean result = sut.join(id, memberId);
@@ -588,26 +392,41 @@ class ChatRoomCommandServiceTest {
             // then
             assertThat(result).isFalse();
 
-            verify(persistence).findById(id);
-            verify(domain).addMember(memberId);
-            verify(domain, never()).pullEventList();
-            verify(outboxEventListPublishPort, never()).publish(any());
-            verify(cache, never()).joinMembership(anyString(), anyString());
-            verify(domain, never()).cacheInfoInvalidate();
+            then(persistence)
+                    .should()
+                    .findById(id);
+
+            then(outboxEventListPublishPort)
+                    .shouldHaveNoInteractions();
+
+            then(cache)
+                    .shouldHaveNoInteractions();
         }
 
         @Test
-        @DisplayName("캐시 join이 실패하면 cacheInfoInvalidate 이벤트를 발행하고 true를 반환한다")
-        void join_should_publish_cache_info_invalidate_event_if_cache_join_fails() {
+        @DisplayName("채팅방이 없으면 ChatRoomNotFoundException이 발생한다")
+        void join_shouldThrow_whenChatRoomNotFound() {
             // given
-            ChatRoom domain = mock(ChatRoom.class);
-            ChatRoomEventList joinEventList = mock(ChatRoomEventList.class);
-            ChatRoomEventList invalidateEventList = mock(ChatRoomEventList.class);
+            given(persistence.findById(id)).willReturn(Optional.empty());
 
-            when(persistence.findById(id)).thenReturn(Optional.of(domain));
-            when(domain.addMember(memberId)).thenReturn(true);
-            when(domain.getId()).thenReturn(id);
-            when(domain.pullEventList()).thenReturn(joinEventList, invalidateEventList);
+            // when & then
+            assertThatThrownBy(() -> sut.join(id, memberId))
+                    .isInstanceOf(ChatRoomNotFoundException.class);
+
+            then(outboxEventListPublishPort)
+                    .shouldHaveNoInteractions();
+
+            then(cache)
+                    .shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("cache join 실패 시 cache info invalidate 이벤트를 발행하고 true를 반환한다")
+        void join_shouldPublishCacheInfoInvalidateEvent_whenCacheJoinFails() {
+            // given
+            ChatRoom domain = chatRoom();
+
+            given(persistence.findById(id)).willReturn(Optional.of(domain));
 
             doThrow(new RuntimeException("cache join failed"))
                     .when(cache)
@@ -619,32 +438,20 @@ class ChatRoomCommandServiceTest {
             // then
             assertThat(result).isTrue();
 
-            InOrder inOrder = inOrder(persistence, domain, outboxEventListPublishPort, cache);
+            InOrder inOrder = inOrder(
+                    persistence,
+                    outboxEventListPublishPort,
+                    cache
+            );
 
-            inOrder.verify(persistence).findById(id);
-            inOrder.verify(domain).addMember(memberId);
-            inOrder.verify(domain).pullEventList();
-            inOrder.verify(outboxEventListPublishPort).publish(joinEventList);
-
-            inOrder.verify(cache).joinMembership(id, memberId);
-
-            inOrder.verify(domain).cacheInfoInvalidate();
-            inOrder.verify(domain).pullEventList();
-            inOrder.verify(outboxEventListPublishPort).publish(invalidateEventList);
-        }
-
-        @Test
-        @DisplayName("입장할 채팅방이 없으면 ChatRoomNotFoundException을 던진다")
-        void join_should_throw_if_domain_not_found() {
-            // given
-            when(persistence.findById(id)).thenReturn(Optional.empty());
-
-            // when & then
-            assertThrows(ChatRoomNotFoundException.class, () -> sut.join(id, memberId));
-
-            verify(persistence).findById(id);
-            verify(outboxEventListPublishPort, never()).publish(any());
-            verify(cache, never()).joinMembership(anyString(), anyString());
+            inOrder.verify(persistence)
+                    .findById(id);
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
+            inOrder.verify(cache)
+                    .joinMembership(id, memberId);
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
         }
     }
 
@@ -653,125 +460,260 @@ class ChatRoomCommandServiceTest {
     class LeaveTest {
 
         @Test
-        @DisplayName("마지막 멤버가 아니면 leave 이벤트 발행 후 캐시에 leave를 반영한다")
-        void leave_should_publish_leave_event_and_update_cache_when_not_last_member() {
+        @DisplayName("마지막 멤버가 나가면 삭제 이벤트를 발행하고 캐시에서 채팅방을 삭제한다")
+        void leave_shouldDelete_whenMemberIsLastMember() {
             // given
-            ChatRoom domain = mock(ChatRoom.class);
-            ChatRoomEventList eventList = mock(ChatRoomEventList.class);
+            ChatRoom domain = ChatRoom.rehydrate(
+                    id,
+                    hostId,
+                    oldTitle,
+                    "description",
+                    category,
+                    Set.of(memberId),
+                    0L,
+                    LocalDateTime.now()
+            );
 
-            when(persistence.findById(id)).thenReturn(Optional.of(domain));
-            when(domain.isLastMember(memberId)).thenReturn(false);
-            when(domain.getId()).thenReturn(id);
-            when(domain.pullEventList()).thenReturn(eventList);
+            given(persistence.findById(id)).willReturn(Optional.of(domain));
 
             // when
             sut.leave(id, memberId);
 
             // then
-            InOrder inOrder = inOrder(persistence, domain, outboxEventListPublishPort, cache);
+            InOrder inOrder = inOrder(
+                    persistence,
+                    outboxEventListPublishPort,
+                    cache
+            );
 
-            inOrder.verify(persistence).findById(id);
-            inOrder.verify(domain).isLastMember(memberId);
-            inOrder.verify(domain).removeMember(memberId);
-            inOrder.verify(domain).pullEventList();
-            inOrder.verify(outboxEventListPublishPort).publish(eventList);
-            inOrder.verify(cache).leaveMembership(id, memberId);
-
-            verify(domain, never()).delete();
-            verify(cache, never()).deleteRoom(anyString(), any(), anyString(), anySet());
-            verify(domain, never()).cacheInfoInvalidate();
+            inOrder.verify(persistence)
+                    .findById(id);
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
+            inOrder.verify(cache)
+                    .deleteRoom(id, category, oldTitle, domain.getMemberIds());
         }
 
         @Test
-        @DisplayName("마지막 멤버가 나가면 leave 대신 delete 이벤트를 발행하고 캐시 delete를 수행한다")
-        void leave_should_delete_room_if_member_is_last_member() {
+        @DisplayName("멤버가 나가면 이벤트를 발행하고 캐시 멤버십을 제거한다")
+        void leave_shouldRemoveMemberPublishEventAndUpdateCache() {
             // given
-            ChatRoom domain = mock(ChatRoom.class);
-            ChatRoomEventList deleteEventList = mock(ChatRoomEventList.class);
-            Set<String> memberIds = Set.of(memberId);
+            ChatRoom domain = ChatRoom.rehydrate(
+                    id,
+                    hostId,
+                    oldTitle,
+                    "description",
+                    category,
+                    Set.of(hostId, memberId),
+                    0L,
+                    LocalDateTime.now()
+            );
 
-            when(persistence.findById(id)).thenReturn(Optional.of(domain));
-            when(domain.isLastMember(memberId)).thenReturn(true);
-            when(domain.getId()).thenReturn(id);
-            when(domain.getCategory()).thenReturn(category);
-            when(domain.getTitle()).thenReturn(newTitle);
-            when(domain.getMemberIds()).thenReturn(memberIds);
-            when(domain.pullEventList()).thenReturn(deleteEventList);
+            given(persistence.findById(id)).willReturn(Optional.of(domain));
 
             // when
             sut.leave(id, memberId);
 
             // then
-            InOrder inOrder = inOrder(persistence, domain, outboxEventListPublishPort, cache);
+            assertThat(domain.getMemberIds()).doesNotContain(memberId);
 
-            inOrder.verify(persistence).findById(id);
-            inOrder.verify(domain).isLastMember(memberId);
+            InOrder inOrder = inOrder(
+                    persistence,
+                    outboxEventListPublishPort,
+                    cache
+            );
 
-            inOrder.verify(domain).getId();
-            inOrder.verify(domain).getCategory();
-            inOrder.verify(domain).getTitle();
-            inOrder.verify(domain).getMemberIds();
-
-            inOrder.verify(domain).delete();
-            inOrder.verify(domain).pullEventList();
-            inOrder.verify(outboxEventListPublishPort).publish(deleteEventList);
-            inOrder.verify(cache).deleteRoom(id, category, newTitle, memberIds);
-
-            verify(domain, never()).removeMember(anyString());
-            verify(cache, never()).leaveMembership(anyString(), anyString());
+            inOrder.verify(persistence)
+                    .findById(id);
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
+            inOrder.verify(cache)
+                    .leaveMembership(id, memberId);
         }
 
         @Test
-        @DisplayName("캐시 leave가 실패하면 cacheInfoInvalidate 이벤트를 발행하고 예외를 삼킨다")
-        void leave_should_publish_cache_info_invalidate_event_if_cache_leave_fails() {
+        @DisplayName("채팅방 멤버가 아니면 아무 작업도 하지 않는다")
+        void leave_shouldDoNothing_whenMemberDoesNotExist() {
             // given
-            ChatRoom domain = mock(ChatRoom.class);
-            ChatRoomEventList leaveEventList = mock(ChatRoomEventList.class);
-            ChatRoomEventList invalidateEventList = mock(ChatRoomEventList.class);
+            ChatRoom domain = ChatRoom.rehydrate(
+                    id,
+                    hostId,
+                    oldTitle,
+                    "description",
+                    category,
+                    Set.of(hostId),
+                    0L,
+                    LocalDateTime.now()
+            );
 
-            when(persistence.findById(id)).thenReturn(Optional.of(domain));
-            when(domain.isLastMember(memberId)).thenReturn(false);
-            when(domain.getId()).thenReturn(id);
-            when(domain.pullEventList()).thenReturn(leaveEventList, invalidateEventList);
+            given(persistence.findById(id)).willReturn(Optional.of(domain));
+
+            // when
+            sut.leave(id, memberId);
+
+            // then
+            then(persistence)
+                    .should()
+                    .findById(id);
+
+            then(outboxEventListPublishPort)
+                    .shouldHaveNoInteractions();
+
+            then(cache)
+                    .shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("채팅방이 없으면 ChatRoomNotFoundException이 발생한다")
+        void leave_shouldThrow_whenChatRoomNotFound() {
+            // given
+            given(persistence.findById(id)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> sut.leave(id, memberId))
+                    .isInstanceOf(ChatRoomNotFoundException.class);
+
+            then(outboxEventListPublishPort)
+                    .shouldHaveNoInteractions();
+
+            then(cache)
+                    .shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("cache leave 실패 시 cache info invalidate 이벤트를 발행한다")
+        void leave_shouldPublishCacheInfoInvalidateEvent_whenCacheLeaveFails() {
+            // given
+            ChatRoom domain = ChatRoom.rehydrate(
+                    id,
+                    hostId,
+                    oldTitle,
+                    "description",
+                    category,
+                    Set.of(hostId, memberId),
+                    0L,
+                    LocalDateTime.now()
+            );
+
+            given(persistence.findById(id)).willReturn(Optional.of(domain));
 
             doThrow(new RuntimeException("cache leave failed"))
                     .when(cache)
                     .leaveMembership(id, memberId);
 
-            // when & then
-            assertDoesNotThrow(() -> sut.leave(id, memberId));
+            // when
+            sut.leave(id, memberId);
 
-            InOrder inOrder = inOrder(persistence, domain, outboxEventListPublishPort, cache);
+            // then
+            InOrder inOrder = inOrder(
+                    persistence,
+                    outboxEventListPublishPort,
+                    cache
+            );
 
-            inOrder.verify(persistence).findById(id);
-            inOrder.verify(domain).isLastMember(memberId);
-            inOrder.verify(domain).removeMember(memberId);
-            inOrder.verify(domain).pullEventList();
-            inOrder.verify(outboxEventListPublishPort).publish(leaveEventList);
+            inOrder.verify(persistence)
+                    .findById(id);
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
+            inOrder.verify(cache)
+                    .leaveMembership(id, memberId);
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
+        }
+    }
 
-            inOrder.verify(cache).leaveMembership(id, memberId);
+    @Nested
+    @DisplayName("activity")
+    class ActivityTest {
 
-            inOrder.verify(domain).cacheInfoInvalidate();
-            inOrder.verify(domain).pullEventList();
-            inOrder.verify(outboxEventListPublishPort).publish(invalidateEventList);
+        @Test
+        @DisplayName("채팅방 활동 이벤트를 발행하고 캐시의 lastReadSeq와 activityScore를 갱신한다")
+        void activity_shouldPublishActiveEventAndUpdateCache() {
+            // given
+            ChatRoomActivityCommand command = new ChatRoomActivityCommand(
+                    id,
+                    memberId,
+                    lastMsgSeq,
+                    lastMsgMs
+            );
 
-            verify(domain, never()).delete();
-            verify(cache, never()).deleteRoom(anyString(), any(), anyString(), anySet());
+            // when
+            sut.activity(command);
+
+            // then
+            InOrder inOrder = inOrder(
+                    outboxEventListPublishPort,
+                    cache
+            );
+
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
+            inOrder.verify(cache)
+                    .updateLastReadSeq(id, memberId, lastMsgSeq);
+            inOrder.verify(cache)
+                    .updateActivityScore(id, memberId, lastMsgMs);
         }
 
         @Test
-        @DisplayName("나갈 채팅방이 없으면 ChatRoomNotFoundException을 던진다")
-        void leave_should_throw_if_domain_not_found() {
+        @DisplayName("cache activity 실패 시 cache activity invalidate 이벤트를 발행한다")
+        void activity_shouldPublishCacheActivityInvalidateEvent_whenCacheActivityFails() {
             // given
-            when(persistence.findById(id)).thenReturn(Optional.empty());
+            ChatRoomActivityCommand command = new ChatRoomActivityCommand(
+                    id,
+                    memberId,
+                    lastMsgSeq,
+                    lastMsgMs
+            );
+
+            doThrow(new RuntimeException("cache activity failed"))
+                    .when(cache)
+                    .updateLastReadSeq(id, memberId, lastMsgSeq);
+
+            // when
+            sut.activity(command);
+
+            // then
+            InOrder inOrder = inOrder(
+                    outboxEventListPublishPort,
+                    cache
+            );
+
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
+            inOrder.verify(cache)
+                    .updateLastReadSeq(id, memberId, lastMsgSeq);
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
+
+            then(cache)
+                    .should(never())
+                    .updateActivityScore(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("activity 이벤트 발행 중 일반 예외가 발생하면 ChatRoomEventPublishException으로 감싼다")
+        void activity_shouldWrapUnexpectedOutboxException() {
+            // given
+            ChatRoomActivityCommand command = new ChatRoomActivityCommand(
+                    id,
+                    memberId,
+                    lastMsgSeq,
+                    lastMsgMs
+            );
+
+            RuntimeException exception = new RuntimeException("outbox failed");
+
+            doThrow(exception)
+                    .when(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
 
             // when & then
-            assertThrows(ChatRoomNotFoundException.class, () -> sut.leave(id, memberId));
+            assertThatThrownBy(() -> sut.activity(command))
+                    .isInstanceOf(ChatRoomEventPublishException.class)
+                    .hasCause(exception);
 
-            verify(persistence).findById(id);
-            verify(outboxEventListPublishPort, never()).publish(any());
-            verify(cache, never()).leaveMembership(anyString(), anyString());
-            verify(cache, never()).deleteRoom(anyString(), any(), anyString(), anySet());
+            then(cache)
+                    .shouldHaveNoInteractions();
         }
     }
 
@@ -780,118 +722,113 @@ class ChatRoomCommandServiceTest {
     class DeleteTest {
 
         @Test
-        @DisplayName("채팅방을 삭제하면 delete 이벤트 발행 후 캐시 delete를 수행한다")
-        void delete_should_publish_delete_event_and_cache_delete() {
+        @DisplayName("id로 채팅방을 조회한 뒤 삭제 이벤트를 발행하고 캐시에서 삭제한다")
+        void delete_shouldFindDomainPublishDeletedEventAndDeleteCache() {
             // given
-            ChatRoom domain = mock(ChatRoom.class);
-            ChatRoomEventList eventList = mock(ChatRoomEventList.class);
-            Set<String> memberIds = Set.of("member-1", "member-2");
+            ChatRoom domain = ChatRoom.rehydrate(
+                    id,
+                    hostId,
+                    oldTitle,
+                    "description",
+                    category,
+                    Set.of(hostId, memberId),
+                    0L,
+                    LocalDateTime.now()
+            );
 
-            when(persistence.findById(id)).thenReturn(Optional.of(domain));
-            when(domain.getId()).thenReturn(id);
-            when(domain.getCategory()).thenReturn(category);
-            when(domain.getTitle()).thenReturn(newTitle);
-            when(domain.getMemberIds()).thenReturn(memberIds);
-            when(domain.pullEventList()).thenReturn(eventList);
+            given(persistence.findById(id)).willReturn(Optional.of(domain));
 
             // when
             sut.delete(id);
 
             // then
-            InOrder inOrder = inOrder(persistence, domain, outboxEventListPublishPort, cache);
+            InOrder inOrder = inOrder(
+                    persistence,
+                    outboxEventListPublishPort,
+                    cache
+            );
 
-            inOrder.verify(persistence).findById(id);
-
-            inOrder.verify(domain).getId();
-            inOrder.verify(domain).getCategory();
-            inOrder.verify(domain).getTitle();
-            inOrder.verify(domain).getMemberIds();
-
-            inOrder.verify(domain).delete();
-            inOrder.verify(domain).pullEventList();
-            inOrder.verify(outboxEventListPublishPort).publish(eventList);
-            inOrder.verify(cache).deleteRoom(id, category, newTitle, memberIds);
-
-            verify(domain, never()).cacheDelete();
+            inOrder.verify(persistence)
+                    .findById(id);
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
+            inOrder.verify(cache)
+                    .deleteRoom(id, category, oldTitle, domain.getMemberIds());
         }
 
         @Test
-        @DisplayName("캐시 delete가 실패하면 cacheDelete 이벤트를 발행하고 예외를 삼킨다")
-        void delete_should_publish_cache_delete_event_if_cache_delete_fails() {
+        @DisplayName("채팅방이 없으면 ChatRoomNotFoundException이 발생한다")
+        void delete_shouldThrow_whenChatRoomNotFound() {
             // given
-            ChatRoom domain = mock(ChatRoom.class);
-            ChatRoomEventList deleteEventList = mock(ChatRoomEventList.class);
-            ChatRoomEventList cacheDeleteEventList = mock(ChatRoomEventList.class);
-            Set<String> memberIds = Set.of("member-1", "member-2");
+            given(persistence.findById(id)).willReturn(Optional.empty());
 
-            when(persistence.findById(id)).thenReturn(Optional.of(domain));
-            when(domain.getId()).thenReturn(id);
-            when(domain.getCategory()).thenReturn(category);
-            when(domain.getTitle()).thenReturn(newTitle);
-            when(domain.getMemberIds()).thenReturn(memberIds);
-            when(domain.pullEventList()).thenReturn(deleteEventList, cacheDeleteEventList);
+            // when & then
+            assertThatThrownBy(() -> sut.delete(id))
+                    .isInstanceOf(ChatRoomNotFoundException.class);
+
+            then(outboxEventListPublishPort)
+                    .shouldHaveNoInteractions();
+
+            then(cache)
+                    .shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("cache delete 실패 시 cache delete fallback 이벤트를 발행한다")
+        void delete_shouldPublishCacheDeleteFallbackEvent_whenCacheDeleteFails() {
+            // given
+            ChatRoom domain = ChatRoom.rehydrate(
+                    id,
+                    hostId,
+                    oldTitle,
+                    "description",
+                    category,
+                    Set.of(hostId, memberId),
+                    0L,
+                    LocalDateTime.now()
+            );
+
+            given(persistence.findById(id)).willReturn(Optional.of(domain));
 
             doThrow(new RuntimeException("cache delete failed"))
                     .when(cache)
-                    .deleteRoom(id, category, newTitle, memberIds);
+                    .deleteRoom(id, category, oldTitle, domain.getMemberIds());
 
-            // when & then
-            assertDoesNotThrow(() -> sut.delete(id));
+            // when
+            sut.delete(id);
 
-            InOrder inOrder = inOrder(persistence, domain, outboxEventListPublishPort, cache);
+            // then
+            InOrder inOrder = inOrder(
+                    persistence,
+                    outboxEventListPublishPort,
+                    cache
+            );
 
-            inOrder.verify(persistence).findById(id);
-
-            inOrder.verify(domain).delete();
-            inOrder.verify(domain).pullEventList();
-            inOrder.verify(outboxEventListPublishPort).publish(deleteEventList);
-
-            inOrder.verify(cache).deleteRoom(id, category, newTitle, memberIds);
-
-            inOrder.verify(domain).cacheDelete();
-            inOrder.verify(domain).pullEventList();
-            inOrder.verify(outboxEventListPublishPort).publish(cacheDeleteEventList);
+            inOrder.verify(persistence)
+                    .findById(id);
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
+            inOrder.verify(cache)
+                    .deleteRoom(id, category, oldTitle, domain.getMemberIds());
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
         }
+    }
 
-        @Test
-        @DisplayName("삭제할 채팅방이 없으면 ChatRoomNotFoundException을 던지고 이벤트 발행과 캐시 delete를 수행하지 않는다")
-        void delete_should_throw_if_domain_not_found() {
-            // given
-            when(persistence.findById(id)).thenReturn(Optional.empty());
+    private ChatRoom chatRoom() {
+        return chatRoomWithTitle(oldTitle);
+    }
 
-            // when & then
-            assertThrows(ChatRoomNotFoundException.class, () -> sut.delete(id));
-
-            verify(persistence).findById(id);
-            verify(outboxEventListPublishPort, never()).publish(any());
-            verify(cache, never()).deleteRoom(anyString(), any(), anyString(), anySet());
-        }
-
-        @Test
-        @DisplayName("도메인 delete가 실패하면 이벤트 발행과 캐시 delete를 수행하지 않는다")
-        void delete_should_throw_if_domain_delete_fails() {
-            // given
-            ChatRoom domain = mock(ChatRoom.class);
-            Set<String> memberIds = Set.of("member-1", "member-2");
-
-            when(persistence.findById(id)).thenReturn(Optional.of(domain));
-            when(domain.getId()).thenReturn(id);
-            when(domain.getCategory()).thenReturn(category);
-            when(domain.getTitle()).thenReturn(newTitle);
-            when(domain.getMemberIds()).thenReturn(memberIds);
-
-            doThrow(new RuntimeException("domain delete failed"))
-                    .when(domain)
-                    .delete();
-
-            // when & then
-            assertThrows(RuntimeException.class, () -> sut.delete(id));
-
-            verify(persistence).findById(id);
-            verify(domain).delete();
-            verify(domain, never()).pullEventList();
-            verify(outboxEventListPublishPort, never()).publish(any());
-            verify(cache, never()).deleteRoom(anyString(), any(), anyString(), anySet());
-        }
+    private ChatRoom chatRoomWithTitle(String title) {
+        return ChatRoom.rehydrate(
+                id,
+                hostId,
+                title,
+                "description",
+                category,
+                Set.of(hostId),
+                0L,
+                LocalDateTime.now()
+        );
     }
 }

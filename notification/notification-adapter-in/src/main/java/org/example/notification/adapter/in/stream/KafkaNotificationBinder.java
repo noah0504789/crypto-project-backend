@@ -6,7 +6,7 @@ import org.example.common.event.HandleableEvent;
 import org.example.marketdetection.contract.event.PriceAlertDetectedEvent;
 import org.example.notification.application.port.in.PriceAlertNotificationCommandUseCase;
 import org.example.notification.application.service.command.PriceAlertNotificationCreateCommand;
-import org.example.notification.domain.event.port.in.NotificationEventHandler;
+import org.example.notification.application.port.in.NotificationEventHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.Message;

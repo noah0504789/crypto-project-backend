@@ -8,7 +8,7 @@ import net.devh.boot.grpc.server.advice.GrpcAdvice;
 import net.devh.boot.grpc.server.advice.GrpcExceptionHandler;
 import org.example.chat.chatmessage.application.service.ChatMessageCommandService;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
-import org.example.chat.chatroom.domain.exception.ChatRoomNotFoundException;
+import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException;
 import org.example.chat.chatmessage.application.exception.ChatMessageCacheException;
 import org.example.chat.chatmessage.application.exception.ChatMessagePersistException;
 import org.example.common.grpc.exception.BaseGrpcExceptionAdvice;

@@ -48,7 +48,6 @@ class NotificationTest {
             assertThat(notification.isDeleted()).isFalse();
             assertThat(notification.getDeletedAt()).isNull();
             assertThat(notification.getCreatedAt()).isEqualTo(CREATED_AT);
-            assertThat(notification.getEventList()).isNotNull();
 
             assertThat(notification.getMessageParts())
                     .extracting(NotificationMessagePart::text)
