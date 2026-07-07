@@ -20,7 +20,7 @@ public final class ChatRoomPayloadMapper {
                 chatRoom.getDescription(),
                 chatRoom.getCategory(),
                 chatRoom.getMemberIds(),
-                chatRoom.getCreatedAtInstant()
+                chatRoom.createdAtInstant()
         );
     }
 

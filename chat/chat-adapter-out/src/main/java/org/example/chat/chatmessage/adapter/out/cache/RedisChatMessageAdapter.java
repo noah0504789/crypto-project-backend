@@ -32,7 +32,7 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
     private final RedisScript<Boolean> storeChatMessage_lua;
     private final RedisScript<Boolean> warmUpChatMessageList_lua;
     private final RedisScript<Long> deleteChatMessage_lua;
-    private final Clock instantClock;
+    private final Clock clock;
 
     public RedisChatMessageAdapter(
             @Qualifier("masterHashRedisTemplate") RedisTemplate<String, String> masterHashRedisTemplate,
@@ -51,7 +51,7 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
         this.storeChatMessage_lua = storeChatMessage_lua;
         this.warmUpChatMessageList_lua = warmUpChatMessageList_lua;
         this.deleteChatMessage_lua = deleteChatMessage_lua;
-        this.instantClock = clock;
+        this.clock = clock;
     }
 
     @Override
@@ -99,7 +99,7 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
     public void save(ChatMessage message, ChatRoomCategory category, Set<String> memberIds_) {
         String id = message.getId();
         String roomId = message.getRoomId();
-        Instant createdAt = message.getCreatedAtInstant();
+        Instant createdAt = message.createdAtInstant();
         long createdMs = message.toEpochMillis();
         String content = message.getContent();
         String writerId = message.getWriterId();
@@ -198,8 +198,8 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
 
     private void updateLastAccessedAt(ChatMessage message) {
         String messageAccessKey = CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX.keyFor(message.getRoomId());
-        long epochMilli = ((Instant) instantClock.now()).toEpochMilli();
+        long nowMs = clock.nowMs();
 
-        registry.getMasterZSet(messageAccessKey).add(message.getId(), epochMilli);
+        registry.getMasterZSet(messageAccessKey).add(message.getId(), nowMs);
     }
 }

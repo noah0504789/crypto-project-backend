@@ -259,10 +259,10 @@ class ChatRoomQueryRepairServiceTest {
             givenLockExecutorRunsSupplier();
 
             when(room.getId()).thenReturn("room-1");
-            when(room.getPopularity()).thenReturn(10.0);
+            when(room.popularity()).thenReturn(10.0);
 
             when(room2.getId()).thenReturn("room-2");
-            when(room2.getPopularity()).thenReturn(20.0);
+            when(room2.popularity()).thenReturn(20.0);
 
             List<ChatRoom> stored = List.of(room, room2);
 
@@ -347,10 +347,10 @@ class ChatRoomQueryRepairServiceTest {
             givenLockExecutorRunsSupplier();
 
             when(room.getId()).thenReturn("room-1");
-            when(room.getPopularity()).thenReturn(10.0);
+            when(room.popularity()).thenReturn(10.0);
 
             when(room2.getId()).thenReturn("room-2");
-            when(room2.getPopularity()).thenReturn(20.0);
+            when(room2.popularity()).thenReturn(20.0);
 
             List<ChatRoom> stored = List.of(room, room2);
 
@@ -383,10 +383,10 @@ class ChatRoomQueryRepairServiceTest {
             givenLockExecutorRunsSupplier();
 
             when(room.getId()).thenReturn("room-1");
-            when(room.getPopularity()).thenReturn(10.0);
+            when(room.popularity()).thenReturn(10.0);
 
             when(room2.getId()).thenReturn("room-2");
-            when(room2.getPopularity()).thenReturn(20.0);
+            when(room2.popularity()).thenReturn(20.0);
 
             List<ChatRoom> stored = List.of(room, room2);
             ListPopularChatRoomsQuery query = popularRoomsAfterQuery();
@@ -475,10 +475,10 @@ class ChatRoomQueryRepairServiceTest {
             givenLockExecutorRunsSupplier();
 
             when(room.getId()).thenReturn("room-1");
-            when(room.getPopularity()).thenReturn(10.0);
+            when(room.popularity()).thenReturn(10.0);
 
             when(room2.getId()).thenReturn("room-2");
-            when(room2.getPopularity()).thenReturn(20.0);
+            when(room2.popularity()).thenReturn(20.0);
 
             List<ChatRoom> stored = List.of(room, room2);
 
@@ -542,10 +542,10 @@ class ChatRoomQueryRepairServiceTest {
             givenLockExecutorRunsSupplier();
 
             when(room.getId()).thenReturn("room-1");
-            when(room.getPopularity()).thenReturn(10.0);
+            when(room.popularity()).thenReturn(10.0);
 
             when(room2.getId()).thenReturn("room-2");
-            when(room2.getPopularity()).thenReturn(20.0);
+            when(room2.popularity()).thenReturn(20.0);
 
             List<ChatRoom> stored = List.of(room, room2);
             ListMyChatRoomsQuery query = myRoomsBeforeQuery();

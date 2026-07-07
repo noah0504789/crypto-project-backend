@@ -256,7 +256,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
         List<String> args = new ArrayList<>();
         args.add(id);
         args.add(domain.getTitle());
-        args.add(String.valueOf(domain.getPopularity()));
+        args.add(String.valueOf(domain.popularity()));
 
         List<String> infoArgs = toRoomInfoArgs(domain);
         args.add(String.valueOf(infoArgs.size() / 2));
@@ -402,7 +402,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
         args.add(id);
         args.add(oldTitle == null ? "" : oldTitle);
         args.add(chatRoom.getTitle());
-        args.add(chatRoom.getPopularity()+"");
+        args.add(chatRoom.popularity()+"");
 
         List<String> infoArgs = toRoomInfoArgs(chatRoom);
         args.add(String.valueOf(infoArgs.size() / 2));

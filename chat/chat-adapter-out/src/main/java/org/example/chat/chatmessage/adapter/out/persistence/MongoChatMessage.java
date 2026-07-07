@@ -47,7 +47,7 @@ public class MongoChatMessage {
                 .roomId(new ObjectId(domain.getRoomId()))
                 .writerId(domain.getWriterId())
                 .content(domain.getContent())
-                .createdAt(domain.getCreatedAtInstant())
+                .createdAt(domain.createdAtInstant())
                 .build();
     }
 

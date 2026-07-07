@@ -122,20 +122,20 @@ public class ChatRoom {
                 msgCnt,
                 latest == null ? "" : latest.getId(),
                 latest == null ? "" : latest.getContent(),
-                latest == null ? null : latest.getCreatedAtInstant(),
+                latest == null ? null : latest.createdAtInstant(),
                 createdAt
         );
     }
 
-    public Double getPopularity() {
+    public Double popularity() {
         return msgCnt == null ? 0 : msgCnt.doubleValue(); // TODO: spec 정의 및 주입받기
     }
 
-    public long getLastMsgCreatedAtMs() {
+    public long lastMsgCreatedAtMs() {
         return lastMsgCreatedAt == null ? 0L : lastMsgCreatedAt.toEpochMilli();
     }
 
-    public Instant getCreatedAtInstant() {
+    public Instant createdAtInstant() {
         return createdAt.atZone(ServiceZoneUtils.ZONE_ID).toInstant();
     }
 

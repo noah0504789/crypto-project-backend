@@ -24,7 +24,7 @@ public final class ChatMessagePayloadMapper {
                 message.getRoomId(),
                 message.getWriterId(),
                 message.getContent(),
-                message.getCreatedAtInstant()
+                message.createdAtInstant()
         );
     }
 }

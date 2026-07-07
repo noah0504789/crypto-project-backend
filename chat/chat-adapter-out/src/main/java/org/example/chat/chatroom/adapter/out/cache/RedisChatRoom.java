@@ -47,7 +47,7 @@ public class RedisChatRoom {
                 .category(domain.getCategory())
                 .memberIds(domain.getMemberIds())
                 .msgCnt(domain.getMsgCnt() == null ? 0L : domain.getMsgCnt())
-                .createdAt(domain.getCreatedAtInstant())
+                .createdAt(domain.createdAtInstant())
                 .build();
     }
 

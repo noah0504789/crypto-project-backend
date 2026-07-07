@@ -169,8 +169,8 @@ public class ChatRoomQueryService implements ChatRoomQueryUseCase {
             boolean unread = room.hasUnread(lastReadSeq);
 
             long score = unread
-                    ? MyChatRoomScoreCalculator.unread(room.getLastMsgCreatedAtMs())
-                    : MyChatRoomScoreCalculator.read(room.getLastMsgCreatedAtMs());
+                    ? MyChatRoomScoreCalculator.unread(room.lastMsgCreatedAtMs())
+                    : MyChatRoomScoreCalculator.read(room.lastMsgCreatedAtMs());
 
             cache.updateActivityScore(room.getId(), memberId, score);
         } catch (RuntimeException e) {

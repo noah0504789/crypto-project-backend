@@ -76,7 +76,7 @@ class RedisChatMessageAdapterTest {
                 .serverCommands()
                 .flushDb();
 
-        given(clock.now()).willReturn(FIXED_NOW);
+        given(clock.nowMs()).willReturn(FIXED_NOW.toEpochMilli());
     }
 
     @Nested

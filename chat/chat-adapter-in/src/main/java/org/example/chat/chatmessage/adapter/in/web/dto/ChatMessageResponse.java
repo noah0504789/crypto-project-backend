@@ -19,7 +19,7 @@ public record ChatMessageResponse(
                 .roomId(entity.getRoomId())
                 .writerId(entity.getWriterId())
                 .content(entity.getContent())
-                .createdAt(entity.getCreatedAtInstant())
+                .createdAt(entity.createdAtInstant())
                 .build();
     }
 }
