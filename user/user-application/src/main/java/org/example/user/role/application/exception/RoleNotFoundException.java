@@ -1,4 +1,4 @@
-package org.example.user.role.domain.exception;
+package org.example.user.role.application.exception;
 
 import org.example.common.exception.ResourceNotFoundException;
 import org.example.user.role.domain.model.RoleEnum;

@@ -6,7 +6,7 @@ import org.example.common.enums.HttpHeaderKey;
 import org.example.user.account.adapter.in.web.dto.UserProfileUpdateRequest;
 import org.example.user.account.application.port.in.UserCommandUseCase;
 import org.example.user.account.application.port.in.UserQueryUseCase;
-import org.example.user.account.domain.exception.UserNotFoundException;
+import org.example.user.account.application.exception.UserNotFoundException;
 import org.example.user.account.adapter.in.web.dto.UserCreateRequest;
 import org.example.user.account.adapter.in.web.dto.UserResponse;
 import org.example.user.account.domain.model.User;
