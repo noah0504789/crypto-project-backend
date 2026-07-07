@@ -181,8 +181,6 @@ class ChatMessageSchedulerTest {
                 .writerId("writer-1")
                 .content("message")
                 .createdAt(LocalDateTime.of(2026, 1, 1, 10, 0))
-                .eventList(new ChatMessageEventList())
-                .dlqEventList(new ChatMessageDlqEventList())
                 .build();
     }
 
