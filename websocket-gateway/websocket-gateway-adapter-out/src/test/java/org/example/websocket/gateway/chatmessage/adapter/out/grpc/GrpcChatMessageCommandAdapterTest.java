@@ -41,8 +41,8 @@ class GrpcChatMessageCommandAdapterTest {
     @DisplayName("save 성공 시 gRPC 요청을 생성하고 ChatMessageSendResult를 반환한다")
     void save_shouldReturnResult_whenGrpcResponseReceived() {
         ChatMessageSendCommand command = new ChatMessageSendCommand(
-                "client-message-id",
-                "message-id",
+                "client-body-id",
+                "body-id",
                 "room-id",
                 "writer-id",
                 "hello"
@@ -68,7 +68,7 @@ class GrpcChatMessageCommandAdapterTest {
 
         GrpcChatMessageResponse response = GrpcChatMessageResponse.newBuilder()
                 .setSuccess(true)
-                .setId("message-id")
+                .setId("body-id")
                 .setTs(12345L)
                 .build();
 
@@ -78,7 +78,7 @@ class GrpcChatMessageCommandAdapterTest {
         ChatMessageSendResult result = future.join();
 
         assertThat(result.success()).isTrue();
-        assertThat(result.messageId()).isEqualTo("message-id");
+        assertThat(result.messageId()).isEqualTo("body-id");
         assertThat(result.timestamp()).isEqualTo(12345L);
     }
 
@@ -86,8 +86,8 @@ class GrpcChatMessageCommandAdapterTest {
     @DisplayName("save 중 DEADLINE_EXCEEDED 발생 시 GrpcClientException의 코드가 DEADLINE_EXCEEDED가 된다")
     void save_shouldCompleteExceptionally_whenGrpcErrorReceived() {
         ChatMessageSendCommand command = new ChatMessageSendCommand(
-                "client-message-id",
-                "message-id",
+                "client-body-id",
+                "body-id",
                 "room-id",
                 "writer-id",
                 "hello"
@@ -115,7 +115,7 @@ class GrpcChatMessageCommandAdapterTest {
     @DisplayName("hardDelete 성공 시 gRPC 요청을 생성하고 ChatMessageHardDeleteResult를 반환한다")
     void hardDelete_shouldReturnResult_whenGrpcResponseReceived() {
         ChatMessageHardDeleteCommand command = new ChatMessageHardDeleteCommand(
-                "message-id",
+                "body-id",
                 "room-id",
                 "save failed after timeout"
         );
@@ -138,7 +138,7 @@ class GrpcChatMessageCommandAdapterTest {
 
         GrpcChatMessageHardDeleteResponse response = GrpcChatMessageHardDeleteResponse.newBuilder()
                 .setSuccess(true)
-                .setMessageId("message-id")
+                .setMessageId("body-id")
                 .setDeleted(true)
                 .setAlreadyDeleted(false)
                 .setNotFound(false)
@@ -150,7 +150,7 @@ class GrpcChatMessageCommandAdapterTest {
         ChatMessageHardDeleteResult result = future.join();
 
         assertThat(result.success()).isTrue();
-        assertThat(result.messageId()).isEqualTo("message-id");
+        assertThat(result.messageId()).isEqualTo("body-id");
         assertThat(result.deleted()).isTrue();
         assertThat(result.alreadyDeleted()).isFalse();
         assertThat(result.notFound()).isFalse();
@@ -160,7 +160,7 @@ class GrpcChatMessageCommandAdapterTest {
     @DisplayName("hardDelete 중 CANCELLED 발생 시 GrpcClientException의 코드가 CANCELLED가 된다")
     void hardDelete_shouldCompleteExceptionally_whenGrpcErrorReceived() {
         ChatMessageHardDeleteCommand command = new ChatMessageHardDeleteCommand(
-                "message-id",
+                "body-id",
                 "room-id",
                 "save failed after timeout"
         );

@@ -1,9 +1,9 @@
-package org.example.websocket.gateway.stomp.dto;
+package org.example.websocket.gateway.adapter.in.websocket.stomp.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-public record ChatMessageRequest(
+public record StompChatMessageSendRequest(
 
         @NotBlank
         String clientMessageId,

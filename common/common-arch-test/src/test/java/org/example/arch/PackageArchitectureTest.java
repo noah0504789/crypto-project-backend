@@ -31,7 +31,7 @@ class PackageArchitectureTest {
             ),
             new ServiceBoundary(
                     "websocket-gateway",
-                    "websocket-gateway/websocket-gateway-domain",
+                    null,
                     "websocket-gateway/websocket-gateway-application",
                     List.of(
                             "websocket-gateway/websocket-gateway-adapter-in",
@@ -150,7 +150,6 @@ class PackageArchitectureTest {
 
         checkAllowingEmpty(rule, importMainClasses(List.of(
                 "chat/chat-domain",
-                "websocket-gateway/websocket-gateway-domain",
                 "spring-cloud-config/spring-cloud-config-domain",
                 "user/user-domain",
                 "market/market-domain",
