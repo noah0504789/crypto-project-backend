@@ -564,8 +564,6 @@ class MongoChatMessageAdapterTest {
                 .writerId(WRITER_ID)
                 .content("첫 번째 메시지")
                 .createdAt(createdAt)
-                .eventList(new ChatMessageEventList())
-                .dlqEventList(new ChatMessageDlqEventList())
                 .build();
     }
 }
