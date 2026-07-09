@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS market (
+CREATE TABLE IF NOT EXISTS `market`.`market` (
     id BIGINT NOT NULL AUTO_INCREMENT,
     market_code VARCHAR(30) NOT NULL,
     symbol VARCHAR(20) NOT NULL,
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS market (
     UNIQUE KEY `uk_markets_market_code` (market_code)
 );
 
-CREATE TABLE IF NOT EXISTS price_alert_setting (
+CREATE TABLE IF NOT EXISTS `market`.`price_alert_setting` (
     id BIGINT NOT NULL,
     user_public_id BINARY(16) NOT NULL,
     market_id BIGINT NOT NULL,
@@ -22,15 +22,13 @@ CREATE TABLE IF NOT EXISTS price_alert_setting (
     updated_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
 
     PRIMARY KEY (id),
-
-    UNIQUE KEY uk_price_alert_setting_user_public_id_market_id (user_public_id, market_id),
-    KEY idx_price_alert_setting_user_public_id (user_public_id),
-    KEY idx_price_alert_setting_market_id (market_id),
-
+    UNIQUE KEY `uk_price_alert_setting_user_public_id_market_id` (user_public_id, market_id),
+    KEY `idx_price_alert_setting_user_public_id` (user_public_id),
+    KEY `idx_price_alert_setting_market_id` (market_id),
     CONSTRAINT fk_price_alert_setting_market FOREIGN KEY (market_id) REFERENCES market (id)
 );
 
-INSERT INTO market (
+INSERT INTO `market`.`market` (
     market_code,
     symbol,
     korean_name,
