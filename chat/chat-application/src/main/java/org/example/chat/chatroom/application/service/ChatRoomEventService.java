@@ -51,7 +51,6 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
     private final ChatRoomCachePort cache;
     private final DlqEventListPublishPort dlqEventListPublishPort;
 
-    @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomPersistedEvent event, String txId) {
         ChatRoomPersistPayload payload = event.getPayload();
         ChatRoom domain = ChatRoomPayloadMapper.toDomain(payload);
@@ -59,7 +58,6 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
         persistence.save(domain);
     }
 
-    @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomUpdatedEvent event, String txId) {
         persistence.updateRoomAndReturn(
                 event.getId(),
@@ -67,7 +65,6 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
         );
     }
 
-    @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomJoinedEvent event, String txId) {
         persistence.joinMembership(
                 event.getId(),
@@ -88,7 +85,6 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
         persistence.deleteById(event.getId());
     }
 
-    @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomActiveEvent event, String txId) {
         persistence.activateMembership(
                 event.getId(),

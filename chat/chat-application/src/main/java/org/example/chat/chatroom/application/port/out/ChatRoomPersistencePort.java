@@ -11,6 +11,33 @@ import java.util.Set;
 
 public interface ChatRoomPersistencePort {
 
+    Optional<ChatRoom> findById(String id);
+
+    Optional<ChatRoom> findByIdWithLatestMessage(String id);
+
+    List<ChatRoom> listPopularRooms(ChatRoomCategory category, int limit);
+
+    List<ChatRoom> listPopularRoomsAfter(
+            ChatRoomCategory category,
+            String lastRoomId,
+            Long lastPopularity,
+            int limit
+    );
+
+    List<ChatRoom> listLatestActiveRooms(String memberId, int limit);
+
+    List<ChatRoom> listActiveRoomsBefore(
+            String memberId,
+            String lastRoomId,
+            Long score,
+            int limit
+    );
+
+    Long getLastReadSeq(String id, String memberId);
+
+    boolean existsByTitle(String title);
+
+
     ChatRoom save(ChatRoom chatRoom);
 
     ChatRoom updateRoomAndReturn(String id, Map<String, Object> updates);
@@ -39,30 +66,4 @@ public interface ChatRoomPersistencePort {
     void leaveMembership(String id, String memberId);
 
     void deleteById(String id);
-
-    Optional<ChatRoom> findById(String id);
-
-    Optional<ChatRoom> findByIdWithLatestMessage(String id);
-
-    Long getLastReadSeq(String id, String memberId);
-
-    boolean existsByTitle(String title);
-
-    List<ChatRoom> listPopularRooms(ChatRoomCategory category, int limit);
-
-    List<ChatRoom> listPopularRoomsAfter(
-            ChatRoomCategory category,
-            String lastRoomId,
-            Long lastPopularity,
-            int limit
-    );
-
-    List<ChatRoom> listLatestActiveRooms(String memberId, int limit);
-
-    List<ChatRoom> listActiveRoomsBefore(
-            String memberId,
-            String lastRoomId,
-            Long score,
-            int limit
-    );
 }

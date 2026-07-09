@@ -1,8 +1,8 @@
 package org.example.chat.chatroom.adapter.out.persistence;
 
-import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -17,36 +17,82 @@ import java.util.Map;
 import java.util.Optional;
 
 @Repository
-@RequiredArgsConstructor
 public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCustom {
 
-    private final MongoTemplate mongoTemplate;
+    private final MongoTemplate primaryMongoTemplate;
+    private final MongoTemplate secondaryMongoTemplate;
+
+    public MongoChatRoomRepositoryImpl(
+            @Qualifier("primaryMongoTemplate") MongoTemplate primaryMongoTemplate,
+            @Qualifier("secondaryMongoTemplate") MongoTemplate secondaryMongoTemplate
+    ) {
+        this.primaryMongoTemplate = primaryMongoTemplate;
+        this.secondaryMongoTemplate = secondaryMongoTemplate;
+    }
 
     // TODO: Popularity Spec
 
-    public List<MongoChatRoom> listPopularRooms(ChatRoomCategory category, int offset, int limit) {
-        Criteria criteria = Criteria.where("category").is(category).and("deleted").is(false);
+    @Override
+    public Optional<MongoChatRoom> findByIdAndDeletedFalseFromSecondary(ObjectId id) {
+        if (id == null) {
+            return Optional.empty();
+        }
+
+        Query query = new Query(
+                Criteria.where("_id")
+                        .is(id)
+                        .and("deleted")
+                        .is(false)
+        );
+
+        MongoChatRoom document = secondaryMongoTemplate.findOne(
+                query,
+                MongoChatRoom.class
+        );
+
+        return Optional.ofNullable(document);
+    }
+
+    @Override
+    public List<MongoChatRoom> listPopularRooms(
+            ChatRoomCategory category,
+            int offset,
+            int limit
+    ) {
+        Criteria criteria = Criteria.where("category")
+                .is(category)
+                .and("deleted")
+                .is(false);
+
         Query query = new Query(criteria)
                 .with(sortMsgCntDesc().and(sortIdDesc()))
                 .skip(offset)
                 .limit(limit)
                 .withHint("idx_category_msgCnt");
 
-//        return mongoTemplate.find(query, MongoChatRoom.class, "chat_room");
-        return mongoTemplate.find(query, MongoChatRoom.class);
+        return primaryMongoTemplate.find(query, MongoChatRoom.class);
     }
 
-    public List<MongoChatRoom> listPopularRoomsAfter(ChatRoomCategory category, String lastRoomId, long lastPopularity, int limit) {
-        Criteria base = Criteria.where("category").is(category).and("deleted").is(false);
+    @Override
+    public List<MongoChatRoom> listPopularRoomsAfter(
+            ChatRoomCategory category,
+            String lastRoomId,
+            long lastPopularity,
+            int limit
+    ) {
+        Criteria base = Criteria.where("category")
+                .is(category)
+                .and("deleted")
+                .is(false);
 
         Criteria tieBreaker = new Criteria().andOperator(
-            Criteria.where("msgCnt").is(lastPopularity),
-            Criteria.where("_id").lt(new ObjectId(lastRoomId))
+                Criteria.where("msgCnt").is(lastPopularity),
+                Criteria.where("_id").lt(new ObjectId(lastRoomId))
         );
 
         Criteria cursor = new Criteria().orOperator(
-            Criteria.where("msgCnt").lt(lastPopularity),
-            tieBreaker
+                Criteria.where("msgCnt").lt(lastPopularity),
+                tieBreaker
         );
 
         Query query = new Query(new Criteria().andOperator(base, cursor))
@@ -54,48 +100,86 @@ public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCusto
                 .limit(limit)
                 .withHint("idx_category_msgCnt");
 
-//        return mongoTemplate.find(query, MongoChatRoom.class, "chat_room");
-        return mongoTemplate.find(query, MongoChatRoom.class);
+        return secondaryMongoTemplate.find(query, MongoChatRoom.class);
     }
 
-    public void incrementRoomField(ObjectId roomId, String field, Integer delta) {
+    @Override
+    public void incrementRoomField(
+            ObjectId roomId,
+            String field,
+            Integer delta
+    ) {
         Query query = new Query(Criteria.where("_id").is(roomId));
         Update update = new Update().inc(field, delta);
 
-        mongoTemplate.updateFirst(query, update, MongoChatRoom.class);
+        primaryMongoTemplate.updateFirst(
+                query,
+                update,
+                MongoChatRoom.class
+        );
     }
 
-    public Optional<MongoChatRoom> updateRoomAndReturn(ObjectId roomId, Map<String, Object> updates) {
+    @Override
+    public Optional<MongoChatRoom> updateRoomAndReturn(
+            ObjectId roomId,
+            Map<String, Object> updates
+    ) {
         Criteria criteria = Criteria.where("_id").is(roomId);
         Query query = new Query(criteria);
+
         Update update = new Update();
         updates.forEach(update::set);
 
-        FindAndModifyOptions opts = FindAndModifyOptions.options().returnNew(true);
+        FindAndModifyOptions opts = FindAndModifyOptions.options()
+                .returnNew(true);
 
-        return Optional.ofNullable(mongoTemplate.findAndModify(query, update, opts, MongoChatRoom.class));
+        return Optional.ofNullable(
+                primaryMongoTemplate.findAndModify(
+                        query,
+                        update,
+                        opts,
+                        MongoChatRoom.class
+                )
+        );
     }
 
+    @Override
     public void addMember(ObjectId roomId, String userId) {
         Query query = new Query(Criteria.where("_id").is(roomId));
         Update update = new Update().addToSet("memberIds", userId);
-        mongoTemplate.updateFirst(query, update, MongoChatRoom.class);
+
+        primaryMongoTemplate.updateFirst(
+                query,
+                update,
+                MongoChatRoom.class
+        );
     }
 
+    @Override
     public void removeMember(ObjectId roomId, String userId) {
         Query query = new Query(Criteria.where("_id").is(roomId));
         Update update = new Update().pull("memberIds", userId);
-        mongoTemplate.updateFirst(query, update, MongoChatRoom.class);
+
+        primaryMongoTemplate.updateFirst(
+                query,
+                update,
+                MongoChatRoom.class
+        );
     }
 
     @Override
     public void softDeleteById(ObjectId roomId) {
         Query query = new Query(Criteria.where("_id").is(roomId));
+
         Update update = new Update()
                 .set("deleted", true)
                 .set("deletedAt", LocalDateTime.now());
 
-        mongoTemplate.updateFirst(query, update, MongoChatRoom.class);
+        primaryMongoTemplate.updateFirst(
+                query,
+                update,
+                MongoChatRoom.class
+        );
     }
 
     private Sort sortIdDesc() {

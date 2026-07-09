@@ -14,6 +14,7 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
@@ -65,7 +66,40 @@ public class MongoChatRoom {
                 .build();
     }
 
-    public Double getPopularity() {
-        return msgCnt.doubleValue();
+    public ChatRoom toDomain() {
+        return ChatRoom.rehydrate(
+                id.toHexString(),
+                hostId,
+                title,
+                description,
+                category,
+                memberIds,
+                msgCnt,
+                createdAt
+        );
+    }
+
+    public ChatRoom toDomainWithLatest(
+            String latestMessageId,
+            String latestMessage,
+            Instant latestMessageCreatedAt
+    ) {
+        return ChatRoom.rehydrateWithLatest(
+                id.toHexString(),
+                hostId,
+                title,
+                description,
+                category,
+                memberIds,
+                msgCnt,
+                latestMessageId == null ? "" : latestMessageId,
+                latestMessage == null ? "" : latestMessage,
+                latestMessageCreatedAt,
+                createdAt
+        );
+    }
+
+    public ChatRoom toDomainWithNoLatestMessage() {
+        return toDomainWithLatest(null, null, null);
     }
 }

@@ -13,7 +13,6 @@ import org.example.chat.chatroom.application.service.result.MyChatRoomSummary;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.service.MyChatRoomScoreCalculator;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.function.Function;
@@ -31,14 +30,12 @@ public class ChatRoomQueryService implements ChatRoomQueryUseCase {
     private final ChatRoomQueryRepairService queryRepairService;
 
     @Override
-    @Transactional(transactionManager = "chatMongoTransactionManager", readOnly = true)
     public ChatRoom getRoom(String roomId) {
         return cache.findById(roomId)
                 .orElseGet(() -> queryRepairService.repairRoom(roomId));
     }
 
     @Override
-    @Transactional(transactionManager = "chatMongoTransactionManager", readOnly = true)
     public MyChatRoomSummary getMyRoom(GetMyChatRoomQuery query) {
         return cache.findById(query.roomId())
                 .map(room -> toMyChatRoomSummaryWithLastRead(room, query.memberId()))
@@ -46,7 +43,6 @@ public class ChatRoomQueryService implements ChatRoomQueryUseCase {
     }
 
     @Override
-    @Transactional(transactionManager = "chatMongoTransactionManager", readOnly = true)
     public List<ChatRoom> listPopularRooms(ListPopularChatRoomsQuery query) {
         ChatRoomCacheLookupResult cached = query.hasNoCursor()
                 ? cache.listPopularRooms(query.category(), query.limit())
@@ -62,13 +58,11 @@ public class ChatRoomQueryService implements ChatRoomQueryUseCase {
     }
 
     @Override
-    @Transactional(transactionManager = "chatMongoTransactionManager", readOnly = true)
     public List<MyChatRoomSummary> listMyRooms(ListMyChatRoomsQuery query) {
         return query.hasNoCursor() ? listLatestMyRooms(query) : listMyRoomsBefore(query);
     }
 
     @Override
-    @Transactional(transactionManager = "chatMongoTransactionManager", readOnly = true)
     public boolean existsByTitle(String title) {
         return cache.existsByTitle(title)
                 .orElseGet(() -> persistence.existsByTitle(title));

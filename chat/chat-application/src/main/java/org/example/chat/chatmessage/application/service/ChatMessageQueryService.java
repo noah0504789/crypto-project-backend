@@ -7,7 +7,6 @@ import org.example.chat.chatmessage.application.port.out.ChatMessageCachePort;
 import org.example.chat.chatmessage.application.service.query.ListChatMessagesQuery;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -20,7 +19,6 @@ public class ChatMessageQueryService implements ChatMessageQueryUseCase {
     private final ChatMessageQueryRepairService queryRepairService;
 
     @Override
-    @Transactional(transactionManager = "chatMongoTransactionManager", readOnly = true)
     public List<ChatMessage> listMessages(ListChatMessagesQuery query) {
         List<ChatMessage> cached = query.hasNoCursor()
                 ? cache.listLatestMessages(query.roomId(), query.limit())

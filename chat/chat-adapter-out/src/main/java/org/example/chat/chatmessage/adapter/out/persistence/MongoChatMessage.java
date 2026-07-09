@@ -51,7 +51,13 @@ public class MongoChatMessage {
                 .build();
     }
 
-    public Instant toInstant() {
-        return createdAt.atZone(ServiceZoneUtils.ZONE_ID).toInstant();
+    public ChatMessage toDomain() {
+        return ChatMessage.rehydrate(
+                id.toHexString(),
+                roomId.toHexString(),
+                writerId,
+                content,
+                createdAt
+        );
     }
 }

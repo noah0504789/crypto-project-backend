@@ -9,6 +9,8 @@ import java.util.Optional;
 
 public interface MongoChatRoomRepositoryCustom {
 
+    Optional<MongoChatRoom> findByIdAndDeletedFalseFromSecondary(ObjectId id);
+
     List<MongoChatRoom> listPopularRooms(
             ChatRoomCategory category,
             int offset,
