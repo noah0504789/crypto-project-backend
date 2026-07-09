@@ -19,14 +19,12 @@ public class ChatRoomDlqService implements ChatRoomDlqHandler {
 
     // TODO: DLQ 실패 정책 (로그 + 알림)
 
-    @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomPersistedDlqEvent event) {
         ChatRoom domain = ChatRoomPayloadMapper.toDomain(event.getPayload());
 
         persistence.save(domain);
     }
 
-    @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomUpdatedDlqEvent event) {
         persistence.updateRoomAndReturn(event.getId(), event.getUpdated().toUpdateMap());
     }
@@ -36,7 +34,6 @@ public class ChatRoomDlqService implements ChatRoomDlqHandler {
         persistence.deleteById(event.getId());
     }
 
-    @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomJoinedDlqEvent event) {
         persistence.joinMembership(event.getId(), event.getMemberId());
     }
@@ -46,7 +43,6 @@ public class ChatRoomDlqService implements ChatRoomDlqHandler {
         persistence.leaveMembership(event.getId(), event.getMemberId());
     }
 
-    @Transactional("chatMongoTransactionManager")
     public void handle(ChatRoomActiveDlqEvent event) {
         persistence.activateMembership(event.getId(), event.getMemberId(), event.getLastMsgSeq(), event.getLastMsgMs());
     }

@@ -15,13 +15,12 @@ import org.example.common.mongo.SnakeCaseFieldNamingStrategy;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.mongodb.MongoDatabaseFactory;
 import org.springframework.data.mongodb.MongoTransactionManager;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.SimpleMongoClientDatabaseFactory;
-import org.springframework.data.mongodb.core.convert.DefaultMongoTypeMapper;
-import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
-import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
+import org.springframework.data.mongodb.core.convert.*;
 import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
 import org.springframework.data.mongodb.observability.ContextProviderFactory;
 import org.springframework.data.mongodb.observability.MongoObservationCommandListener;
@@ -31,8 +30,8 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 @EnableMongoRepositories(
-    basePackages = {"org.example"},
-    mongoTemplateRef = "mongoTemplate"
+        basePackages = {"org.example"},
+        mongoTemplateRef = "primaryMongoTemplate"
 )
 @Configuration
 public class MongoConfig {
@@ -46,7 +45,7 @@ public class MongoConfig {
     @Bean
     public MongoMappingContext mongoMappingContext() {
         MongoMappingContext context = new MongoMappingContext();
-        context.setFieldNamingStrategy(new SnakeCaseFieldNamingStrategy()); // 네이밍 전략 변경
+        context.setFieldNamingStrategy(new SnakeCaseFieldNamingStrategy());
         context.setAutoIndexCreation(true);
         return context;
     }
@@ -72,7 +71,7 @@ public class MongoConfig {
         MongoClientSettings settings = MongoClientSettings.builder()
                 .applyConnectionString(new ConnectionString(mongoUri))
                 .writeConcern(WriteConcern.ACKNOWLEDGED)
-                .readPreference(ReadPreference.secondaryPreferred())
+                .readPreference(ReadPreference.primary())
                 .applyToConnectionPoolSettings(builder -> builder.applySettings(poolSettings))
                 .contextProvider(ContextProviderFactory.create(registry))
                 .addCommandListener(new MongoObservationCommandListener(registry))
@@ -87,26 +86,43 @@ public class MongoConfig {
     }
 
     @Bean
-    public MappingMongoConverter mappingMongoConverter(MongoDatabaseFactory chatMongoDbFactory, MongoMappingContext context, MongoCustomConversions conversions) {
-        MappingMongoConverter converter = new MappingMongoConverter(chatMongoDbFactory, context);
-        converter.setTypeMapper(new DefaultMongoTypeMapper(null)); // _class 필드 제거
-        converter.setCustomConversions(conversions); // 커스텀 변환기 추가
+    public MappingMongoConverter mappingMongoConverter(
+            MongoDatabaseFactory mongoDatabaseFactory,
+            MongoMappingContext context,
+            MongoCustomConversions conversions
+    ) {
+        DbRefResolver dbRefResolver = new DefaultDbRefResolver(mongoDatabaseFactory);
+
+        MappingMongoConverter converter = new MappingMongoConverter(dbRefResolver, context);
+        converter.setTypeMapper(new DefaultMongoTypeMapper(null));
+        converter.setCustomConversions(conversions);
         converter.afterPropertiesSet();
 
         return converter;
     }
 
-    @Bean
-    public MongoTemplate mongoTemplate(MongoDatabaseFactory chatMongoDbFactory, MappingMongoConverter converter) {
-        return new MongoTemplate(chatMongoDbFactory, converter);
+    @Primary
+    @Bean("primaryMongoTemplate")
+    public MongoTemplate primaryMongoTemplate(MongoDatabaseFactory mongoDatabaseFactory, MappingMongoConverter converter) {
+        MongoTemplate template = new MongoTemplate(mongoDatabaseFactory, converter);
+        template.setReadPreference(ReadPreference.primary());
+        return template;
+    }
+
+    @Bean("secondaryMongoTemplate")
+    public MongoTemplate secondaryMongoTemplate(MongoDatabaseFactory mongoDatabaseFactory, MappingMongoConverter converter) {
+        MongoTemplate template = new MongoTemplate(mongoDatabaseFactory, converter);
+        template.setReadPreference(ReadPreference.secondaryPreferred());
+        return template;
     }
 
     @Bean("chatMongoTransactionManager")
-    public MongoTransactionManager chatMongoTransactionManager(MongoDatabaseFactory chatMongoDbFactory) {
+    public MongoTransactionManager chatMongoTransactionManager(MongoDatabaseFactory mongoDatabaseFactory) {
         TransactionOptions transactionOptions = TransactionOptions.builder()
                 .readPreference(ReadPreference.primary())
+                .writeConcern(WriteConcern.ACKNOWLEDGED)
                 .build();
 
-        return new MongoTransactionManager(chatMongoDbFactory, transactionOptions);
+        return new MongoTransactionManager(mongoDatabaseFactory, transactionOptions);
     }
 }

@@ -401,7 +401,7 @@ class MongoChatRoomAdapterTest {
             assertThat(found.getId()).isEqualTo(roomId1.toHexString());
             assertThat(found.getLastMsgId()).isEqualTo(latest.getId().toHexString());
             assertThat(found.getLastMsgContent()).isEqualTo("latest");
-            assertThat(found.getLastMsgCreatedAt()).isEqualTo(latest.toInstant());
+            assertThat(found.getLastMsgCreatedAt()).isEqualTo(latest.getCreatedAt());
         }
 
         @Test

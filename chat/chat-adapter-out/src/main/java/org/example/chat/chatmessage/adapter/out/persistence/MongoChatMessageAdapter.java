@@ -37,7 +37,7 @@ public class MongoChatMessageAdapter implements ChatMessagePersistencePort {
                                     pageable
                             )
                             .stream()
-                            .map(this::toDomain)
+                            .map(MongoChatMessage::toDomain)
                             .toList();
                 }
         );
@@ -59,7 +59,7 @@ public class MongoChatMessageAdapter implements ChatMessagePersistencePort {
                                 limit
                         )
                         .stream()
-                        .map(this::toDomain)
+                        .map(MongoChatMessage::toDomain)
                         .toList()
         );
     }
@@ -91,17 +91,7 @@ public class MongoChatMessageAdapter implements ChatMessagePersistencePort {
         return execute(
                 "failed to find latest excluding chat message. roomId=" + roomId + ", messageId=" + id,
                 () -> repository.findLatestMessageExcluding(roomId, id)
-                        .map(this::toDomain)
-        );
-    }
-
-    private ChatMessage toDomain(MongoChatMessage mongo) {
-        return ChatMessage.rehydrate(
-                mongo.getId().toHexString(),
-                mongo.getRoomId().toHexString(),
-                mongo.getWriterId(),
-                mongo.getContent(),
-                mongo.getCreatedAt()
+                        .map(MongoChatMessage::toDomain)
         );
     }
 

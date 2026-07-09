@@ -10,6 +10,8 @@ public interface MongoChatMessageRepositoryCustom {
 
     Optional<MongoChatMessage> findLatestMessageExcluding(String roomId, String excludedMsgId);
 
+    Optional<MongoChatMessage> findLatestByRoomIdFromSecondary(ObjectId roomId);
+
     List<MongoChatMessage> listMessagesBefore(
             ObjectId roomId,
             ObjectId lastMsgId,
@@ -18,6 +20,8 @@ public interface MongoChatMessageRepositoryCustom {
     );
 
     List<MongoChatMessage> listLatestMessagesByRoomIds(List<ObjectId> roomIds);
+
+    List<MongoChatMessage> listLatestMessagesByRoomIdsFromSecondary(List<ObjectId> roomIds);
 
     void softDeleteByRoomId(ObjectId roomId);
 

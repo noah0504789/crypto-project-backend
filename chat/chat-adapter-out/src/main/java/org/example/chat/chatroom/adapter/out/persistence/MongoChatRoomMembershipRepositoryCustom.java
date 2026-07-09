@@ -4,8 +4,6 @@ import java.util.List;
 
 public interface MongoChatRoomMembershipRepositoryCustom {
 
-    void upsert(MongoChatRoomMembership entity);
-
     List<MongoChatRoomMembership> listLatestActiveMemberships(String memberId, int limit);
 
     List<MongoChatRoomMembership> listActiveMembershipsBefore(
@@ -14,6 +12,8 @@ public interface MongoChatRoomMembershipRepositoryCustom {
             Long score,
             int limit
     );
+
+    void upsert(MongoChatRoomMembership entity);
 
     void updateScore(String id, long score);
 }

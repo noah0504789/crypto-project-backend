@@ -29,6 +29,72 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
     private final MongoChatMessageRepository chatMessageRepository;
 
     @Override
+    public Optional<ChatRoom> findById(String id) {
+        return chatRoomRepository.findByIdAndDeletedFalse(new ObjectId(id)).map(MongoChatRoom::toDomain);
+    }
+
+    @Override
+    public Optional<ChatRoom> findByIdWithLatestMessage(String id) {
+        return findByIdWithLatestMessageFromPrimary(id);
+    }
+
+    @Override
+    public List<ChatRoom> listPopularRooms(ChatRoomCategory category, int limit) {
+        List<MongoChatRoom> rooms = chatRoomRepository.listPopularRooms(category, 0, limit);
+
+        return attachLatestMessagesFromPrimary(rooms);
+    }
+
+    @Override
+    public List<ChatRoom> listPopularRoomsAfter(
+            ChatRoomCategory category,
+            String lastRoomId,
+            Long lastPopularity,
+            int limit
+    ) {
+        List<MongoChatRoom> rooms = chatRoomRepository.listPopularRoomsAfter(category, lastRoomId, lastPopularity, limit);
+
+        return attachLatestMessagesFromSecondary(rooms);
+    }
+
+    @Override
+    public List<ChatRoom> listLatestActiveRooms(String memberId, int limit) {
+        return membershipRepository.listLatestActiveMemberships(memberId, limit)
+                .stream()
+                .map(membership -> membership.getRoomId().toHexString())
+                .map(this::findByIdWithLatestMessageFromPrimary)
+                .flatMap(Optional::stream)
+                .toList();
+    }
+
+    @Override
+    public List<ChatRoom> listActiveRoomsBefore(
+            String memberId,
+            String lastRoomId,
+            Long score,
+            int limit
+    ) {
+        return membershipRepository.listActiveMembershipsBefore(memberId, lastRoomId, score, limit)
+                .stream()
+                .map(membership -> membership.getRoomId().toHexString())
+                .map(this::findByIdWithLatestMessageFromSecondary)
+                .flatMap(Optional::stream)
+                .toList();
+    }
+
+    @Override
+    public boolean existsByTitle(String title) {
+        return chatRoomRepository.existsByTitleAndDeletedFalse(title);
+    }
+
+    @Override
+    public Long getLastReadSeq(String id, String memberId) {
+        return membershipRepository.findById(MongoChatRoomMembership.generateId(id, memberId))
+                .orElseThrow(()-> new ChatRoomMembershipNotFoundException(id, memberId))
+                .getLastMsgReadSeq();
+    }
+
+    @Override
     public ChatRoom save(ChatRoom domain) {
         chatRoomRepository.save(MongoChatRoom.fromDomain(domain));
 
@@ -38,7 +104,7 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
     @Override
     public ChatRoom updateRoomAndReturn(String id, Map<String, Object> updates) {
         return chatRoomRepository.updateRoomAndReturn(new ObjectId(id), updates)
-                .map(this::toDomain)
+                .map(MongoChatRoom::toDomain)
                 .orElseThrow(() -> new ChatRoomNotFoundException(id));
     }
 
@@ -99,106 +165,72 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
         chatMessageRepository.softDeleteByRoomId(id_);
     }
 
-    @Override
-    public Optional<ChatRoom> findById(String id) {
-        return chatRoomRepository.findByIdAndDeletedFalse(new ObjectId(id)).map(this::toDomain);
-    }
-
-    @Override
-    public Optional<ChatRoom> findByIdWithLatestMessage(String id) {
+    private Optional<ChatRoom> findByIdWithLatestMessageFromPrimary(String id) {
         ObjectId roomId = new ObjectId(id);
 
         return chatRoomRepository.findByIdAndDeletedFalse(roomId)
-                .map(room -> {
-                    MongoChatMessage latest = chatMessageRepository.findTopByRoomIdAndDeletedFalseOrderByCreatedAtDescIdDesc(roomId)
-                            .orElse(null);
-
-                    return toDomainWithLatest(room, latest);
-                });
+                .map(room -> chatMessageRepository
+                        .findTopByRoomIdAndDeletedFalseOrderByCreatedAtDescIdDesc(roomId)
+                        .map(latest -> room.toDomainWithLatest(
+                                latest.getId().toHexString(),
+                                latest.getContent(),
+                                latest.getCreatedAt()
+                        ))
+                        .orElseGet(room::toDomainWithNoLatestMessage)
+                );
     }
 
-    @Override
-    public boolean existsByTitle(String title) {
-        return chatRoomRepository.existsByTitleAndDeletedFalse(title);
+    private Optional<ChatRoom> findByIdWithLatestMessageFromSecondary(String id) {
+        ObjectId roomId = new ObjectId(id);
+
+        return chatRoomRepository.findByIdAndDeletedFalseFromSecondary(roomId)
+                .map(room -> chatMessageRepository
+                        .findLatestByRoomIdFromSecondary(roomId)
+                        .map(latest -> room.toDomainWithLatest(
+                                latest.getId().toHexString(),
+                                latest.getContent(),
+                                latest.getCreatedAt()
+                        ))
+                        .orElseGet(room::toDomainWithNoLatestMessage)
+                );
     }
 
-    @Override
-    public Long getLastReadSeq(String id, String memberId) {
-        return membershipRepository.findById(MongoChatRoomMembership.generateId(id, memberId))
-                .orElseThrow(()-> new ChatRoomMembershipNotFoundException(id, memberId))
-                .getLastMsgReadSeq();
-    }
+    private List<ChatRoom> attachLatestMessages(
+            List<MongoChatRoom> rooms,
+            Function<List<ObjectId>, List<MongoChatMessage>> latestMessageFinder
+    ) {
+        if (rooms == null || rooms.isEmpty()) {
+            return List.of();
+        }
 
-    @Override
-    public List<ChatRoom> listPopularRooms(ChatRoomCategory category, int limit) {
-        List<MongoChatRoom> rooms = chatRoomRepository.listPopularRooms(category, 0, limit);
-
-        return attachLatestMessages(rooms);
-    }
-
-    @Override
-    public List<ChatRoom> listPopularRoomsAfter(ChatRoomCategory category, String lastRoomId, Long lastPopularity, int limit) {
-        List<MongoChatRoom> rooms = chatRoomRepository.listPopularRoomsAfter(category, lastRoomId, lastPopularity, limit);
-
-        return attachLatestMessages(rooms);
-    }
-
-    @Override
-    public List<ChatRoom> listLatestActiveRooms(String memberId, int limit) {
-        return membershipRepository.listLatestActiveMemberships(memberId, limit).stream()
-                .map(membership -> membership.getRoomId().toHexString())
-                .map(this::findByIdWithLatestMessage)
-                .flatMap(Optional::stream)
+        List<ObjectId> roomIds = rooms.stream()
+                .map(MongoChatRoom::getId)
                 .toList();
-    }
 
-    @Override
-    public List<ChatRoom> listActiveRoomsBefore(String memberId, String lastRoomId, Long score, int limit) {
-        return membershipRepository.listActiveMembershipsBefore(memberId, lastRoomId, score, limit).stream()
-                .map(membership -> membership.getRoomId().toHexString())
-                .map(this::findByIdWithLatestMessage)
-                .flatMap(Optional::stream)
-                .toList();
-    }
-
-    private List<ChatRoom> attachLatestMessages(List<MongoChatRoom> rooms) {
-        if (rooms.isEmpty()) return List.of();
-
-        List<ObjectId> roomIds = rooms.stream().map(MongoChatRoom::getId).toList();
-        Map<ObjectId, MongoChatMessage> latestMsgMap = chatMessageRepository.listLatestMessagesByRoomIds(roomIds).stream()
-                .collect(Collectors.toMap(MongoChatMessage::getRoomId, Function.identity()));
+        Map<ObjectId, MongoChatMessage> latestMessageMap = latestMessageFinder.apply(roomIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        MongoChatMessage::getRoomId,
+                        Function.identity()
+                ));
 
         return rooms.stream()
-                .map(room -> toDomainWithLatest(room, latestMsgMap.get(room.getId())))
+                .map(room -> Optional.ofNullable(latestMessageMap.get(room.getId()))
+                        .map(latest -> room.toDomainWithLatest(
+                                latest.getId().toHexString(),
+                                latest.getContent(),
+                                latest.getCreatedAt()
+                        ))
+                        .orElseGet(room::toDomainWithNoLatestMessage)
+                )
                 .toList();
     }
 
-    private ChatRoom toDomain(MongoChatRoom room) {
-        return ChatRoom.rehydrate(
-                room.getId().toHexString(),
-                room.getHostId(),
-                room.getTitle(),
-                room.getDescription(),
-                room.getCategory(),
-                room.getMemberIds(),
-                room.getMsgCnt(),
-                room.getCreatedAt()
-        );
+    private List<ChatRoom> attachLatestMessagesFromPrimary(List<MongoChatRoom> rooms) {
+        return attachLatestMessages(rooms, chatMessageRepository::listLatestMessagesByRoomIds);
     }
 
-    private ChatRoom toDomainWithLatest(MongoChatRoom room, MongoChatMessage latest) {
-        return ChatRoom.rehydrateWithLatest(
-                room.getId().toHexString(),
-                room.getHostId(),
-                room.getTitle(),
-                room.getDescription(),
-                room.getCategory(),
-                room.getMemberIds(),
-                room.getMsgCnt(),
-                latest == null ? "" : latest.getId().toHexString(),
-                latest == null ? "" : latest.getContent(),
-                latest == null ? null : latest.toInstant(),
-                room.getCreatedAt()
-        );
+    private List<ChatRoom> attachLatestMessagesFromSecondary(List<MongoChatRoom> rooms) {
+        return attachLatestMessages(rooms, chatMessageRepository::listLatestMessagesByRoomIdsFromSecondary);
     }
 }

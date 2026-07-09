@@ -16,7 +16,6 @@ public class ChatMessageDlqService implements ChatMessageDlqHandler {
 
     private final ChatMessagePersistencePort persistence;
 
-    @Transactional("chatMongoTransactionManager")
     public void handle(ChatMessagePersistDlqEvent event) {
         ChatMessagePayload payload = event.getPayload();
         ChatMessage domain = ChatMessagePayloadMapper.toDomain(payload);
