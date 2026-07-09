@@ -52,7 +52,7 @@ public class MongoNotificationAdapter implements NotificationPersistencePort {
 
         List<MongoNotificationRecipient> recipients = notificationRecipientRepository.listLatest(receiverId, limit);
 
-        return findInboxItemsByRecipients(recipients);
+        return findInboxItemsByRecipientsFromPrimary(recipients);
     }
 
     @Override
@@ -75,9 +75,9 @@ public class MongoNotificationAdapter implements NotificationPersistencePort {
         ObjectId lastRecipientObjectId = new ObjectId(lastRecipientId);
         Instant lastDeliveredAt = Instant.ofEpochMilli(lastDeliveredAtMs);
 
-        List<MongoNotificationRecipient> recipients = notificationRecipientRepository.listPrev(receiverId, lastRecipientObjectId, lastDeliveredAt, limit);
+        List<MongoNotificationRecipient> recipients = notificationRecipientRepository.listHistoricalBefore(receiverId, lastRecipientObjectId, lastDeliveredAt, limit);
 
-        return findInboxItemsByRecipients(recipients);
+        return findInboxItemsByRecipientsFromSecondary(recipients);
     }
 
     @Override
@@ -95,7 +95,19 @@ public class MongoNotificationAdapter implements NotificationPersistencePort {
         return modifiedCount > 0;
     }
 
-    private List<NotificationInboxItem> findInboxItemsByRecipients(List<MongoNotificationRecipient> mongoRecipients) {
+    private List<NotificationInboxItem> findInboxItemsByRecipientsFromPrimary(List<MongoNotificationRecipient> mongoRecipients) {
+        return findInboxItemsByRecipients(mongoRecipients, notificationRepository::findByIdInAndDeletedFalse);
+    }
+
+    private List<NotificationInboxItem> findInboxItemsByRecipientsFromSecondary(List<MongoNotificationRecipient> mongoRecipients) {
+        return findInboxItemsByRecipients(mongoRecipients, notificationRepository::findByIdInAndDeletedFalseFromSecondary);
+    }
+
+    private List<NotificationInboxItem> findInboxItemsByRecipients(
+            List<MongoNotificationRecipient> mongoRecipients,
+            Function<Set<ObjectId>,
+            List<MongoNotification>> notificationFinder
+    ) {
         if (mongoRecipients == null || mongoRecipients.isEmpty()) {
             return List.of();
         }
@@ -113,14 +125,13 @@ public class MongoNotificationAdapter implements NotificationPersistencePort {
                 .map(MongoNotificationRecipient::toDomain)
                 .toList();
 
-        Map<String, Notification> notificationMap =
-                notificationRepository.findByIdInAndDeletedFalse(notificationIds)
-                        .stream()
-                        .map(MongoNotification::toDomain)
-                        .collect(Collectors.toMap(
-                                Notification::getId,
-                                Function.identity()
-                        ));
+        Map<String, Notification> notificationMap = notificationFinder.apply(notificationIds)
+                .stream()
+                .map(MongoNotification::toDomain)
+                .collect(Collectors.toMap(
+                        Notification::getId,
+                        Function.identity()
+                ));
 
         return recipients.stream()
                 .map(recipient -> toInboxItem(recipient, notificationMap))
