@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-public interface MongoNotificationRepository extends MongoRepository<MongoNotification, ObjectId> {
+public interface MongoNotificationRepository extends MongoRepository<MongoNotification, ObjectId>, MongoNotificationRepositoryCustom {
 
     List<MongoNotification> findByIdInAndDeletedFalse(Set<ObjectId> ids);
 }

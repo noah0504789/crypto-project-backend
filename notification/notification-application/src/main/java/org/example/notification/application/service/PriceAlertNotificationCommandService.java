@@ -3,7 +3,6 @@ package org.example.notification.application.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.common.clock.Clock;
-import org.example.common.enums.PriceAlertChangeRateThreshold;
 import org.example.common.event.TypedPayload;
 import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
 import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;

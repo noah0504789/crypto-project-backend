@@ -11,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.data.mongo.DataMongoTest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -35,6 +36,7 @@ class MongoNotificationRecipientRepositoryImplTest {
     private MongoNotificationRecipientRepository sut;
 
     @Autowired
+    @Qualifier("primaryMongoTemplate")
     private MongoTemplate mongoTemplate;
 
     private final UUID receiverId1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -149,18 +151,18 @@ class MongoNotificationRecipientRepositoryImplTest {
     }
 
     @Nested
-    @DisplayName("listPrev")
-    class ListPrevTest {
+    @DisplayName("listHistoricalBefore")
+    class ListHistoricalBeforeTest {
 
         @Test
         @DisplayName("커서보다 이전 데이터를 deliveredAt desc, _id desc 순서로 조회한다")
-        void listPrev_shouldReturnPreviousItemsByCursor() {
+        void listHistoricalBefore_shouldReturnPreviousItemsByCursor() {
             saveRecipient(recipientId1, notificationId1, receiverId1, false, null, time1);
             saveRecipient(recipientId2, notificationId2, receiverId1, false, null, time2);
             saveRecipient(recipientId3, notificationId3, receiverId1, false, null, time3);
             saveRecipient(recipientId4, notificationId4, receiverId1, false, null, time4);
 
-            List<MongoNotificationRecipient> actual = sut.listPrev(
+            List<MongoNotificationRecipient> actual = sut.listHistoricalBefore(
                     receiverId1,
                     recipientId3,
                     time3,
@@ -172,13 +174,13 @@ class MongoNotificationRecipientRepositoryImplTest {
 
         @Test
         @DisplayName("deliveredAt이 같으면 _id가 커서보다 작은 데이터만 조회한다")
-        void listPrev_shouldReturnItemsWithSameDeliveredAtAndLowerId() {
+        void listHistoricalBefore_shouldReturnItemsWithSameDeliveredAtAndLowerId() {
             saveRecipient(recipientId1, notificationId1, receiverId1, false, null, time3);
             saveRecipient(recipientId2, notificationId2, receiverId1, false, null, time3);
             saveRecipient(recipientId3, notificationId3, receiverId1, false, null, time3);
             saveRecipient(recipientId4, notificationId4, receiverId1, false, null, time2);
 
-            List<MongoNotificationRecipient> actual = sut.listPrev(
+            List<MongoNotificationRecipient> actual = sut.listHistoricalBefore(
                     receiverId1,
                     recipientId3,
                     time3,
@@ -190,13 +192,13 @@ class MongoNotificationRecipientRepositoryImplTest {
 
         @Test
         @DisplayName("다른 receiverId의 데이터는 제외한다")
-        void listPrev_shouldExcludeOtherReceiverItems() {
+        void listHistoricalBefore_shouldExcludeOtherReceiverItems() {
             saveRecipient(recipientId1, notificationId1, receiverId1, false, null, time1);
             saveRecipient(recipientId2, notificationId2, receiverId1, false, null, time2);
             saveRecipient(recipientId3, notificationId3, receiverId1, false, null, time3);
             saveRecipient(recipientId4, notificationId4, receiverId2, false, null, time2);
 
-            List<MongoNotificationRecipient> actual = sut.listPrev(
+            List<MongoNotificationRecipient> actual = sut.listHistoricalBefore(
                     receiverId1,
                     recipientId3,
                     time3,
@@ -208,13 +210,13 @@ class MongoNotificationRecipientRepositoryImplTest {
 
         @Test
         @DisplayName("limit 개수만큼 조회한다")
-        void listPrev_shouldApplyLimit() {
+        void listHistoricalBefore_shouldApplyLimit() {
             saveRecipient(recipientId1, notificationId1, receiverId1, false, null, time1);
             saveRecipient(recipientId2, notificationId2, receiverId1, false, null, time2);
             saveRecipient(recipientId3, notificationId3, receiverId1, false, null, time3);
             saveRecipient(recipientId4, notificationId4, receiverId1, false, null, time4);
 
-            List<MongoNotificationRecipient> actual = sut.listPrev(
+            List<MongoNotificationRecipient> actual = sut.listHistoricalBefore(
                     receiverId1,
                     recipientId4,
                     time4,
@@ -226,10 +228,10 @@ class MongoNotificationRecipientRepositoryImplTest {
 
         @Test
         @DisplayName("커서 이전 데이터가 없으면 빈 목록을 반환한다")
-        void listPrev_shouldReturnEmptyWhenNoPreviousItems() {
+        void listHistoricalBefore_shouldReturnEmptyWhenNoPreviousItems() {
             saveRecipient(recipientId1, notificationId1, receiverId1, false, null, time1);
 
-            List<MongoNotificationRecipient> actual = sut.listPrev(
+            List<MongoNotificationRecipient> actual = sut.listHistoricalBefore(
                     receiverId1,
                     recipientId1,
                     time1,
@@ -241,13 +243,13 @@ class MongoNotificationRecipientRepositoryImplTest {
 
         @Test
         @DisplayName("인자가 유효하지 않으면 빈 목록을 반환한다")
-        void listPrev_shouldReturnEmptyWhenArgumentsAreInvalid() {
+        void listHistoricalBefore_shouldReturnEmptyWhenArgumentsAreInvalid() {
             saveRecipient(recipientId1, notificationId1, receiverId1, false, null, time1);
 
-            assertThat(sut.listPrev(null, recipientId1, time1, 10)).isEmpty();
-            assertThat(sut.listPrev(receiverId1, null, time1, 10)).isEmpty();
-            assertThat(sut.listPrev(receiverId1, recipientId1, null, 10)).isEmpty();
-            assertThat(sut.listPrev(receiverId1, recipientId1, time1, 0)).isEmpty();
+            assertThat(sut.listHistoricalBefore(null, recipientId1, time1, 10)).isEmpty();
+            assertThat(sut.listHistoricalBefore(receiverId1, null, time1, 10)).isEmpty();
+            assertThat(sut.listHistoricalBefore(receiverId1, recipientId1, null, 10)).isEmpty();
+            assertThat(sut.listHistoricalBefore(receiverId1, recipientId1, time1, 0)).isEmpty();
         }
     }
 
@@ -266,7 +268,8 @@ class MongoNotificationRecipientRepositoryImplTest {
 
             sut.saveAllBulk(recipients);
 
-            List<MongoNotificationRecipient> actual = mongoTemplate.findAll(MongoNotificationRecipient.class);
+            List<MongoNotificationRecipient> actual =
+                    mongoTemplate.findAll(MongoNotificationRecipient.class);
 
             assertThat(actual)
                     .extracting(MongoNotificationRecipient::getId)
@@ -278,7 +281,8 @@ class MongoNotificationRecipientRepositoryImplTest {
         void saveAllBulk_shouldDoNothingWhenEmpty() {
             sut.saveAllBulk(List.of());
 
-            List<MongoNotificationRecipient> actual = mongoTemplate.findAll(MongoNotificationRecipient.class);
+            List<MongoNotificationRecipient> actual =
+                    mongoTemplate.findAll(MongoNotificationRecipient.class);
 
             assertThat(actual).isEmpty();
         }
@@ -288,9 +292,99 @@ class MongoNotificationRecipientRepositoryImplTest {
         void saveAllBulk_shouldDoNothingWhenNull() {
             sut.saveAllBulk(null);
 
-            List<MongoNotificationRecipient> actual = mongoTemplate.findAll(MongoNotificationRecipient.class);
+            List<MongoNotificationRecipient> actual =
+                    mongoTemplate.findAll(MongoNotificationRecipient.class);
 
             assertThat(actual).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("markAsRead")
+    class MarkAsReadTest {
+
+        @Test
+        @DisplayName("읽지 않은 수신자 알림을 읽음 처리한다")
+        void markAsRead_shouldUpdateUnreadRecipient() {
+            saveRecipient(recipientId1, notificationId1, receiverId1, false, null, time1);
+
+            Instant readAt = Instant.parse("2026-01-01T05:00:00Z");
+
+            long modifiedCount = sut.markAsRead(notificationId1, receiverId1, readAt);
+
+            assertThat(modifiedCount).isEqualTo(1L);
+
+            MongoNotificationRecipient actual = mongoTemplate.findById(
+                    recipientId1,
+                    MongoNotificationRecipient.class
+            );
+
+            assertThat(actual).isNotNull();
+            assertThat(actual.isRead()).isTrue();
+            assertThat(actual.getReadAt()).isEqualTo(readAt);
+        }
+
+        @Test
+        @DisplayName("이미 읽은 수신자 알림이면 수정하지 않는다")
+        void markAsRead_shouldNotUpdateAlreadyReadRecipient() {
+            Instant alreadyReadAt = Instant.parse("2026-01-01T04:00:00Z");
+
+            saveRecipient(
+                    recipientId1,
+                    notificationId1,
+                    receiverId1,
+                    true,
+                    alreadyReadAt,
+                    time1
+            );
+
+            Instant readAt = Instant.parse("2026-01-01T05:00:00Z");
+
+            long modifiedCount = sut.markAsRead(notificationId1, receiverId1, readAt);
+
+            assertThat(modifiedCount).isZero();
+
+            MongoNotificationRecipient actual = mongoTemplate.findById(
+                    recipientId1,
+                    MongoNotificationRecipient.class
+            );
+
+            assertThat(actual).isNotNull();
+            assertThat(actual.isRead()).isTrue();
+            assertThat(actual.getReadAt()).isEqualTo(alreadyReadAt);
+        }
+
+        @Test
+        @DisplayName("다른 receiverId의 수신자 알림은 수정하지 않는다")
+        void markAsRead_shouldNotUpdateOtherReceiverRecipient() {
+            saveRecipient(recipientId1, notificationId1, receiverId2, false, null, time1);
+
+            Instant readAt = Instant.parse("2026-01-01T05:00:00Z");
+
+            long modifiedCount = sut.markAsRead(notificationId1, receiverId1, readAt);
+
+            assertThat(modifiedCount).isZero();
+
+            MongoNotificationRecipient actual = mongoTemplate.findById(
+                    recipientId1,
+                    MongoNotificationRecipient.class
+            );
+
+            assertThat(actual).isNotNull();
+            assertThat(actual.isRead()).isFalse();
+            assertThat(actual.getReadAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("인자가 유효하지 않으면 0을 반환한다")
+        void markAsRead_shouldReturnZeroWhenArgumentsAreInvalid() {
+            saveRecipient(recipientId1, notificationId1, receiverId1, false, null, time1);
+
+            Instant readAt = Instant.parse("2026-01-01T05:00:00Z");
+
+            assertThat(sut.markAsRead(null, receiverId1, readAt)).isZero();
+            assertThat(sut.markAsRead(notificationId1, null, readAt)).isZero();
+            assertThat(sut.markAsRead(notificationId1, receiverId1, null)).isZero();
         }
     }
 
@@ -311,7 +405,7 @@ class MongoNotificationRecipientRepositoryImplTest {
                 deliveredAt
         );
 
-        sut.save(recipient);
+        mongoTemplate.save(recipient);
     }
 
     private MongoNotificationRecipient createRecipient(
@@ -342,7 +436,10 @@ class MongoNotificationRecipientRepositoryImplTest {
         return LocalDateTime.ofInstant(instant, ServiceZoneUtils.ZONE_ID);
     }
 
-    private void assertRecipientIds(List<MongoNotificationRecipient> actual, ObjectId... expected) {
+    private void assertRecipientIds(
+            List<MongoNotificationRecipient> actual,
+            ObjectId... expected
+    ) {
         assertThat(actual)
                 .extracting(MongoNotificationRecipient::getId)
                 .containsExactly(expected);

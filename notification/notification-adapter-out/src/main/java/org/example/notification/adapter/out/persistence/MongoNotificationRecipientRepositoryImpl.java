@@ -1,7 +1,7 @@
 package org.example.notification.adapter.out.persistence;
 
-import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -15,11 +15,20 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-@RequiredArgsConstructor
-public class MongoNotificationRecipientRepositoryImpl implements MongoNotificationRecipientRepositoryCustom {
+public class MongoNotificationRecipientRepositoryImpl implements MongoNotificationRecipientRepository {
 
     private static final int BATCH_SIZE = 1_000;
-    private final MongoTemplate mongoTemplate;
+
+    private final MongoTemplate primaryMongoTemplate;
+    private final MongoTemplate secondaryMongoTemplate;
+
+    public MongoNotificationRecipientRepositoryImpl(
+            @Qualifier("primaryMongoTemplate") MongoTemplate primaryMongoTemplate,
+            @Qualifier("secondaryMongoTemplate") MongoTemplate secondaryMongoTemplate
+    ) {
+        this.primaryMongoTemplate = primaryMongoTemplate;
+        this.secondaryMongoTemplate = secondaryMongoTemplate;
+    }
 
     @Override
     public List<MongoNotificationRecipient> listLatest(UUID receiverId, int limit) {
@@ -36,11 +45,11 @@ public class MongoNotificationRecipientRepositoryImpl implements MongoNotificati
                 )
                 .limit(limit);
 
-        return mongoTemplate.find(query, MongoNotificationRecipient.class);
+        return primaryMongoTemplate.find(query, MongoNotificationRecipient.class);
     }
 
     @Override
-    public List<MongoNotificationRecipient> listPrev(
+    public List<MongoNotificationRecipient> listHistoricalBefore(
             UUID receiverId,
             ObjectId lastId,
             Instant lastDeliveredAt,
@@ -67,7 +76,7 @@ public class MongoNotificationRecipientRepositoryImpl implements MongoNotificati
                 )
                 .limit(limit);
 
-        return mongoTemplate.find(query, MongoNotificationRecipient.class);
+        return secondaryMongoTemplate.find(query, MongoNotificationRecipient.class);
     }
 
     @Override
@@ -81,7 +90,7 @@ public class MongoNotificationRecipientRepositoryImpl implements MongoNotificati
 
             List<MongoNotificationRecipient> batch = recipients.subList(i, end);
 
-            mongoTemplate.bulkOps(
+            primaryMongoTemplate.bulkOps(
                             BulkOperations.BulkMode.UNORDERED,
                             MongoNotificationRecipient.class
                     )
@@ -106,6 +115,10 @@ public class MongoNotificationRecipientRepositoryImpl implements MongoNotificati
                 .set("read", true)
                 .set("readAt", readAt);
 
-        return mongoTemplate.updateFirst(query, update, MongoNotificationRecipient.class).getModifiedCount();
+        return primaryMongoTemplate.updateFirst(
+                query,
+                update,
+                MongoNotificationRecipient.class
+        ).getModifiedCount();
     }
 }
