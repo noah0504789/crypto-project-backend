@@ -1,6 +1,7 @@
 package org.example.market.application.service;
 
 import lombok.RequiredArgsConstructor;
+import org.example.common.jpa.annotation.ReadReplica;
 import org.example.market.application.cache.MarketCacheNames;
 import org.example.market.application.port.in.MarketQueryUseCase;
 import org.example.market.application.port.out.MarketPersistencePort;
@@ -18,7 +19,7 @@ public class MarketQueryService implements MarketQueryUseCase {
     private final MarketPersistencePort marketPersistencePort;
 
     @Override
-    @Transactional(readOnly = true)
+    @ReadReplica
     @Cacheable(cacheNames = MarketCacheNames.MARKETS, key = "'enabled'")
     public List<Market> getMarkets() {
         return marketPersistencePort.findAllEnabledOrderByIdAsc();
