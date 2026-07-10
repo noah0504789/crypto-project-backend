@@ -23,7 +23,6 @@ public class PriceAlertSettingQueryService implements PriceAlertSettingQueryUseC
     private final MarketPersistencePort marketPersistencePort;
 
     @Override
-    @Transactional(readOnly = true)
     public List<MyPriceAlertSettingResult> getMySettings(UUID userPublicId) {
         List<PriceAlertSetting> settings = priceAlertSettingPersistencePort.findAllByUserPublicId(userPublicId);
 
@@ -57,7 +56,6 @@ public class PriceAlertSettingQueryService implements PriceAlertSettingQueryUseC
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<UUID> findReceiverIds(String marketCode, BigDecimal targetChangeRate) {
         if (marketCode == null || marketCode.isBlank() || targetChangeRate == null) {
             return List.of();
