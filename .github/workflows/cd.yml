@@ -78,8 +78,13 @@ jobs:
       - name: Deploy selected service
         env:
           INFRA_REPO_DIR: ${{ vars.INFRA_REPO_DIR }}
+          CONFIG_REPO_URI: ${{ vars.CONFIG_REPO_URI }}
+
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+          VAULT_ROLE_ID: ${{ secrets.VAULT_ROLE_ID }}
+          VAULT_SECRET_ID: ${{ secrets.VAULT_SECRET_ID }}
+
           TARGET_SERVICE: ${{ inputs.service }}
           IMAGE_TAG: ${{ inputs.image_tag }}
           TARGET_SCALE: ${{ inputs.scale }}
