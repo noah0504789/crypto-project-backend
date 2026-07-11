@@ -2,7 +2,7 @@ package org.example.configserver.jwks;
 
 import lombok.RequiredArgsConstructor;
 import org.example.configserver.vault.port.out.VaultTransitKeyReaderPort;
-import org.example.configserver.vault.domain.VaultTransitPublicKeyInfo;
+import org.example.configserver.vault.dto.VaultTransitPublicKeyInfo;
 import org.springframework.stereotype.Service;
 
 import java.security.interfaces.RSAPublicKey;

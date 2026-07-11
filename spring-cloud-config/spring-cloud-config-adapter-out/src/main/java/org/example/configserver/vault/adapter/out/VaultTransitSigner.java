@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.configserver.vault.adapter.out.properties.VaultTransitProperties;
 import org.example.configserver.vault.adapter.out.dto.VaultSignRequest;
 import org.example.configserver.vault.port.out.VaultTransitSignPort;
-import org.example.configserver.vault.domain.VaultTransitSignResult;
+import org.example.configserver.vault.dto.VaultTransitSignResult;
 import org.springframework.stereotype.Component;
 import org.springframework.vault.core.VaultTemplate;
 import org.springframework.vault.support.VaultResponse;

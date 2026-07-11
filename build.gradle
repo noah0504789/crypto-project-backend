@@ -27,7 +27,6 @@ tasks.register("springCloudConfigCi") {
     description = "Runs build and tests for spring cloud config modules"
 
     dependsOn(
-            ":spring-cloud-config:spring-cloud-config-domain:build",
             ":spring-cloud-config:spring-cloud-config-application:build",
             ":spring-cloud-config:spring-cloud-config-adapter-in:build",
             ":spring-cloud-config:spring-cloud-config-adapter-out:build",

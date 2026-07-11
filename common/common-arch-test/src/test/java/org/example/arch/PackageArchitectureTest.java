@@ -42,7 +42,7 @@ class PackageArchitectureTest {
             ),
             new ServiceBoundary(
                     "spring-cloud-config",
-                    "spring-cloud-config/spring-cloud-config-domain",
+                    null,
                     "spring-cloud-config/spring-cloud-config-application",
                     List.of(
                             "spring-cloud-config/spring-cloud-config-adapter-in",
@@ -150,7 +150,6 @@ class PackageArchitectureTest {
 
         checkAllowingEmpty(rule, importMainClasses(List.of(
                 "chat/chat-domain",
-                "spring-cloud-config/spring-cloud-config-domain",
                 "user/user-domain",
                 "market/market-domain",
                 "notification/notification-domain"

@@ -1,4 +1,4 @@
-package org.example.configserver.vault.domain;
+package org.example.configserver.vault.dto;
 
 public record VaultTransitPublicKeyInfo(
         String keyName,

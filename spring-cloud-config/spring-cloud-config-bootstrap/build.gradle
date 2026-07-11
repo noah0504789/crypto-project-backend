@@ -5,7 +5,6 @@ plugins {
 ext.dockerImageName = "crypto-spring-cloud-config"
 
 dependencies {
-    implementation project(':spring-cloud-config:spring-cloud-config-domain')
     implementation project(':spring-cloud-config:spring-cloud-config-application')
     implementation project(':spring-cloud-config:spring-cloud-config-adapter-in')
     implementation project(':spring-cloud-config:spring-cloud-config-adapter-out')
