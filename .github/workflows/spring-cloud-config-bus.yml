@@ -1,0 +1,103 @@
+name: Spring Cloud Config Bus Refresh
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "git-config-repo/**"
+
+permissions:
+  contents: read
+
+jobs:
+  refresh-config:
+    name: Refresh dynamic configuration
+    runs-on: [self-hosted, local, backend]
+    environment: production
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve changed config files
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BEFORE_SHA="${{ github.event.before }}"
+          AFTER_SHA="${{ github.sha }}"
+
+          echo "Diff base: $BEFORE_SHA"
+          echo "Diff head: $AFTER_SHA"
+
+          CHANGED_FILES="$(
+            git diff \
+              --name-only \
+              "$BEFORE_SHA" \
+              "$AFTER_SHA" \
+              -- "git-config-repo/**"
+          )"
+
+          echo "Changed config files:"
+          printf '%s\n' "$CHANGED_FILES"
+
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "dynamic_changed=false" >> "$GITHUB_OUTPUT"
+            echo "infrastructure_changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if printf '%s\n' "$CHANGED_FILES" \
+            | grep -q '^git-config-repo/dynamic/'; then
+            echo "dynamic_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "dynamic_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if printf '%s\n' "$CHANGED_FILES" \
+            | grep -q '^git-config-repo/infrastructure/'; then
+            echo "infrastructure_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "infrastructure_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip bus refresh for infrastructure changes
+        if: steps.changes.outputs.infrastructure_changed == 'true'
+        run: |
+          echo "Infrastructure configuration changed."
+          echo "Bus refresh is intentionally skipped."
+          echo "Affected services must be redeployed."
+
+      - name: Skip when no dynamic configuration changed
+        if: >
+          steps.changes.outputs.infrastructure_changed == 'false' &&
+          steps.changes.outputs.dynamic_changed == 'false'
+        run: |
+          echo "No dynamic configuration changed."
+          echo "Nothing to refresh."
+
+      - name: Call Spring Cloud Config bus refresh
+        if: >
+          steps.changes.outputs.infrastructure_changed == 'false' &&
+          steps.changes.outputs.dynamic_changed == 'true'
+        env:
+          CONFIG_SERVER_URL: ${{ vars.CONFIG_SERVER_URL }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${CONFIG_SERVER_URL:-}" ]; then
+            echo "ERROR: CONFIG_SERVER_URL variable is empty."
+            exit 1
+          fi
+
+          curl -fsS \
+            -X POST \
+            -H "X-Deploy-Token: ${DEPLOY_TOKEN}" \
+            "${CONFIG_SERVER_URL}/actuator/busrefresh"
+
+          echo "Spring Cloud Config bus refresh completed."
