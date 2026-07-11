@@ -9,5 +9,5 @@ eureka:
   server:
     defaultOpenForTrafficCount: 0
     enable-self-preservation: false
-    eviction-interval-timer-in-ms: 10000
-    response-cache-update-interval-ms: 5000
+    eviction-interval-timer-in-ms: 30000
+    response-cache-update-interval-ms: 10000
