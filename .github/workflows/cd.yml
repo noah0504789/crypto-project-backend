@@ -8,6 +8,7 @@ on:
         required: true
         type: choice
         options:
+          - crypto-spring-cloud-config
           - crypto-spring-cloud-api-gateway
           - crypto-websocket-gateway
           - crypto-oauth2-authorization-server
@@ -16,10 +17,12 @@ on:
           - crypto-user-service
           - crypto-market-service
           - crypto-outbox-poller
+
       image_tag:
         description: "Docker image tag to deploy"
         required: true
         default: "latest"
+
       scale:
         description: "Target container scale for blue/green services"
         required: true
@@ -93,17 +96,31 @@ jobs:
             exit 1
           fi
 
+          if [ -z "${TARGET_SERVICE:-}" ]; then
+            echo "ERROR: TARGET_SERVICE input is empty."
+            exit 1
+          fi
+
+          if [ -z "${IMAGE_TAG:-}" ]; then
+            echo "ERROR: IMAGE_TAG input is empty."
+            exit 1
+          fi
+
           if [ -z "${TARGET_SCALE:-}" ]; then
             echo "ERROR: TARGET_SCALE input is empty."
             exit 1
           fi
 
-          if [ "$TARGET_SCALE" != "current" ] && ! echo "$TARGET_SCALE" | grep -Eq '^[0-9]+$'; then
+          if [ "$TARGET_SCALE" != "current" ] && \
+             ! echo "$TARGET_SCALE" | grep -Eq '^[0-9]+$'; then
+
             echo "ERROR: TARGET_SCALE must be 'current' or a positive integer. value=$TARGET_SCALE"
             exit 1
           fi
 
-          if [ "$TARGET_SCALE" != "current" ] && [ "$TARGET_SCALE" -lt 1 ]; then
+          if [ "$TARGET_SCALE" != "current" ] && \
+             [ "$TARGET_SCALE" -lt 1 ]; then
+
             echo "ERROR: TARGET_SCALE must be greater than 0. value=$TARGET_SCALE"
             exit 1
           fi
@@ -117,6 +134,11 @@ jobs:
           fi
 
           case "$TARGET_SERVICE" in
+            crypto-spring-cloud-config)
+              echo "Scale input is ignored for Spring Cloud Config validated recreate deployment."
+              ./scripts/deploy/deploy-spring-cloud-config-validated-recreate.sh "$IMAGE_TAG"
+              ;;
+
             crypto-outbox-poller)
               echo "Scale input is ignored for crypto-outbox-poller safe recreate deployment."
               ./scripts/deploy/deploy-outbox-poller-safe.sh "$IMAGE_TAG"
@@ -138,19 +160,27 @@ jobs:
               ;;
 
             crypto-user-service)
-              ./scripts/deploy/deploy-user-service-bluegreen.sh "$IMAGE_TAG"
+              ./scripts/deploy/deploy-user-service-bluegreen.sh \
+                "$IMAGE_TAG" \
+                "$TARGET_SCALE"
               ;;
 
             crypto-market-service)
-              ./scripts/deploy/deploy-market-service-bluegreen.sh "$IMAGE_TAG"
+              ./scripts/deploy/deploy-market-service-bluegreen.sh \
+                "$IMAGE_TAG" \
+                "$TARGET_SCALE"
               ;;
 
             crypto-websocket-gateway)
-              ./scripts/deploy/deploy-websocket-gateway-bluegreen.sh "$IMAGE_TAG"
+              ./scripts/deploy/deploy-websocket-gateway-bluegreen.sh \
+                "$IMAGE_TAG" \
+                "$TARGET_SCALE"
               ;;
 
             crypto-chat-service)
-              ./scripts/deploy/deploy-chat-service-bluegreen.sh "$IMAGE_TAG"
+              ./scripts/deploy/deploy-chat-service-bluegreen.sh \
+                "$IMAGE_TAG" \
+                "$TARGET_SCALE"
               ;;
 
             *)
