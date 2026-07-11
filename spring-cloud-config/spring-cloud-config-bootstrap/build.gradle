@@ -5,6 +5,7 @@ plugins {
 ext.dockerImageName = "crypto-spring-cloud-config"
 
 dependencies {
+    implementation project(':common:common-actuator-webmvc')
     implementation project(':spring-cloud-config:spring-cloud-config-application')
     implementation project(':spring-cloud-config:spring-cloud-config-adapter-in')
     implementation project(':spring-cloud-config:spring-cloud-config-adapter-out')
@@ -12,5 +13,6 @@ dependencies {
     implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.security.oauth2.jose)
     implementation(libs.spring.cloud.config.server)
+    implementation(libs.spring.cloud.starter.bus.kafka)
     implementation(libs.spring.vault.core)
 }
