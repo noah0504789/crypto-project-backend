@@ -9,6 +9,7 @@ on:
         type: choice
         options:
           - crypto-spring-cloud-config
+          - crypto-spring-cloud-eureka-server
           - crypto-spring-cloud-api-gateway
           - crypto-websocket-gateway
           - crypto-oauth2-authorization-server
@@ -118,14 +119,12 @@ jobs:
 
           if [ "$TARGET_SCALE" != "current" ] && \
              ! echo "$TARGET_SCALE" | grep -Eq '^[0-9]+$'; then
-
             echo "ERROR: TARGET_SCALE must be 'current' or a positive integer. value=$TARGET_SCALE"
             exit 1
           fi
 
           if [ "$TARGET_SCALE" != "current" ] && \
              [ "$TARGET_SCALE" -lt 1 ]; then
-
             echo "ERROR: TARGET_SCALE must be greater than 0. value=$TARGET_SCALE"
             exit 1
           fi
@@ -141,27 +140,38 @@ jobs:
           case "$TARGET_SERVICE" in
             crypto-spring-cloud-config)
               echo "Scale input is ignored for Spring Cloud Config validated recreate deployment."
-              ./scripts/deploy/deploy-spring-cloud-config-validated-recreate.sh "$IMAGE_TAG"
+              ./scripts/deploy/deploy-spring-cloud-config-validated-recreate.sh \
+                "$IMAGE_TAG"
               ;;
 
-            crypto-outbox-poller)
-              echo "Scale input is ignored for crypto-outbox-poller safe recreate deployment."
-              ./scripts/deploy/deploy-outbox-poller-safe.sh "$IMAGE_TAG"
+            crypto-spring-cloud-eureka-server)
+              echo "Scale input is ignored for Eureka Server validated recreate deployment."
+              ./scripts/deploy/deploy-eureka-server-validated-recreate.sh \
+                "$IMAGE_TAG"
               ;;
 
             crypto-spring-cloud-api-gateway)
               echo "Scale input is ignored for API Gateway validated recreate deployment."
-              ./scripts/deploy/deploy-api-gateway-validated-recreate.sh "$IMAGE_TAG"
+              ./scripts/deploy/deploy-api-gateway-validated-recreate.sh \
+                "$IMAGE_TAG"
               ;;
 
             crypto-oauth2-authorization-server)
               echo "Scale input is ignored for OAuth2 Authorization Server validated recreate deployment."
-              ./scripts/deploy/deploy-oauth2-authorization-server-validated-recreate.sh "$IMAGE_TAG"
+              ./scripts/deploy/deploy-oauth2-authorization-server-validated-recreate.sh \
+                "$IMAGE_TAG"
               ;;
 
             crypto-oauth2-client)
               echo "Scale input is ignored for OAuth2 Client validated recreate deployment."
-              ./scripts/deploy/deploy-oauth2-client-validated-recreate.sh "$IMAGE_TAG"
+              ./scripts/deploy/deploy-oauth2-client-validated-recreate.sh \
+                "$IMAGE_TAG"
+              ;;
+
+            crypto-outbox-poller)
+              echo "Scale input is ignored for crypto-outbox-poller safe recreate deployment."
+              ./scripts/deploy/deploy-outbox-poller-safe.sh \
+                "$IMAGE_TAG"
               ;;
 
             crypto-user-service)
