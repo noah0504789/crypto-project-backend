@@ -4,7 +4,6 @@ plugins {
 
 dependencies {
     implementation project(':spring-cloud-config:spring-cloud-config-application')
-    implementation project(':spring-cloud-config:spring-cloud-config-domain')
 
     implementation(libs.spring.vault.core)
 }

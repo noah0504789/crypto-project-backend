@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-    api project(':spring-cloud-config:spring-cloud-config-domain')
+    api project(':common:common-core')
 
     implementation(libs.spring.security.oauth2.jose)
 }

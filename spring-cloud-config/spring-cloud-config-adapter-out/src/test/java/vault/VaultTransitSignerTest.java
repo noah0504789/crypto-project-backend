@@ -2,7 +2,7 @@ package vault;
 
 import org.example.configserver.vault.adapter.out.dto.VaultSignRequest;
 import org.example.configserver.vault.adapter.out.properties.VaultTransitProperties;
-import org.example.configserver.vault.domain.VaultTransitSignResult;
+import org.example.configserver.vault.dto.VaultTransitSignResult;
 import org.example.configserver.vault.adapter.out.VaultTransitSigner;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

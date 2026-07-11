@@ -5,7 +5,7 @@ import org.example.configserver.sign.JwtSigningService;
 import org.example.configserver.sign.VaultSignatureParser;
 import org.example.configserver.sign.dto.SignRequest;
 import org.example.configserver.sign.dto.SignResponse;
-import org.example.configserver.vault.domain.VaultTransitSignResult;
+import org.example.configserver.vault.dto.VaultTransitSignResult;
 import org.example.configserver.vault.port.out.VaultTransitSignPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

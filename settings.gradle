@@ -55,7 +55,6 @@ include 'oauth2-client:oauth2-client-bootstrap'
 include 'spring-cloud-api-gateway'
 
 include 'spring-cloud-config'
-include 'spring-cloud-config:spring-cloud-config-domain'
 include 'spring-cloud-config:spring-cloud-config-application'
 include 'spring-cloud-config:spring-cloud-config-adapter-in'
 include 'spring-cloud-config:spring-cloud-config-adapter-out'

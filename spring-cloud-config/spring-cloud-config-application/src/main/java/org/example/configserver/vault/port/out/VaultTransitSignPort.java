@@ -1,6 +1,6 @@
 package org.example.configserver.vault.port.out;
 
-import org.example.configserver.vault.domain.VaultTransitSignResult;
+import org.example.configserver.vault.dto.VaultTransitSignResult;
 
 public interface VaultTransitSignPort {
 

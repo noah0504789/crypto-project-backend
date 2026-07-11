@@ -3,7 +3,7 @@ package org.example.configserver.sign;
 import lombok.RequiredArgsConstructor;
 import org.example.configserver.sign.dto.SignRequest;
 import org.example.configserver.sign.dto.SignResponse;
-import org.example.configserver.vault.domain.VaultTransitSignResult;
+import org.example.configserver.vault.dto.VaultTransitSignResult;
 import org.example.configserver.vault.port.out.VaultTransitSignPort;
 import org.springframework.stereotype.Service;
 
