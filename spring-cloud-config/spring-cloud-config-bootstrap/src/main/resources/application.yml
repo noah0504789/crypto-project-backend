@@ -1,13 +1,22 @@
 server.port: 8888
 
+api-path:
+  jwks: /.well-known/jwks.json
+  sign: /sign
+
 spring:
-  profiles.active: git, vault
+  profiles:
+    active: git,vault
+
   cloud:
     config:
       server:
         git:
           uri: ${CONFIG_REPO_URI}
-          search-paths: ${CONFIG_REPO_SEARCH_PATHS:git-config-repo}
+          search-paths:
+            - ${CONFIG_REPO_ROOT:git-config-repo}
+            - ${CONFIG_REPO_ROOT:git-config-repo}/dynamic
+            - ${CONFIG_REPO_ROOT:git-config-repo}/infrastructure
           default-label: main
           order: 2
         vault:
@@ -22,10 +31,13 @@ spring:
           kvVersion: 2
           applicationName: mysql,mongo,oauth2-client,monitoring
           order: 1
+
     stream:
       kafka:
         binder:
-          brokers: kafka-0:9092,kafka-1:9092
+          brokers:
+            - kafka-0:9092
+            - kafka-1:9092
 
 management:
   endpoints.web.exposure.include: health,info,busrefresh
@@ -43,10 +55,6 @@ management:
 deployment:
   control:
     token: ${deployment.control-token}
-
-api-path:
-  jwks: /.well-known/jwks.json
-  sign: /sign
 
 vault:
   transit:
