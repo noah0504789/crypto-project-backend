@@ -5,6 +5,7 @@ plugins {
 ext.dockerImageName = "crypto-spring-cloud-eureka-server"
 
 dependencies {
+    implementation project(':common:common-actuator-webmvc')
     implementation(libs.spring.cloud.config.client)
     implementation(libs.spring.cloud.eureka.server)
 }
