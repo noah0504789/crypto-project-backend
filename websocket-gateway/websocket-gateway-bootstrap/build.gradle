@@ -22,6 +22,7 @@ dependencies {
 
     implementation(libs.spring.cloud.config.client)
     implementation(libs.spring.cloud.eureka.client)
+    implementation(libs.spring.cloud.starter.bus.kafka)
     implementation(libs.micrometer.registry.prometheus)
 
     otelAgent(libs.otel.javaagent)

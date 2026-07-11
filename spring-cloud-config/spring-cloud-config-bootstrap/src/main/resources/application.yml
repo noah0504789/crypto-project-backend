@@ -1,5 +1,49 @@
 server.port: 8888
 
+spring:
+  profiles.active: git, vault
+  cloud:
+    config:
+      server:
+        git:
+          uri: ${CONFIG_REPO_URI}
+          search-paths: ${CONFIG_REPO_SEARCH_PATHS:git-config-repo}
+          default-label: main
+          order: 2
+        vault:
+          host: vault
+          port: 18200
+          scheme: http
+          authentication: APPROLE
+          app-role:
+            role-id: ${VAULT_ROLE_ID}
+            secret-id: ${VAULT_SECRET_ID}
+          backend: secret
+          kvVersion: 2
+          applicationName: mysql,mongo,oauth2-client,monitoring
+          order: 1
+    stream:
+      kafka:
+        binder:
+          brokers: kafka-0:9092,kafka-1:9092
+
+management:
+  endpoints.web.exposure.include: health,info,busrefresh
+  endpoint.health:
+    show-details: always
+    show-components: always
+    probes:
+      enabled: true
+    group:
+      readiness:
+        include: readinessState,deploymentReadiness
+      liveness:
+        include: livenessState
+
+deployment:
+  control:
+    token: ${deployment.control-token}
+
 api-path:
   jwks: /.well-known/jwks.json
   sign: /sign
@@ -8,24 +52,3 @@ vault:
   transit:
     sign-path-prefix: transit/sign/
     key-path-prefix: transit/keys/
-
-spring:
-  profiles.active: git, vault
-  cloud.config.server:
-    git:
-      uri: ${CONFIG_REPO_URI}
-      search-paths: ${CONFIG_REPO_SEARCH_PATHS:git-config-repo}
-      default-label: main
-      order: 2
-    vault:
-      host: vault
-      port: 18200
-      scheme: http
-      authentication: APPROLE
-      app-role:
-        role-id: ${VAULT_ROLE_ID}
-        secret-id: ${VAULT_SECRET_ID}
-      backend: secret
-      kvVersion: 2
-      applicationName: mysql,mongo,oauth2-client,monitoring
-      order: 1

@@ -1,3 +1,6 @@
+app:
+  instance-id: ${APP_INSTANCE_ID:${HOSTNAME:${random.uuid}}}
+
 management:
   endpoints.web.exposure.include: health,info,metrics,prometheus
   endpoint.health:
@@ -14,6 +17,3 @@ management:
 deployment:
   control:
     token: ${deployment.control-token}
-
-app:
-  instance-id: ${APP_INSTANCE_ID:${HOSTNAME:${random.uuid}}}

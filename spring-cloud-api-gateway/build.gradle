@@ -22,6 +22,7 @@ dependencies {
     implementation(libs.spring.cloud.eureka.client)
     implementation(libs.spring.cloud.gateway)
     implementation(libs.spring.cloud.loadbalancer)
+    implementation(libs.spring.cloud.starter.bus.kafka)
 
     testImplementation project(':common:common-test')
     testImplementation(libs.spring.security.test)
