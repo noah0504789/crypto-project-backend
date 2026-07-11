@@ -54,7 +54,7 @@ management:
 
 deployment:
   control:
-    token: ${deployment.control-token}
+    token: ${DEPLOY_TOKEN}
 
 vault:
   transit:
