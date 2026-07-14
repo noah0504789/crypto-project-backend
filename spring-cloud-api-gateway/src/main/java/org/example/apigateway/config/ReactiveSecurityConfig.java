@@ -21,9 +21,9 @@ import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverter;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.web.server.ServerAuthenticationEntryPoint;
+import org.springframework.security.web.server.authorization.ServerAccessDeniedHandler;
 import org.springframework.security.web.server.header.XFrameOptionsServerHttpHeadersWriter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.reactive.CorsConfigurationSource;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -36,12 +36,14 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ReactiveSecurityConfig {
 
-    private final CorsConfigurationSource corsSource;
     private final ObjectMapper objectMapper;
     private final ApiPathProperties apiPathProperties;
 
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http, ReactiveJwtDecoder reactiveJwtDecoder) {
+        ServerAuthenticationEntryPoint authenticationEntryPoint = (exchange, exception) -> writeError(exchange, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Authentication is required");
+        ServerAccessDeniedHandler accessDeniedHandler = (exchange, exception) -> writeError(exchange, HttpStatus.FORBIDDEN, "FORBIDDEN", "Access is denied");
+
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .cors(Customizer.withDefaults())
@@ -110,9 +112,12 @@ public class ReactiveSecurityConfig {
                                 .jwtDecoder(reactiveJwtDecoder)
                                 .jwtAuthenticationConverter(jwtAuthenticationConverter())
                         )
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler)
                 )
                 .exceptionHandling(e -> e
-                        .accessDeniedHandler((exchange, ex) -> writeError(exchange))
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler)
                 )
                 .build();
     }
@@ -128,45 +133,43 @@ public class ReactiveSecurityConfig {
         return conv;
     }
 
-    private Mono<Void> writeError(ServerWebExchange exchange) {
-        ServerHttpResponse res = exchange.getResponse();
+    private Mono<Void> writeError(
+            ServerWebExchange exchange,
+            HttpStatus status,
+            String error,
+            String message
+    ) {
+        ServerHttpResponse response = exchange.getResponse();
 
-        if (res.isCommitted()) {
+        if (response.isCommitted()) {
             return Mono.empty();
         }
 
-        res.setStatusCode(HttpStatus.FORBIDDEN);
+        response.setStatusCode(status);
+        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
-        CorsConfiguration cfg = corsSource.getCorsConfiguration(exchange);
-        String origin = exchange.getRequest().getHeaders().getOrigin();
-        HttpHeaders headers = res.getHeaders();
-
-        if (cfg != null && cfg.checkOrigin(origin) != null) {
-            headers.set(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, origin);
-            headers.add(HttpHeaders.VARY, "Origin");
-
-            if (Boolean.TRUE.equals(cfg.getAllowCredentials())) {
-                headers.set(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true");
-            }
+        if (status == HttpStatus.UNAUTHORIZED) {
+            response.getHeaders().set(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
         }
-
-        headers.setContentType(MediaType.APPLICATION_JSON);
 
         Map<String, Object> body = Map.of(
                 "timestamp", Instant.now().toString(),
-                "status", HttpStatus.FORBIDDEN.value(),
-                "error", "FORBIDDEN",
-                "message", "Authorization required.",
+                "status", status.value(),
+                "error", error,
+                "message", message,
                 "path", exchange.getRequest().getPath().value()
         );
 
         byte[] bytes;
+
         try {
             bytes = objectMapper.writeValueAsBytes(body);
         } catch (Exception e) {
-            bytes = ("{\"status\":" + HttpStatus.FORBIDDEN.value() + "}").getBytes(StandardCharsets.UTF_8);
+            bytes = ("{\"status\":" + status.value() + "}").getBytes(StandardCharsets.UTF_8);
         }
 
-        return res.writeWith(Mono.just(res.bufferFactory().wrap(bytes)));
+        return response.writeWith(
+                Mono.just(response.bufferFactory().wrap(bytes))
+        );
     }
 }
