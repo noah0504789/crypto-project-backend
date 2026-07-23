@@ -114,7 +114,7 @@
 
 ### 서비스별 역할 요약
 
-- **user**: 로컬 회원가입/OAuth2 가입, 프로필 조회·수정, 권한. REST base `/user`(컨텍스트 `/api/v1`), gRPC `user.v1`. (`user/user-adapter-in/.../web/UserController.java`, `user/user-adapter-in/.../grpc/GrpcUserService.java`)
+- **user**: 로컬 회원가입/OAuth2 가입, 프로필 조회·수정, 권한. REST base `/user`(컨텍스트 `/api/v1`), gRPC `user.v1`. (`user/user-adapter-in/.../web/UserController.java`, `user/user-adapter-in/.../grpc/GrpcUserService.java`) — **상세: `docs/modules/USER.md`**
 - **oauth2-authorization-server**: 내부 OAuth2 Authorization Server. `TOKEN_EXCHANGE` + `REFRESH_TOKEN` 그랜트, Vault Transit RS256 서명, Redis 토큰 저장, gRPC `auth.v1`. (`oauth2-authorization-server-adapter-in/.../config/`, `-adapter-out/.../token/adapter/out/`)
 - **oauth2-client**: 외부 OIDC 로그인(Google/Kakao) → 내부 AS token-exchange, refresh/logout, `OAuth2AuthorizedClient`(Redis) 관리. (`oauth2-client-adapter-in/.../config/`, `-application/.../authorizedclient/`)
 - **spring-cloud-api-gateway**: Reactive Gateway + JWT Resource Server. 라우팅·CORS·`X-User-Id` 전파·blacklist 검증. (`spring-cloud-api-gateway/.../config/ReactiveRouteConfig.java`, `ReactiveJwtDecoderConfig.java`, `CorsConfig.java`)
@@ -162,7 +162,7 @@
   - `chat_room`: CompoundIndex `{category, msgCnt, _id}` partial `{deleted:false}`, `title` unique partial. (`chat/chat-adapter-out/.../MongoChatRoom.java`)
   - `chat_message`, `chat_room_membership`, `notification`, `notification_recipient`.
 - **Redis Cluster**: 6노드 구성(`git-config-repo/infrastructure/redis.yml`). 키는 `common-core/RedisKey` enum으로 중앙 관리. Cluster Hash Tag로 슬롯 고정: `{chat}`, `{auth}`, `{session}`.
-- **Read Replica 인프라**: `common-jpa`에 라우팅 DataSource가 구현되어 있고 user 서비스에 write/read Hikari + `ReplicationRoutingDataSource`가 구성됨(`user/user-adapter-out/.../infra/config/DataSourceConfig.java`). 실제 `@ReadReplica` 적용 현황은 §8.6과 §11 참조.
+- **Read Replica 인프라**: `common-jpa`에 라우팅 DataSource가 구현되어 있고 user 서비스에 write/read Hikari + `ReplicationRoutingDataSource`가 구성됨(`user/user-adapter-out/.../infra/config/DataSourceConfig.java`). 단, user에는 `@ReadReplica`가 적용된 지점이 없어 조회도 write 노드로 라우팅된다(라우팅 트리거는 `@ReadReplica`+Aspect이며 `@Transactional(readOnly=true)`만으로는 read로 가지 않음). 실제 `@ReadReplica` 적용 현황은 §8.6과 §11, 상세는 `docs/modules/USER.md §10` 참조.
 
 ---
 

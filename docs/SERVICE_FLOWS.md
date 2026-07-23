@@ -20,12 +20,12 @@
 ```
 POST /user/sign-up (UserController)
  → UserCommandUseCase.signUpLocal (UserCommandService)
- → User.ofLocal (도메인, 기본 role 부여) · PasswordEncoder(BCrypt)
+ → User.ofLocal (도메인, 기본 role USER 부여) · PasswordEncoder(BCrypt)
  → UserPersistencePort → JpaUserAdapter (MySQL)
- → 204 Created
+ → 201 Created (Location: /)
 ```
 
-근거: `user/user-adapter-in/.../web/UserController.java`, `user/user-application/.../account/application/service/UserCommandService.java`, `user/user-adapter-out/.../account/adapter/out/JpaUserAdapter.java`.
+근거: `user/user-adapter-in/.../web/UserController.java`, `user/user-application/.../account/application/service/UserCommandService.java`, `user/user-adapter-out/.../account/adapter/out/JpaUserAdapter.java`. user 서비스 전체 상세는 `docs/modules/USER.md`.
 
 ---
 
@@ -34,7 +34,7 @@ POST /user/sign-up (UserController)
 ```
 외부 provider(Google/Kakao) redirect
  → oauth2-client oauth2Login → CustomOidcUserService (프로필 추출)
- → (gRPC user.v1) UserQueryClient.findByEmail / UserCommandClient.signUpOauth2 (find-or-create)
+ → (gRPC user.v1) UserClient.findByEmail / UserClient.signUpOauth2 (find-or-create; 구현 GrpcUserClient)
  → CustomOAuth2LoginSuccessHandler: RFC-8693 token-exchange(my-authorization-server)
  → refresh token 쿠키 설정 + SPA redirect(successRedirectUri)
 ```
