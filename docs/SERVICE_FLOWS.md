@@ -41,7 +41,7 @@ POST /user/sign-up (UserController)
 
 근거: `oauth2-client/oauth2-client-application/.../oidc/.../CustomOidcUserService.java`, `.../oidc/profile/extractor/{Google,Kakao}OidcProviderProfileExtractor.java`, `oauth2-client/.../handler/CustomOAuth2LoginSuccessHandler.java`.
 
-제공자는 Google·Kakao만 확인됨(Naver 등은 미확인).
+제공자는 Google·Kakao만 확인됨(Naver 등은 미확인). oauth2-client 전체 상세(로그인/재발급/로그아웃 흐름·쿠키·확인 필요)는 `docs/modules/OAUTH2_CLIENT.md`.
 
 ---
 
