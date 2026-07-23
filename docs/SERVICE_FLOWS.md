@@ -55,7 +55,7 @@ Authorization Server token endpoint
  → RedisAccessTokenAdapter / RedisRefreshTokenAdapter (Redis 저장, rotating refresh)
 ```
 
-근거: `oauth2-authorization-server-adapter-in/.../config/TokenConfig.java`, `-adapter-out/.../token/adapter/out/vault/Rs256JwtEncoder.java`, `-application/.../authorization/application/CustomAuthenticationSuccessHandler.java`, `-adapter-out/.../token/adapter/out/redis/RedisRefreshTokenAdapter.java`.
+근거: `oauth2-authorization-server-adapter-in/.../config/TokenConfig.java`, `-adapter-out/.../token/adapter/out/vault/Rs256JwtEncoder.java`, `-application/.../authorization/application/CustomAuthenticationSuccessHandler.java`, `-adapter-out/.../token/adapter/out/redis/RedisRefreshTokenAdapter.java`. 서버 전체 상세(Grant·서명·Redis 저장·gRPC 계약·확인 필요)는 `docs/modules/OAUTH2_AUTHORIZATION_SERVER.md`.
 
 토큰 claim은 `roles`, `id`가 확인됨. TTL·`aud` 검증 관련은 §끝 "확인 필요" 참조.
 

@@ -115,7 +115,7 @@
 ### 서비스별 역할 요약
 
 - **user**: 로컬 회원가입/OAuth2 가입, 프로필 조회·수정, 권한. REST base `/user`(컨텍스트 `/api/v1`), gRPC `user.v1`. (`user/user-adapter-in/.../web/UserController.java`, `user/user-adapter-in/.../grpc/GrpcUserService.java`) — **상세: `docs/modules/USER.md`**
-- **oauth2-authorization-server**: 내부 OAuth2 Authorization Server. `TOKEN_EXCHANGE` + `REFRESH_TOKEN` 그랜트, Vault Transit RS256 서명, Redis 토큰 저장, gRPC `auth.v1`. (`oauth2-authorization-server-adapter-in/.../config/`, `-adapter-out/.../token/adapter/out/`)
+- **oauth2-authorization-server**: 내부 OAuth2 Authorization Server. `TOKEN_EXCHANGE` + `REFRESH_TOKEN` 그랜트, Vault Transit RS256 서명, Redis 토큰 저장, gRPC `auth.v1`. (`oauth2-authorization-server-adapter-in/.../config/`, `-adapter-out/.../token/adapter/out/`) — **상세: `docs/modules/OAUTH2_AUTHORIZATION_SERVER.md`**
 - **oauth2-client**: 외부 OIDC 로그인(Google/Kakao) → 내부 AS token-exchange, refresh/logout, `OAuth2AuthorizedClient`(Redis) 관리. (`oauth2-client-adapter-in/.../config/`, `-application/.../authorizedclient/`)
 - **spring-cloud-api-gateway**: Reactive Gateway + JWT Resource Server. 라우팅·CORS·`X-User-Id` 전파·blacklist 검증. (`spring-cloud-api-gateway/.../config/ReactiveRouteConfig.java`, `ReactiveJwtDecoderConfig.java`, `CorsConfig.java`)
 - **chat**: 채팅방/메시지. MongoDB + Redis 캐시, gRPC `chatmessage.v1`, Outbox → Kafka, DLQ 소비. (`chat/chat-adapter-in`, `chat/chat-adapter-out/.../persistence/MongoChatMessageAdapter.java`)
