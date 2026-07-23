@@ -10,8 +10,9 @@
 ## 1. 인증 · 인가 · 보안
 
 ### 1.1 JWT `aud`/`jti` 검증 부재
-게이트웨이 검증 체인은 issuer + blacklist + `id` claim만 확인(`ReactiveJwtDecoderConfig`). `aud`/`jti` 검증 코드는 확인되지 않음. 발급 시 `aud` claim이 실제로 포함되는지(oauth2-authorization-server)와 함께, 계약으로 둘지/validator를 추가할지 결정 필요. 현재 issuer가 단일이라 실제 위험도는 미판정.
-`[출처: SERVICE_FLOWS.md, ARCHITECTURE.md #2, API_GATEWAY.md §18.3]`
+게이트웨이 검증 체인은 issuer + blacklist + `id` claim만 확인(`ReactiveJwtDecoderConfig`). `aud`/`jti` 검증 코드는 확인되지 않음. 계약으로 둘지/validator를 추가할지 결정 필요. 현재 issuer가 단일이라 실제 위험도는 미판정.
+- `[oauth2-as]` 발급측 분석: `TokenConfig` access 커스터마이저는 `roles`·`id` claim만 명시 추가한다. 표준 `aud`(=client) 포함 여부는 Spring `JwtGenerator` 기본 동작에 의존하며 모듈 커스텀 코드에서 설정하지 않음 → 실제 발급 토큰으로 `aud` 유무 확인 필요.
+`[출처: SERVICE_FLOWS.md, ARCHITECTURE.md #2, API_GATEWAY.md §18.3 / oauth2-authorization-server 분석]`
 
 ### 1.2 Access Token URL 노출
 - 로그인 성공 redirect에서 `?accessToken=` 쿼리로 토큰 전달(`CustomOAuth2LoginSuccessHandler`).
@@ -20,12 +21,16 @@
 `[출처: SERVICE_FLOWS.md #3, ARCHITECTURE.md #4, API_GATEWAY.md §18.2]`
 
 ### 1.3 토큰 TTL 7일
-access/refresh TTL이 `604800000ms`(7일)로 설정(`git-config-repo/dynamic/jwt.yml`). 주석상 access 의도는 2h로 보이나 값과 다름. 의도 확인 필요.
-`[출처: SERVICE_FLOWS.md #1, ARCHITECTURE.md #3]`
+access/refresh TTL이 `604800000ms`(7일)로 설정(`git-config-repo/dynamic/jwt.yml`, `access-token-expiration-ms`·`refresh-token-expiration-ms` 둘 다). 주석상 access 의도는 2h로 보이나 값과 다름. `AuthorizationServerConfig`의 `TokenSettings`가 이 값을 그대로 사용 `[oauth2-as]`. 의도 확인 필요.
+`[출처: SERVICE_FLOWS.md #1, ARCHITECTURE.md #3 / oauth2-authorization-server 분석]`
 
 ### 1.4 `{noop}` client secret
-Authorization Server가 client secret을 `{noop}`(평문)로 저장(InMemory 단일 client, `AuthorizationServerConfig`). 의도 확인 필요.
-`[출처: SERVICE_FLOWS.md #4, ARCHITECTURE.md #6]`
+Authorization Server가 client secret을 `{noop}`(평문) 접두로 저장(`AuthorizationServerConfig.registeredClient()`, InMemory 단일 client). secret 원본은 `oauth2.registered-client.secret` ← Vault `${my.client-secret}`. 의도 확인 필요. `[oauth2-as]`
+`[출처: SERVICE_FLOWS.md #4, ARCHITECTURE.md #6 / oauth2-authorization-server 분석]`
+
+### 1.7 `[oauth2-as]` 토큰 엔드포인트 TLS 미적용
+`oauth2-authorization-server.yml`의 `server.port: 9000` 옆에 `# TODO: tsl` 주석. 내부 토큰 엔드포인트(HTTP) TLS 적용 계획 확인 필요.
+`[출처: docs/modules/OAUTH2_AUTHORIZATION_SERVER.md §14]`
 
 ### 1.5 신뢰 헤더(X-User-Id, X-From) 위조 가능성과 하위 서비스 신뢰
 - 게이트웨이가 생성·추가하는 헤더는 `X-User-Id`, `X-From`, `X-Gateway`. `IdentityPropagationGlobalFilter`는 인증된 요청에 한해 `X-User-Id`를 `set`(덮어쓰기).
@@ -66,6 +71,10 @@ Authorization Server가 client secret을 `{noop}`(평문)로 저장(InMemory 단
 ### 4.1 배포 대상 누락
 `cd.yml` 배포 대상 드롭다운에 `notification-service`, `market-detection` 없음(둘 다 Dockerfile/이미지 존재). 배포 갭 확인 필요.
 `[출처: SERVICE_FLOWS.md #7, ARCHITECTURE.md #5]`
+
+### 4.2 `[oauth2-as]` 미사용 mysql 설정
+`git-config-repo/dynamic/oauth2-authorization-server.yml`에 `mysql.{username,password,db}` 블록이 있으나, `config.name`에 mysql 미포함이고 이 서비스는 DB(JPA)를 쓰지 않음(사용자 정보는 gRPC로 user-service 조회). 설정 잔재 여부 확인 필요.
+`[출처: docs/modules/OAUTH2_AUTHORIZATION_SERVER.md §14]`
 
 ---
 
