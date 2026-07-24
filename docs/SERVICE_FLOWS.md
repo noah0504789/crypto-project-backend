@@ -148,7 +148,7 @@ STOMP @MessageMapping("/chat.send") (StompController, websocket-gateway)
  → ChatMessageQueryService → MongoChatMessageAdapter / RedisChatMessageAdapter(캐시)
 ```
 
-근거: `chat/chat-application/.../chatmessage/application/service/{ChatMessageCommandService,ChatMessageQueryService}.java`, `chat/chat-adapter-out/.../persistence/MongoChatMessageAdapter.java`, `chat/chat-adapter-in/.../web/ChatMessageController.java`.
+근거: `chat/chat-application/.../chatmessage/application/service/{ChatMessageCommandService,ChatMessageQueryService}.java`, `chat/chat-adapter-out/.../persistence/MongoChatMessageAdapter.java`, `chat/chat-adapter-in/.../web/ChatMessageController.java`. chat 서비스 전체 상세(방/메시지 명령·조회·캐시·Kafka·DLQ·확인 필요)는 `docs/modules/CHAT.md`.
 
 ---
 

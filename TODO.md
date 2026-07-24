@@ -66,6 +66,12 @@ Authorization Server가 client secret을 `{noop}`(평문) 접두로 저장(`Auth
 spring-cloud-config는 `POST /sign`(Vault Transit RS256 서명 대행)·`GET /.well-known/jwks.json`·`POST /actuator/busrefresh`(Spring Cloud Bus 설정 전파)를 노출하나, 모듈 adapter-in에 `SecurityFilterChain`이 없다(`SecurityConfig`는 RSA `KeyFactory` bean만 정의). 앱 계층 `DeploymentControlAuthFilter`는 `/internal/deployment/**`만 검사해 이 엔드포인트들을 보호하지 않는다(config bus 워크플로우는 `X-Deploy-Token`을 보내지만 busrefresh 경로에선 검증되지 않음). `/sign`은 임의 `header.payload`를 실 키로 RS256 서명해 유효 토큰 위조로 이어질 수 있고, `busrefresh`는 전 서비스 설정 재로딩을 유발할 수 있다. 현재는 내부 네트워크 격리에 의존하는 것으로 보이나 전제·의도 확인 필요(설계/결함 미판정).
 `[출처: docs/modules/SPRING_CLOUD_CONFIG.md §12, docs/CI_CD.md §4 / spring-cloud-config 분석]`
 
+### chat
+
+#### 1.11 채팅방 명령·조회 인가 부재
+`ChatRoomController`의 `create` 위에 `// TODO: 여기 아래로부터 인가 처리하기` 주석이 있고, `create`/`update`/`delete`에 소유자(host) 검증이 없다(`update`/`delete`는 `X-User-Id`조차 받지 않아 임의 사용자가 타인 방을 수정/삭제할 여지). 방 상세(`GET /room/{roomId}`)·메시지 목록(`GET /room/{roomId}/messages`) 조회에도 멤버십 인가 검사가 없다. 게이트웨이 인가 정책과 함께 확인 필요(설계/결함 미판정). 메시지 `save`(gRPC)는 `ChatRoom.validateWritable`로 멤버십을 검증하므로 쓰기 경로와 대비된다.
+`[출처: docs/modules/CHAT.md §9, §16]`
+
 ---
 
 ## 2. 데이터 · 영속성
@@ -79,6 +85,12 @@ spring-cloud-config는 `POST /sign`(Vault Transit RS256 서명 대행)·`GET /.w
 #### 2.2 nickname DB unique 부재
 닉네임 유일성이 애플리케이션 검증(`UniqueUserNicknameValidator.existsByNickname`)에만 의존하고 `schema.sql`에 unique 제약이 없음(unique는 `public_id`, `email`만). 동시 요청 시 중복 삽입 여지(check-then-act). DB unique 백스톱 필요 여부 확인.
 `[출처: docs/modules/USER.md §16]`
+
+### chat
+
+#### 2.3 인기방 인기도 산식 미정
+`ChatRoom.popularity()`가 `msgCnt`를 그대로 반환하며 `// TODO: spec 정의 및 주입받기` 주석이 있다. 이 값이 Redis 인기방 zset(`CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX`) 및 Mongo `idx_category_msgCnt` 정렬 스코어로 쓰인다. 최종 인기도 산식(메시지 수 외 최근성·멤버 수 등 반영 여부)과 주입 방식 확인 필요.
+`[출처: docs/modules/CHAT.md §12, §14]`
 
 ---
 

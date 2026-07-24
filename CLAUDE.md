@@ -9,7 +9,7 @@ Java 17 · Spring Boot 3.4.0 · Spring Cloud 2024.0.2 기반 헥사고날 멀티
 
 문서 지도:
 - 전체 구조 `docs/ARCHITECTURE.md`, 주요 흐름 `docs/SERVICE_FLOWS.md`, 코드 작성 기준 `docs/CODE_STYLE.md`, CI/CD `docs/CI_CD.md`.
-- 모듈별 상세는 `docs/modules/*.md`(현재 user·common·oauth2-authorization-server·oauth2-client·api-gateway·config·eureka 커버). 특정 모듈 디렉토리에서 작업하면 그 디렉토리의 `CLAUDE.md`(모듈 작업 규칙)가 자동 로드된다.
+- 모듈별 상세는 `docs/modules/*.md`(현재 user·chat·common·oauth2-authorization-server·oauth2-client·api-gateway·config·eureka 커버). 특정 모듈 디렉토리에서 작업하면 그 디렉토리의 `CLAUDE.md`(모듈 작업 규칙)가 자동 로드된다.
 - 확인 필요·미결 항목의 **단일 관리처는 `TODO.md`**(docs/modules의 "확인 필요" 절은 TODO 번호만 참조).
 
 ## 안전 규칙
@@ -35,7 +35,7 @@ skill은 자동 노출된다: `analyze-module`(모듈 분석), `verify-change`(�
 - 코드 주석은 최소화하고, "무엇"보다 "왜"가 필요할 때만 쓴다.
 
 ## 코드 스타일
-DTO/record·Entity·네이밍·상수화·예외·트랜잭션·Kafka/Redis·gRPC·테스트 등 코드 작성/리팩토링 기준은 **`docs/CODE_STYLE.md`**를 따른다. 대상 모듈의 기존 스타일·구조를 우선한다.
+DTO/record·Entity·네이밍·상수화·예외·트랜잭션·Kafka/Redis·gRPC·테스트 등 코드 작성/리팩토링 기준은 **`docs/CODE_STYLE.md`**(단일 정본)를 따른다. 대상 모듈의 기존 스타일·구조를 우선한다.
 
 ## 작업 절차
 1. Git 상태 확인 → 2. 관련 규칙/문서 확인 → 3. 전체 호출 흐름·공유 계약 검색 → 4. 파일 경로 근거로 현재 동작 설명 → 5. 원인/변경 식별 → 6. 최소 계획 제시 → 7. 필요한 파일만 수정 → 8. 가장 좁은 테스트/빌드 실행(`verify-change`) → 9. `git diff` 검토 → 10. 결과를 사실대로 보고.

@@ -61,6 +61,7 @@
 | `QueryService` | 조회 use case |
 | `EventService` | domain/application event 처리 |
 | `DlqService` | DLQ 복구/재처리 |
+| `QueryRepairService` | 캐시 미스 복구(재조회 + warm-up) |
 | `*UseCase` | inbound port |
 | `*Port` | outbound port 또는 추상화 |
 | `*Adapter` | 외부 시스템 구현체 |
@@ -153,6 +154,15 @@ JPA Entity가 아니어도 도메인 모델이면 같은 기준을 적용한다.
 - persistence 모델과 domain 모델이 분리되어 있으면 변환 메서드를 명확히 둔다.
 - Redis/Mongo key나 collection 세부사항은 domain에 넣지 않는다.
 
+### 5.3 도메인 서비스 (상태 없는 도메인 로직 분리)
+
+특정 엔티티에 종속되지만 로직을 한곳에 모으면 가독성이 좋아지는 계산/정책은 **상태 없는 도메인 서비스**로 분리할 수 있다.
+
+- 위치는 `*-domain`의 `domain/service`. 프레임워크·Repository·Redis/Mongo에 의존하지 않는다(순수 도메인).
+- 상태가 없으면 `private` 생성자 + `static` 메서드(`final class`)로 둔다. 예: `chat`의 `MyChatRoomScoreCalculator`(내 방 정렬 스코어의 unread 가중치·재산정 규칙).
+- 분리는 **가독성/응집을 위한 선택**이며, 엄밀히는 관련 엔티티(예: `ChatRoom`)의 도메인 로직이다. 분리했더라도 짝이 되는 엔티티 메서드(`ChatRoom.hasUnread`)와 규칙 일관성을 함께 유지한다.
+- 도메인 서비스로 뺄지 엔티티 메서드로 둘지는 응집도로 판단하고, 상태 변경(mutation)은 여전히 엔티티 도메인 메서드에 둔다.
+
 ## 6. Lombok 기준
 
 사용 가능:
@@ -242,6 +252,12 @@ enum을 우선 사용할 값:
 - 로그 자연어
 
 ## 9. 예외 처리 기준
+
+### 9.0 예외 계층
+
+- 서비스별 예외는 새로 만들기보다 **`common`의 공통 베이스를 상속**한다: not-found는 `ResourceNotFoundException`(`ChatRoomNotFoundException`, `UserNotFoundException`), 잘못된 요청은 `InvalidRequestException`(`InvalidResourceRequestException`), 인프라 실패는 `InfrastructureException`(`ChatPersistenceException`). 상속 베이스로 REST/gRPC 응답 매핑이 일관되게 결정된다.
+- **재시도 여부를 예외 타입으로 표현**한다. 일시적 실패는 `Temporary*` 마커 예외를 계층으로 두고(`TemporaryChatPersistenceException extends ChatPersistenceException`) `@Retryable(retryFor = Temporary*.class)` 대상으로 삼는다. 재시도해도 소용없는 멱등 충돌(`DuplicateChatMessageException`)은 `@Retryable(noRetryFor = ...)`로 제외한다.
+- 인프라 예외를 서비스 경계에서 도메인/애플리케이션 예외로 **번역**한다(`MongoChatPersistenceExceptionTranslator`가 Mongo 예외를 `Temporary*`/`Duplicate*`로 변환). 원인 예외(cause)를 보존한다.
 
 ### 9.1 REST
 
