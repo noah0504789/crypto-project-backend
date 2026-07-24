@@ -67,15 +67,39 @@
 
 ## 4. Spring Cloud Config Bus Refresh (`spring-cloud-config-bus.yml`)
 
-설정 저장소(`git-config-repo/**`) 변경이 main에 push되면 실행돼, 동적 설정을 무중단으로 반영한다.
+설정 저장소(`git-config-repo/**`) 변경이 main에 push되면 실행돼, **동적 설정을 재배포·재시작 없이 실행 중인 전 서비스에 반영**한다. Config Server 내부(bus/JWKS/서명) 상세는 `docs/modules/SPRING_CLOUD_CONFIG.md §6.1`.
 
+### 왜 필요한가
+런타임 설정은 서비스에 로컬 `application-*.yml`이 없고 전부 Config Server(→ `git-config-repo`)에서 로드된다(`docs/ARCHITECTURE.md §9`). 값 하나 바꿀 때마다 서비스를 재배포/재시작하면 비용·다운타임이 크다. 자주 조정되는 **동적 값**(`git-config-repo/dynamic/`: 라우팅·CORS·임계값·경로·TTL 등)은 커밋 push만으로 즉시 반영하고 싶다 → Spring Cloud Bus의 busrefresh.
+
+예: `git-config-repo/dynamic/market-detection.yml`의 변동률 임계값이나 `api-gateway.yml`의 라우팅/CORS를 바꿔 main에 push하면, 재배포 없이 실행 중인 인스턴스가 새 값을 재로딩한다.
+
+### 어떻게 동작하나
+- 실행 서비스 11개(**eureka-server 제외**)와 Config Server가 모두 `spring-cloud-starter-bus-kafka`를 포함해 **같은 Kafka Bus에 연결**돼 있다(각 `*-bootstrap/build.gradle`).
+- Config Server는 busrefresh 액추에이터를 노출한다(`management.endpoints.web.exposure.include: health,info,busrefresh`).
+- `POST /actuator/busrefresh` → Config Server가 `RefreshRemoteApplicationEvent`를 Kafka Bus로 **브로드캐스트** → Bus에 붙은 모든 서비스가 수신 → 각자 Config Server에서 설정을 **재조회**하고 빈을 리바인딩한다. (로컬 `/actuator/refresh`가 호출된 단일 인스턴스만 갱신하는 것과 달리, `busrefresh`는 bus 전체에 전파된다.)
+- 갱신되는 값은 `@ConfigurationProperties` 바인딩(예: `*Properties`)이다. 이 코드베이스는 `@RefreshScope`를 쓰지 않으므로(0건), refresh 시 `@ConfigurationProperties` 리바인딩으로 반영된다.
+
+### end-to-end 연동
+```
+git-config-repo/dynamic/*.yml 수정 → main push
+ → GitHub Actions(spring-cloud-config-bus.yml): 변경 파일을 dynamic/infrastructure로 분류
+ → dynamic만 변경: curl -X POST $CONFIG_SERVER_URL/actuator/busrefresh
+ → Config Server: RefreshRemoteApplicationEvent를 Kafka Bus로 브로드캐스트
+ → 각 서비스(bus 참여): Config Server 재조회 → @ConfigurationProperties 리바인딩
+```
+
+### 트리거·분기 규칙
 - 트리거: `push`(main), `paths: git-config-repo/**`. 러너 self-hosted, env `production`.
-- 변경 파일을 `dynamic/`·`infrastructure/`로 분류해 분기:
-  - **동적만 변경** → `POST ${CONFIG_SERVER_URL}/actuator/busrefresh`(헤더 `X-Deploy-Token: ${DEPLOY_TOKEN}`). 각 서비스가 설정을 재로딩.
-  - **인프라 변경 포함** → busrefresh **스킵**(로그만 남김). 인프라 설정은 재배포가 필요하다.
+- 변경 파일을 `dynamic/`·`infrastructure/`로 분류:
+  - **동적만 변경** → busrefresh 호출.
+  - **인프라 변경 포함** → busrefresh **스킵**(로그만). 인프라 설정은 재배포가 필요.
   - 둘 다 아니면 아무것도 안 함.
-- 인프라+동적을 한 커밋에 섞으면 busrefresh는 스킵되지만, 인프라 변경이 유발하는 재배포 시 서비스가 Config Server에서 동적 값까지 다시 읽으므로 동적 변경도 함께 반영된다. busrefresh는 **동적-only 변경을 재배포 없이 반영하기 위한 최적화**다.
-- 변수 `CONFIG_SERVER_URL`, 시크릿 `DEPLOY_TOKEN`. busrefresh 엔드포인트는 `DeploymentControlAuthWebFilter`가 `X-Deploy-Token`으로 보호한다(→ `docs/modules/API_GATEWAY.md`, `.claude/rules/security.md`).
+- 인프라+동적을 한 커밋에 섞으면 busrefresh는 스킵되지만, 인프라 변경이 유발하는 재배포에서 서비스가 Config Server의 동적 값까지 다시 읽으므로 동적 변경도 반영된다. busrefresh는 **동적-only 변경을 재배포 없이 반영하기 위한 최적화**다.
+
+### 보안·설정
+- 변수 `CONFIG_SERVER_URL`, 시크릿 `DEPLOY_TOKEN`. 워크플로우는 `X-Deploy-Token` 헤더를 함께 보낸다.
+- 단, config server의 앱 계층 `DeploymentControlAuthFilter`(`common-actuator-webmvc`)는 **`/internal/deployment/**`만 검사**하고 `/actuator/busrefresh`는 대상이 아니다. 모듈에 `SecurityFilterChain`도 없어(→ `docs/modules/SPRING_CLOUD_CONFIG.md §12`) busrefresh는 앱 계층 인증이 사실상 없고 **네트워크 격리에 의존**한다 → **TODO 1.10**.
 
 ## 5. 운영 유틸 워크플로우
 
