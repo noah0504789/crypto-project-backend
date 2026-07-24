@@ -73,8 +73,8 @@ spring-cloud-config는 `POST /sign`(Vault Transit RS256 서명 대행)·`GET /.w
 ### user
 
 #### 2.1 Read Replica 미적용
-라우팅 인프라는 구성됨(`user/.../DataSourceConfig.java`, `common-jpa`). 그러나 user에는 `@ReadReplica`가 적용된 지점이 없어 조회도 write 노드로 라우팅된다(`UserQueryService`는 `@Transactional(readOnly=true)`만 사용 — Aspect 기준 read 라우팅 트리거 아님). 현재 `@ReadReplica` 실제 적용 확인처는 `market/.../MarketQueryService.getMarkets()` 1곳. 의도/결함 미판정. 상세 `docs/modules/USER.md §10`.
-`[출처: SERVICE_FLOWS.md #6, ARCHITECTURE.md #1 / user 분석]`
+라우팅 인프라는 구성됨(`user/.../DataSourceConfig.java`, `common-jpa`). 그러나 user에는 `@ReadReplica`가 적용된 지점이 없어 조회도 write 노드로 라우팅된다(`UserQueryService`는 `@Transactional(readOnly=true)`만 사용 — Aspect 기준 read 라우팅 트리거 아님). 현재 `@ReadReplica` 실제 적용 확인처는 `market/.../MarketQueryService.getMarkets()` 1곳. 의도/결함 미판정. 라우팅 인프라(`@ReadReplica`·`ReadReplicaAspect`·`ReplicationRoutingDataSource`)는 `common-jpa` 소관. 상세 `docs/modules/USER.md §10`, 인프라 `docs/modules/COMMON.md §5.3`.
+`[출처: SERVICE_FLOWS.md #6, ARCHITECTURE.md #1 / user 분석, docs/modules/COMMON.md §5.3 (common-jpa)]`
 
 #### 2.2 nickname DB unique 부재
 닉네임 유일성이 애플리케이션 검증(`UniqueUserNicknameValidator.existsByNickname`)에만 의존하고 `schema.sql`에 unique 제약이 없음(unique는 `public_id`, `email`만). 동시 요청 시 중복 삽입 여지(check-then-act). DB unique 백스톱 필요 여부 확인.
@@ -87,8 +87,8 @@ spring-cloud-config는 `POST /sign`(Vault Transit RS256 서명 대행)·`GET /.w
 ### 공통 (Outbox/DLQ)
 
 #### 3.1 `DlqStatus.COMSUME_FAILED` 철자
-오타로 보이나 직렬화 계약(저장된 값)일 수 있음. 변경 시 계약 영향 → 확인 필요.
-`[출처: SERVICE_FLOWS.md #5, ARCHITECTURE.md #7]`
+`common-outbox`의 `DlqStatus` 값. 오타로 보이나 직렬화 계약(저장된 값)일 수 있음. 변경 시 계약 영향 → 확인 필요.
+`[출처: SERVICE_FLOWS.md #5, ARCHITECTURE.md #7 / docs/modules/COMMON.md §8 (common-outbox)]`
 
 ---
 

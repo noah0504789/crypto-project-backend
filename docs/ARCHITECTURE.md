@@ -131,7 +131,7 @@
 
 ## 5. 공통 모듈(common-*)
 
-`common`(부모)은 11개 common-* 모듈을 `api`로 재수출하는 파사드다(`common/build.gradle`, `common-test`·`common-arch-test`·`common-actuator-*`는 제외).
+`common`(부모)은 11개 common-* 모듈을 `api`로 재수출하는 파사드다(`common/build.gradle`, `common-test`·`common-arch-test`·`common-actuator-*`는 제외). — **상세: `docs/modules/COMMON.md`**
 
 | 모듈 | 역할 | 주요 산출물 |
 |---|---|---|
