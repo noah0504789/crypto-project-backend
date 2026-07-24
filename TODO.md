@@ -54,6 +54,10 @@ Authorization Server가 client secret을 `{noop}`(평문) 접두로 저장(`Auth
 `oauth2-client.yml`의 google/kakao `redirect-uri`가 `https://localhost:8000/...`로 하드코딩(kakao에 `# TODO: 주입하기` 주석). 운영 값 주입 방식 확인 필요.
 `[출처: docs/modules/OAUTH2_CLIENT.md §12]`
 
+### 1.10 `[config]` `/sign`·JWKS 엔드포인트 인증 부재
+spring-cloud-config는 `POST /sign`(Vault Transit RS256 서명 대행)·`GET /.well-known/jwks.json`을 노출하나, 모듈 adapter-in에 `SecurityFilterChain`이 없다(`SecurityConfig`는 RSA `KeyFactory` bean만 정의). `/sign`은 임의 `header.payload`를 실 키로 RS256 서명해 주므로, 접근 통제가 없으면 유효 토큰 위조로 이어질 수 있다. 현재는 내부 네트워크 격리에 의존하는 것으로 보이나 전제·의도 확인 필요(설계/결함 미판정).
+`[출처: docs/modules/SPRING_CLOUD_CONFIG.md §12 / spring-cloud-config 분석]`
+
 ---
 
 ## 2. 데이터 · 영속성
