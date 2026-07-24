@@ -40,6 +40,7 @@
 
 ### STOMP / WebSocket
 - destination(`/msg/chat.send`, `/topic/chat/{roomId}`, `/queue/chat/badge`, `/queue/chat/ack`, `/topic/notification/`)과 payload는 프론트·`websocket-gateway/k6` 부하 테스트가 의존한다. 변경 전 의존성 확인.
+- 아웃바운드 wire payload 구조는 `docs/ARCHITECTURE.md §7.4` 참고. 특히 `/topic/chat/{roomId}`는 flat `StompChatMessagePayload{ messageId, roomId, writerId, content, timestamp, clientMessageId }`이며 내부 Kafka `ChatMessageBroadcastEvent`(nested `payload`+`memberIds`)와 다르다.
 
 ### JWT
 - claim 변경(현재 `roles`, `id` 확인됨)은 gateway, websocket-gateway, 하위 서비스에 영향.

@@ -198,6 +198,8 @@ proto 4개(`protobuf/src/main/proto/**`)와 서버/클라이언트 매핑:
 - 엔드포인트 `/ws`(SockJS), `/ws-native`. 브로커 `/topic`·`/queue`, appPrefix `/msg`, userPrefix `/user`.
 - 핸드셰이크에서 `X-User-Id`(게이트웨이 주입)로 STOMP Principal 결정.
 - Destination 계약(`common-core/StompDestination`): `/topic/chat/`(prefix), `/queue/chat/badge`, `/queue/chat/ack`, `/topic/notification/`(prefix). 인바운드 `@MessageMapping("/chat.send")`.
+- 아웃바운드 wire payload(클라이언트가 실제 수신하는 형태, 계약):
+  - `/topic/chat/{roomId}` 방 브로드캐스트 → **flat** `StompChatMessagePayload` `{ messageId, roomId, writerId, content, timestamp(epoch millis, long), clientMessageId }`. 근거 `websocket-gateway-adapter-out/.../stomp/StompChatMessageBroadcastAdapter.java`(`convertAndSend`) + `.../stomp/payload/StompChatMessagePayload.java`. 주의: 내부 Kafka 이벤트 `contract/chatmessage/ChatMessageBroadcastEvent{ payload, memberIds, clientMessageId }`와 **다르다** — gateway가 `ChatMessageBroadcastEventMapper`로 flat 변환 후 전송하며 `memberIds`는 로컬 세션 전달 판단용이라 wire에 없다. `createdAt(Instant)`는 `timestamp(epochMilli)`로 변환(null이면 `0`).
 
 ---
 
