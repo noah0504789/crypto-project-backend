@@ -61,6 +61,7 @@
 | `QueryService` | 조회 use case |
 | `EventService` | domain/application event 처리 |
 | `DlqService` | DLQ 복구/재처리 |
+| `QueryRepairService` | 캐시 미스 복구(재조회 + warm-up) |
 | `*UseCase` | inbound port |
 | `*Port` | outbound port 또는 추상화 |
 | `*Adapter` | 외부 시스템 구현체 |
