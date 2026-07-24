@@ -79,7 +79,7 @@ spring-cloud-config는 `POST /sign`(Vault Transit RS256 서명 대행)·`GET /.w
 ### user
 
 #### 2.1 Read Replica 미적용
-라우팅 인프라는 구성됨(`user/.../DataSourceConfig.java`, `common-jpa`). 그러나 user에는 `@ReadReplica`가 적용된 지점이 없어 조회도 write 노드로 라우팅된다(`UserQueryService`는 `@Transactional(readOnly=true)`만 사용 — Aspect 기준 read 라우팅 트리거 아님). 현재 `@ReadReplica` 실제 적용 확인처는 `market/.../MarketQueryService.getMarkets()` 1곳. 의도/결함 미판정. 라우팅 인프라(`@ReadReplica`·`ReadReplicaAspect`·`ReplicationRoutingDataSource`)는 `common-jpa` 소관. 상세 `docs/modules/USER.md §10`, 인프라 `docs/modules/COMMON.md §5.3`.
+라우팅 인프라는 구성됨(`user/.../DataSourceConfig.java`, `common-jpa`). 그러나 user에는 `@ReadReplica`가 적용된 지점이 없어 조회도 write 노드로 라우팅된다(`UserQueryService`는 `@Transactional(readOnly=true)`만 사용 — Aspect 기준 read 라우팅 트리거 아님). 현재 `@ReadReplica` 어노테이션 적용처는 `market/.../MarketQueryService.getMarkets()` 1곳이나, **market은 라우팅 데이터소스 미구성으로 실제 read 라우팅이 일어나지 않는다(2.5 참조)** — 즉 저장소 전체에서 read 라우팅이 실효되는 지점은 현재 확인되지 않는다. 의도/결함 미판정. 라우팅 인프라(`@ReadReplica`·`ReadReplicaAspect`·`ReplicationRoutingDataSource`)는 `common-jpa` 소관. 상세 `docs/modules/USER.md §10`, `docs/modules/MARKET.md §10`, 인프라 `docs/modules/COMMON.md §5.3`.
 `[출처: SERVICE_FLOWS.md #6, ARCHITECTURE.md #1 / user 분석, docs/modules/COMMON.md §5.3 (common-jpa)]`
 
 #### 2.2 nickname DB unique 부재
@@ -91,6 +91,16 @@ spring-cloud-config는 `POST /sign`(Vault Transit RS256 서명 대행)·`GET /.w
 #### 2.3 인기방 인기도 산식 미정
 `ChatRoom.popularity()`가 `msgCnt`를 그대로 반환하며 `// TODO: spec 정의 및 주입받기` 주석이 있다. 이 값이 Redis 인기방 zset(`CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX`) 및 Mongo `idx_category_msgCnt` 정렬 스코어로 쓰인다. 최종 인기도 산식(메시지 수 외 최근성·멤버 수 등 반영 여부)과 주입 방식 확인 필요.
 `[출처: docs/modules/CHAT.md §12, §14]`
+
+### market
+
+#### 2.4 카탈로그 쓰기 경로(`changeMarkets`) 미노출
+`MarketCommandUseCase.changeMarkets`(카탈로그 create/update/delete + `market-broadcast-event` 캐시 무효화)가 구현·테스트되어 있으나 **인바운드 어댑터(REST/gRPC/Kafka)에 연결되어 있지 않다**. 현재 마켓 카탈로그는 `market-bootstrap/.../sql/schema.sql`의 시드 INSERT로만 채워진다. 관리 엔드포인트/운영 반영 경로 도입 여부 또는 현재가 의도인지 확인 필요.
+`[출처: docs/modules/MARKET.md §12]`
+
+#### 2.5 market `@ReadReplica` 라우팅 미구성
+`MarketQueryService.getMarkets()`에 `@ReadReplica`가 붙어 있으나 `market/.../infra/config/DatasourceConfig.java`가 `spring.datasource.write` 단일 `HikariDataSource` + `JpaTransactionManager`만 구성하고 `ReplicationRoutingDataSource`/read 데이터소스가 없다(EMF도 write에 직접 바인딩). 실제 read 노드 라우팅은 일어나지 않는 것으로 보이며 `@Cacheable`이라 대부분 DB를 타지 않는다. **이는 "@ReadReplica 실제 적용 1곳"(2.1·COMMON.md §5.3) 서술의 뉘앙스를 보정**한다 — 적용은 되어 있으나 라우팅 인프라가 없어 무효. 의도/결함 미판정.
+`[출처: docs/modules/MARKET.md §10, §12]`
 
 ---
 
