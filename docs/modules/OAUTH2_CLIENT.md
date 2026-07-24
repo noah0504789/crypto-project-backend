@@ -100,7 +100,7 @@ Authorization Bearer access → subject(email) 해석
 ## 7. 인증/쿠키/식별 계약
 
 - **refresh 토큰 쿠키**(`RefreshTokenService`): name=`AuthTokenKey.REFRESH_TOKEN_COOKIE`, `httpOnly`, `secure`, `SameSite=None`, `path=/`, `maxAge=refreshTokenExpirationMs`. 삭제는 동일 속성 + `maxAge=0`. (security.md의 쿠키 계약과 일치)
-- **access 토큰 전달**: 로그인 성공 시 SPA로 `?accessToken=` 쿼리(§6.1). URL 노출 이슈는 TODO 1.2.
+- **access 토큰 전달**: 로그인 성공 시 SPA로 `?accessToken=` 쿼리(§6.1). URL 노출 이슈는 TODO 1.5.
 - **principalName = email**: AuthorizedClient 저장/조회/삭제 키. 로그인·로그아웃 양쪽 일치.
 - **provider 지원**: google, kakao만 확인(`supports()`), + 내부 `my-authorization-server`(token-exchange grant).
 - 내부 client registration id는 `oauth2.internal-auth-server.client-registration-id`(=`my-authorization-server`).
@@ -141,9 +141,9 @@ Authorization Bearer access → subject(email) 해석
 
 미해결 확인/결정 항목은 [`../../TODO.md`](../../TODO.md)에서 통합 관리한다. oauth2-client 관련 항목:
 
-- **TODO 1.2** — access token URL 노출 (로그인 성공 `?accessToken=` 전달)
-- **TODO 1.8** — 로그아웃 시 JWT 미검증 파싱 (`CustomLogoutSuccessHandler.resolveSubject`)
-- **TODO 1.9** — redirect-uri localhost 하드코딩 (`oauth2-client.yml`)
+- **TODO 1.5** — access token URL 노출 (로그인 성공 `?accessToken=` 전달)
+- **TODO 1.6** — 로그아웃 시 JWT 미검증 파싱 (`CustomLogoutSuccessHandler.resolveSubject`)
+- **TODO 1.7** — redirect-uri localhost 하드코딩 (`oauth2-client.yml`)
 
 ## 13. 관련 문서와 rules
 
