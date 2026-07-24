@@ -19,6 +19,7 @@ Java 17 · Spring Boot 3.4.0 · Spring Cloud 2024.0.2 기반 헥사고날 멀티
 | REST/gRPC/Kafka/Redis/STOMP/JWT/DB 등 계약 변경 | `.claude/rules/external-contracts.md` | review-contract-impact |
 | 인증·인가·OAuth2/JWT·Secret | `.claude/rules/security.md` | — |
 | 테스트 작성·실행·검증 | `.claude/rules/testing.md` | verify-change |
+| 커밋·PR 메시지 작성 | `.claude/rules/commit-pr.md` | — |
 
 skill은 자동 노출된다: `analyze-module`(모듈 분석), `verify-change`(변경 검증), `review-contract-impact`(계약 영향).
 
