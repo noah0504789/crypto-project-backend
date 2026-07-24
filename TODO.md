@@ -90,6 +90,10 @@ spring-cloud-config는 `POST /sign`(Vault Transit RS256 서명 대행)·`GET /.w
 `git-config-repo/dynamic/oauth2-authorization-server.yml`에 `mysql.{username,password,db}` 블록이 있으나, `config.name`에 mysql 미포함이고 이 서비스는 DB(JPA)를 쓰지 않음(사용자 정보는 gRPC로 user-service 조회). 설정 잔재 여부 확인 필요.
 `[출처: docs/modules/OAUTH2_AUTHORIZATION_SERVER.md §14]`
 
+### 4.3 `[eureka]` 단일 노드 · self-preservation 비활성
+`git-config-repo/infrastructure/eureka-server.yml`이 peer 복제 없는 standalone(`register-with-eureka: false`, `fetch-registry: false`)이고 `enable-self-preservation: false`(eviction 30s). 네트워크 순단 시 정상 인스턴스도 빠르게 축출될 수 있음. 개발/소규모 의도로 보이나 운영 HA(peer)·self-preservation 정책 확인 필요.
+`[출처: docs/modules/EUREKA_SERVER.md §9 / spring-cloud-eureka-server 분석]`
+
 ---
 
 ## 5. 확인 완료 (참고 · 조치 불필요)
