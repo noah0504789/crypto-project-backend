@@ -72,6 +72,12 @@ spring-cloud-config는 `POST /sign`(Vault Transit RS256 서명 대행)·`GET /.w
 `ChatRoomController`의 `create` 위에 `// TODO: 여기 아래로부터 인가 처리하기` 주석이 있고, `create`/`update`/`delete`에 소유자(host) 검증이 없다(`update`/`delete`는 `X-User-Id`조차 받지 않아 임의 사용자가 타인 방을 수정/삭제할 여지). 방 상세(`GET /room/{roomId}`)·메시지 목록(`GET /room/{roomId}/messages`) 조회에도 멤버십 인가 검사가 없다. 게이트웨이 인가 정책과 함께 확인 필요(설계/결함 미판정). 메시지 `save`(gRPC)는 `ChatRoom.validateWritable`로 멤버십을 검증하므로 쓰기 경로와 대비된다.
 `[출처: docs/modules/CHAT.md §9, §16]`
 
+### outbox-poller
+
+#### 1.12 DLQ 제어 API 인증 부재
+outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴링을 런타임 토글하나, 모듈 계층 인증(`SecurityFilterChain`)이 확인되지 않는다(스타터는 `web`, security 없음). `stop` 시 DLQ 재처리가 멈춰 실패 이벤트가 적체될 수 있다. 게이트웨이 라우팅(`DlqPollerController`는 게이트웨이 컨트롤러 목록에 있음)/네트워크 격리 전제와 접근 통제 여부 확인 필요(config-server 무인증 엔드포인트 1.10과 같은 성격, 설계/결함 미판정).
+`[출처: docs/modules/OUTBOX_POLLER.md §5, §7]`
+
 ---
 
 ## 2. 데이터 · 영속성

@@ -123,7 +123,7 @@
 - **market**: 마켓 카탈로그·가격알림 설정. MySQL, gRPC `market.v1`(MarketService, PriceAlertSettingService), Caffeine 캐시 + `market-broadcast-event`로 인스턴스별 캐시 무효화. (`market/market-adapter-in/.../grpc/`) — **상세: `docs/modules/MARKET.md`**
 - **market-detection**: Upbit WebSocket 수집 + Kafka Streams 변동률 탐지 → `PriceAlertDetectedEvent` 발행. 축소형(-bootstrap/-contract), market gRPC로 구독 대상 조회. (`market-detection/.../upbit/`, `.../adapter/in/stream/KafkaMarketDetectionBinder.java`) — **상세: `docs/modules/MARKET_DETECTION.md`**
 - **notification**: 알림 생성·저장·전달. Kafka consumer(`price-alert-detected-event`), MongoDB, `market.v1`(수신자 조회) gRPC 클라이언트, Outbox → `web-notification-broadcast-event`. (`notification/.../adapter/in/stream/KafkaNotificationBinder.java`, `notification/notification-adapter-out/.../grpc/PriceAlertRecipientQueryAdapter.java`) — **상세: `docs/modules/NOTIFICATION.md`**
-- **outbox-poller**: 모든 서비스의 Outbox/DLQ 레코드를 폴링 → Kafka 발행. (`outbox-poller/.../outbox/OutboxEventScheduler.java`, `.../infra/event/KafkaEventPublisher.java`)
+- **outbox-poller**: 모든 서비스의 Outbox/DLQ 레코드를 폴링 → Kafka 발행. `EventPublisherPort` 빈 보유 유일 서비스, dispatchType별(GENERAL/BROADCAST) 분리 폴링. (`outbox-poller/.../outbox/OutboxEventScheduler.java`, `.../infra/event/KafkaEventPublisher.java`) — **상세: `docs/modules/OUTBOX_POLLER.md`**
 - **spring-cloud-config**: Config Server(git + Vault), JWKS 엔드포인트, Vault Transit 서명 대행. (`spring-cloud-config/.../jwks/adapter/in/JwksController.java`, `-adapter-out/.../vault/`) — **상세: `docs/modules/SPRING_CLOUD_CONFIG.md`**
 - **spring-cloud-eureka-server**: 서비스 디스커버리(HTTP `lb://` + gRPC metadata 기반). (`spring-cloud-eureka-server/.../Main.java`, `git-config-repo/infrastructure/eureka-{server,client}.yml`) — **상세: `docs/modules/EUREKA_SERVER.md`**
 
