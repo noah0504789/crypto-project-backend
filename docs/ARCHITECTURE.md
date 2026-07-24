@@ -125,7 +125,7 @@
 - **notification**: 알림 생성·저장·전달. Kafka consumer, MongoDB, `market.v1`(수신자 조회) gRPC 클라이언트. (`notification/.../adapter/in/stream/KafkaNotificationBinder.java`, `notification/notification-adapter-out/.../grpc/PriceAlertRecipientQueryAdapter.java`)
 - **outbox-poller**: 모든 서비스의 Outbox/DLQ 레코드를 폴링 → Kafka 발행. (`outbox-poller/.../outbox/OutboxEventScheduler.java`, `.../infra/event/KafkaEventPublisher.java`)
 - **spring-cloud-config**: Config Server(git + Vault), JWKS 엔드포인트, Vault Transit 서명 대행. (`spring-cloud-config/.../jwks/adapter/in/JwksController.java`, `-adapter-out/.../vault/`) — **상세: `docs/modules/SPRING_CLOUD_CONFIG.md`**
-- **spring-cloud-eureka-server**: 서비스 디스커버리.
+- **spring-cloud-eureka-server**: 서비스 디스커버리(HTTP `lb://` + gRPC metadata 기반). (`spring-cloud-eureka-server/.../Main.java`, `git-config-repo/infrastructure/eureka-{server,client}.yml`) — **상세: `docs/modules/EUREKA_SERVER.md`**
 
 ---
 
