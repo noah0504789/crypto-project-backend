@@ -20,6 +20,7 @@ Java 17 · Spring Boot 3.4.0 · Spring Cloud 2024.0.2 기반 헥사고날 멀티
 
 | 작업 | 읽을 규칙 | 관련 skill |
 | --- | --- | --- |
+| 코드 작성·리팩토링(네이밍·DTO/record·도메인·Lombok·예외·상수화) | `.claude/rules/code-style.md` | — |
 | 계층·의존·트랜잭션·Outbox/DLQ·Read Replica·Redis·예외 | `.claude/rules/architecture.md` | analyze-module |
 | REST/gRPC/Kafka/Redis/STOMP/JWT/DB 등 계약 변경 | `.claude/rules/external-contracts.md` | review-contract-impact |
 | 인증·인가·OAuth2/JWT·Secret | `.claude/rules/security.md` | — |
@@ -35,7 +36,7 @@ skill은 자동 노출된다: `analyze-module`(모듈 분석), `verify-change`(�
 - 코드 주석은 최소화하고, "무엇"보다 "왜"가 필요할 때만 쓴다.
 
 ## 코드 스타일
-DTO/record·Entity·네이밍·상수화·예외·트랜잭션·Kafka/Redis·gRPC·테스트 등 코드 작성/리팩토링 기준은 **`docs/CODE_STYLE.md`**를 따른다. 대상 모듈의 기존 스타일·구조를 우선한다.
+코드 작성/리팩토링 시 짧은 actionable 규칙은 **`.claude/rules/code-style.md`**(네이밍·DTO/record·도메인·Lombok·예외·상수화)를 읽고, 근거·배경 전체판은 **`docs/CODE_STYLE.md`**를 따른다. 대상 모듈의 기존 스타일·구조를 우선한다.
 
 ## 작업 절차
 1. Git 상태 확인 → 2. 관련 규칙/문서 확인 → 3. 전체 호출 흐름·공유 계약 검색 → 4. 파일 경로 근거로 현재 동작 설명 → 5. 원인/변경 식별 → 6. 최소 계획 제시 → 7. 필요한 파일만 수정 → 8. 가장 좁은 테스트/빌드 실행(`verify-change`) → 9. `git diff` 검토 → 10. 결과를 사실대로 보고.
