@@ -174,13 +174,15 @@ proto: `protobuf/src/main/proto/auth/v1/auth-service.proto`. 서버: adapter-in�
 | Lua 스크립트 3종 / `RedisKey`(`{auth}:*`) | 토큰 저장 원자성·키 계약(hash tag) |
 | `git-config-repo/dynamic/jwt.yml` | issuer/키/TTL — 발급·검증 양쪽 |
 
-## 14. 확인 필요 항목 (확정 결함으로 단정하지 않음 · 코드 변경 전 사용자 확인)
+## 14. 확인 필요 항목
 
-1. **`{noop}` client secret**: RegisteredClient secret을 `{noop}`(평문) 접두로 저장(`AuthorizationServerConfig`). (TODO 1.4)
-2. **토큰 TTL 7일**: access·refresh 모두 `604800000ms`. 주석상 access 의도는 2h. (TODO 1.3)
-3. **`aud` claim**: access 커스터마이저(`TokenConfig`)는 `roles`·`id`만 추가한다. 표준 `aud`(=client) 포함 여부는 Spring `JwtGenerator` 기본 동작에 의존하며 이 모듈 커스텀 코드에서 명시 설정하지 않는다. 게이트웨이는 `aud`를 검증하지 않음 → 발급 토큰의 실제 `aud` 유무와 검증 필요성 확인. (TODO 1.1)
-4. **미사용 mysql 설정**: `oauth2-authorization-server.yml`에 `mysql.*`가 있으나 `config.name`에 mysql 미포함 + DB 사용 코드 없음. 잔재 여부 확인.
-5. **TLS 미적용**: `server.port: 9000` 옆 `# TODO: tsl`. HTTP 토큰 엔드포인트 TLS 계획 확인.
+미해결 확인/결정 항목은 [`../../TODO.md`](../../TODO.md)에서 통합 관리한다. oauth2-authorization-server 관련 항목:
+
+- **TODO 1.1** — `aud` claim 발급/검증 여부 (`TokenConfig`)
+- **TODO 1.3** — 토큰 TTL 7일 (access·refresh `604800000ms`)
+- **TODO 1.4** — `{noop}` client secret (`AuthorizationServerConfig`)
+- **TODO 1.7** — 토큰 엔드포인트 TLS 미적용 (`server.port: 9000` `# TODO: tsl`)
+- **TODO 4.2** — 미사용 mysql 설정 (`oauth2-authorization-server.yml`)
 
 ## 15. 관련 문서와 rules
 

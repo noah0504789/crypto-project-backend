@@ -173,13 +173,14 @@ proto: `protobuf/src/main/proto/user/v1/user-service.proto`. 서버 구현 `Grpc
 | `DataSourceConfig.java` | 라우팅 DataSource. read/write 분리 동작 |
 | `UserResponse`(web/contract 2종) | REST/gRPC 응답 계약 |
 
-## 16. 확인 필요 항목 (확정된 결함으로 단정하지 않음 · 코드 변경 전 사용자 확인)
+## 16. 확인 필요 항목
 
-1. **Read Replica 미적용**: 라우팅 인프라는 있으나 user에 `@ReadReplica`가 없어 조회도 write 노드로 간다(§10). 의도인지 확인.
-2. **nickname DB unique 부재**: 유일성이 애플리케이션 검증(`existsByNickname`)에만 의존, DB 제약이 없어 동시 요청 시 중복 삽입 여지(check-then-act). 백스톱(unique index) 필요 여부 확인.
-3. **BCrypt strength 5**: 기본(10)보다 낮음. 의도(성능) 여부 확인.
-4. **PATCH `/me/profile` 게이트웨이 인가**: `hasRole` 목록이 GET 전용이라 permitAll 경로로 처리될 수 있음. `X-User-Id` 신뢰/외부 헤더 제거와 함께 확인(→ API_GATEWAY.md §18.1/§18.4).
-5. **`X-User-Id` 무재검증 신뢰**: UserController가 헤더값을 그대로 `publicId`로 사용. 게이트웨이 우회 접근 차단(네트워크)과 함께 확인.
+미해결 확인/결정 항목은 [`../../TODO.md`](../../TODO.md)에서 통합 관리한다. user 관련 항목:
+
+- **TODO 1.5** — 신뢰 헤더(`X-User-Id`·`X-From`) 위조 가능성과 무재검증 신뢰 (PATCH `/me/profile` 인가 포함)
+- **TODO 1.6** — BCrypt strength 5 (`PasswordEncoderConfig`)
+- **TODO 2.1** — Read Replica 미적용 (§10, 조회도 write 노드로 라우팅)
+- **TODO 2.2** — nickname DB unique 부재 (`existsByNickname` 앱 검증만)
 
 ## 17. 관련 문서와 rules
 

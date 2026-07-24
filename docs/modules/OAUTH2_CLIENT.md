@@ -137,11 +137,13 @@ Authorization Bearer access → subject(email) 해석
 | `*OidcProviderProfileExtractor.java` | provider별 claim 해석. 신규 provider 추가 지점 |
 | `git-config-repo/dynamic/oauth2-client.yml` | registration/provider/redirect-uri/api-path |
 
-## 12. 확인 필요 항목 (확정 결함으로 단정하지 않음 · 코드 변경 전 사용자 확인)
+## 12. 확인 필요 항목
 
-1. **access token URL 전달**: 로그인 성공 시 `?accessToken=` 쿼리로 프론트에 전달(`CustomOAuth2LoginSuccessHandler`). (TODO 1.2)
-2. **로그아웃 시 미검증 파싱**: `CustomLogoutSuccessHandler.resolveSubject`는 JWT 검증 실패(`JwtValidationException`) 시 서명 미검증으로 subject를 파싱(`parseSubjectWithoutValidation`)한다. 만료 토큰 로그아웃 허용 의도로 보이나 확인 필요.
-3. **redirect-uri 하드코딩**: `oauth2-client.yml`의 google/kakao `redirect-uri`가 `https://localhost:8000/...`(kakao에 `# TODO: 주입하기` 주석). 운영 값 주입 방식 확인.
+미해결 확인/결정 항목은 [`../../TODO.md`](../../TODO.md)에서 통합 관리한다. oauth2-client 관련 항목:
+
+- **TODO 1.2** — access token URL 노출 (로그인 성공 `?accessToken=` 전달)
+- **TODO 1.8** — 로그아웃 시 JWT 미검증 파싱 (`CustomLogoutSuccessHandler.resolveSubject`)
+- **TODO 1.9** — redirect-uri localhost 하드코딩 (`oauth2-client.yml`)
 
 ## 13. 관련 문서와 rules
 
