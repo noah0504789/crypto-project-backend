@@ -248,6 +248,8 @@ Spring `ApplicationEventPublisher`를 직접 쓰지 않고 `EventUtils.raise(lis
 
 ## 10. 빌드 · CI · 배포 개요
 
+> GitHub Actions 워크플로우 5개(CI·CD·config bus refresh·운영 테스트)의 트리거·단계·배포 전략 상세는 **`docs/CI_CD.md`**.
+
 - 확인한 `build.gradle` 78개, `application*.yml` 계열 24개(런타임 12 + 테스트 12).
 - CI task(루트 `build.gradle`): 서비스별 `chatCi`·`userCi`·`marketCi`·`notificationCi`·`oauth2AuthorizationServerCi`·`oauth2ClientCi`·`websocketGatewayCi`·`gatewayCi`·`springCloudConfigCi`·`marketDetectionCi`·`outboxPollerCi`·`eurekaServerCi`, 전체 집계 `serviceCi`. 각 CI가 `:common:common-arch-test:test`(ArchUnit)를 포함. `commonCi`/`protobufCi`는 없음.
 - 영향 모듈 계산: `scripts/ci/affected_modules*.py`(pytest 대상)가 변경 파일 → 영향 모듈 → gradle/docker task를 산출.
