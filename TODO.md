@@ -108,6 +108,12 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 `MarketQueryService.getMarkets()`에 `@ReadReplica`가 붙어 있으나 `market/.../infra/config/DatasourceConfig.java`가 `spring.datasource.write` 단일 `HikariDataSource` + `JpaTransactionManager`만 구성하고 `ReplicationRoutingDataSource`/read 데이터소스가 없다(EMF도 write에 직접 바인딩). 실제 read 노드 라우팅은 일어나지 않는 것으로 보이며 `@Cacheable`이라 대부분 DB를 타지 않는다. **이는 "@ReadReplica 실제 적용 1곳"(2.1·COMMON.md §5.3) 서술의 뉘앙스를 보정**한다 — 적용은 되어 있으나 라우팅 인프라가 없어 무효. 의도/결함 미판정.
 `[출처: docs/modules/MARKET.md §10, §12]`
 
+### websocket-gateway
+
+#### 2.6 세션 위치 TTL 하드코딩
+`websocket-gateway`의 `RedisSessionLocationAdapter.SESSION_TTL`이 `Duration.ofMinutes(3)`으로 하드코딩(`// TODO: 주입받기` 주석). STOMP subscribe마다 `refreshTtl`로 갱신되나 값 자체는 Config 주입이 아니다. 연결 유휴 만료 정책이라 값이 짧으면 활성 세션이 조기 만료될 여지 — Config 주입/값 조정 여부 확인 필요.
+`[출처: docs/modules/WEBSOCKET_GATEWAY.md §7, §9]`
+
 ---
 
 ## 3. 계약 · 직렬화
