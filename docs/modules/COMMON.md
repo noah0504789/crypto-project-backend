@@ -55,9 +55,33 @@
 ## 5. 핵심 패턴 모듈
 
 ### 5.1 common-outbox (Outbox/DLQ)
-- 도메인 상태 변경은 도메인 메서드로만: `markPublished()`·`markFailed()`·`increaseRetryCnt()`·`isRetryExhausted(int)`·`markCompleted()` 등(`Outbox`/`Dlq`).
-- 발행 흐름: 도메인 이벤트 → `EventUtils.raise(list)`(common-event) → `@EventListener OutboxEventListListener`(adapter-in) → `OutboxService.saveAll`(application) → `outbox-poller`가 폴링해 Kafka 발행. Spring `ApplicationEventPublisher`를 직접 쓰지 않는다.
-- 헥사고날 구조를 common 안에서 유지: `domain`/`application/port/out`/`adapter/in`/`adapter/out`. DLQ도 대칭.
+
+Outbox 패턴의 핵심 모듈. **비즈니스 DB write와 이벤트 기록을 같은 트랜잭션에 묶어(transactional outbox)** 발행 유실을 막고, 실제 Kafka 전송은 `outbox-poller`가 별도로 폴링해 수행한다. 서비스는 Kafka로 직접 쏘지 않고 이 흐름만 사용한다.
+
+#### 발행 흐름 (write-side, 동기 · 트랜잭션 내)
+
+1. **서비스가 이벤트 목록 발행**: 비즈니스 서비스가 `OutboxEventListPublishPort.publish(eventList)`를 호출한다(예: `ChatMessageCommandService`, `ChatRoomCommandService`). 도메인 객체가 Spring 빈을 들고 있지 않아도 되도록, 발행은 이 포트를 통한다.
+2. **`SpringOutboxEventListPublishAdapter`**(adapter-out): `eventList`가 null/empty면 skip, 아니면 `EventUtils.raise(eventList)`로 Spring 이벤트를 던진다. 직렬화/저장 예외는 `OutboxPersistenceExceptionTranslator`로 번역해 호출자에게 전파(재시도 판단은 호출자 `@Retryable` 몫).
+3. **`EventUtils.raise`**(common-event): 정적 홀더가 감싼 `ApplicationEventPublisher`로 `publishEvent`. 홀더는 `EventsInitializer`(`ApplicationReadyEvent` 리스너)가 앱 기동 완료 시 주입한다 → 도메인/POJO에서도 정적 호출로 이벤트를 낼 수 있다(publisher 미주입이면 no-op).
+4. **`OutboxEventListListener.handleOutboxEventList`**(adapter-in, `@EventListener`): **`@TransactionalEventListener`가 아니라 `@EventListener`이므로 발행 스레드에서 동기 실행되어 호출자의 트랜잭션 안에서 돈다.** 각 `AbstractOutboxEvent`를 `objectMapper.writeValueAsString`으로 직렬화하고 `event.toOutbox(txId, payload)`로 `Outbox` row를 만들어 모은 뒤 `OutboxService.saveAll`. → **비즈니스 write가 롤백되면 outbox row도 함께 롤백**된다(원자성). 직렬화 실패는 `OutboxPersistenceException`, DB 실패는 `OutboxPersistenceExceptionTranslator.translate`(→ `Temporary*` 가능)로 던져 호출 트랜잭션을 되돌린다.
+5. **`OutboxService.saveAll`**(application, `@Transactional("transactionManager")`): `OutboxRepository`로 MySQL outbox 테이블에 `PENDING` 상태로 저장. 여기까지가 커맨드 응답 이전에 끝난다.
+
+#### 폴링 흐름 (relay, 비동기 · outbox-poller)
+
+6. **`OutboxService.publishPending(dispatchType)`**(`@Transactional("transactionManager")`, `outbox-poller`가 스케줄 호출): `findByDispatchTypeAndStatusOrderByCreatedAtAsc(dispatchType, PENDING, batchSize)`로 오래된 것부터 조회.
+7. 각 건마다 `EventPublisherPort.publish(outbox)`(→ `KafkaEventPublisher`, outbox-poller에만 존재해 `ObjectProvider`로 지연 주입)로 Kafka 전송 후 `outbox.markPublished()`. 실패 시 `increaseRetryCnt()`, `maxRetryCnt` 초과면 `markFailed()`. 토픽은 `outbox.getDestination()`(= `aggregateType`), 발행 배치는 `dispatchType`(`GENERAL`/`BROADCAST`)으로 분리된다.
+
+#### 이벤트/엔티티 구성
+
+- **`AbstractOutboxEventList`**: `List<AbstractOutboxEvent>` + `txId`(생성자에서 `EventIdUtils.generateTxId()`로 채번, 한 커맨드에서 나온 이벤트들을 묶는 추적/멱등 키). 정적 `of(supplier, events...)`로 조립. `publish()`는 `@Deprecated`(직접 `EventUtils.raise`) — 신규는 포트 경유.
+- **`AbstractOutboxEvent`**: `aggregateType`(=목적지/토픽)·`aggregateId`·`partitionKey`는 `@JsonIgnore`(outbox 컬럼이지 wire payload가 아님). `toOutbox`가 `Outbox`를 `PENDING`/`retryCnt=0`으로 만든다. 기본값: `getDispatchType()=GENERAL`(하위가 `BROADCAST` override), `getMessageType()=클래스 FQCN`, `getDomainType()=CHAT`(하위 미override 시 기본 — 라우팅은 `aggregateType`/`dispatchType`이 결정, `domainType`은 메타데이터. 도메인 중립 기본값으로 옮기려던 잔여 항목 → TODO 3.2).
+- **`Outbox`**(JPA `@Entity extends BaseEntity`): `id`(`EventIdUtils`), `transactionId`, `aggregateId`, `aggregateType`, `partitionKey`, `@Lob payload`, `eventType`, `domainType`/`dispatchType`/`status`(enum STRING). 상태 변경은 도메인 메서드로만: `markPublished()`·`markFailed()`·`increaseRetryCnt()`·`isRetryExhausted(int)`.
+
+#### 구조·대칭
+
+- 헥사고날 구조를 common 안에서 유지: `domain`/`application/service`/`application/port/out`/`adapter/in`/`adapter/out`.
+- **DLQ도 대칭 구조**: `DlqEventListPublishPort` → `SpringDlqEventListPublishAdapter`(`EventUtils.raise`) → `@EventListener DlqEventListListener` → `DlqService`(`markCompleted()` 등). 재처리 완료/실패는 `DlqService.complete/fail`. `DlqStatus.COMSUME_FAILED` 철자는 직렬화 계약일 수 있어 임의 수정 금지(TODO 3.1).
+- Spring `ApplicationEventPublisher`를 서비스에서 직접 쓰지 않고 항상 `EventUtils`/포트를 경유한다.
 
 ### 5.2 common-event
 - `KafkaEvent`·`ProducibleEvent`·`HandleableEvent`·`RecoverableEvent`가 이벤트 계약 인터페이스. `EventUtils`가 수집·발행 진입점, `EventsInitializer`가 이벤트 목록 초기화. payload 타입 키는 `TypedKey`/`TypedPayload`.
