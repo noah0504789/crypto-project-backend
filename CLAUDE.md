@@ -3,9 +3,14 @@
 이 파일은 모든 작업에 항상 필요한 짧은 공통 규칙만 담는다. 상세 규칙은 `.claude/rules/`, 사람이 읽는 설명은 `docs/`에 있다.
 
 ## 프로젝트 개요
-Java 17 · Spring Boot 3.4.0 · Spring Cloud 2024.0.2 기반 헥사고날 멀티모듈 마이크로서비스. 실행 서비스 12개(Eureka, Config+Vault, gRPC, Kafka, MySQL/MongoDB, Redis Cluster). 런타임 설정은 `git-config-repo`에서 원격 로드된다(로컬 `application-*.yml` 없음). 구조는 `docs/ARCHITECTURE.md`, 주요 흐름은 `docs/SERVICE_FLOWS.md`.
+Java 17 · Spring Boot 3.4.0 · Spring Cloud 2024.0.2 기반 헥사고날 멀티모듈 마이크로서비스. 실행 서비스 12개(Eureka, Config+Vault, gRPC, Kafka, MySQL/MongoDB, Redis Cluster). 런타임 설정은 `git-config-repo`에서 원격 로드된다(로컬 `application-*.yml` 없음).
 
 활성 모듈·Task는 추측하지 말고 확인한다: `./gradlew projects`.
+
+문서 지도:
+- 전체 구조 `docs/ARCHITECTURE.md`, 주요 흐름 `docs/SERVICE_FLOWS.md`, 코드 작성 기준 `docs/CODE_STYLE.md`.
+- 모듈별 상세는 `docs/modules/*.md`(현재 user·common·oauth2-authorization-server·oauth2-client·api-gateway·config·eureka 커버). 특정 모듈 디렉토리에서 작업하면 그 디렉토리의 `CLAUDE.md`(모듈 작업 규칙)가 자동 로드된다.
+- 확인 필요·미결 항목의 **단일 관리처는 `TODO.md`**(docs/modules의 "확인 필요" 절은 TODO 번호만 참조).
 
 ## 안전 규칙
 @.claude/rules/git-safety.md
@@ -29,12 +34,8 @@ skill은 자동 노출된다: `analyze-module`(모듈 분석), `verify-change`(�
 - 근거를 확인할 수 없는 내용은 추측하지 않고 `확인 필요`로 표시한다. 코드만으로 의도를 알 수 없는 항목을 임의로 설계/버그로 판정하지 않는다.
 - 코드 주석은 최소화하고, "무엇"보다 "왜"가 필요할 때만 쓴다.
 
-## 코드 스타일 (요약 — 상세는 docs/CODE_STYLE.md)
-- 불변 Request/Response/DTO는 `record` 우선. Lombok `@Data` 금지.
-- Entity 기본 생성자는 `protected`, public setter/all-args/builder 지양.
-- 상태 변경은 도메인 메서드로 표현한다(`markPublished`, `markFailed`, `increaseRetryCnt`).
-- 외부 계약 문자열은 중앙(enum/상수)에서 관리한다. 한 번 쓰는 지역 literal은 억지로 상수화하지 않는다.
-- 대상 모듈의 기존 스타일·구조를 우선한다.
+## 코드 스타일
+DTO/record·Entity·네이밍·상수화·예외·트랜잭션·Kafka/Redis·gRPC·테스트 등 코드 작성/리팩토링 기준은 **`docs/CODE_STYLE.md`**를 따른다. 대상 모듈의 기존 스타일·구조를 우선한다.
 
 ## 작업 절차
 1. Git 상태 확인 → 2. 관련 규칙/문서 확인 → 3. 전체 호출 흐름·공유 계약 검색 → 4. 파일 경로 근거로 현재 동작 설명 → 5. 원인/변경 식별 → 6. 최소 계획 제시 → 7. 필요한 파일만 수정 → 8. 가장 좁은 테스트/빌드 실행(`verify-change`) → 9. `git diff` 검토 → 10. 결과를 사실대로 보고.
