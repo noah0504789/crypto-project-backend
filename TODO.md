@@ -122,6 +122,12 @@ spring-cloud-config는 `POST /sign`(Vault Transit RS256 서명 대행)·`GET /.w
 `common-core/KafkaTopic.NOTIFICATION`이 `notification-event.dlq`를 정의하나, `notification-service.yml`의 `spring.cloud.function.definition`(`priceAlertDetectedEventConsumer;notificationEventConsumer`)에 **DLQ consumer가 없다**. 또한 `NotificationEventService.handle`은 단순 `@Transactional("notificationMongoTransactionManager")`로 `@Retryable`/`@Recover`가 없다(chat의 재시도→DLQ 복구 패턴 부재). Mongo 영속 실패 시 처리(바인더 기본 재시도/유실 여부)와 DLQ 운영 의도 확인 필요.
 `[출처: docs/modules/NOTIFICATION.md §10, §11]`
 
+### market-detection
+
+#### 3.4 upbit 수집 토픽과 Streams 입력 토픽 불연속
+`market-detection.yml`에서 supplier 출력은 `upbit-ticker-event`(`upbitTickerEventSupplier-out-0`)인데 Kafka Streams 입력은 `upbit-ticker-alert-event`(`upbitTickerAlertEventConsumer-in-0`)로 **토픽명이 다르고, 둘을 잇는 바인딩/설정이 코드·`git-config-repo` 어디에서도 확인되지 않는다**. `KafkaEvent.toMessage()`도 `KafkaHeaders.TOPIC`을 세팅하지 않아 목적지는 바인딩(`upbit-ticker-event`)으로 고정된다. 현 구성만으로는 수집 이벤트가 Streams 입력까지 도달하는 경로가 불연속(외부/미배포 브리지·인프라 토픽 설정·잔재 가능성). `docs/SERVICE_FLOWS.md §11–12`도 같은 불연속을 보인다 → 실제 토폴로지 확인 필요.
+`[출처: docs/modules/MARKET_DETECTION.md §4, §6]`
+
 ---
 
 ## 4. 배포 · 인프라
