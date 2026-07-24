@@ -98,7 +98,7 @@ spring-cloud-config는 `POST /sign`(Vault Transit RS256 서명 대행)·`GET /.w
 
 #### 4.1 배포 대상 누락
 `cd.yml` 배포 대상 드롭다운에 `notification-service`, `market-detection` 없음(둘 다 Dockerfile/이미지 존재). 배포 갭 확인 필요.
-`[출처: SERVICE_FLOWS.md #7, ARCHITECTURE.md #5]`
+`[출처: SERVICE_FLOWS.md #7, ARCHITECTURE.md #5, docs/CI_CD.md §3]`
 
 ### oauth2-authorization-server
 
