@@ -120,7 +120,7 @@
 - **spring-cloud-api-gateway**: Reactive Gateway + JWT Resource Server. 라우팅·CORS·`X-User-Id` 전파·blacklist 검증. (`spring-cloud-api-gateway/.../config/ReactiveRouteConfig.java`, `ReactiveJwtDecoderConfig.java`, `CorsConfig.java`)
 - **chat**: 채팅방/메시지. MongoDB + Redis 캐시, gRPC `chatmessage.v1`, Outbox → Kafka, DLQ 소비. 쓰기는 캐시-우선 + Outbox, 영속은 Kafka consumer가 비동기 수행. (`chat/chat-adapter-in`, `chat/chat-adapter-out/.../persistence/MongoChatMessageAdapter.java`) — **상세: `docs/modules/CHAT.md`**
 - **websocket-gateway**: STOMP 게이트웨이. `chatmessage.v1` gRPC 클라이언트, Kafka broadcast consumer → STOMP push. (`websocket-gateway/.../adapter/in/websocket/`, `.../adapter/in/stream/KafkaWebsocketGatewayBinder.java`)
-- **market**: 마켓 카탈로그·가격알림 설정. MySQL, gRPC `market.v1`(MarketService, PriceAlertSettingService). (`market/market-adapter-in/.../grpc/`)
+- **market**: 마켓 카탈로그·가격알림 설정. MySQL, gRPC `market.v1`(MarketService, PriceAlertSettingService), Caffeine 캐시 + `market-broadcast-event`로 인스턴스별 캐시 무효화. (`market/market-adapter-in/.../grpc/`) — **상세: `docs/modules/MARKET.md`**
 - **market-detection**: Upbit WebSocket 수집 + Kafka Streams 변동률 탐지 → `PriceAlertDetectedEvent` 발행. (`market-detection/.../upbit/`, `.../adapter/in/stream/KafkaMarketDetectionBinder.java`)
 - **notification**: 알림 생성·저장·전달. Kafka consumer, MongoDB, `market.v1`(수신자 조회) gRPC 클라이언트. (`notification/.../adapter/in/stream/KafkaNotificationBinder.java`, `notification/notification-adapter-out/.../grpc/PriceAlertRecipientQueryAdapter.java`)
 - **outbox-poller**: 모든 서비스의 Outbox/DLQ 레코드를 폴링 → Kafka 발행. (`outbox-poller/.../outbox/OutboxEventScheduler.java`, `.../infra/event/KafkaEventPublisher.java`)
