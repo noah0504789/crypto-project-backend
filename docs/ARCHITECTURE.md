@@ -118,7 +118,7 @@
 - **oauth2-authorization-server**: 내부 OAuth2 Authorization Server. `TOKEN_EXCHANGE` + `REFRESH_TOKEN` 그랜트, Vault Transit RS256 서명, Redis 토큰 저장, gRPC `auth.v1`. (`oauth2-authorization-server-adapter-in/.../config/`, `-adapter-out/.../token/adapter/out/`) — **상세: `docs/modules/OAUTH2_AUTHORIZATION_SERVER.md`**
 - **oauth2-client**: 외부 OIDC 로그인(Google/Kakao) → 내부 AS token-exchange, refresh/logout, `OAuth2AuthorizedClient`(Redis) 관리. (`oauth2-client-adapter-in/.../config/`, `-application/.../authorizedclient/`) — **상세: `docs/modules/OAUTH2_CLIENT.md`**
 - **spring-cloud-api-gateway**: Reactive Gateway + JWT Resource Server. 라우팅·CORS·`X-User-Id` 전파·blacklist 검증. (`spring-cloud-api-gateway/.../config/ReactiveRouteConfig.java`, `ReactiveJwtDecoderConfig.java`, `CorsConfig.java`)
-- **chat**: 채팅방/메시지. MongoDB + Redis 캐시, gRPC `chatmessage.v1`, Outbox → Kafka, DLQ 소비. (`chat/chat-adapter-in`, `chat/chat-adapter-out/.../persistence/MongoChatMessageAdapter.java`)
+- **chat**: 채팅방/메시지. MongoDB + Redis 캐시, gRPC `chatmessage.v1`, Outbox → Kafka, DLQ 소비. 쓰기는 캐시-우선 + Outbox, 영속은 Kafka consumer가 비동기 수행. (`chat/chat-adapter-in`, `chat/chat-adapter-out/.../persistence/MongoChatMessageAdapter.java`) — **상세: `docs/modules/CHAT.md`**
 - **websocket-gateway**: STOMP 게이트웨이. `chatmessage.v1` gRPC 클라이언트, Kafka broadcast consumer → STOMP push. (`websocket-gateway/.../adapter/in/websocket/`, `.../adapter/in/stream/KafkaWebsocketGatewayBinder.java`)
 - **market**: 마켓 카탈로그·가격알림 설정. MySQL, gRPC `market.v1`(MarketService, PriceAlertSettingService). (`market/market-adapter-in/.../grpc/`)
 - **market-detection**: Upbit WebSocket 수집 + Kafka Streams 변동률 탐지 → `PriceAlertDetectedEvent` 발행. (`market-detection/.../upbit/`, `.../adapter/in/stream/KafkaMarketDetectionBinder.java`)
