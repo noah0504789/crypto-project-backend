@@ -177,8 +177,8 @@ proto: `protobuf/src/main/proto/user/v1/user-service.proto`. 서버 구현 `Grpc
 
 미해결 확인/결정 항목은 [`../../TODO.md`](../../TODO.md)에서 통합 관리한다. user 관련 항목:
 
-- **TODO 1.5** — 신뢰 헤더(`X-User-Id`·`X-From`) 위조 가능성과 무재검증 신뢰 (PATCH `/me/profile` 인가 포함)
-- **TODO 1.6** — BCrypt strength 5 (`PasswordEncoderConfig`)
+- **TODO 1.8** — 신뢰 헤더(`X-User-Id`·`X-From`) 위조 가능성과 무재검증 신뢰 (PATCH `/me/profile` 인가 포함)
+- **TODO 1.9** — BCrypt strength 5 (`PasswordEncoderConfig`)
 - **TODO 2.1** — Read Replica 미적용 (§10, 조회도 write 노드로 라우팅)
 - **TODO 2.2** — nickname DB unique 부재 (`existsByNickname` 앱 검증만)
 

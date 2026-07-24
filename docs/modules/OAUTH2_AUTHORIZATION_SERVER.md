@@ -179,9 +179,9 @@ proto: `protobuf/src/main/proto/auth/v1/auth-service.proto`. 서버: adapter-in�
 미해결 확인/결정 항목은 [`../../TODO.md`](../../TODO.md)에서 통합 관리한다. oauth2-authorization-server 관련 항목:
 
 - **TODO 1.1** — `aud` claim 발급/검증 여부 (`TokenConfig`)
-- **TODO 1.3** — 토큰 TTL 7일 (access·refresh `604800000ms`)
-- **TODO 1.4** — `{noop}` client secret (`AuthorizationServerConfig`)
-- **TODO 1.7** — 토큰 엔드포인트 TLS 미적용 (`server.port: 9000` `# TODO: tsl`)
+- **TODO 1.2** — 토큰 TTL 7일 (access·refresh `604800000ms`)
+- **TODO 1.3** — `{noop}` client secret (`AuthorizationServerConfig`)
+- **TODO 1.4** — 토큰 엔드포인트 TLS 미적용 (`server.port: 9000` `# TODO: tsl`)
 - **TODO 4.2** — 미사용 mysql 설정 (`oauth2-authorization-server.yml`)
 
 ## 15. 관련 문서와 rules
