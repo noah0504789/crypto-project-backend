@@ -116,6 +116,12 @@ spring-cloud-config는 `POST /sign`(Vault Transit RS256 서명 대행)·`GET /.w
 `common-outbox`의 `AbstractOutboxEvent.getDomainType()`가 하위 클래스 미override 시 `OutboxDomainType.CHAT`을 반환한다. 실제 라우팅은 `aggregateType`(=목적지 토픽)·`dispatchType`이 결정하고 `domainType`은 메타데이터라 현재 기능 영향은 없어 보이나, chat 외 이벤트도 `domainType=CHAT`으로 기록된다. **기본값을 도메인 중립 값으로 옮기려다 미처 반영하지 못한 잔여 항목** — 하위별 override 또는 기본값 조정 여부 확인 필요(저장된 값이라 변경 시 기존 outbox row 해석 영향 검토).
 `[출처: docs/modules/COMMON.md §5.1 (common-outbox)]`
 
+### notification
+
+#### 3.3 notification DLQ 미소비 · 재시도 부재
+`common-core/KafkaTopic.NOTIFICATION`이 `notification-event.dlq`를 정의하나, `notification-service.yml`의 `spring.cloud.function.definition`(`priceAlertDetectedEventConsumer;notificationEventConsumer`)에 **DLQ consumer가 없다**. 또한 `NotificationEventService.handle`은 단순 `@Transactional("notificationMongoTransactionManager")`로 `@Retryable`/`@Recover`가 없다(chat의 재시도→DLQ 복구 패턴 부재). Mongo 영속 실패 시 처리(바인더 기본 재시도/유실 여부)와 DLQ 운영 의도 확인 필요.
+`[출처: docs/modules/NOTIFICATION.md §10, §11]`
+
 ---
 
 ## 4. 배포 · 인프라
@@ -137,6 +143,12 @@ spring-cloud-config는 `POST /sign`(Vault Transit RS256 서명 대행)·`GET /.w
 #### 4.3 단일 노드 · self-preservation 비활성
 `git-config-repo/infrastructure/eureka-server.yml`이 peer 복제 없는 standalone(`register-with-eureka: false`, `fetch-registry: false`)이고 `enable-self-preservation: false`(eviction 30s). 네트워크 순단 시 정상 인스턴스도 빠르게 축출될 수 있음. 개발/소규모 의도로 보이나 운영 HA(peer)·self-preservation 정책 확인 필요.
 `[출처: docs/modules/EUREKA_SERVER.md §9 / spring-cloud-eureka-server 분석]`
+
+### notification
+
+#### 4.4 Gradle 플러그인 `crypto-domain` 사용(application/adapter)
+`notification-application`·`notification-adapter-in`·`notification-adapter-out`이 모두 `id 'crypto-domain'` 플러그인을 적용한다(타 서비스는 각각 `crypto-application`/`crypto-adapter`). 동작에는 문제없어 보이나 계층별 convention plugin 규약과 이질적 — ArchUnit/플러그인 설정상 의도인지 확인 필요.
+`[출처: docs/modules/NOTIFICATION.md §4]`
 
 ---
 
