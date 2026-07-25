@@ -60,8 +60,9 @@ spring-cloud-config는 `POST /sign`(Vault Transit RS256 서명 대행)·`GET /.w
 
 ### chat
 
-#### 1.11 채팅방 명령·조회 인가 부재
-`ChatRoomController`의 `create` 위에 `// TODO: 여기 아래로부터 인가 처리하기` 주석이 있고, `create`/`update`/`delete`에 소유자(host) 검증이 없다(`update`/`delete`는 `X-User-Id`조차 받지 않아 임의 사용자가 타인 방을 수정/삭제할 여지). 방 상세(`GET /room/{roomId}`)·메시지 목록(`GET /room/{roomId}/messages`) 조회에도 멤버십 인가 검사가 없다. 게이트웨이 인가 정책과 함께 확인 필요(설계/결함 미판정). 메시지 `save`(gRPC)는 `ChatRoom.validateWritable`로 멤버십을 검증하므로 쓰기 경로와 대비된다.
+#### 1.11 채팅방 상세 조회 멤버십 인가 부재 (명령 인가는 해소됨)
+**해소됨**: `update`/`delete`는 `X-User-Id`를 받아 `ChatRoom.validateHost`로 소유자 인가, 메시지 목록(`GET /room/{roomId}/messages`)은 `ChatMessageQueryService`에서 `ChatRoom.validateMember`로 멤버십 검증한다(게이트웨이도 room POST/PATCH/DELETE/GET·messages GET에 `hasRole(USER)`).
+**남은 항목**: 방 상세(`GET /room/{roomId}`, `ChatRoomQueryService.getRoom(roomId)`)는 `X-User-Id`를 받지 않아 멤버십 검사가 없다 — 인증된 사용자면 임의 방 상세를 볼 수 있다. 방 상세를 멤버 전용으로 할지(공개 열람 허용이 의도인지) 확인 필요. `ChatRoomController.create` 위 `// TODO: 여기 아래로부터 인가 처리하기` 주석도 잔존(현재 create는 `X-User-Id`를 hostId로 받음).
 `[출처: docs/modules/CHAT.md §9, §16]`
 
 ### outbox-poller
@@ -73,18 +74,6 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 ---
 
 ## 2. 데이터 · 영속성
-
-### chat
-
-#### 2.3 인기도 산식 확장 여부 (스케줄러 재계산 모델로 정리 완료)
-인기도 산식은 `ChatRoomPopularityCalculator.calculate(ChatRoom)`(chat-domain 서비스) **한 곳**에만 있다. 실시간 증분(메시지 저장 시 `ZINCRBY`) 방식을 걷어내고 주기 재계산으로 바꿨다:
-- `ChatRoomPopularityScheduler`(3시간마다) → `PopularChatRoomRefreshService.refresh()`가 category별 Mongo 상위 후보(top-100)를 로드해 `rebuildPopularIndex`(DEL 후 `calculate()` 스코어로 zset 통째 재구축).
-- 메시지 저장 경로(`storeChatMessage.lua`/`RedisChatMessageAdapter.save`)는 더 이상 popular zset을 건드리지 않는다(`msgCnt` HINCRBY만 유지). `save`에서 `category` 파라미터 제거.
-- on-read 캐시 미스 복구(`ChatRoomQueryRepairService`)도 `calculate()`로 zset을 채운다(cold start·TTL 만료 대비).
-- Mongo 인기방 후보 선정은 DB `sort(msgCnt)`(`idx_category_msgCnt`) — 계산기 미호출(별도 결합점).
-
-실행 간 zset은 다소 stale(수용). **남은 항목**(제품 결정, 미정): 멤버 수·최근성·유지시간 등 항 추가는 이제 계산기 `calculate`에 가중치만 더하면 되고, 주기 재계산이라 시간 연속 항도 수용한다. 단 산식이 `msgCnt`와 크게 갈라지면 후보 선정(Mongo `sort(msgCnt)`)이 어긋나므로 그때는 Mongo에 popularity 필드를 두는 등 후보 선정도 함께 손본다.
-`[출처: docs/modules/CHAT.md §12, §14]`
 
 ### market
 
@@ -136,8 +125,3 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 `notification-application`·`notification-adapter-in`·`notification-adapter-out`이 모두 `id 'crypto-domain'` 플러그인을 적용한다(타 서비스는 각각 `crypto-application`/`crypto-adapter`). 동작에는 문제없어 보이나 계층별 convention plugin 규약과 이질적 — ArchUnit/플러그인 설정상 의도인지 확인 필요.
 `[출처: docs/modules/NOTIFICATION.md §4]`
 
----
-
-## 5. 확인 완료 (참고 · 조치 불필요)
-
-- notification의 market gRPC 소비 구조 확인됨: `PriceAlertRecipientQueryAdapter`(adapter-out)가 `PriceAlertRecipientQueryPort`를 구현하고 `market-client`의 `PriceAlertSettingClient.findReceiverIds(...)` 호출. `[출처: ARCHITECTURE.md #8]`

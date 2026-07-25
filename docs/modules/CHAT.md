@@ -139,7 +139,7 @@ chat의 쓰기 경로는 **동기적으로 Redis 캐시에 반영하고 영속(M
 | GET | `/api/v1/chat/room/{roomId}/messages` | path `roomId`, `limit`(기본 20), 커서(`ChatMessageCursor`) | 200 `CursorPage<ChatMessageResponse>` |
 
 - `X-User-Id`는 게이트웨이가 검증된 JWT의 `id` claim에서 주입(`common-core/HttpHeaderKey.USER_ID_VALUE`). 컨트롤러는 이 값을 그대로 신뢰한다.
-- **인가 주의**: `ChatRoomController`의 `create` 위에 `// TODO: 여기 아래로부터 인가 처리하기` 주석이 있고, `create`/`update`/`delete`는 소유자(host) 검증이 없다(`update`/`delete`는 `X-User-Id`조차 받지 않음). 메시지/방 조회에도 멤버십 인가 검사가 없다 → §16, TODO 참조.
+- **인가 주의**: `update`/`delete`는 `X-User-Id`를 받아 `ChatRoom.validateHost`로 소유자 인가, 메시지 목록 조회는 `ChatRoom.validateMember`로 멤버십 검증한다. **방 상세**(`GET /room/{roomId}`, `getRoom`)는 아직 멤버십 검사가 없다(인증만 되면 임의 방 열람 가능). `create` 위 `// TODO: 인가 처리하기` 주석 잔존 → §16, TODO 1.11 참조.
 - 검증 규칙(`ChatRoomCreateRequest`): `title` `@UniqueChatRoomTitle`+`@NotBlank`+`@Size(max=100)`, `description` `@NotBlank`+`@Size(max=2000)`, `category` `@NotNull`. 메시지는 `chat-bootstrap`이 아니라 `chat-service.yml`의 `spring.messages.basename: messages,common-validation-messages`.
 - `@UniqueChatRoomTitle` → `UniqueChatRoomTitleValidator`가 `ChatRoomQueryUseCase.existsByTitle`로 확인(캐시 `existsByTitle` → 미스 시 Mongo). null/blank는 통과.
 
@@ -246,8 +246,7 @@ DB `chat`(authSource `chat`). `MongoConfig`가 커넥션 풀(min 20/max 200), `W
 
 미해결 확인/결정 항목은 [`../../TODO.md`](../../TODO.md)에서 통합 관리한다. chat 관련 항목:
 
-- **TODO 1.11** — 방 `create`/`update`/`delete` 및 방/메시지 조회의 인가 부재(`ChatRoomController` `// TODO: 인가 처리하기`, `update`/`delete`는 `X-User-Id` 미수신, 멤버십 검사 없음).
-- **TODO 2.3** — 인기도 산식은 `ChatRoomPopularityCalculator`로 분리됨(현재 `msgCnt`). 최근성·멤버 수 등 항 추가 여부만 미정(제품 결정, Mongo `idx_category_msgCnt` 정렬 일관성 고려).
+- **TODO 1.11** — 방 상세(`GET /room/{roomId}`, `getRoom(roomId)`)에 멤버십 인가 검사 부재(공개 열람 의도인지 확인). `update`/`delete` host 인가·메시지 목록 멤버십은 해소됨. `create` 위 `// TODO: 인가` 주석 잔존.
 
 ## 17. 테스트 현황
 
