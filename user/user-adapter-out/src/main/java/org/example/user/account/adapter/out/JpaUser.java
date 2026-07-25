@@ -32,6 +32,8 @@ public class JpaUser extends BaseEntity {
 
     @Column(nullable = false)
     private String email;
+
+    @Column(unique = true)
     private String nickname;
     private String password;
 

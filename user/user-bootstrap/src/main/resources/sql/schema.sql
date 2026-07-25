@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS `user`.`user` (
     PRIMARY KEY (id),
     UNIQUE KEY `uk_user_public_id` (public_id),
     UNIQUE KEY `uk_user_email` (email),
+    UNIQUE KEY `uk_user_nickname` (nickname),
     created_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP(3),
     updated_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
 );
