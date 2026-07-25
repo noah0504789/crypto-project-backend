@@ -145,7 +145,7 @@ proto: `protobuf/src/main/proto/auth/v1/auth-service.proto`. 서버: adapter-in�
 - `key-name: my-authorization-server-jwt`, `key-version: 1`.
 - `issuer-uri: http://crypto-oauth2-authorization-server:9000`.
 - `jwks-uri`/`sign-uri` → Config Server.
-- `access-token-expiration-ms`/`refresh-token-expiration-ms` = **`604800000`(7일)**. 주석상 access 의도는 2h(§14).
+- `access-token-expiration-ms` = `7200000`(2시간), `refresh-token-expiration-ms` = `604800000`(7일).
 
 ## 11. 테스트 현황
 
@@ -179,7 +179,6 @@ proto: `protobuf/src/main/proto/auth/v1/auth-service.proto`. 서버: adapter-in�
 미해결 확인/결정 항목은 [`../../TODO.md`](../../TODO.md)에서 통합 관리한다. oauth2-authorization-server 관련 항목:
 
 - **TODO 1.1** — `aud` claim 발급/검증 여부 (`TokenConfig`)
-- **TODO 1.2** — 토큰 TTL 7일 (access·refresh `604800000ms`)
 - **TODO 1.3** — `{noop}` client secret (`AuthorizationServerConfig`)
 - **TODO 1.4** — 토큰 엔드포인트 TLS 미적용 (`server.port: 9000` `# TODO: tsl`)
 - **TODO 4.2** — 미사용 mysql 설정 (`oauth2-authorization-server.yml`)

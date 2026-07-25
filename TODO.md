@@ -17,10 +17,6 @@
 - `[oauth2-as]` 발급측 분석: `TokenConfig` access 커스터마이저는 `roles`·`id` claim만 명시 추가한다. 표준 `aud`(=client) 포함 여부는 Spring `JwtGenerator` 기본 동작에 의존하며 모듈 커스텀 코드에서 설정하지 않음 → 실제 발급 토큰으로 `aud` 유무 확인 필요.
 `[출처: SERVICE_FLOWS.md, ARCHITECTURE.md #2, API_GATEWAY.md §18.3 / oauth2-authorization-server 분석]`
 
-#### 1.2 토큰 TTL 7일
-access/refresh TTL이 `604800000ms`(7일)로 설정(`git-config-repo/dynamic/jwt.yml`, `access-token-expiration-ms`·`refresh-token-expiration-ms` 둘 다). 주석상 access 의도는 2h로 보이나 값과 다름. `AuthorizationServerConfig`의 `TokenSettings`가 이 값을 그대로 사용. 의도 확인 필요.
-`[출처: SERVICE_FLOWS.md #1, ARCHITECTURE.md #3 / oauth2-authorization-server 분석]`
-
 #### 1.3 `{noop}` client secret
 Authorization Server가 client secret을 `{noop}`(평문) 접두로 저장(`AuthorizationServerConfig.registeredClient()`, InMemory 단일 client). secret 원본은 `oauth2.registered-client.secret` ← Vault `${my.client-secret}`. 의도 확인 필요.
 `[출처: SERVICE_FLOWS.md #4, ARCHITECTURE.md #6 / oauth2-authorization-server 분석]`
