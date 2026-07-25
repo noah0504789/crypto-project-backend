@@ -74,7 +74,7 @@ public class Dlq extends BaseEntity {
     }
 
     public void markFailed(String errorMessage) {
-        this.status = DlqStatus.COMSUME_FAILED;
+        this.status = DlqStatus.CONSUME_FAILED;
         this.errorMessage = errorMessage;
     }
 }

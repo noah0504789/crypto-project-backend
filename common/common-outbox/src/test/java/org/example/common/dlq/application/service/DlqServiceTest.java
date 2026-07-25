@@ -122,7 +122,7 @@ class DlqServiceTest {
 
         // then
         assertThat(dlq.getStatus())
-                .isEqualTo(DlqStatus.COMSUME_FAILED);
+                .isEqualTo(DlqStatus.CONSUME_FAILED);
         assertThat(dlq.getErrorMessage())
                 .isEqualTo("handler failed");
     }
