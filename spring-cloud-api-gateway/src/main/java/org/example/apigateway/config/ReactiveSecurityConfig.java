@@ -62,6 +62,9 @@ public class ReactiveSecurityConfig {
                         .pathMatchers(HttpMethod.GET, apiPathProperties.user().me(), apiPathProperties.user().profilePattern())
                         .hasRole(RoleKey.REQUIRED_USER.value())
 
+                        .pathMatchers(HttpMethod.PATCH, apiPathProperties.user().me())
+                        .hasRole(RoleKey.REQUIRED_USER.value())
+
                         .pathMatchers(HttpMethod.GET, apiPathProperties.websocket().pattern(), apiPathProperties.websocket().nativePath(), apiPathProperties.websocket().nativePattern())
                         .hasRole(RoleKey.REQUIRED_USER.value())
 

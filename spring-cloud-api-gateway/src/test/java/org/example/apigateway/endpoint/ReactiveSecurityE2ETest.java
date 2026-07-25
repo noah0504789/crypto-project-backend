@@ -73,6 +73,34 @@ class ReactiveSecurityE2ETest {
     }
 
     @Test
+    @DisplayName("PATCH /user/me - 토큰이 없으면 401을 반환한다")
+    void patchUserMe_shouldReturnUnauthorized_whenTokenMissing() {
+        webTestClient.patch()
+                .uri("/user/me")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"nickname\":\"noah\"}")
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    @DisplayName("PATCH /user/me - ROLE_USER가 없으면 403 JSON 에러 응답을 반환한다")
+    void patchUserMe_shouldReturnForbiddenErrorBody_whenRoleMissing() {
+        webTestClient.patch()
+                .uri("/user/me")
+                .headers(headers -> headers.setBearerAuth("no-role-token"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"nickname\":\"noah\"}")
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(403)
+                .jsonPath("$.error").isEqualTo("FORBIDDEN")
+                .jsonPath("$.path").isEqualTo("/user/me");
+    }
+
+    @Test
     @DisplayName("POST /auth/logout - 인증 없이 oauth2-client로 라우팅된다")
     void authLogout_shouldBePermitAll() {
         webTestClient.post()
