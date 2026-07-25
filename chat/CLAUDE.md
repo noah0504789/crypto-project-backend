@@ -74,4 +74,4 @@
 
 확정된 결함으로 단정하지 않는다. 코드 변경 전 사용자 확인이 필요하다. 상세·근거는 [`../docs/modules/CHAT.md §16`](../docs/modules/CHAT.md)와 [`../TODO.md`](../TODO.md).
 
-- 방 상세(`GET /room/{roomId}`, `getRoom`)에 멤버십 인가 검사 부재(공개 열람 의도인지 확인, TODO 1.11). `update`/`delete` host 인가·메시지 목록 멤버십은 해소됨
+- 현재 chat 관련 미해결 항목 없음.

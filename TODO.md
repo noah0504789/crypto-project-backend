@@ -58,13 +58,6 @@
 spring-cloud-config는 `POST /sign`(Vault Transit RS256 서명 대행)·`GET /.well-known/jwks.json`·`POST /actuator/busrefresh`(Spring Cloud Bus 설정 전파)를 노출하나, 모듈 adapter-in에 `SecurityFilterChain`이 없다(`SecurityConfig`는 RSA `KeyFactory` bean만 정의). 앱 계층 `DeploymentControlAuthFilter`는 `/internal/deployment/**`만 검사해 이 엔드포인트들을 보호하지 않는다(config bus 워크플로우는 `X-Deploy-Token`을 보내지만 busrefresh 경로에선 검증되지 않음). `/sign`은 임의 `header.payload`를 실 키로 RS256 서명해 유효 토큰 위조로 이어질 수 있고, `busrefresh`는 전 서비스 설정 재로딩을 유발할 수 있다. 현재는 내부 네트워크 격리에 의존하는 것으로 보이나 전제·의도 확인 필요(설계/결함 미판정).
 `[출처: docs/modules/SPRING_CLOUD_CONFIG.md §12, docs/CI_CD.md §4 / spring-cloud-config 분석]`
 
-### chat
-
-#### 1.11 채팅방 상세 조회 멤버십 인가 부재 (명령 인가는 해소됨)
-**해소됨**: `update`/`delete`는 `X-User-Id`를 받아 `ChatRoom.validateHost`로 소유자 인가, 메시지 목록(`GET /room/{roomId}/messages`)은 `ChatMessageQueryService`에서 `ChatRoom.validateMember`로 멤버십 검증한다(게이트웨이도 room POST/PATCH/DELETE/GET·messages GET에 `hasRole(USER)`).
-**남은 항목**: 방 상세(`GET /room/{roomId}`, `ChatRoomQueryService.getRoom(roomId)`)는 `X-User-Id`를 받지 않아 멤버십 검사가 없다 — 인증된 사용자면 임의 방 상세를 볼 수 있다. 방 상세를 멤버 전용으로 할지(공개 열람 허용이 의도인지) 확인 필요. `ChatRoomController.create` 위 `// TODO: 여기 아래로부터 인가 처리하기` 주석도 잔존(현재 create는 `X-User-Id`를 hostId로 받음).
-`[출처: docs/modules/CHAT.md §9, §16]`
-
 ### outbox-poller
 
 #### 1.12 DLQ 제어 API 인증 부재
