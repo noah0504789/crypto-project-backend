@@ -74,13 +74,13 @@ Outbox 패턴의 핵심 모듈. **비즈니스 DB write와 이벤트 기록을 �
 #### 이벤트/엔티티 구성
 
 - **`AbstractOutboxEventList`**: `List<AbstractOutboxEvent>` + `txId`(생성자에서 `EventIdUtils.generateTxId()`로 채번, 한 커맨드에서 나온 이벤트들을 묶는 추적/멱등 키). 정적 `of(supplier, events...)`로 조립. `publish()`는 `@Deprecated`(직접 `EventUtils.raise`) — 신규는 포트 경유.
-- **`AbstractOutboxEvent`**: `aggregateType`(=목적지/토픽)·`aggregateId`·`partitionKey`는 `@JsonIgnore`(outbox 컬럼이지 wire payload가 아님). `toOutbox`가 `Outbox`를 `PENDING`/`retryCnt=0`으로 만든다. 기본값: `getDispatchType()=GENERAL`(하위가 `BROADCAST` override), `getMessageType()=클래스 FQCN`, `getDomainType()=CHAT`(하위 미override 시 기본 — 라우팅은 `aggregateType`/`dispatchType`이 결정, `domainType`은 메타데이터. 도메인 중립 기본값으로 옮기려던 잔여 항목 → TODO 3.2).
+- **`AbstractOutboxEvent`**: `aggregateType`(=목적지/토픽)·`aggregateId`·`partitionKey`는 `@JsonIgnore`(outbox 컬럼이지 wire payload가 아님). `toOutbox`가 `Outbox`를 `PENDING`/`retryCnt=0`으로 만든다. 기본값: `getDispatchType()=GENERAL`(하위가 `BROADCAST` override), `getMessageType()=클래스 FQCN`. `getDomainType()`은 `abstract`라 각 이벤트가 자신의 도메인을 직접 반환한다(chat→`CHAT`, market→`MARKET`, notification→`NOTIFICATION`). 라우팅은 `aggregateType`/`dispatchType`이 결정, `domainType`은 메타데이터.
 - **`Outbox`**(JPA `@Entity extends BaseEntity`): `id`(`EventIdUtils`), `transactionId`, `aggregateId`, `aggregateType`, `partitionKey`, `@Lob payload`, `eventType`, `domainType`/`dispatchType`/`status`(enum STRING). 상태 변경은 도메인 메서드로만: `markPublished()`·`markFailed()`·`increaseRetryCnt()`·`isRetryExhausted(int)`.
 
 #### 구조·대칭
 
 - 헥사고날 구조를 common 안에서 유지: `domain`/`application/service`/`application/port/out`/`adapter/in`/`adapter/out`.
-- **DLQ도 대칭 구조**: `DlqEventListPublishPort` → `SpringDlqEventListPublishAdapter`(`EventUtils.raise`) → `@EventListener DlqEventListListener` → `DlqService`(`markCompleted()` 등). 재처리 완료/실패는 `DlqService.complete/fail`. `DlqStatus.COMSUME_FAILED` 철자는 직렬화 계약일 수 있어 임의 수정 금지(TODO 3.1).
+- **DLQ도 대칭 구조**: `DlqEventListPublishPort` → `SpringDlqEventListPublishAdapter`(`EventUtils.raise`) → `@EventListener DlqEventListListener` → `DlqService`(`markCompleted()` 등). 재처리 완료/실패는 `DlqService.complete/fail`. `DlqStatus` 소비 실패 상태는 `CONSUME_FAILED`(과거 `COMSUME_FAILED` 오타를 정정). `@Enumerated(STRING)`으로 이름이 그대로 저장되므로 기존 `COMSUME_FAILED` row가 있으면 마이그레이션 필요.
 - Spring `ApplicationEventPublisher`를 서비스에서 직접 쓰지 않고 항상 `EventUtils`/포트를 경유한다.
 
 ### 5.2 common-event
@@ -141,8 +141,7 @@ Outbox 패턴의 핵심 모듈. **비즈니스 DB write와 이벤트 기록을 �
 
 미해결 확인/결정 항목은 [`../../TODO.md`](../../TODO.md)에서 통합 관리한다. common 관련 항목:
 
-- **TODO 3.1** — `common-outbox`의 `DlqStatus.COMSUME_FAILED` 철자(직렬화 계약일 수 있어 임의 수정 금지).
-- (참고) **TODO 2.1** — Read Replica 라우팅 인프라는 `common-jpa`에 있으나 user 서비스에 `@ReadReplica` 미적용. 상세는 [`USER.md §10`](USER.md).
+- 현재 common 관련 미해결 항목 없음. (과거 3.1 `DlqStatus` 철자, 3.2 `getDomainType` 기본값, 2.1 user Read Replica는 해소됨.)
 
 ## 9. 관련 문서와 rules
 

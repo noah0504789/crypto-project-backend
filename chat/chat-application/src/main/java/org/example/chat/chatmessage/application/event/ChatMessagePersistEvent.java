@@ -7,6 +7,7 @@ import lombok.ToString;
 import org.example.chat.chatmessage.application.port.in.ChatMessageEventHandler;
 import org.example.common.enums.KafkaTopic;
 import org.example.common.event.HandleableEvent;
+import org.example.common.outbox.domain.OutboxDomainType;
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 import org.example.contract.chatmessage.ChatMessagePayload;
 
@@ -32,5 +33,10 @@ public class ChatMessagePersistEvent extends AbstractOutboxEvent implements Hand
     @Override
     public void handle(ChatMessageEventHandler handler, String txId) {
         handler.handle(this, txId);
+    }
+
+    @Override
+    protected OutboxDomainType getDomainType() {
+        return OutboxDomainType.CHAT;
     }
 }

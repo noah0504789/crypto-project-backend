@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.ToString;
 import org.example.chat.chatroom.application.port.in.ChatRoomEventHandler;
 import org.example.common.event.HandleableEvent;
+import org.example.common.outbox.domain.OutboxDomainType;
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 
 import static org.example.common.enums.KafkaTopic.CHAT_ROOM;
@@ -29,5 +30,10 @@ public class ChatRoomJoinedEvent extends AbstractOutboxEvent implements Handleab
     @Override
     public void handle(ChatRoomEventHandler handler, String txId) {
         handler.handle(this, txId);
+    }
+
+    @Override
+    protected OutboxDomainType getDomainType() {
+        return OutboxDomainType.CHAT;
     }
 }

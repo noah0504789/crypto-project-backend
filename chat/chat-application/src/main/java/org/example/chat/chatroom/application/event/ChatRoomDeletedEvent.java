@@ -8,6 +8,7 @@ import org.example.chat.chatroom.application.port.in.ChatRoomEventHandler;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.common.enums.KafkaTopic;
 import org.example.common.event.HandleableEvent;
+import org.example.common.outbox.domain.OutboxDomainType;
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 
 @ToString
@@ -29,5 +30,10 @@ public class ChatRoomDeletedEvent extends AbstractOutboxEvent implements Handlea
     @Override
     public void handle(ChatRoomEventHandler handler, String txId) {
         handler.handle(this, txId);
+    }
+
+    @Override
+    protected OutboxDomainType getDomainType() {
+        return OutboxDomainType.CHAT;
     }
 }

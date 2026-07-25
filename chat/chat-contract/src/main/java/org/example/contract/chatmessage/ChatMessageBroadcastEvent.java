@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.ToString;
 import org.example.common.enums.KafkaTopic;
 import org.example.common.outbox.domain.OutboxDispatchType;
+import org.example.common.outbox.domain.OutboxDomainType;
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 
 import java.util.Set;
@@ -37,5 +38,10 @@ public class ChatMessageBroadcastEvent extends AbstractOutboxEvent {
     @Override
     protected String getMessageType() {
         return ChatMessageBroadcastEvent.class.getName();
+    }
+
+    @Override
+    protected OutboxDomainType getDomainType() {
+        return OutboxDomainType.CHAT;
     }
 }

@@ -14,7 +14,7 @@
 - **common은 서비스 모듈에 의존 금지**: `common-*`가 서비스(`chat`/`user`/… ) 모듈이나 그 패키지를 import하면 `common-arch-test`가 실패한다. 방향은 항상 서비스 → common.
 - **아키텍처 변경 시 게이트 실행**: 의존/계층/패키지 구조를 건드리면 `./gradlew :common:common-arch-test:test`(ArchUnit)를 반드시 실행한다. 규칙 자체(`ModuleArchitectureTest`/`PackageArchitectureTest`)를 완화해 통과시키지 않는다(→ git-safety).
 - **파사드 목록 관리**: 새 공통 모듈을 만들면 `settings.gradle` 등록 + 파사드 재수출 여부(`common/build.gradle`)를 명시적으로 결정한다. 테스트/CI/모니터링 성격 모듈은 파사드에 넣지 않는다.
-- **Outbox/DLQ 흐름 보존**(`common-outbox`): 상태 변경은 도메인 메서드로만(`markPublished`·`markFailed`·`increaseRetryCnt`·`markCompleted`). 발행은 `EventUtils.raise` → `OutboxEventListListener` → `OutboxService.saveAll` 경로를 지키고 `ApplicationEventPublisher`를 직접 쓰지 않는다. `__TypeId__`·`transaction_id`·`dlq_id` 헤더는 계약이다. `DlqStatus.COMSUME_FAILED` 철자는 직렬화 계약일 수 있어 임의 수정 금지(TODO 3.1).
+- **Outbox/DLQ 흐름 보존**(`common-outbox`): 상태 변경은 도메인 메서드로만(`markPublished`·`markFailed`·`increaseRetryCnt`·`markCompleted`). 발행은 `EventUtils.raise` → `OutboxEventListListener` → `OutboxService.saveAll` 경로를 지키고 `ApplicationEventPublisher`를 직접 쓰지 않는다. `__TypeId__`·`transaction_id`·`dlq_id` 헤더는 계약이다. `DlqStatus`는 `@Enumerated(STRING)`으로 이름이 저장되는 계약이다(소비 실패 상태 = `CONSUME_FAILED`). 값 추가/변경 시 저장된 row 영향을 함께 본다.
 - **Read Replica 규칙**(`common-jpa`): `@ReadReplica`가 read 라우팅 트리거다. `@Transactional(readOnly=true)`만으로 read로 보내지 않는다. `ReadReplicaAspect`/`DataSourceContextHolder`/`ReplicationRoutingDataSource` 동작을 바꾸면 전 JPA 서비스에 영향.
 - **예외 매핑 일관성**: REST 예외는 `common-web/GlobalExceptionHandler`(`ErrorResponse`/`ValidationResult` 형식), gRPC 예외는 `common-grpc/BaseGrpcExceptionAdvice`가 담당한다. 응답 형식을 흔들지 않는다.
 - **actuator 선택**: MVC 서비스는 `common-actuator-webmvc`, gateway(WebFlux)는 `common-actuator-webflux`를 쓴다(공용 코어는 `common-actuator-core`). 배포 제어 토큰은 `deployment.control.token`(`${DEPLOY_TOKEN}`).
@@ -44,5 +44,4 @@
 
 확정된 결함으로 단정하지 않는다. 코드 변경 전 사용자 확인이 필요하다. 상세·근거는 [`../docs/modules/COMMON.md §8`](../docs/modules/COMMON.md)과 [`../TODO.md`](../TODO.md).
 
-- `common-outbox`의 `DlqStatus.COMSUME_FAILED` 철자(직렬화 계약 가능성 — TODO 3.1)
-- Read Replica 라우팅 인프라는 `common-jpa`에 있으나 user 서비스에 `@ReadReplica` 미적용(TODO 2.1)
+- 현재 common 관련 미해결 항목 없음.

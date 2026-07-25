@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.ToString;
 import org.example.common.enums.KafkaTopic;
 import org.example.common.event.HandleableEvent;
+import org.example.common.outbox.domain.OutboxDomainType;
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 import org.example.notification.application.event.payload.NotificationPayload;
 import org.example.notification.application.event.payload.NotificationRecipientPayload;
@@ -44,5 +45,10 @@ public class NotificationSaveEvent extends AbstractOutboxEvent implements Handle
     @Override
     public void handle(NotificationEventHandler handler, String txId) {
         handler.handle(this, txId);
+    }
+
+    @Override
+    protected OutboxDomainType getDomainType() {
+        return OutboxDomainType.NOTIFICATION;
     }
 }
