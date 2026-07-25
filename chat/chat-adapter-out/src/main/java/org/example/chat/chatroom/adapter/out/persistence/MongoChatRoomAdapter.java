@@ -58,6 +58,18 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
     }
 
     @Override
+    public List<ChatRoom> listRoomsForPopularityRecompute(ChatRoomCategory category) {
+        return chatRoomRepository.listAllByCategory(category).stream()
+                .map(MongoChatRoom::toDomain)
+                .toList();
+    }
+
+    @Override
+    public void updatePopularities(Map<String, Long> roomIdToPopularity) {
+        chatRoomRepository.bulkUpdatePopularity(roomIdToPopularity);
+    }
+
+    @Override
     public List<ChatRoom> listLatestActiveRooms(String memberId, int limit) {
         return membershipRepository.listLatestActiveMemberships(memberId, limit)
                 .stream()

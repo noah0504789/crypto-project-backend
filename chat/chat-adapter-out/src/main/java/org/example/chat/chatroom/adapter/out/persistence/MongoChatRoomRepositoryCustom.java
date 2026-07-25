@@ -24,6 +24,10 @@ public interface MongoChatRoomRepositoryCustom {
             int limit)
     ;
 
+    List<MongoChatRoom> listAllByCategory(ChatRoomCategory category);
+
+    void bulkUpdatePopularity(Map<String, Long> roomIdToPopularity);
+
     Optional<MongoChatRoom> updateRoomAndReturn(ObjectId roomId, Map<String, Object> updates);
 
     void incrementRoomField(

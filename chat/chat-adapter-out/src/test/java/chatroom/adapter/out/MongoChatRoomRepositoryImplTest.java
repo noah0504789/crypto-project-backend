@@ -61,9 +61,9 @@ class MongoChatRoomRepositoryImplTest {
         mongoTemplate.indexOps(MongoChatRoom.class)
                 .ensureIndex(new Index()
                         .on("category", Sort.Direction.ASC)
-                        .on("msgCnt", Sort.Direction.DESC)
+                        .on("popularity", Sort.Direction.DESC)
                         .on("_id", Sort.Direction.DESC)
-                        .named("idx_category_msgCnt")
+                        .named("idx_category_popularity")
                         .partial(PartialIndexFilter.of(Criteria.where("deleted").is(false))));
     }
 
@@ -379,6 +379,7 @@ class MongoChatRoomRepositoryImplTest {
                 .category(category)
                 .memberIds(Set.of(HOST_ID))
                 .msgCnt(msgCnt)
+                .popularity(msgCnt)
                 .deleted(deleted)
                 .deletedAt(deleted ? LocalDateTime.now() : null)
                 .createdAt(LocalDateTime.now())

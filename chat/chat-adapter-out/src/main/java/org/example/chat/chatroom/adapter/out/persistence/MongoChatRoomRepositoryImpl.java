@@ -4,6 +4,7 @@ import org.bson.types.ObjectId;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -65,10 +66,10 @@ public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCusto
                 .is(false);
 
         Query query = new Query(criteria)
-                .with(sortMsgCntDesc().and(sortIdDesc()))
+                .with(sortPopularityDesc().and(sortIdDesc()))
                 .skip(offset)
                 .limit(limit)
-                .withHint("idx_category_msgCnt");
+                .withHint("idx_category_popularity");
 
         return primaryMongoTemplate.find(query, MongoChatRoom.class);
     }
@@ -86,19 +87,19 @@ public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCusto
                 .is(false);
 
         Criteria tieBreaker = new Criteria().andOperator(
-                Criteria.where("msgCnt").is(lastPopularity),
+                Criteria.where("popularity").is(lastPopularity),
                 Criteria.where("_id").lt(new ObjectId(lastRoomId))
         );
 
         Criteria cursor = new Criteria().orOperator(
-                Criteria.where("msgCnt").lt(lastPopularity),
+                Criteria.where("popularity").lt(lastPopularity),
                 tieBreaker
         );
 
         Query query = new Query(new Criteria().andOperator(base, cursor))
-                .with(sortMsgCntDesc().and(sortIdDesc()))
+                .with(sortPopularityDesc().and(sortIdDesc()))
                 .limit(limit)
-                .withHint("idx_category_msgCnt");
+                .withHint("idx_category_popularity");
 
         return secondaryMongoTemplate.find(query, MongoChatRoom.class);
     }
@@ -182,11 +183,38 @@ public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCusto
         );
     }
 
+    @Override
+    public List<MongoChatRoom> listAllByCategory(ChatRoomCategory category) {
+        Query query = new Query(
+                Criteria.where("category").is(category).and("deleted").is(false)
+        ).withHint("idx_category_popularity");
+
+        return secondaryMongoTemplate.find(query, MongoChatRoom.class);
+    }
+
+    @Override
+    public void bulkUpdatePopularity(Map<String, Long> roomIdToPopularity) {
+        if (roomIdToPopularity.isEmpty()) {
+            return;
+        }
+
+        BulkOperations bulkOps = primaryMongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, MongoChatRoom.class);
+
+        roomIdToPopularity.forEach((roomId, popularity) ->
+                bulkOps.updateOne(
+                        new Query(Criteria.where("_id").is(new ObjectId(roomId))),
+                        new Update().set("popularity", popularity)
+                )
+        );
+
+        bulkOps.execute();
+    }
+
     private Sort sortIdDesc() {
         return Sort.by(Sort.Direction.DESC, "_id");
     }
 
-    private Sort sortMsgCntDesc() {
-        return Sort.by(Sort.Direction.DESC, "msgCnt");
+    private Sort sortPopularityDesc() {
+        return Sort.by(Sort.Direction.DESC, "popularity");
     }
 }
