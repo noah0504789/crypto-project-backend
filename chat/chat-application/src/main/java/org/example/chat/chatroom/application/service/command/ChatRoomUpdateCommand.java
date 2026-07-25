@@ -5,6 +5,7 @@ import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 
 public record ChatRoomUpdateCommand(
         String roomId,
+        String myUserId,
         String title,
         String description,
         ChatRoomCategory category

@@ -83,6 +83,9 @@ public class ReactiveSecurityConfig {
                         .pathMatchers(HttpMethod.DELETE, apiPathProperties.chat().roomPattern())
                         .hasRole(RoleKey.REQUIRED_USER.value())
 
+                        .pathMatchers(HttpMethod.GET, apiPathProperties.chat().roomPattern())
+                        .hasRole(RoleKey.REQUIRED_USER.value())
+
                         .pathMatchers(apiPathProperties.actuatorPattern()).permitAll()
                         .pathMatchers(apiPathProperties.auth().pattern()).permitAll()
                         .pathMatchers(apiPathProperties.user().pattern()).permitAll()

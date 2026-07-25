@@ -56,7 +56,7 @@ api-path:
     room-messages: /chat/room/*/messages
     pattern: /chat/**
     room-pattern: /chat/room/*
-    room-me-pattern: /chat/room/me/*
+    room-me-pattern: /chat/room/*/me
     room-members-pattern: /chat/room/*/members
     room-activity-pattern: /chat/room/*/activity
     room-messages-pattern: /chat/room/*/messages

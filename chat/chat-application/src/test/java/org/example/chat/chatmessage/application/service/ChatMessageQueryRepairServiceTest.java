@@ -305,6 +305,7 @@ class ChatMessageQueryRepairServiceTest {
             // given
             ListChatMessagesQuery query = ListChatMessagesQuery.prevPage(
                     roomId,
+                    "member-1",
                     lastId,
                     null,
                     limit
@@ -335,6 +336,7 @@ class ChatMessageQueryRepairServiceTest {
     private ListChatMessagesQuery prevPageQuery() {
         return ListChatMessagesQuery.prevPage(
                 roomId,
+                "member-1",
                 lastId,
                 lastCreatedAtMillis,
                 limit

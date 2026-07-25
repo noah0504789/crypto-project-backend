@@ -2,6 +2,8 @@ package org.example.chat.chatroom.domain.model;
 
 import lombok.*;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
+import org.example.chat.chatroom.domain.exception.ChatRoomAccessDeniedException;
+import org.example.chat.chatroom.domain.exception.ChatRoomHostMismatchException;
 import org.example.chat.chatroom.domain.exception.ChatRoomMembershipNotFoundException;
 import org.example.common.time.ServiceZoneUtils;
 
@@ -142,6 +144,18 @@ public class ChatRoom {
     public void validateWritable(String writerId) {
         if (writerId == null || writerId.isBlank() || memberIds == null || !memberIds.contains(writerId)) {
             throw new ChatRoomMembershipNotFoundException(id, writerId);
+        }
+    }
+
+    public void validateHost(String myUserId) {
+        if (myUserId == null || myUserId.isBlank() || !Objects.equals(hostId, myUserId)) {
+            throw new ChatRoomHostMismatchException(id, myUserId);
+        }
+    }
+
+    public void validateMember(String myUserId) {
+        if (myUserId == null || myUserId.isBlank() || memberIds == null || !memberIds.contains(myUserId)) {
+            throw new ChatRoomAccessDeniedException(id, myUserId);
         }
     }
 

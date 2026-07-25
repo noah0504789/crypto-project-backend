@@ -26,7 +26,7 @@ public record ChatRoomUpdateRequest(
                 && category == null;
     }
 
-    public ChatRoomUpdateCommand toCommand(String roomId) {
-        return new ChatRoomUpdateCommand(roomId, title, description, category);
+    public ChatRoomUpdateCommand toCommand(String roomId, String myUserId) {
+        return new ChatRoomUpdateCommand(roomId, myUserId, title, description, category);
     }
 }

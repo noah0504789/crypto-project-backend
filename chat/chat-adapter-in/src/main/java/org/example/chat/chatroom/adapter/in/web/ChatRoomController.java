@@ -147,20 +147,24 @@ public class ChatRoomController {
     @PatchMapping("${api-path.chat.room:/room/{roomId}}")
     public ResponseEntity<Void> update(
             @PathVariable("roomId") @NotBlank String roomId,
+            @RequestHeader(HttpHeaderKey.USER_ID_VALUE) String myUserId,
             @RequestBody @Valid ChatRoomUpdateRequest request
     ) {
         if (request.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
 
-        chatRoomCommandUseCase.update(request.toCommand(roomId));
+        chatRoomCommandUseCase.update(request.toCommand(roomId, myUserId));
 
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("${api-path.chat.room:/room/{roomId}}")
-    public ResponseEntity<Void> delete(@PathVariable("roomId") String roomId) {
-        chatRoomCommandUseCase.delete(roomId);
+    public ResponseEntity<Void> delete(
+            @PathVariable("roomId") String roomId,
+            @RequestHeader(HttpHeaderKey.USER_ID_VALUE) String myUserId
+    ) {
+        chatRoomCommandUseCase.delete(roomId, myUserId);
 
         return ResponseEntity.noContent().build();
     }

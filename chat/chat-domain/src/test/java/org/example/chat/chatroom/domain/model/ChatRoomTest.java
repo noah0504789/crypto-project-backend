@@ -1,5 +1,7 @@
 package org.example.chat.chatroom.domain.model;
 
+import org.example.chat.chatroom.domain.exception.ChatRoomAccessDeniedException;
+import org.example.chat.chatroom.domain.exception.ChatRoomHostMismatchException;
 import org.example.chat.chatroom.domain.exception.ChatRoomMembershipNotFoundException;
 import org.example.common.time.ServiceZoneUtils;
 import org.junit.jupiter.api.Test;
@@ -473,6 +475,156 @@ class ChatRoomTest {
             // when & then
             assertThatThrownBy(() -> chatRoom.validateWritable(MEMBER_ID))
                     .isInstanceOf(ChatRoomMembershipNotFoundException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("validateHost")
+    class ValidateHostTest {
+
+        @Test
+        @DisplayName("행위자가 host이면 예외가 발생하지 않는다")
+        void validateHost_shouldNotThrow_whenActorIsHost() {
+            // given
+            ChatRoom chatRoom = hostRoom();
+
+            // when & then
+            assertThatCode(() -> chatRoom.validateHost(HOST_ID))
+                    .doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("행위자가 host가 아니면 멤버여도 ChatRoomHostMismatchException이 발생한다")
+        void validateHost_shouldThrow_whenActorIsMemberButNotHost() {
+            // given
+            ChatRoom chatRoom = ChatRoom.rehydrate(
+                    ROOM_ID,
+                    HOST_ID,
+                    "title",
+                    "description",
+                    category,
+                    Set.of(HOST_ID, MEMBER_ID),
+                    10L,
+                    LocalDateTime.now()
+            );
+
+            // when & then
+            assertThatThrownBy(() -> chatRoom.validateHost(MEMBER_ID))
+                    .isInstanceOf(ChatRoomHostMismatchException.class);
+        }
+
+        @Test
+        @DisplayName("행위자 id가 null이면 ChatRoomHostMismatchException이 발생한다")
+        void validateHost_shouldThrow_whenActorIdIsNull() {
+            // given
+            ChatRoom chatRoom = hostRoom();
+
+            // when & then
+            assertThatThrownBy(() -> chatRoom.validateHost(null))
+                    .isInstanceOf(ChatRoomHostMismatchException.class);
+        }
+
+        @Test
+        @DisplayName("행위자 id가 공백이면 ChatRoomHostMismatchException이 발생한다")
+        void validateHost_shouldThrow_whenActorIdIsBlank() {
+            // given
+            ChatRoom chatRoom = hostRoom();
+
+            // when & then
+            assertThatThrownBy(() -> chatRoom.validateHost(" "))
+                    .isInstanceOf(ChatRoomHostMismatchException.class);
+        }
+
+        private ChatRoom hostRoom() {
+            return ChatRoom.rehydrate(
+                    ROOM_ID,
+                    HOST_ID,
+                    "title",
+                    "description",
+                    category,
+                    Set.of(HOST_ID),
+                    10L,
+                    LocalDateTime.now()
+            );
+        }
+    }
+
+    @Nested
+    @DisplayName("validateMember")
+    class ValidateMemberTest {
+
+        @Test
+        @DisplayName("행위자가 멤버이면 예외가 발생하지 않는다")
+        void validateMember_shouldNotThrow_whenActorIsMember() {
+            // given
+            ChatRoom chatRoom = ChatRoom.rehydrate(
+                    ROOM_ID,
+                    HOST_ID,
+                    "title",
+                    "description",
+                    category,
+                    Set.of(HOST_ID, MEMBER_ID),
+                    10L,
+                    LocalDateTime.now()
+            );
+
+            // when & then
+            assertThatCode(() -> chatRoom.validateMember(MEMBER_ID))
+                    .doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("행위자가 멤버가 아니면 ChatRoomAccessDeniedException이 발생한다")
+        void validateMember_shouldThrow_whenActorIsNotMember() {
+            // given
+            ChatRoom chatRoom = ChatRoom.rehydrate(
+                    ROOM_ID,
+                    HOST_ID,
+                    "title",
+                    "description",
+                    category,
+                    Set.of(HOST_ID),
+                    10L,
+                    LocalDateTime.now()
+            );
+
+            // when & then
+            assertThatThrownBy(() -> chatRoom.validateMember(MEMBER_ID))
+                    .isInstanceOf(ChatRoomAccessDeniedException.class);
+        }
+
+        @Test
+        @DisplayName("행위자 id가 null이면 ChatRoomAccessDeniedException이 발생한다")
+        void validateMember_shouldThrow_whenActorIdIsNull() {
+            // given
+            ChatRoom chatRoom = ChatRoom.rehydrate(
+                    ROOM_ID,
+                    HOST_ID,
+                    "title",
+                    "description",
+                    category,
+                    Set.of(HOST_ID),
+                    10L,
+                    LocalDateTime.now()
+            );
+
+            // when & then
+            assertThatThrownBy(() -> chatRoom.validateMember(null))
+                    .isInstanceOf(ChatRoomAccessDeniedException.class);
+        }
+
+        @Test
+        @DisplayName("memberIds가 null이면 ChatRoomAccessDeniedException이 발생한다")
+        void validateMember_shouldThrow_whenMemberIdsIsNull() {
+            // given
+            ChatRoom chatRoom = ChatRoom.builder()
+                    .id(ROOM_ID)
+                    .memberIds(null)
+                    .build();
+
+            // when & then
+            assertThatThrownBy(() -> chatRoom.validateMember(MEMBER_ID))
+                    .isInstanceOf(ChatRoomAccessDeniedException.class);
         }
     }
 

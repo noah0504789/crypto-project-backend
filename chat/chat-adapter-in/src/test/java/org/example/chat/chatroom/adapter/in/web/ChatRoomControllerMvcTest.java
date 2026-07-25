@@ -722,6 +722,7 @@ class ChatRoomControllerMvcTest {
 
             // when
             mockMvc.perform(patch("/chat/room/{roomId}", roomId1)
+                            .header("X-User-Id", HOST_ID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isNoContent());
@@ -759,6 +760,7 @@ class ChatRoomControllerMvcTest {
 
             // when
             mockMvc.perform(patch("/chat/room/{roomId}", roomId1)
+                            .header("X-User-Id", HOST_ID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isNoContent());
@@ -793,6 +795,7 @@ class ChatRoomControllerMvcTest {
 
             // when
             mockMvc.perform(patch("/chat/room/{roomId}", roomId1)
+                            .header("X-User-Id", HOST_ID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isNoContent());
@@ -827,6 +830,7 @@ class ChatRoomControllerMvcTest {
 
             // when
             mockMvc.perform(patch("/chat/room/{roomId}", roomId1)
+                            .header("X-User-Id", HOST_ID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isNoContent());
@@ -857,6 +861,7 @@ class ChatRoomControllerMvcTest {
 
             // when & then
             mockMvc.perform(patch("/chat/room/{roomId}", roomId1)
+                            .header("X-User-Id", HOST_ID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isBadRequest());
@@ -877,6 +882,7 @@ class ChatRoomControllerMvcTest {
 
             // when & then
             mockMvc.perform(patch("/chat/room/{roomId}", roomId1)
+                            .header("X-User-Id", HOST_ID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isBadRequest())
@@ -899,6 +905,7 @@ class ChatRoomControllerMvcTest {
 
             // when & then
             mockMvc.perform(patch("/chat/room/{roomId}", roomId1)
+                            .header("X-User-Id", HOST_ID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isBadRequest())
@@ -923,6 +930,7 @@ class ChatRoomControllerMvcTest {
 
             // when & then
             mockMvc.perform(patch("/chat/room/{roomId}", roomId1)
+                            .header("X-User-Id", HOST_ID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isBadRequest())
@@ -947,6 +955,7 @@ class ChatRoomControllerMvcTest {
 
             // when & then
             mockMvc.perform(patch("/chat/room/{roomId}", roomId1)
+                            .header("X-User-Id", HOST_ID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isBadRequest())
@@ -972,6 +981,7 @@ class ChatRoomControllerMvcTest {
 
             // when & then
             mockMvc.perform(patch("/chat/room/{roomId}", roomId1)
+                            .header("X-User-Id", HOST_ID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isBadRequest())
@@ -1000,6 +1010,7 @@ class ChatRoomControllerMvcTest {
 
             // when & then
             mockMvc.perform(patch("/chat/room/{roomId}", " ")
+                            .header("X-User-Id", HOST_ID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isBadRequest())
@@ -1022,6 +1033,7 @@ class ChatRoomControllerMvcTest {
 
             // when & then
             mockMvc.perform(patch("/chat/room/{roomId}", roomId1)
+                            .header("X-User-Id", HOST_ID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isBadRequest());
@@ -1038,10 +1050,11 @@ class ChatRoomControllerMvcTest {
         @Test
         @DisplayName("채팅방을 삭제하고 204 No Content를 반환한다")
         void deleteRoom() throws Exception {
-            mockMvc.perform(delete("/chat/room/{roomId}", roomId1))
+            mockMvc.perform(delete("/chat/room/{roomId}", roomId1)
+                            .header("X-User-Id", HOST_ID))
                     .andExpect(status().isNoContent());
 
-            verify(chatRoomCommandUseCase).delete(roomId1);
+            verify(chatRoomCommandUseCase).delete(roomId1, HOST_ID);
         }
     }
 

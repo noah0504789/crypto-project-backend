@@ -3,6 +3,9 @@ package org.example.chat.chatmessage.application.service;
 import org.example.chat.chatmessage.application.service.query.ListChatMessagesQuery;
 import org.example.chat.chatmessage.application.port.out.ChatMessageCachePort;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
+import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
+import org.example.chat.chatroom.domain.model.ChatRoom;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -12,7 +15,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -29,6 +35,9 @@ class ChatMessageQueryServiceTest {
     @Mock
     private ChatMessageQueryRepairService queryRepairService;
 
+    @Mock
+    private ChatRoomPersistencePort chatRoomPersistencePort;
+
     @InjectMocks
     private ChatMessageQueryService sut;
 
@@ -38,6 +47,17 @@ class ChatMessageQueryServiceTest {
     private final int limit = 2;
 
     private final String writerId = "writer-1";
+    private final String myUserId = "member-1";
+
+    @BeforeEach
+    void stubMembership() {
+        ChatRoom room = ChatRoom.builder()
+                .id(roomId)
+                .memberIds(new HashSet<>(Set.of(myUserId)))
+                .build();
+
+        given(chatRoomPersistencePort.findById(roomId)).willReturn(Optional.of(room));
+    }
 
     private final Instant time1 = Instant.parse("2026-01-01T01:00:00Z");
     private final Instant time2 = Instant.parse("2026-01-01T02:00:00Z");
@@ -233,6 +253,7 @@ class ChatMessageQueryServiceTest {
             // given
             ListChatMessagesQuery query = ListChatMessagesQuery.prevPage(
                     roomId,
+                    myUserId,
                     lastId,
                     null,
                     limit
@@ -256,11 +277,11 @@ class ChatMessageQueryServiceTest {
     }
 
     private ListChatMessagesQuery firstPageQuery() {
-        return ListChatMessagesQuery.firstPage(roomId, limit);
+        return ListChatMessagesQuery.firstPage(roomId, myUserId, limit);
     }
 
     private ListChatMessagesQuery prevPageQuery() {
-        return ListChatMessagesQuery.prevPage(roomId, lastId, lastCreatedAtMillis, limit);
+        return ListChatMessagesQuery.prevPage(roomId, myUserId, lastId, lastCreatedAtMillis, limit);
     }
 
     private ChatMessage chatMessage(String id, String content, Instant createdAt) {

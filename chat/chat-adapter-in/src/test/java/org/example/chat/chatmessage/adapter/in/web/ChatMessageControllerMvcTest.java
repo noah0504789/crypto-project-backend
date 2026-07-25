@@ -39,6 +39,7 @@ class ChatMessageControllerMvcTest {
     private final String MESSAGE_ID_3 = "100000000000000000000003";
 
     private final String WRITER_ID = "writer-1";
+    private final String ACTOR_ID = "member-1";
 
     private final Instant time1 = Instant.parse("2026-01-01T01:00:00Z");
     private final Instant time2 = Instant.parse("2026-01-01T02:00:00Z");
@@ -52,7 +53,7 @@ class ChatMessageControllerMvcTest {
         @DisplayName("cursor가 없으면 listMessages를 첫 페이지 Query로 limit+1 조회하고 hasNext=true를 반환한다")
         void listMessagesFirstPageHasNext() throws Exception {
             // given
-            ListChatMessagesQuery query = ListChatMessagesQuery.firstPage(ROOM_ID, 3);
+            ListChatMessagesQuery query = ListChatMessagesQuery.firstPage(ROOM_ID, ACTOR_ID, 3);
 
             given(chatMessageQueryService.listMessages(query))
                     .willReturn(List.of(
@@ -63,6 +64,7 @@ class ChatMessageControllerMvcTest {
 
             // when & then
             mockMvc.perform(get("/chat/room/{roomId}/messages", ROOM_ID)
+                            .header("X-User-Id", ACTOR_ID)
                             .param("limit", "2"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.hasNext").value(true))
@@ -77,7 +79,7 @@ class ChatMessageControllerMvcTest {
         @DisplayName("cursor가 없고 결과가 limit 이하이면 hasNext=false를 반환한다")
         void listMessagesFirstPageNoNext() throws Exception {
             // given
-            ListChatMessagesQuery query = ListChatMessagesQuery.firstPage(ROOM_ID, 3);
+            ListChatMessagesQuery query = ListChatMessagesQuery.firstPage(ROOM_ID, ACTOR_ID, 3);
 
             given(chatMessageQueryService.listMessages(query))
                     .willReturn(List.of(
@@ -87,6 +89,7 @@ class ChatMessageControllerMvcTest {
 
             // when & then
             mockMvc.perform(get("/chat/room/{roomId}/messages", ROOM_ID)
+                            .header("X-User-Id", ACTOR_ID)
                             .param("limit", "2"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.hasNext").value(false))
@@ -105,6 +108,7 @@ class ChatMessageControllerMvcTest {
 
             ListChatMessagesQuery query = ListChatMessagesQuery.prevPage(
                     ROOM_ID,
+                    ACTOR_ID,
                     MESSAGE_ID_3,
                     lastCreatedAtMs,
                     3
@@ -118,6 +122,7 @@ class ChatMessageControllerMvcTest {
 
             // when & then
             mockMvc.perform(get("/chat/room/{roomId}/messages", ROOM_ID)
+                            .header("X-User-Id", ACTOR_ID)
                             .param("limit", "2")
                             .param("lastMsgId", MESSAGE_ID_3)
                             .param("lastCreatedAtMs", String.valueOf(lastCreatedAtMs)))
@@ -134,13 +139,14 @@ class ChatMessageControllerMvcTest {
         @DisplayName("조회 결과가 비어 있으면 items=null, hasNext=false를 반환한다")
         void emptyMessages() throws Exception {
             // given
-            ListChatMessagesQuery query = ListChatMessagesQuery.firstPage(ROOM_ID, 21);
+            ListChatMessagesQuery query = ListChatMessagesQuery.firstPage(ROOM_ID, ACTOR_ID, 21);
 
             given(chatMessageQueryService.listMessages(query))
                     .willReturn(List.of());
 
             // when & then
-            mockMvc.perform(get("/chat/room/{roomId}/messages", ROOM_ID))
+            mockMvc.perform(get("/chat/room/{roomId}/messages", ROOM_ID)
+                            .header("X-User-Id", ACTOR_ID))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.items").doesNotExist())
                     .andExpect(jsonPath("$.hasNext").value(false));
@@ -152,7 +158,7 @@ class ChatMessageControllerMvcTest {
         @DisplayName("limit을 생략하면 기본값 20을 사용하여 21개를 조회한다")
         void defaultLimit() throws Exception {
             // given
-            ListChatMessagesQuery query = ListChatMessagesQuery.firstPage(ROOM_ID, 21);
+            ListChatMessagesQuery query = ListChatMessagesQuery.firstPage(ROOM_ID, ACTOR_ID, 21);
 
             given(chatMessageQueryService.listMessages(query))
                     .willReturn(List.of(
@@ -160,7 +166,8 @@ class ChatMessageControllerMvcTest {
                     ));
 
             // when & then
-            mockMvc.perform(get("/chat/room/{roomId}/messages", ROOM_ID))
+            mockMvc.perform(get("/chat/room/{roomId}/messages", ROOM_ID)
+                            .header("X-User-Id", ACTOR_ID))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.hasNext").value(false))
                     .andExpect(jsonPath("$.items", hasSize(1)))
