@@ -45,6 +45,7 @@ public record ApiPathProperties(
             String roomCreate,
             String roomMessages,
             String pattern,
+            String roomPattern,
             String roomMePattern,
             String roomMembersPattern,
             String roomActivityPattern,

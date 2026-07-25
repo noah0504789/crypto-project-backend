@@ -70,6 +70,7 @@ class WebsocketHandshakeAuthWebFilterTest {
                         "/chat/room",
                         "/chat/room/*/messages",
                         "/chat/**",
+                        "/chat/room/*",
                         "/chat/room/me/*",
                         "/chat/room/*/members",
                         "/chat/room/*/activity",
