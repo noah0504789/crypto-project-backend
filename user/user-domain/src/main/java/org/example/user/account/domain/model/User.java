@@ -2,6 +2,7 @@ package org.example.user.account.domain.model;
 
 import lombok.*;
 import org.example.common.time.ServiceZoneUtils;
+import org.example.user.account.domain.exception.UserAccessDeniedException;
 import org.example.user.role.domain.model.Role;
 import org.example.user.role.domain.model.RoleEnum;
 
@@ -9,6 +10,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -108,6 +110,12 @@ public class User {
         }
 
         this.roles.add(role);
+    }
+
+    public void validateOwner(UUID actorPublicId) {
+        if (actorPublicId == null || !Objects.equals(publicId, actorPublicId)) {
+            throw new UserAccessDeniedException(publicId, actorPublicId);
+        }
     }
 
     public void updateNickname(String nickname) {
