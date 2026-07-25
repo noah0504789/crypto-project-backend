@@ -24,6 +24,10 @@ public interface ChatRoomPersistencePort {
             int limit
     );
 
+    List<ChatRoom> listRoomsForPopularityRecompute(ChatRoomCategory category);
+
+    void updatePopularities(Map<String, Long> roomIdToPopularity);
+
     List<ChatRoom> listLatestActiveRooms(String memberId, int limit);
 
     List<ChatRoom> listActiveRoomsBefore(

@@ -94,9 +94,9 @@ class MongoChatRoomAdapterTest {
         mongoTemplate.indexOps(MongoChatRoom.class)
                 .ensureIndex(new Index()
                         .on("category", Sort.Direction.ASC)
-                        .on("msgCnt", Sort.Direction.DESC)
+                        .on("popularity", Sort.Direction.DESC)
                         .on("_id", Sort.Direction.DESC)
-                        .named("idx_category_msgCnt")
+                        .named("idx_category_popularity")
                         .partial(PartialIndexFilter.of(Criteria.where("deleted").is(false))));
 
         mongoTemplate.indexOps(MongoChatRoomMembership.class)
@@ -448,9 +448,8 @@ class MongoChatRoomAdapterTest {
             sut.save(chatRoom(roomId1, TITLE_1));
             sut.save(chatRoom(roomId2, TITLE_2));
 
-            sut.incrementMessageCount(roomId1.toHexString());
-            sut.incrementMessageCount(roomId2.toHexString());
-            sut.incrementMessageCount(roomId2.toHexString());
+            setPopularity(roomId1, 1);
+            setPopularity(roomId2, 2);
 
             saveMessage(messageId1, roomId1, "room1-latest", latestTime, false);
             saveMessage(messageId2, roomId2, "room2-old", oldTime, false);
@@ -476,9 +475,9 @@ class MongoChatRoomAdapterTest {
             sut.save(chatRoom(roomId2, TITLE_2));
             sut.save(chatRoom(roomId3, TITLE_3));
 
-            setMsgCnt(roomId3, 3);
-            setMsgCnt(roomId2, 2);
-            setMsgCnt(roomId1, 1);
+            setPopularity(roomId3, 3);
+            setPopularity(roomId2, 2);
+            setPopularity(roomId1, 1);
 
             saveMessage(messageId1, roomId2, "room2-latest", latestTime, false);
 
@@ -541,6 +540,24 @@ class MongoChatRoomAdapterTest {
 
             // then
             assertRoomIds(result, roomId3, roomId2, roomId1);
+        }
+
+        @Test
+        @DisplayName("listRoomsForPopularityRecompute는 category의 삭제되지 않은 방을 모두 반환한다")
+        void listRoomsForPopularityRecompute() {
+            // given
+            sut.save(chatRoom(roomId1, TITLE_1));
+            sut.save(chatRoom(roomId2, TITLE_2));
+            sut.save(chatRoom(roomId3, TITLE_3));
+            sut.deleteById(roomId3.toHexString());
+
+            // when
+            List<ChatRoom> result = sut.listRoomsForPopularityRecompute(category);
+
+            // then
+            assertThat(result)
+                    .extracting(ChatRoom::getId)
+                    .containsExactlyInAnyOrder(roomId1.toHexString(), roomId2.toHexString());
         }
     }
 
@@ -645,6 +662,10 @@ class MongoChatRoomAdapterTest {
         for (int i = 0; i < count; i++) {
             sut.incrementMessageCount(roomId.toHexString());
         }
+    }
+
+    private void setPopularity(ObjectId roomId, long popularity) {
+        sut.updatePopularities(Map.of(roomId.toHexString(), popularity));
     }
 
     private void assertRoomIds(List<ChatRoom> actual, ObjectId... expected) {
