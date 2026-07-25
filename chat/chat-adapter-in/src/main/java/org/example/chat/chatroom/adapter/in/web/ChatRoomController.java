@@ -133,7 +133,6 @@ public class ChatRoomController {
         return ResponseEntity.noContent().build();
     }
 
-    // TODO: 여기 아래로부터 인가 처리하기
     @PostMapping("${api-path.chat.room-create:/room}")
     public ResponseEntity<Void> create(
             @RequestBody @Valid ChatRoomCreateRequest request,
