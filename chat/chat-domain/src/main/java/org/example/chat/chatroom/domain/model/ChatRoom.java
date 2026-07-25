@@ -5,6 +5,7 @@ import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.chatroom.domain.exception.ChatRoomAccessDeniedException;
 import org.example.chat.chatroom.domain.exception.ChatRoomHostMismatchException;
 import org.example.chat.chatroom.domain.exception.ChatRoomMembershipNotFoundException;
+import org.example.chat.chatroom.domain.service.ChatRoomPopularityCalculator;
 import org.example.common.time.ServiceZoneUtils;
 
 import java.time.Instant;
@@ -130,7 +131,7 @@ public class ChatRoom {
     }
 
     public Double popularity() {
-        return msgCnt == null ? 0 : msgCnt.doubleValue(); // TODO: spec 정의 및 주입받기
+        return ChatRoomPopularityCalculator.calculate(this);
     }
 
     public long lastMsgCreatedAtMs() {

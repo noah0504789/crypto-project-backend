@@ -15,7 +15,9 @@ public interface ChatRoomCachePort {
 
     void warmUp(ChatRoom room);
 
-    void warmUpList(List<ChatRoom> rooms, Map<String, Double> popularityScores);
+    void warmUpList(List<ChatRoom> rooms);
+
+    void rebuildPopularIndex(ChatRoomCategory category, List<ChatRoom> rooms);
 
     void updateRoom(
             String id,

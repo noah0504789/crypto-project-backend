@@ -14,7 +14,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -249,7 +248,7 @@ class ChatRoomQueryRepairServiceTest {
             assertThat(result).containsExactly(room);
 
             verify(persistence, never()).listPopularRooms(any(), anyInt());
-            verify(cache, never()).warmUpList(anyList(), anyMap());
+            verify(cache, never()).warmUpList(anyList());
         }
 
         @Test
@@ -257,12 +256,6 @@ class ChatRoomQueryRepairServiceTest {
         void should_load_popular_rooms_from_persistence_and_warm_up_when_index_missing() {
             // given
             givenLockExecutorRunsSupplier();
-
-            when(room.getId()).thenReturn("room-1");
-            when(room.popularity()).thenReturn(10.0);
-
-            when(room2.getId()).thenReturn("room-2");
-            when(room2.popularity()).thenReturn(20.0);
 
             List<ChatRoom> stored = List.of(room, room2);
 
@@ -277,14 +270,8 @@ class ChatRoomQueryRepairServiceTest {
             // then
             assertThat(result).containsExactly(room, room2);
 
-            ArgumentCaptor<Map<String, Double>> popularityCaptor = popularityCaptor();
-
             verify(persistence, times(1)).listPopularRooms(ChatRoomCategory.FREE, 10);
-            verify(cache, times(1)).warmUpList(eq(stored), popularityCaptor.capture());
-
-            assertThat(popularityCaptor.getValue())
-                    .containsEntry("room-1", 10.0)
-                    .containsEntry("room-2", 20.0);
+            verify(cache, times(1)).warmUpList(eq(stored));
         }
 
         @Test
@@ -337,7 +324,7 @@ class ChatRoomQueryRepairServiceTest {
             // then
             assertThat(result).isEmpty();
 
-            verify(cache, never()).warmUpList(anyList(), anyMap());
+            verify(cache, never()).warmUpList(anyList());
         }
 
         @Test
@@ -345,12 +332,6 @@ class ChatRoomQueryRepairServiceTest {
         void should_return_stored_list_even_when_warm_up_list_fails() {
             // given
             givenLockExecutorRunsSupplier();
-
-            when(room.getId()).thenReturn("room-1");
-            when(room.popularity()).thenReturn(10.0);
-
-            when(room2.getId()).thenReturn("room-2");
-            when(room2.popularity()).thenReturn(20.0);
 
             List<ChatRoom> stored = List.of(room, room2);
 
@@ -360,7 +341,7 @@ class ChatRoomQueryRepairServiceTest {
                     .thenReturn(stored);
             doThrow(new RuntimeException("redis failed"))
                     .when(cache)
-                    .warmUpList(anyList(), anyMap());
+                    .warmUpList(anyList());
 
             // when
             List<ChatRoom> result = sut.repairPopularRooms(ChatRoomCategory.FREE, 10);
@@ -368,7 +349,7 @@ class ChatRoomQueryRepairServiceTest {
             // then
             assertThat(result).containsExactly(room, room2);
 
-            verify(cache, times(1)).warmUpList(eq(stored), anyMap());
+            verify(cache, times(1)).warmUpList(eq(stored));
         }
     }
 
@@ -381,12 +362,6 @@ class ChatRoomQueryRepairServiceTest {
         void should_load_popular_rooms_after_from_persistence_and_warm_up_when_index_missing() {
             // given
             givenLockExecutorRunsSupplier();
-
-            when(room.getId()).thenReturn("room-1");
-            when(room.popularity()).thenReturn(10.0);
-
-            when(room2.getId()).thenReturn("room-2");
-            when(room2.popularity()).thenReturn(20.0);
 
             List<ChatRoom> stored = List.of(room, room2);
             ListPopularChatRoomsQuery query = popularRoomsAfterQuery();
@@ -404,7 +379,7 @@ class ChatRoomQueryRepairServiceTest {
 
             verify(persistence, times(1))
                     .listPopularRoomsAfter(ChatRoomCategory.FREE, "last-room", 100L, 10);
-            verify(cache, times(1)).warmUpList(eq(stored), anyMap());
+            verify(cache, times(1)).warmUpList(eq(stored));
         }
 
         @Test
@@ -465,7 +440,7 @@ class ChatRoomQueryRepairServiceTest {
             assertThat(result).containsExactly(room);
 
             verify(persistence, never()).listLatestActiveRooms(anyString(), anyInt());
-            verify(cache, never()).warmUpList(anyList(), anyMap());
+            verify(cache, never()).warmUpList(anyList());
         }
 
         @Test
@@ -473,12 +448,6 @@ class ChatRoomQueryRepairServiceTest {
         void should_load_my_rooms_from_persistence_and_warm_up_when_index_missing() {
             // given
             givenLockExecutorRunsSupplier();
-
-            when(room.getId()).thenReturn("room-1");
-            when(room.popularity()).thenReturn(10.0);
-
-            when(room2.getId()).thenReturn("room-2");
-            when(room2.popularity()).thenReturn(20.0);
 
             List<ChatRoom> stored = List.of(room, room2);
 
@@ -494,7 +463,7 @@ class ChatRoomQueryRepairServiceTest {
             assertThat(result).containsExactly(room, room2);
 
             verify(persistence, times(1)).listLatestActiveRooms("member-1", 10);
-            verify(cache, times(1)).warmUpList(eq(stored), anyMap());
+            verify(cache, times(1)).warmUpList(eq(stored));
         }
 
         @Test
@@ -541,12 +510,6 @@ class ChatRoomQueryRepairServiceTest {
             // given
             givenLockExecutorRunsSupplier();
 
-            when(room.getId()).thenReturn("room-1");
-            when(room.popularity()).thenReturn(10.0);
-
-            when(room2.getId()).thenReturn("room-2");
-            when(room2.popularity()).thenReturn(20.0);
-
             List<ChatRoom> stored = List.of(room, room2);
             ListMyChatRoomsQuery query = myRoomsBeforeQuery();
 
@@ -563,7 +526,7 @@ class ChatRoomQueryRepairServiceTest {
 
             verify(persistence, times(1))
                     .listActiveRoomsBefore("member-1", "last-room", 1234L, 10);
-            verify(cache, times(1)).warmUpList(eq(stored), anyMap());
+            verify(cache, times(1)).warmUpList(eq(stored));
         }
 
         @Test
@@ -648,8 +611,4 @@ class ChatRoomQueryRepairServiceTest {
         );
     }
 
-    @SuppressWarnings("unchecked")
-    private ArgumentCaptor<Map<String, Double>> popularityCaptor() {
-        return ArgumentCaptor.forClass(Map.class);
-    }
 }

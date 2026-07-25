@@ -76,8 +76,14 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 
 ### chat
 
-#### 2.3 인기방 인기도 산식 미정
-`ChatRoom.popularity()`가 `msgCnt`를 그대로 반환하며 `// TODO: spec 정의 및 주입받기` 주석이 있다. 이 값이 Redis 인기방 zset(`CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX`) 및 Mongo `idx_category_msgCnt` 정렬 스코어로 쓰인다. 최종 인기도 산식(메시지 수 외 최근성·멤버 수 등 반영 여부)과 주입 방식 확인 필요.
+#### 2.3 인기도 산식 확장 여부 (스케줄러 재계산 모델로 정리 완료)
+인기도 산식은 `ChatRoomPopularityCalculator.calculate(ChatRoom)`(chat-domain 서비스) **한 곳**에만 있다. 실시간 증분(메시지 저장 시 `ZINCRBY`) 방식을 걷어내고 주기 재계산으로 바꿨다:
+- `ChatRoomPopularityScheduler`(3시간마다) → `PopularChatRoomRefreshService.refresh()`가 category별 Mongo 상위 후보(top-100)를 로드해 `rebuildPopularIndex`(DEL 후 `calculate()` 스코어로 zset 통째 재구축).
+- 메시지 저장 경로(`storeChatMessage.lua`/`RedisChatMessageAdapter.save`)는 더 이상 popular zset을 건드리지 않는다(`msgCnt` HINCRBY만 유지). `save`에서 `category` 파라미터 제거.
+- on-read 캐시 미스 복구(`ChatRoomQueryRepairService`)도 `calculate()`로 zset을 채운다(cold start·TTL 만료 대비).
+- Mongo 인기방 후보 선정은 DB `sort(msgCnt)`(`idx_category_msgCnt`) — 계산기 미호출(별도 결합점).
+
+실행 간 zset은 다소 stale(수용). **남은 항목**(제품 결정, 미정): 멤버 수·최근성·유지시간 등 항 추가는 이제 계산기 `calculate`에 가중치만 더하면 되고, 주기 재계산이라 시간 연속 항도 수용한다. 단 산식이 `msgCnt`와 크게 갈라지면 후보 선정(Mongo `sort(msgCnt)`)이 어긋나므로 그때는 Mongo에 popularity 필드를 두는 등 후보 선정도 함께 손본다.
 `[출처: docs/modules/CHAT.md §12, §14]`
 
 ### market

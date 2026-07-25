@@ -219,13 +219,7 @@ class RedisChatRoomAdapterTest {
                     .build();
 
             // when
-            sut.warmUpList(
-                    List.of(room1, room2),
-                    Map.of(
-                            "room-1", 10.0,
-                            "room-2", 20.0
-                    )
-            );
+            sut.warmUpList(List.of(room1, room2));
 
             // then
             assertThat(sut.findById("room-1")).isPresent();
@@ -240,6 +234,60 @@ class RedisChatRoomAdapterTest {
             assertThat(result.hits())
                     .extracting(ChatRoom::getId)
                     .contains("room-1", "room-2");
+        }
+    }
+
+    @Nested
+    @DisplayName("rebuildPopularIndex")
+    class RebuildPopularIndexTest {
+
+        @Test
+        @DisplayName("category zset를 DEL 후 후보만 msgCnt 스코어로 재구축한다(빠진 방은 제거)")
+        void rebuildPopularIndex_replacesZsetWithCandidatesOrderedByScore() {
+            // given: A(5)/B(20)/C(10)를 먼저 적재(zset+info)
+            ChatRoom roomA = popularRoom("room-a", "방A", 5L);
+            ChatRoom roomB = popularRoom("room-b", "방B", 20L);
+            ChatRoom roomC = popularRoom("room-c", "방C", 10L);
+            sut.warmUpList(List.of(roomA, roomB, roomC));
+
+            // when: B, C만으로 재구축
+            sut.rebuildPopularIndex(category, List.of(roomB, roomC));
+
+            // then: A는 zset에서 빠지고, B(20) > C(10) 순서로만 남는다
+            ChatRoomCacheLookupResult result = sut.listPopularRooms(category, 10);
+
+            assertThat(result.hits())
+                    .extracting(ChatRoom::getId)
+                    .containsExactly("room-b", "room-c");
+        }
+
+        @Test
+        @DisplayName("후보가 비면 category zset를 비운다")
+        void rebuildPopularIndex_clearsZsetWhenNoCandidate() {
+            // given
+            ChatRoom room = popularRoom("room-a", "방A", 5L);
+            sut.warmUpList(List.of(room));
+
+            // when
+            sut.rebuildPopularIndex(category, List.of());
+
+            // then
+            ChatRoomCacheLookupResult result = sut.listPopularRooms(category, 10);
+
+            assertThat(result.hits()).isEmpty();
+        }
+
+        private ChatRoom popularRoom(String id, String title, long msgCnt) {
+            return ChatRoom.builder()
+                    .id(id)
+                    .hostId(HOST_ID)
+                    .title(title)
+                    .description("설명")
+                    .category(category)
+                    .memberIds(Set.of(HOST_ID))
+                    .msgCnt(msgCnt)
+                    .createdAt(java.time.LocalDateTime.now())
+                    .build();
         }
     }
 
