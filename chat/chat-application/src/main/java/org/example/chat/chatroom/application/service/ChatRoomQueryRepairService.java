@@ -196,17 +196,10 @@ public class ChatRoomQueryRepairService {
         }
 
         try {
-            cache.warmUpList(rooms, toPopularityScores(rooms));
+            cache.warmUpList(rooms);
         } catch (RuntimeException e) {
             log.warn("[cache] chatroom warmUpList failed. size={}", rooms.size(), e);
         }
-    }
-
-    private Map<String, Double> toPopularityScores(List<ChatRoom> rooms) {
-        Map<String, Double> popularities = new HashMap<>();
-        rooms.forEach(room -> popularities.put(room.getId(), room.popularity()));
-
-        return popularities;
     }
 
     private List<ChatRoom> mergeRoomsByOriginalOrder(

@@ -5,6 +5,7 @@ import org.example.chat.chatroom.application.service.result.ChatRoomCacheLookupR
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
+import org.example.chat.chatroom.domain.service.ChatRoomPopularityCalculator;
 import org.example.common.redis.failover.CacheFailOpen;
 import org.example.chat.infra.redis.RedisCollectionRegistry;
 import org.example.common.redis.codec.RedisHashCodec;
@@ -256,7 +257,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
         List<String> args = new ArrayList<>();
         args.add(id);
         args.add(domain.getTitle());
-        args.add(String.valueOf(domain.popularity()));
+        args.add(String.valueOf(ChatRoomPopularityCalculator.calculate(domain)));
 
         List<String> infoArgs = toRoomInfoArgs(domain);
         args.add(String.valueOf(infoArgs.size() / 2));
@@ -269,7 +270,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
     }
 
     @Override
-    public void warmUpList(List<ChatRoom> rooms, Map<String, Double> popularityScores) {
+    public void warmUpList(List<ChatRoom> rooms) {
         List<String> keys = new ArrayList<>();
         List<String> args = new ArrayList<>();
 
@@ -286,7 +287,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
 
             args.add(id);
             args.add(domain.getTitle());
-            args.add(String.valueOf(popularityScores.getOrDefault(id, 0.0)));
+            args.add(String.valueOf(ChatRoomPopularityCalculator.calculate(domain)));
 
             List<String> infoArgs = toRoomInfoArgs(domain);
             args.add(String.valueOf(infoArgs.size() / 2));
@@ -402,7 +403,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
         args.add(id);
         args.add(oldTitle == null ? "" : oldTitle);
         args.add(chatRoom.getTitle());
-        args.add(chatRoom.popularity()+"");
+        args.add(ChatRoomPopularityCalculator.calculate(chatRoom)+"");
 
         List<String> infoArgs = toRoomInfoArgs(chatRoom);
         args.add(String.valueOf(infoArgs.size() / 2));

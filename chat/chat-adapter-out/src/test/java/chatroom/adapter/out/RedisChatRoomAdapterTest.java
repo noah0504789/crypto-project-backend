@@ -219,13 +219,7 @@ class RedisChatRoomAdapterTest {
                     .build();
 
             // when
-            sut.warmUpList(
-                    List.of(room1, room2),
-                    Map.of(
-                            "room-1", 10.0,
-                            "room-2", 20.0
-                    )
-            );
+            sut.warmUpList(List.of(room1, room2));
 
             // then
             assertThat(sut.findById("room-1")).isPresent();

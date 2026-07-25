@@ -77,7 +77,7 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 ### chat
 
 #### 2.3 인기도 산식 확장 여부 (구조는 정리됨)
-인기도 산식은 `ChatRoomPopularityCalculator`(chat-domain 서비스, `MyChatRoomScoreCalculator`와 같은 패턴)로 분리했고 `ChatRoom.popularity()`가 위임한다(주입 방식 결정 완료). 현재 산식은 `msgCnt` 단일 항이며 Redis 인기방 zset(`CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX`)·Mongo `idx_category_msgCnt` 정렬과 일치한다. **남은 항목**: 최근성·멤버 수 등 항을 추가할지는 제품 결정으로 미정 — 추가 시 Mongo `idx_category_msgCnt` 정렬 기준과 갈라지므로 정렬 소스 일관성을 함께 봐야 한다.
+인기도 산식은 `ChatRoomPopularityCalculator.calculate(ChatRoom)`(chat-domain 서비스, `MyChatRoomScoreCalculator`와 같은 패턴)가 단일 정의처다. Redis zset 스코어를 쓰는 3경로(`RedisChatRoomAdapter`의 warmUp/warmUpList/recover)가 모두 이 계산기를 직접 호출하고, `ChatRoom.popularity()`도 위임한다(application이 만들던 popularity map 제거, `warmUpList` 시그니처에서 map 파라미터 제거). 현재 산식은 `msgCnt` 단일 항. **남은 항목**: 최근성·멤버 수 등 항 추가 여부는 제품 결정으로 미정 — Mongo 인기방 정렬은 DB 레벨 `sort(msgCnt)`(`idx_category_msgCnt`)라 계산기를 호출하지 않으므로, 산식을 바꾸면 Redis zset과 Mongo 정렬이 갈라진다(정렬 소스 일관성 함께 검토).
 `[출처: docs/modules/CHAT.md §12, §14]`
 
 ### market

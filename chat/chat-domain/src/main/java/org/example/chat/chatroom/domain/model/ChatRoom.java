@@ -131,7 +131,7 @@ public class ChatRoom {
     }
 
     public Double popularity() {
-        return ChatRoomPopularityCalculator.calculate(msgCnt);
+        return ChatRoomPopularityCalculator.calculate(this);
     }
 
     public long lastMsgCreatedAtMs() {

@@ -54,7 +54,7 @@
 | [`chat-application/.../chatmessage/application/service/ChatMessageEventService.java`](chat-application/src/main/java/org/example/chat/chatmessage/application/service/ChatMessageEventService.java) | 메시지 비동기 영속(멱등) + 방 카운터/스코어 |
 | [`chat-domain/.../chatroom/domain/model/ChatRoom.java`](chat-domain/src/main/java/org/example/chat/chatroom/domain/model/ChatRoom.java) | 방 도메인(멤버십·쓰기검증·popularity) |
 | [`chat-domain/.../chatroom/domain/service/MyChatRoomScoreCalculator.java`](chat-domain/src/main/java/org/example/chat/chatroom/domain/service/MyChatRoomScoreCalculator.java) | 내 방 정렬 스코어(unread 가중치) |
-| [`chat-domain/.../chatroom/domain/service/ChatRoomPopularityCalculator.java`](chat-domain/src/main/java/org/example/chat/chatroom/domain/service/ChatRoomPopularityCalculator.java) | 인기방 인기도 산식(현재 `msgCnt` 단일 항) |
+| [`chat-domain/.../chatroom/domain/service/ChatRoomPopularityCalculator.java`](chat-domain/src/main/java/org/example/chat/chatroom/domain/service/ChatRoomPopularityCalculator.java) | 인기도 산식 단일 정의처 `calculate(ChatRoom)`(현재 `msgCnt`, Redis zset 스코어원) |
 | [`chat-adapter-out/.../persistence/MongoChatMessageAdapter.java`](chat-adapter-out/src/main/java/org/example/chat/chatmessage/adapter/out/persistence/MongoChatMessageAdapter.java) | 메시지 영속 포트 구현(MongoDB) |
 | [`chat-adapter-out/.../scheduler/ChatMessageScheduler.java`](chat-adapter-out/src/main/java/org/example/chat/chatmessage/adapter/out/scheduler/ChatMessageScheduler.java) | 매일 03:00 캐시에서 7일 초과 메시지 제거 |
 | [`chat-contract/.../chatmessage/ChatMessageBroadcastEvent.java`](chat-contract/src/main/java/org/example/contract/chatmessage/ChatMessageBroadcastEvent.java) | Kafka broadcast payload 계약(→ websocket-gateway) |
@@ -75,4 +75,4 @@
 확정된 결함으로 단정하지 않는다. 코드 변경 전 사용자 확인이 필요하다. 상세·근거는 [`../docs/modules/CHAT.md §16`](../docs/modules/CHAT.md)와 [`../TODO.md`](../TODO.md).
 
 - 방 `create`/`update`/`delete` 및 방/메시지 조회의 인가 부재(`ChatRoomController` `// TODO: 인가 처리하기`, `update`/`delete`는 `X-User-Id` 미수신, 멤버십 검사 없음) — 메시지 `save`(gRPC)는 `validateWritable`로 검증하는 것과 대비
-- 인기도 산식은 `ChatRoomPopularityCalculator`로 분리됨(현재 `msgCnt`). 최근성·멤버 수 등 항 추가 여부만 미정(Mongo `idx_category_msgCnt` 정렬 일관성 고려)
+- 인기도 산식은 `ChatRoomPopularityCalculator.calculate(ChatRoom)` 단일 정의처(Redis zset 3경로가 직접 호출). 현재 `msgCnt`. 최근성·멤버 수 등 항 추가 여부만 미정 — Mongo 정렬은 DB 필드(`idx_category_msgCnt`)라 산식 변경 시 Redis↔Mongo 정렬 일관성 함께 고려
