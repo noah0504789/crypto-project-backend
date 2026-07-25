@@ -76,8 +76,8 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 
 ### chat
 
-#### 2.3 인기방 인기도 산식 미정
-`ChatRoom.popularity()`가 `msgCnt`를 그대로 반환하며 `// TODO: spec 정의 및 주입받기` 주석이 있다. 이 값이 Redis 인기방 zset(`CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX`) 및 Mongo `idx_category_msgCnt` 정렬 스코어로 쓰인다. 최종 인기도 산식(메시지 수 외 최근성·멤버 수 등 반영 여부)과 주입 방식 확인 필요.
+#### 2.3 인기도 산식 확장 여부 (구조는 정리됨)
+인기도 산식은 `ChatRoomPopularityCalculator`(chat-domain 서비스, `MyChatRoomScoreCalculator`와 같은 패턴)로 분리했고 `ChatRoom.popularity()`가 위임한다(주입 방식 결정 완료). 현재 산식은 `msgCnt` 단일 항이며 Redis 인기방 zset(`CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX`)·Mongo `idx_category_msgCnt` 정렬과 일치한다. **남은 항목**: 최근성·멤버 수 등 항을 추가할지는 제품 결정으로 미정 — 추가 시 Mongo `idx_category_msgCnt` 정렬 기준과 갈라지므로 정렬 소스 일관성을 함께 봐야 한다.
 `[출처: docs/modules/CHAT.md §12, §14]`
 
 ### market
