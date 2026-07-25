@@ -10,6 +10,7 @@ import config.TestPropertiesConfig;
 import config.TestRedisConfig;
 import org.example.common.test.testcontainer.RedisTestContainerInitializer;
 import org.example.oauth2.authorizationserver.adapter.in.config.AuthorizationServerConfig;
+import org.example.oauth2.authorizationserver.adapter.in.config.PasswordEncoderConfig;
 import org.example.common.config.MessageConverterConfig;
 import org.example.oauth2.authorizationserver.adapter.in.config.SecurityFilterChainConfig;
 import org.example.oauth2.authorizationserver.adapter.in.config.TokenConfig;
@@ -55,6 +56,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
         // 실제 운영 설정
         AuthorizationServerConfig.class,
+        PasswordEncoderConfig.class,
         SecurityFilterChainConfig.class,
         TokenConfig.class,
         MessageConverterConfig.class,
