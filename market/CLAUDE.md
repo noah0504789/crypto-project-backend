@@ -24,7 +24,7 @@
 - **스키마·인덱스는 계약**: `market-bootstrap/.../sql/schema.sql`의 unique(`uk_markets_market_code`, `uk_price_alert_setting_user_public_id_market_id`)·FK·시드(5종 마켓)를 영향 분석 없이 바꾸지 않는다. `user_public_id`는 `BINARY(16)`(UUID), `target_change_rate`는 `DECIMAL(5,4)`.
 - **REST 경로·포트·DB 설정은 원격 Config**: `../git-config-repo/dynamic/market-service.yml`(포트 REST 8200/gRPC 18200, `mysql.market.*`, stream 바인딩). 경로를 바꾸면 게이트웨이 route/security와 함께 검토한다.
 - **X-User-Id 신뢰**: `PriceAlertSettingController`는 게이트웨이가 넣는 `X-User-Id`를 `UUID`(publicId)로 그대로 신뢰한다. 헤더 소비/신뢰 방식 변경은 게이트웨이와 함께 본다(→ `../.claude/rules/security.md`, `../docs/modules/API_GATEWAY.md`).
-- **Read Replica 현황 인지**: `MarketQueryService.getMarkets()`에 `@ReadReplica`가 있으나 `DatasourceConfig`는 write 데이터소스만 구성해 실제 read 라우팅은 미발생(§확인 필요). Read Replica를 손댈 때는 라우팅 인프라(`common-jpa`)와 함께 본다.
+- **Read Replica 배선 유지**: `DatasourceConfig`가 write(mysql-primary)/read(mysql-replica) 2 Hikari + `ReplicationRoutingDataSource` + `LazyConnectionDataSourceProxy`(`@Primary`)로 EMF를 구성한다. `MarketQueryService.getMarkets()`의 `@ReadReplica`가 이 배선으로 실제 read 노드로 라우팅된다(lazy proxy가 statement 시점에 결정). 라우팅 로직 자체는 `common-jpa` 소관 — 데이터소스/트랜잭션 경계 변경 시 함께 본다(→ `../.claude/rules/architecture.md`).
 
 ## 주요 파일 안내
 
@@ -57,4 +57,3 @@
 확정된 결함으로 단정하지 않는다. 코드 변경 전 사용자 확인이 필요하다. 상세·근거는 [`../docs/modules/MARKET.md §12`](../docs/modules/MARKET.md)와 [`../TODO.md`](../TODO.md).
 
 - `MarketCommandUseCase.changeMarkets`가 인바운드 어댑터에 미연결(카탈로그 쓰기 경로 미노출, 현재 시드로만 채움)
-- `MarketQueryService.getMarkets()`의 `@ReadReplica`가 라우팅 데이터소스 미구성으로 실제 read 라우팅 미발생
