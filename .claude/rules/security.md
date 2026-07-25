@@ -22,8 +22,10 @@ Refresh token 쿠키 속성을 계약으로 취급한다: `httpOnly`, `secure`, 
 - 설정은 Spring Cloud Config(git + Vault AppRole, KV v2 + Transit)에서 로드. 실제 secret은 `git-config-repo`에 두지 않고 `${...}` 플레이스홀더만 사용한다.
 - 단순 password hashing에는 `spring-security-crypto` 같은 좁은 의존성을 우선 검토하고, resource server 설정이 불필요하게 켜지지 않도록 의존성을 조심한다.
 
+## 참고 (확정 사실)
+- Access TTL 2h(`7200000`), Refresh TTL 7일(`604800000`) — `git-config-repo/dynamic/jwt.yml`.
+
 ## 확인 필요 (사실 그대로 기록, 설계/결함 판정 금지 · 이번 작업에서 코드 미수정)
-- Access/Refresh TTL이 7일(`git-config-repo/dynamic/jwt.yml`, 604800000ms). 주석상 access 의도는 2h.
 - 게이트웨이에서 `aud`/`jti` 검증 미확인.
 - 로그인 성공 redirect에서 access token을 `?accessToken=` 쿼리로 전달.
 - client secret을 `{noop}`(평문)로 저장.
