@@ -67,6 +67,11 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
     @Override
     public void update(ChatRoomUpdateCommand command) {
         String id = command.roomId();
+
+        ChatRoom domain = persistence.findById(id)
+                .orElseThrow(() -> new ChatRoomNotFoundException(id));
+        domain.validateHost(command.myUserId());
+
         ChatRoomUpdatedPayload updatedPayload = command.toPayload();
 
         publishChatRoomEvents(
@@ -77,8 +82,6 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
                 "chatroom update"
         );
 
-        ChatRoom domain = persistence.findById(id)
-                .orElseThrow(() -> new ChatRoomNotFoundException(id));
         String oldTitle = domain.getTitle();
 
         cacheUpdateSafely(id, updatedPayload, oldTitle);
@@ -154,9 +157,10 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
     }
 
     @Override
-    public void delete(String id) {
+    public void delete(String id, String myUserId) {
         ChatRoom domain = persistence.findById(id)
                 .orElseThrow(() -> new ChatRoomNotFoundException(id));
+        domain.validateHost(myUserId);
 
         delete(domain);
     }

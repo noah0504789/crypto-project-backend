@@ -30,7 +30,9 @@ api-path:
   chat:
     pattern: /chat/**
     rooms-me: /chat/rooms/me
-    room-me-pattern: /chat/room/me/*
+    room-create: /chat/room
+    room-pattern: /chat/room/*
+    room-me-pattern: /chat/room/*/me
     room-members-pattern: /chat/room/*/members
     room-activity-pattern: /chat/room/*/activity
     room-messages-pattern: /chat/room/*/messages

@@ -17,7 +17,7 @@ public interface ChatRoomCommandUseCase {
 
     void leave(String roomId, String memberId);
 
-    void delete(String roomId);
+    void delete(String roomId, String myUserId);
 
     void activity(ChatRoomActivityCommand command);
 }

@@ -6,6 +6,9 @@ import org.example.chat.chatmessage.application.port.in.ChatMessageQueryUseCase;
 import org.example.chat.chatmessage.application.port.out.ChatMessageCachePort;
 import org.example.chat.chatmessage.application.service.query.ListChatMessagesQuery;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
+import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException;
+import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
+import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,9 +20,14 @@ public class ChatMessageQueryService implements ChatMessageQueryUseCase {
 
     private final ChatMessageCachePort cache;
     private final ChatMessageQueryRepairService queryRepairService;
+    private final ChatRoomPersistencePort chatRoomPersistencePort;
 
     @Override
     public List<ChatMessage> listMessages(ListChatMessagesQuery query) {
+        ChatRoom chatRoom = chatRoomPersistencePort.findById(query.roomId())
+                .orElseThrow(() -> new ChatRoomNotFoundException(query.roomId()));
+        chatRoom.validateMember(query.myUserId());
+
         List<ChatMessage> cached = query.hasNoCursor()
                 ? cache.listLatestMessages(query.roomId(), query.limit())
                 : cache.listMessagesBefore(query.roomId(), query.lastMsgId(), query.cursorCreatedAtMs(), query.limit());

@@ -245,6 +245,7 @@ class ChatRoomCommandServiceTest {
             Map<String, Object> updateMap = Map.of("title", newTitle);
 
             given(command.roomId()).willReturn(id);
+            given(command.myUserId()).willReturn(hostId);
             given(command.toPayload()).willReturn(payload);
             given(payload.toUpdateMap()).willReturn(updateMap);
             given(persistence.findById(id)).willReturn(Optional.of(domain));
@@ -259,38 +260,33 @@ class ChatRoomCommandServiceTest {
                     cache
             );
 
-            inOrder.verify(outboxEventListPublishPort)
-                    .publish(any(ChatRoomEventList.class));
             inOrder.verify(persistence)
                     .findById(id);
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
             inOrder.verify(cache)
                     .updateRoom(id, updateMap, oldTitle);
         }
 
         @Test
-        @DisplayName("채팅방 수정 이벤트 발행 후 채팅방이 없으면 ChatRoomNotFoundException이 발생하고 캐시는 수정하지 않는다")
-        void update_shouldThrow_whenChatRoomNotFoundAfterEventPublished() {
+        @DisplayName("채팅방이 없으면 이벤트 발행 전에 ChatRoomNotFoundException이 발생하고 캐시는 수정하지 않는다")
+        void update_shouldThrow_whenChatRoomNotFound() {
             // given
             ChatRoomUpdateCommand command = mock(ChatRoomUpdateCommand.class);
-            ChatRoomUpdatedPayload payload = mock(ChatRoomUpdatedPayload.class);
 
             given(command.roomId()).willReturn(id);
-            given(command.toPayload()).willReturn(payload);
             given(persistence.findById(id)).willReturn(Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> sut.update(command))
                     .isInstanceOf(ChatRoomNotFoundException.class);
 
-            InOrder inOrder = inOrder(
-                    outboxEventListPublishPort,
-                    persistence
-            );
-
-            inOrder.verify(outboxEventListPublishPort)
-                    .publish(any(ChatRoomEventList.class));
-            inOrder.verify(persistence)
+            then(persistence)
+                    .should()
                     .findById(id);
+
+            then(outboxEventListPublishPort)
+                    .shouldHaveNoInteractions();
 
             then(cache)
                     .shouldHaveNoInteractions();
@@ -307,6 +303,7 @@ class ChatRoomCommandServiceTest {
             Map<String, Object> updateMap = Map.of("title", newTitle);
 
             given(command.roomId()).willReturn(id);
+            given(command.myUserId()).willReturn(hostId);
             given(command.toPayload()).willReturn(payload);
             given(payload.toUpdateMap()).willReturn(updateMap);
             given(persistence.findById(id)).willReturn(Optional.of(domain));
@@ -325,10 +322,10 @@ class ChatRoomCommandServiceTest {
                     cache
             );
 
-            inOrder.verify(outboxEventListPublishPort)
-                    .publish(any(ChatRoomEventList.class));
             inOrder.verify(persistence)
                     .findById(id);
+            inOrder.verify(outboxEventListPublishPort)
+                    .publish(any(ChatRoomEventList.class));
             inOrder.verify(cache)
                     .updateRoom(id, updateMap, oldTitle);
             inOrder.verify(outboxEventListPublishPort)
@@ -739,7 +736,7 @@ class ChatRoomCommandServiceTest {
             given(persistence.findById(id)).willReturn(Optional.of(domain));
 
             // when
-            sut.delete(id);
+            sut.delete(id, hostId);
 
             // then
             InOrder inOrder = inOrder(
@@ -763,7 +760,7 @@ class ChatRoomCommandServiceTest {
             given(persistence.findById(id)).willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> sut.delete(id))
+            assertThatThrownBy(() -> sut.delete(id, hostId))
                     .isInstanceOf(ChatRoomNotFoundException.class);
 
             then(outboxEventListPublishPort)
@@ -795,7 +792,7 @@ class ChatRoomCommandServiceTest {
                     .deleteRoom(id, category, oldTitle, domain.getMemberIds());
 
             // when
-            sut.delete(id);
+            sut.delete(id, hostId);
 
             // then
             InOrder inOrder = inOrder(
