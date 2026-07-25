@@ -22,7 +22,7 @@ spring:
               fixed-delay:
                 nanos: 500_000_000 # 0.5s
         upbitTickerAlertEventConsumer-in-0:
-          destination: upbit-ticker-alert-event
+          destination: upbit-ticker-event
           content-type: application/json
           group: upbit-ticker-alert
         price-alert-detected-event-out:

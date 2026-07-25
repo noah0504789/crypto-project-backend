@@ -47,7 +47,7 @@ Upbit 실시간 시세를 수집해 **단기 이동평균 대비 변동률**을 
 
 ### 4.3 처리 (Kafka Streams → 임계 탐지 → `price-alert-detected-event`)
 
-- `upbitTickerAlertEventConsumer`(`Consumer<KStream<String, UpbitTickerEvent>>`)가 KStream을 `UpbitTickerProcessor`로 `process`한다. 입력 바인딩 `upbitTickerAlertEventConsumer-in-0` → **`upbit-ticker-alert-event`**, group `upbit-ticker-alert`.
+- `upbitTickerAlertEventConsumer`(`Consumer<KStream<String, UpbitTickerEvent>>`)가 KStream을 `UpbitTickerProcessor`로 `process`한다. 입력 바인딩 `upbitTickerAlertEventConsumer-in-0` → **`upbit-ticker-event`**(Supplier 출력과 동일 토픽), group `upbit-ticker-alert`.
 - `UpbitTickerProcessor`(state store `upbit-ticker-store`, persistent WindowStore, retention/window `3m`):
   1. 윈도우 `[timestamp - 3m, timestamp]`의 저장 시세로 **이동평균** 계산(없으면 현재가로 fallback).
   2. `changeRate = (current - avg) / avg`.
@@ -61,8 +61,7 @@ Upbit 실시간 시세를 수집해 **단기 이동평균 대비 변동률**을 
 ```
 Upbit WS ─(ticker)→ Listener(구독=market gRPC, 3s 스로틀, 큐 100)
    → Supplier(0.5s poll) → Kafka: upbit-ticker-event
-   ┄┄ [확인 필요: upbit-ticker-event → upbit-ticker-alert-event 연결 미확인, §6] ┄┄
-   → KStream(upbit-ticker-alert-event) → UpbitTickerProcessor
+   → KStream(upbit-ticker-event) → UpbitTickerProcessor
         WindowStore(3m) 이동평균·변동률 → 임계 매칭(3/5/7%)
    → Kafka: price-alert-detected-event → [notification]
 ```
@@ -71,13 +70,12 @@ Upbit WS ─(ticker)→ Listener(구독=market gRPC, 3s 스로틀, 큐 100)
 
 - **생산(외부 계약)**: `market-detection-contract`의 `PriceAlertDetectedEvent`(record, `implements KafkaEvent, ProducibleEvent`). 필드 `{ code, price, timestamp, avgInterval, avgPrice, changeRate, threshold }`, 토픽 `PRICE_ALERT_DETECTED`(binding `price-alert-detected-event-out` → `price-alert-detected-event`), 파티션 키 = `code`. `toPayload()`는 `PriceAlertDetectedPayloadKeys`(TypedKey)로 키-값 페이로드를 만든다(notification이 web push payload로 전달). 소비자 `notification`과 함께 변경한다(→ `../../.claude/rules/external-contracts.md`).
 - **소비(외부)**: market `market.v1 GetEnabledMarkets`(구독 대상). 임계값 enum `common-core/PriceAlertChangeRateThreshold`(`PERCENT_3/5/7`)는 market-detection(탐지)·notification(수신자 조회 rate 변환)·market(정확 일치 조회)이 **공유하는 계약**이다.
-- **내부 토픽**: `upbit-ticker-event`(수집 원본), `upbit-ticker-alert-event`(Streams 입력). auto-create(`auto-create-topics: true`).
+- **내부 토픽**: `upbit-ticker-event`(수집 원본 — Supplier 출력이자 Kafka Streams 입력). auto-create(`auto-create-topics: true`).
 
 ## 6. 확인 필요 항목
 
 미해결 확인/결정 항목은 [`../../TODO.md`](../../TODO.md)에서 통합 관리한다. market-detection 관련 항목:
 
-- **TODO 3.4** — **Supplier 출력 토픽(`upbit-ticker-event`)과 Kafka Streams 입력 토픽(`upbit-ticker-alert-event`)이 서로 다르고, 둘을 잇는 바인딩/설정이 코드·`git-config-repo` 어디에서도 확인되지 않는다.** `KafkaEvent.toMessage()`도 `KafkaHeaders.TOPIC`을 세팅하지 않아 목적지는 바인딩(`upbit-ticker-event`)으로 고정된다. 현 구성만으로는 수집 이벤트가 Streams 입력까지 도달하는 경로가 불연속이다(외부/미배포 브리지, 인프라 토픽 설정, 또는 잔재 가능성). 기존 `docs/SERVICE_FLOWS.md §11–12`도 같은 불연속을 보인다 → 실제 토폴로지 확인 필요.
 - **TODO 4.1**(기존) — `cd.yml` 배포 대상 드롭다운에 `market-detection` 없음(Dockerfile/이미지 존재).
 
 ## 7. 테스트 현황

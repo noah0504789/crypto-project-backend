@@ -186,7 +186,7 @@ Upbit WebSocket (OkHttp)
 ## 12. 시장 데이터 처리 (Kafka Streams) — 구현됨
 
 ```
-Kafka(upbit-ticker-alert-event)
+Kafka(upbit-ticker-event)
  → KafkaMarketDetectionBinder.upbitTickerAlertEventConsumer (KStream)
  → UpbitTickerProcessor.process:
      WindowStore(upbit-ticker-store, window/retention 3m)로 이동평균·변동률 계산
