@@ -5,6 +5,7 @@ import org.example.chat.chatmessage.application.port.out.ChatMessageCachePort;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.chatroom.application.service.result.ChatRoomMembershipScore;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
+import org.example.chat.chatroom.domain.service.ChatRoomPopularityCalculator;
 import org.example.common.redis.failover.CacheFailOpen;
 import org.example.common.clock.Clock;
 import org.example.chat.infra.redis.RedisCollectionRegistry;
@@ -103,7 +104,7 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
         long createdMs = message.toEpochMillis();
         String content = message.getContent();
         String writerId = message.getWriterId();
-        double scoreIncrement = 1.0;
+        double scoreIncrement = ChatRoomPopularityCalculator.messageDelta();
 
         List<String> keys = new ArrayList<>();
         String messageKey = CHAT_MESSAGE_INFO.keyFor(roomId);

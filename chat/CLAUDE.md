@@ -75,4 +75,4 @@
 확정된 결함으로 단정하지 않는다. 코드 변경 전 사용자 확인이 필요하다. 상세·근거는 [`../docs/modules/CHAT.md §16`](../docs/modules/CHAT.md)와 [`../TODO.md`](../TODO.md).
 
 - 방 `create`/`update`/`delete` 및 방/메시지 조회의 인가 부재(`ChatRoomController` `// TODO: 인가 처리하기`, `update`/`delete`는 `X-User-Id` 미수신, 멤버십 검사 없음) — 메시지 `save`(gRPC)는 `validateWritable`로 검증하는 것과 대비
-- 인기도 산식은 `ChatRoomPopularityCalculator.calculate(ChatRoom)` 단일 정의처(Redis zset 3경로가 직접 호출). 현재 `msgCnt`. 최근성·멤버 수 등 항 추가 여부만 미정 — Mongo 정렬은 DB 필드(`idx_category_msgCnt`)라 산식 변경 시 Redis↔Mongo 정렬 일관성 함께 고려
+- 인기도 산식은 `ChatRoomPopularityCalculator`가 소유(현재 `msgCnt`). **3곳에 걸린 계약**: `calculate(ChatRoom)`(절대, `ZADD`) · `messageDelta()`(증분, `ZINCRBY` — `RedisChatMessageAdapter` scoreIncrement) · Mongo `sort(msgCnt)`. 산식 변경 시 셋 함께 본다. 멤버 수 항 추가 = 가중치+`memberDelta()`+입장/퇴장 ZINCRBY 배선(§확인 필요/TODO 2.3)

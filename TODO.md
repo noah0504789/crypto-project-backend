@@ -76,8 +76,14 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 
 ### chat
 
-#### 2.3 인기도 산식 확장 여부 (구조는 정리됨)
-인기도 산식은 `ChatRoomPopularityCalculator.calculate(ChatRoom)`(chat-domain 서비스, `MyChatRoomScoreCalculator`와 같은 패턴)가 단일 정의처다. Redis zset 스코어를 쓰는 3경로(`RedisChatRoomAdapter`의 warmUp/warmUpList/recover)가 모두 이 계산기를 직접 호출하고, `ChatRoom.popularity()`도 위임한다(application이 만들던 popularity map 제거, `warmUpList` 시그니처에서 map 파라미터 제거). 현재 산식은 `msgCnt` 단일 항. **남은 항목**: 최근성·멤버 수 등 항 추가 여부는 제품 결정으로 미정 — Mongo 인기방 정렬은 DB 레벨 `sort(msgCnt)`(`idx_category_msgCnt`)라 계산기를 호출하지 않으므로, 산식을 바꾸면 Redis zset과 Mongo 정렬이 갈라진다(정렬 소스 일관성 함께 검토).
+#### 2.3 인기도 산식 확장 여부 (구조 정리 완료, 확장 지점 확보)
+인기도 산식은 `ChatRoomPopularityCalculator`(chat-domain 서비스)가 소유한다. 현재 `msgCnt` 단일 항(가중치 1.0).
+- **절대값** `calculate(ChatRoom)`: Redis warm-up/복구 시 `ZADD`. `RedisChatRoomAdapter` 3경로(warmUp/warmUpList/recover)가 직접 호출, `ChatRoom.popularity()`도 위임.
+- **증분** `messageDelta()`: 메시지 저장 시 `ZINCRBY`(`RedisChatMessageAdapter` → `storeChatMessage.lua`). 하드코딩 `1.0`을 계산기 소스로 바꿈 → 절대·증분이 같은 가중치를 읽는다.
+- **Mongo 정렬**: DB 레벨 `sort(msgCnt)`(`idx_category_msgCnt`) — 계산기를 호출하지 않는 별도 결합점.
+
+**산식은 이 3곳에 걸린 계약이다.** 바꿀 때 셋을 함께 본다.
+**남은 항목**(제품 결정, 미정): 멤버 수 항 추가 시 — (1) 계산기에 memberCnt 가중치+`memberDelta()` 추가, (2) 입장/퇴장 어댑터에서 popular zset `ZINCRBY memberDelta()` 배선, (3) Mongo 정렬을 popularity 필드 기반으로 바꿀지 검토. 유지시간 등 시간 연속 항은 증분 불가 → 주기적 재계산 필요(현 규모엔 과함).
 `[출처: docs/modules/CHAT.md §12, §14]`
 
 ### market
