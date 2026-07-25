@@ -5,7 +5,6 @@ import config.TestRedisConfig;
 import org.example.common.test.testcontainer.RedisTestContainerInitializer;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.chatroom.application.service.result.ChatRoomMembershipScore;
-import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.common.clock.Clock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -60,8 +59,6 @@ class RedisChatMessageAdapterTest {
 
     private final long UNREAD_BOOST = 100_000_000_000_000L;
 
-    private final ChatRoomCategory category = ChatRoomCategory.values()[0];
-
     private final LocalDateTime time1 = LocalDateTime.of(2026, 1, 1, 10, 0);
     private final LocalDateTime time2 = LocalDateTime.of(2026, 1, 1, 11, 0);
     private final LocalDateTime time3 = LocalDateTime.of(2026, 1, 1, 12, 0);
@@ -84,14 +81,14 @@ class RedisChatMessageAdapterTest {
     class SaveTest {
 
         @Test
-        @DisplayName("메시지를 저장하면 message zset, access zset, room msgCnt, popular score, recent score를 갱신한다")
+        @DisplayName("메시지를 저장하면 message zset, access zset, room msgCnt, recent score를 갱신한다")
         void save() {
             // given
             Set<String> memberIds = Set.of(WRITER_ID, MEMBER_ID, OTHER_MEMBER_ID);
             ChatMessage message = message(MESSAGE_ID_1, CONTENT_1, WRITER_ID, time1);
 
             // when
-            sut.save(message, category, memberIds);
+            sut.save(message, memberIds);
 
             // then: save 직후 access score는 message createdAt 기준
             String messageAccessKey = CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX.keyFor(ROOM_ID);
@@ -123,12 +120,6 @@ class RedisChatMessageAdapterTest {
 
             assertThat(msgCnt).isEqualTo("1");
 
-            String popularKey = CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX.keyFor(category.name());
-            Double popularScore = masterHashRedisTemplate.opsForZSet()
-                    .score(popularKey, ROOM_ID);
-
-            assertThat(popularScore).isEqualTo(1.0);
-
             String writerRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(WRITER_ID);
             Double writerRecentScore = masterHashRedisTemplate.opsForZSet()
                     .score(writerRecentKey, ROOM_ID);
@@ -159,8 +150,8 @@ class RedisChatMessageAdapterTest {
             ChatMessage message = message(MESSAGE_ID_1, CONTENT_1, WRITER_ID, time1);
 
             // when
-            sut.save(message, category, memberIds);
-            sut.save(message, category, memberIds);
+            sut.save(message, memberIds);
+            sut.save(message, memberIds);
 
             // then
             List<ChatMessage> latest = sut.listLatestMessages(ROOM_ID, 10);
@@ -184,7 +175,7 @@ class RedisChatMessageAdapterTest {
             ChatMessage message = message(MESSAGE_ID_1, CONTENT_1, WRITER_ID, time1);
 
             // when
-            sut.save(message, category, memberIds);
+            sut.save(message, memberIds);
 
             // then
             String writerRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(WRITER_ID);
@@ -208,24 +199,13 @@ class RedisChatMessageAdapterTest {
         }
 
         @Test
-        @DisplayName("category가 null이면 NullPointerException을 던진다")
-        void saveWithNullCategory() {
-            // given
-            ChatMessage message = message(MESSAGE_ID_1, CONTENT_1, WRITER_ID, time1);
-
-            // when & then
-            assertThatThrownBy(() -> sut.save(message, null, Set.of(WRITER_ID, MEMBER_ID)))
-                    .isInstanceOf(NullPointerException.class);
-        }
-
-        @Test
         @DisplayName("memberIds가 null이면 NullPointerException을 던진다")
         void saveWithNullMemberIds() {
             // given
             ChatMessage message = message(MESSAGE_ID_1, CONTENT_1, WRITER_ID, time1);
 
             // when & then
-            assertThatThrownBy(() -> sut.save(message, category, null))
+            assertThatThrownBy(() -> sut.save(message, null))
                     .isInstanceOf(NullPointerException.class);
         }
 
@@ -233,7 +213,7 @@ class RedisChatMessageAdapterTest {
         @DisplayName("message가 null이면 NullPointerException을 던진다")
         void saveWithNullMessage() {
             // when & then
-            assertThatThrownBy(() -> sut.save(null, category, Set.of(WRITER_ID, MEMBER_ID)))
+            assertThatThrownBy(() -> sut.save(null, Set.of(WRITER_ID, MEMBER_ID)))
                     .isInstanceOf(NullPointerException.class);
         }
     }

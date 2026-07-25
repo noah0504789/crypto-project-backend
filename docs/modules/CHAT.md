@@ -185,11 +185,12 @@ proto: `protobuf/src/main/proto/chatmessage/v1/chatmessage-service.proto`. 서�
 - 필드: `id`(ObjectId hex), `hostId`, `title`, `description`, `category`, `memberIds:Set<String>`, `msgCnt`, `lastMsgId`/`lastMsgContent`/`lastMsgCreatedAt`(최신 메시지 조인 결과), `createdAt`.
 - 팩토리: `create(...)`(호스트를 멤버로 시딩, `msgCnt=0`), `rehydrate(...)`(영속 복원), `rehydrateWithLatest(...)`(최신 메시지 포함 복원).
 - 행위: `validateWritable(writerId)`(멤버 아니면 `ChatRoomMembershipNotFoundException`), `addMember`/`removeMember`(멱등 boolean), `isLastMember`(마지막 멤버 → 퇴장 시 삭제 전환), `hasUnread(lastReadSeq)`(`lastReadSeq < msgCnt`), `popularity()`.
-- **인기도 산식은 `ChatRoomPopularityCalculator`(chatroom domain service)가 소유한다** — 현재 `msgCnt` 단일 항(가중치 1.0). 산식은 세 결합점에 걸린 계약이다:
-  - `calculate(ChatRoom)` — 절대값(`ZADD`). `RedisChatRoomAdapter` warmUp/warmUpList/recover가 직접 호출, `ChatRoom.popularity()`(REST 응답)도 위임.
-  - `messageDelta()` — 메시지 1건 증분(`ZINCRBY`). `RedisChatMessageAdapter`가 `storeChatMessage.lua`에 넘기는 `scoreIncrement`가 이 값이다.
-  - Mongo 인기방 정렬 — DB 레벨 `sort(msgCnt)`(`idx_category_msgCnt`), 계산기 미호출.
-  산식을 바꾸면 세 곳을 함께 본다(멤버 수 등 항 추가 여부는 §16).
+- **인기도 산식은 `ChatRoomPopularityCalculator.calculate(ChatRoom)`(chatroom domain service) 한 곳에만 있다** — 현재 `msgCnt` 단일 항(가중치 1.0). 인기방 zset은 실시간 증분이 아니라 **주기 재계산**으로 유지한다:
+  - `ChatRoomPopularityScheduler`(3시간마다, `@Scheduled`) → `PopularChatRoomRefreshService.refresh()`가 category별 Mongo 상위 후보(top-100)를 로드해 `ChatRoomCachePort.rebuildPopularIndex`(`rebuildPopularRoomIndex.lua`: DEL 후 `calculate()` 스코어로 zset 재구축).
+  - 메시지 저장(`storeChatMessage.lua`)은 popular zset을 건드리지 않는다(`msgCnt` HINCRBY만). `ChatMessageCachePort.save`는 `category` 파라미터를 받지 않는다.
+  - on-read 캐시 미스 복구(`ChatRoomQueryRepairService` → `warmUpList`)도 `calculate()`로 zset을 채운다(cold start·TTL 만료 대비).
+  - Mongo 인기방 후보 선정은 DB `sort(msgCnt)`(`idx_category_msgCnt`)로, 계산기 미호출.
+  실행 간 zset은 다소 stale(수용). 항 추가(멤버 수·최근성 등)는 `calculate`에 가중치만 더하면 되며 §16 참고.
 
 ### `ChatMessage` (`chat-domain/.../chatmessage/domain/model/ChatMessage.java`)
 - 필드: `id`(ObjectId hex), `roomId`, `writerId`, `content`, `createdAt`.

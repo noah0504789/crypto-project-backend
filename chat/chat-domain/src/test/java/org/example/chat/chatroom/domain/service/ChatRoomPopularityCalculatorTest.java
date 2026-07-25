@@ -57,20 +57,4 @@ class ChatRoomPopularityCalculatorTest {
         assertThat(score).isZero();
     }
 
-    @Test
-    @DisplayName("메시지 1건의 증분(messageDelta)은 msgCnt 1 증가분(calculate 차이)과 같다")
-    void messageDelta_shouldEqualCalculateDifferenceOfOneMessage() {
-        // given
-        ChatRoom before = ChatRoom.builder().msgCnt(5L).build();
-        ChatRoom after = ChatRoom.builder().msgCnt(6L).build();
-
-        // when
-        double delta = ChatRoomPopularityCalculator.messageDelta();
-
-        // then
-        assertThat(delta).isEqualTo(1.0);
-        assertThat(delta)
-                .isEqualTo(ChatRoomPopularityCalculator.calculate(after)
-                        - ChatRoomPopularityCalculator.calculate(before));
-    }
 }

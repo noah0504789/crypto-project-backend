@@ -4,8 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.chat.chatmessage.application.port.out.ChatMessageCachePort;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.chatroom.application.service.result.ChatRoomMembershipScore;
-import org.example.chat.chatroom.domain.model.ChatRoomCategory;
-import org.example.chat.chatroom.domain.service.ChatRoomPopularityCalculator;
 import org.example.common.redis.failover.CacheFailOpen;
 import org.example.common.clock.Clock;
 import org.example.chat.infra.redis.RedisCollectionRegistry;
@@ -97,23 +95,21 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
     }
 
     @Override
-    public void save(ChatMessage message, ChatRoomCategory category, Set<String> memberIds_) {
+    public void save(ChatMessage message, Set<String> memberIds_) {
         String id = message.getId();
         String roomId = message.getRoomId();
         Instant createdAt = message.createdAtInstant();
         long createdMs = message.toEpochMillis();
         String content = message.getContent();
         String writerId = message.getWriterId();
-        double scoreIncrement = ChatRoomPopularityCalculator.messageDelta();
 
         List<String> keys = new ArrayList<>();
         String messageKey = CHAT_MESSAGE_INFO.keyFor(roomId);
         String messageAccessKey = CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX.keyFor(roomId);
         String roomInfoKey = CHAT_ROOM_INFO.keyFor(roomId);
-        String roomPopularKey = CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX.keyFor(category.name());
         String writerRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(writerId);
 
-        Collections.addAll(keys, messageKey, messageAccessKey, roomInfoKey, roomPopularKey, writerRecentKey);
+        Collections.addAll(keys, messageKey, messageAccessKey, roomInfoKey, writerRecentKey);
 
         Set<String> memberIds = new HashSet<>(memberIds_);
         memberIds.remove(writerId);
@@ -126,7 +122,6 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
         args.add(roomId);
         args.add(createdAt.toString());
         args.add(String.valueOf(createdMs));
-        args.add(String.valueOf(scoreIncrement));
         args.add(content);
         args.add(writerId);
         args.add(redisChatMessageCodec.write(message));

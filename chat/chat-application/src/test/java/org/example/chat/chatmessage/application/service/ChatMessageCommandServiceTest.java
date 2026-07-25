@@ -113,7 +113,6 @@ class ChatMessageCommandServiceTest {
                                             && message.getWriterId().equals(writerId)
                                             && message.getContent().equals(content)
                             ),
-                            eq(category),
                             eq(chatRoom.getMemberIds())
                     );
 
@@ -256,7 +255,7 @@ class ChatMessageCommandServiceTest {
 
             doThrow(exception)
                     .when(chatMessageCachePort)
-                    .save(any(ChatMessage.class), eq(category), eq(chatRoom.getMemberIds()));
+                    .save(any(ChatMessage.class), eq(chatRoom.getMemberIds()));
 
             // when & then
             assertThatThrownBy(() -> sut.save(command))
@@ -277,7 +276,7 @@ class ChatMessageCommandServiceTest {
                     .publish(any(ChatMessageEventList.class));
 
             inOrder.verify(chatMessageCachePort)
-                    .save(any(ChatMessage.class), eq(category), eq(chatRoom.getMemberIds()));
+                    .save(any(ChatMessage.class), eq(chatRoom.getMemberIds()));
         }
     }
 

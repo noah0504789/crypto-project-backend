@@ -44,6 +44,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
     private final RedisScript<Boolean> recoverUpdateChatRoom_lua;
     private final RedisScript<Boolean> invalidateChatRoomActivity_lua;
     private final RedisScript<Boolean> invalidateChatRoomInfo_lua;
+    private final RedisScript<Boolean> rebuildPopularRoomIndex_lua;
 
     public RedisChatRoomAdapter(
             @Qualifier("masterHashRedisTemplate") RedisTemplate<String, String> masterHashRedisTemplate,
@@ -61,7 +62,8 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
             @Qualifier("deleteChatRoom_lua") RedisScript<Boolean> deleteChatRoom_lua,
             @Qualifier("recoverUpdateChatRoom_lua") RedisScript<Boolean> recoverUpdateChatRoom_lua,
             @Qualifier("invalidateChatRoomActivity_lua") RedisScript<Boolean> invalidateChatRoomActivity_lua,
-            @Qualifier("invalidateChatRoomInfo_lua") RedisScript<Boolean> invalidateChatRoomInfo_lua
+            @Qualifier("invalidateChatRoomInfo_lua") RedisScript<Boolean> invalidateChatRoomInfo_lua,
+            @Qualifier("rebuildPopularRoomIndex_lua") RedisScript<Boolean> rebuildPopularRoomIndex_lua
     ) {
         this.masterHashRedisTemplate = masterHashRedisTemplate;
         this.replicaHashRedisTemplate = replicaHashRedisTemplate;
@@ -79,6 +81,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
         this.recoverUpdateChatRoom_lua = recoverUpdateChatRoom_lua;
         this.invalidateChatRoomActivity_lua = invalidateChatRoomActivity_lua;
         this.invalidateChatRoomInfo_lua = invalidateChatRoomInfo_lua;
+        this.rebuildPopularRoomIndex_lua = rebuildPopularRoomIndex_lua;
     }
 
     @Override
@@ -297,6 +300,26 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
 
         if (!masterHashRedisTemplate.execute(warmUpChatRoomList_lua, keys, args.toArray())) {
             throw new ChatCacheException("[redis] chatroom warmUpList() failed!");
+        }
+    }
+
+    @Override
+    public void rebuildPopularIndex(ChatRoomCategory category, List<ChatRoom> rooms) {
+        String popularKey = CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX.keyFor(category.name());
+
+        List<String> keys = List.of(popularKey);
+
+        List<String> args = new ArrayList<>();
+        args.add(CHAT_ROOM_CACHE_TTL_SECONDS);
+        args.add(String.valueOf(rooms.size()));
+
+        for (ChatRoom room : rooms) {
+            args.add(String.valueOf(ChatRoomPopularityCalculator.calculate(room)));
+            args.add(room.getId());
+        }
+
+        if (!masterHashRedisTemplate.execute(rebuildPopularRoomIndex_lua, keys, args.toArray())) {
+            throw new ChatCacheException("[redis] chatroom rebuildPopularIndex() failed!");
         }
     }
 

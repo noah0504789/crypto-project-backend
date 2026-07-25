@@ -16,7 +16,6 @@ import org.example.chat.chatroom.application.service.result.ChatRoomMembershipSc
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException;
 import org.example.chat.chatroom.domain.model.ChatRoom;
-import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.chat.chatmessage.application.exception.ChatMessagePersistException;
 import org.example.chat.exception.TemporaryChatPersistenceException;
 import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
@@ -64,10 +63,9 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
         );
 
         Set<String> memberIds = chatRoom.getMemberIds();
-        ChatRoomCategory category = chatRoom.getCategory();
 
         publishPersistEvent(message, memberIds, command.clientMessageId());
-        saveCacheSafely(message, category, memberIds);
+        saveCacheSafely(message, memberIds);
 
         return ChatMessageSaveResult.from(message);
     }
@@ -146,11 +144,10 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
 
     private void saveCacheSafely(
             ChatMessage message,
-            ChatRoomCategory category,
             Set<String> memberIds
     ) {
         try {
-            chatMessageCachePort.save(message, category, memberIds);
+            chatMessageCachePort.save(message, memberIds);
         } catch (Exception e) {
             throw new ChatMessageCacheException(
                     message,
