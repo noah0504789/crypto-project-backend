@@ -108,16 +108,6 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 
 ## 3. 계약 · 직렬화
 
-### 공통 (Outbox/DLQ)
-
-#### 3.1 `DlqStatus.COMSUME_FAILED` 철자
-`common-outbox`의 `DlqStatus` 값. 오타로 보이나 직렬화 계약(저장된 값)일 수 있음. 변경 시 계약 영향 → 확인 필요.
-`[출처: SERVICE_FLOWS.md #5, ARCHITECTURE.md #7 / docs/modules/COMMON.md §8 (common-outbox)]`
-
-#### 3.2 `AbstractOutboxEvent.getDomainType()` 기본값 `CHAT`
-`common-outbox`의 `AbstractOutboxEvent.getDomainType()`가 하위 클래스 미override 시 `OutboxDomainType.CHAT`을 반환한다. 실제 라우팅은 `aggregateType`(=목적지 토픽)·`dispatchType`이 결정하고 `domainType`은 메타데이터라 현재 기능 영향은 없어 보이나, chat 외 이벤트도 `domainType=CHAT`으로 기록된다. **기본값을 도메인 중립 값으로 옮기려다 미처 반영하지 못한 잔여 항목** — 하위별 override 또는 기본값 조정 여부 확인 필요(저장된 값이라 변경 시 기존 outbox row 해석 영향 검토).
-`[출처: docs/modules/COMMON.md §5.1 (common-outbox)]`
-
 ### notification
 
 #### 3.3 notification DLQ 미소비 · 재시도 부재
