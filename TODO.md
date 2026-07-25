@@ -51,7 +51,7 @@ Authorization Server가 client secret을 `{noop}`(평문) 접두로 저장(`Auth
 #### 1.8 신뢰 헤더(X-User-Id, X-From) 위조 가능성과 하위 서비스 신뢰
 - 게이트웨이가 생성·추가하는 헤더는 `X-User-Id`, `X-From`, `X-Gateway`. `IdentityPropagationGlobalFilter`는 인증된 요청에 한해 `X-User-Id`를 `set`(덮어쓰기).
 - `permitAll` 경로(예: `/user/**` 대부분)로 들어온 **인증되지 않은** 요청에서 클라이언트가 보낸 `X-User-Id`·`X-From`을 제거하는 코드는 게이트웨이 모듈에서 확인되지 않음.
-- **user 분석으로 확인된 소비 방식** `[user]`: `UserController`는 `X-User-Id`(`HttpHeaderKey.USER_ID_VALUE`)를 `publicId`로 **그대로 신뢰**하고 재검증하지 않는다(`/me/profile` GET·PATCH). 또한 PATCH `/me/profile`는 게이트웨이 `hasRole(USER)` 목록(GET 전용)에 없어 `/user/**` permitAll로 처리될 수 있음.
+- **user 분석으로 확인된 소비 방식** `[user]`: `UserController`는 `X-User-Id`(`HttpHeaderKey.USER_ID_VALUE`)를 `publicId`로 **그대로 신뢰**하고 재검증하지 않는다(`/me/profile` GET·PATCH). (PATCH `/me/profile`의 게이트웨이 `hasRole(USER)` 누락은 해소됨 — `ReactiveSecurityConfig`에 PATCH 규칙 추가. 남은 미해결은 아래 헤더 신뢰/제거 여부.)
 - **남은 확인 대상**: (1) permitAll 경로에서 외부 `X-User-Id`·`X-From` 제거 여부, (2) 각 하위 서비스의 신뢰/재검증 방식, (3) 게이트웨이 우회(네트워크) 직접 접근 차단 여부(인프라 설정).
 - **결정 전까지** 헤더 강제 제거·하위 서비스 재검증 로직을 추가하지 않는다.
 `[출처: API_GATEWAY.md §18.1, §18.4 / user 분석]`
@@ -82,16 +82,6 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 
 ## 2. 데이터 · 영속성
 
-### user
-
-#### 2.1 Read Replica 미적용
-라우팅 인프라는 구성됨(`user/.../DataSourceConfig.java`, `common-jpa`). 그러나 user에는 `@ReadReplica`가 적용된 지점이 없어 조회도 write 노드로 라우팅된다(`UserQueryService`는 `@Transactional(readOnly=true)`만 사용 — Aspect 기준 read 라우팅 트리거 아님). 현재 `@ReadReplica` 어노테이션 적용처는 `market/.../MarketQueryService.getMarkets()` 1곳이나, **market은 라우팅 데이터소스 미구성으로 실제 read 라우팅이 일어나지 않는다(2.5 참조)** — 즉 저장소 전체에서 read 라우팅이 실효되는 지점은 현재 확인되지 않는다. 의도/결함 미판정. 라우팅 인프라(`@ReadReplica`·`ReadReplicaAspect`·`ReplicationRoutingDataSource`)는 `common-jpa` 소관. 상세 `docs/modules/USER.md §10`, `docs/modules/MARKET.md §10`, 인프라 `docs/modules/COMMON.md §5.3`.
-`[출처: SERVICE_FLOWS.md #6, ARCHITECTURE.md #1 / user 분석, docs/modules/COMMON.md §5.3 (common-jpa)]`
-
-#### 2.2 nickname DB unique 부재
-닉네임 유일성이 애플리케이션 검증(`UniqueUserNicknameValidator.existsByNickname`)에만 의존하고 `schema.sql`에 unique 제약이 없음(unique는 `public_id`, `email`만). 동시 요청 시 중복 삽입 여지(check-then-act). DB unique 백스톱 필요 여부 확인.
-`[출처: docs/modules/USER.md §16]`
-
 ### chat
 
 #### 2.3 인기방 인기도 산식 미정
@@ -105,7 +95,7 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 `[출처: docs/modules/MARKET.md §12]`
 
 #### 2.5 market `@ReadReplica` 라우팅 미구성
-`MarketQueryService.getMarkets()`에 `@ReadReplica`가 붙어 있으나 `market/.../infra/config/DatasourceConfig.java`가 `spring.datasource.write` 단일 `HikariDataSource` + `JpaTransactionManager`만 구성하고 `ReplicationRoutingDataSource`/read 데이터소스가 없다(EMF도 write에 직접 바인딩). 실제 read 노드 라우팅은 일어나지 않는 것으로 보이며 `@Cacheable`이라 대부분 DB를 타지 않는다. **이는 "@ReadReplica 실제 적용 1곳"(2.1·COMMON.md §5.3) 서술의 뉘앙스를 보정**한다 — 적용은 되어 있으나 라우팅 인프라가 없어 무효. 의도/결함 미판정.
+`MarketQueryService.getMarkets()`에 `@ReadReplica`가 붙어 있으나 `market/.../infra/config/DatasourceConfig.java`가 `spring.datasource.write` 단일 `HikariDataSource` + `JpaTransactionManager`만 구성하고 `ReplicationRoutingDataSource`/read 데이터소스가 없다(EMF도 write에 직접 바인딩). 실제 read 노드 라우팅은 일어나지 않는 것으로 보이며 `@Cacheable`이라 대부분 DB를 타지 않는다. **이는 "@ReadReplica 실제 적용 1곳"(COMMON.md §5.3) 서술의 뉘앙스를 보정**한다 — 적용은 되어 있으나 라우팅 인프라가 없어 무효. 의도/결함 미판정. (user는 라우팅 인프라를 제거하고 단일 데이터소스로 정리함.)
 `[출처: docs/modules/MARKET.md §10, §12]`
 
 ### websocket-gateway

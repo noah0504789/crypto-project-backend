@@ -9,7 +9,7 @@
 >   - gRPC 계약(`protobuf/src/main/proto/user/v1/user-service.proto`) 변경
 >   - 도메인 모델(`User`, `Role`, `RoleEnum`) 변경
 >   - 스키마(`user/user-bootstrap/.../sql/schema.sql`) 변경
->   - 트랜잭션/Read Replica 라우팅(`DataSourceConfig`, `UserQueryService`) 변경
+>   - 트랜잭션/데이터소스(`DataSourceConfig`, `UserQueryService`) 변경
 
 ## 1. 문서 목적과 기준 시점
 
@@ -71,12 +71,12 @@
 | POST | `/api/v1/user/sign-up` | permitAll | `UserCreateRequest{email,nickname,password}` | **201 Created**(`Location: /`) |
 | GET | `/api/v1/user/me/profile` | `hasRole(USER)` | 헤더 `X-User-Id`(publicId, UUID) | 200 `UserResponse` |
 | GET | `/api/v1/user/{publicId}/profile` | `hasRole(USER)` | path `publicId` | 200 `UserResponse` |
-| PATCH | `/api/v1/user/me/profile` | permitAll¹ | 헤더 `X-User-Id` + `UserProfileUpdateRequest{nickname}` | 빈 body → 400, 아니면 204 No Content |
+| PATCH | `/api/v1/user/me/profile` | `hasRole(USER)` | 헤더 `X-User-Id` + `UserProfileUpdateRequest{nickname}` | 빈 body → 400, 아니면 204 No Content |
 
 - `UserResponse`(REST, `adapter-in/.../web/dto/UserResponse`): `{ id=publicId(UUID), nickname, email, createdAt(Instant) }`. 내부 PK(`id`, Snowflake)는 노출하지 않고 `publicId`를 `id`로 내보낸다.
 - `X-User-Id` 헤더는 게이트웨이가 검증된 JWT의 `id` claim에서 주입한다(`common-core/HttpHeaderKey.USER_ID_VALUE`). **UserController는 이 값을 그대로 신뢰**해 `publicId`로 사용하며 재검증하지 않는다.
 - 게이트웨이 인가 근거: `spring-cloud-api-gateway/.../ReactiveSecurityConfig.java`. GET `me/profile`·`{publicId}/profile`만 `hasRole(USER)`, 그 외 `/user/**`는 `permitAll`.
-- ¹ **확인 필요**: PATCH `/me/profile`는 게이트웨이 `hasRole` 목록(GET 전용)에 없어 `/user/**` permitAll로 처리될 수 있다. 이때 `X-User-Id` 주입/외부 헤더 제거 여부가 관건이다(§12, TODO의 헤더 신뢰 항목과 연결).
+- PATCH `/me/profile`는 게이트웨이 `ReactiveSecurityConfig`에서 `hasRole(USER)`를 요구한다. 애플리케이션에서도 `UserCommandService.updateProfile`가 `User.validateOwner(publicId)`로 소유자 인가를 명시 검증한다. `X-User-Id` 주입/외부 헤더 제거 여부는 여전히 미해결(§12, TODO 1.8 헤더 신뢰 항목).
 
 검증 규칙(`UserCreateRequest`, `UserProfileUpdateRequest`):
 - email: `@NotBlank` + `@Email`
@@ -120,16 +120,15 @@ proto: `protobuf/src/main/proto/user/v1/user-service.proto`. 서버 구현 `Grpc
 - 조회 최적화: `findByEmailWithRoles`는 `left join fetch`로 roles·role을 함께 로드(N+1 회피).
 
 스키마(`schema.sql`):
-- `user`: PK `id`, unique `uk_user_public_id`, unique `uk_user_email`. `nickname`에는 **DB unique 제약이 없다**.
+- `user`: PK `id`, unique `uk_user_public_id`, unique `uk_user_email`, unique `uk_user_nickname`.
 - `role`: `name` unique. 초기 `INSERT ... ('USER')`로 기본 role 시드.
 - `user_role`: unique `(user_id, role_id)`, FK 2개(`ON DELETE CASCADE`).
 
-## 10. 트랜잭션 · Read Replica 현황
+## 10. 트랜잭션 · 데이터소스 현황
 
 - 쓰기: `UserCommandService`의 각 메서드 `@Transactional`.
 - 읽기: `UserQueryService`의 각 메서드 `@Transactional(readOnly=true)`.
-- Read Replica 인프라는 구성되어 있다: `DataSourceConfig`가 `spring.datasource.write`/`read` 두 Hikari + `ReplicationRoutingDataSource` + `LazyConnectionDataSourceProxy`(`@Primary`)를 만든다.
-- **확인된 사실**: user에는 `@ReadReplica`(명시적 read 라우팅 지시)가 **어디에도 적용되어 있지 않다**. `common-jpa`의 라우팅은 `@ReadReplica` + `ReadReplicaAspect`로 동작하므로, `@Transactional(readOnly=true)`만으로는 read 노드로 라우팅되지 않는다. 즉 현재 user의 조회도 write(기본) 데이터소스로 나간다. 의도 여부는 판정하지 않는다(→ TODO).
+- 데이터소스는 단일이다: `DataSourceConfig`가 `spring.datasource.write` 하나의 Hikari(`@Primary`)만 만든다. Read Replica 라우팅(`ReplicationRoutingDataSource`/read 데이터소스)은 미사용이라 제거했다 — user 조회는 이 단일 데이터소스로 나간다.
 
 ## 11. 검증 · 예외
 
@@ -177,10 +176,8 @@ proto: `protobuf/src/main/proto/user/v1/user-service.proto`. 서버 구현 `Grpc
 
 미해결 확인/결정 항목은 [`../../TODO.md`](../../TODO.md)에서 통합 관리한다. user 관련 항목:
 
-- **TODO 1.8** — 신뢰 헤더(`X-User-Id`·`X-From`) 위조 가능성과 무재검증 신뢰 (PATCH `/me/profile` 인가 포함)
+- **TODO 1.8** — 신뢰 헤더(`X-User-Id`·`X-From`) 위조 가능성과 무재검증 신뢰
 - **TODO 1.9** — BCrypt strength 5 (`PasswordEncoderConfig`)
-- **TODO 2.1** — Read Replica 미적용 (§10, 조회도 write 노드로 라우팅)
-- **TODO 2.2** — nickname DB unique 부재 (`existsByNickname` 앱 검증만)
 
 ## 17. 관련 문서와 rules
 
