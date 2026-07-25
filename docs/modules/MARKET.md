@@ -119,8 +119,8 @@ proto: `protobuf/src/main/proto/market/v1/market-service.proto`. 서버 구현�
 ## 10. 트랜잭션 · Read Replica 현황
 
 - 쓰기: `MarketCommandService.changeMarkets`, `PriceAlertSettingCommandService.changeMySettings` 각 `@Transactional`(기본 `transactionManager`).
-- `DatasourceConfig`: `spring.datasource.write` 하나의 `HikariDataSource` + `JpaTransactionManager("transactionManager")`만 구성한다. **read 데이터소스·`ReplicationRoutingDataSource`는 없다.**
-- `MarketQueryService.getMarkets()`에 `@ReadReplica`가 적용되어 있으나, 위처럼 라우팅 데이터소스가 로컬에 구성되어 있지 않아 **실제 read 노드 라우팅은 일어나지 않는 것으로 보인다**(EMF가 `dataSource()`(=write)에 직접 바인딩). 게다가 `@Cacheable`이라 대부분 DB를 타지 않는다. 의도 여부는 판정하지 않는다(→ §14, TODO).
+- `DatasourceConfig`: `spring.datasource.write`(mysql-primary)·`spring.datasource.read`(mysql-replica) 두 `HikariDataSource`를 만들고, `ReplicationRoutingDataSource`(`WRITE`/`READ` 라우팅) → `LazyConnectionDataSourceProxy`(`@Primary`)로 EMF에 바인딩한다. `JpaTransactionManager("transactionManager")`.
+- `MarketQueryService.getMarkets()`의 `@ReadReplica`는 이제 실제로 동작한다: `ReadReplicaAspect`가 read 스코프를 세팅하고, lazy proxy가 statement 시점에 `ReplicationRoutingDataSource`를 통해 read 노드로 라우팅한다(단, `@Cacheable` 캐시 히트 시에는 DB 자체를 타지 않는다). 이미 write 트랜잭션이 활성이면 write 우선(`ReadReplicaAspect`).
 
 ## 11. 검증 · 예외
 
@@ -133,7 +133,6 @@ proto: `protobuf/src/main/proto/market/v1/market-service.proto`. 서버 구현�
 미해결 확인/결정 항목은 [`../../TODO.md`](../../TODO.md)에서 통합 관리한다. market 관련 항목:
 
 - **TODO 2.4** — `MarketCommandUseCase.changeMarkets`(카탈로그 쓰기 + `market-broadcast-event` 캐시 무효화)가 **인바운드 어댑터에 연결되어 있지 않다**(REST/gRPC/Kafka 트리거 부재). 현재 카탈로그는 `schema.sql` 시드로만 채워진다. 관리 엔드포인트 도입 여부/현황 확인 필요.
-- **TODO 2.5** — `MarketQueryService.getMarkets()`에 `@ReadReplica`가 붙어 있으나 `DatasourceConfig`가 write 데이터소스만 구성 → read 라우팅 미발생(§10). 이는 "@ReadReplica 실제 적용 1곳" 서술(USER.md §10, COMMON.md §5.3)의 뉘앙스를 보정한다.
 
 ## 13. 테스트 현황
 

@@ -86,10 +86,6 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 `MarketCommandUseCase.changeMarkets`(카탈로그 create/update/delete + `market-broadcast-event` 캐시 무효화)가 구현·테스트되어 있으나 **인바운드 어댑터(REST/gRPC/Kafka)에 연결되어 있지 않다**. 현재 마켓 카탈로그는 `market-bootstrap/.../sql/schema.sql`의 시드 INSERT로만 채워진다. 관리 엔드포인트/운영 반영 경로 도입 여부 또는 현재가 의도인지 확인 필요.
 `[출처: docs/modules/MARKET.md §12]`
 
-#### 2.5 market `@ReadReplica` 라우팅 미구성
-`MarketQueryService.getMarkets()`에 `@ReadReplica`가 붙어 있으나 `market/.../infra/config/DatasourceConfig.java`가 `spring.datasource.write` 단일 `HikariDataSource` + `JpaTransactionManager`만 구성하고 `ReplicationRoutingDataSource`/read 데이터소스가 없다(EMF도 write에 직접 바인딩). 실제 read 노드 라우팅은 일어나지 않는 것으로 보이며 `@Cacheable`이라 대부분 DB를 타지 않는다. **이는 "@ReadReplica 실제 적용 1곳"(COMMON.md §5.3) 서술의 뉘앙스를 보정**한다 — 적용은 되어 있으나 라우팅 인프라가 없어 무효. 의도/결함 미판정. (user는 라우팅 인프라를 제거하고 단일 데이터소스로 정리함.)
-`[출처: docs/modules/MARKET.md §10, §12]`
-
 ### websocket-gateway
 
 #### 2.6 세션 위치 TTL 하드코딩

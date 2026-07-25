@@ -88,7 +88,7 @@ Outbox 패턴의 핵심 모듈. **비즈니스 DB write와 이벤트 기록을 �
 
 ### 5.3 common-jpa (Read Replica)
 - `@ReadReplica`가 **명시적 read 라우팅 지시자**다. `@Transactional(readOnly=true)`만으로는 read 노드로 가지 않는다(`ReadReplicaAspect`가 `@ReadReplica`를 트리거로 `DataSourceContextHolder`를 통해 `ReplicationRoutingDataSource`를 전환). 이미 write 트랜잭션이 활성이면 write 우선.
-- 상세·현황(user 미적용 등)은 [`USER.md §10`](USER.md)과 TODO 2.1.
+- 이 인프라를 실제로 배선한 곳은 `market`(`MarketQueryService.getMarkets()` + `DatasourceConfig`의 write/read 2 Hikari + routing + lazy proxy, [`MARKET.md §10`](MARKET.md))다. `user`는 라우팅 인프라를 두지 않고 단일 데이터소스로 정리했다([`USER.md §10`](USER.md)).
 
 ### 5.4 common-redis / common-redisson
 - Redis key는 `common-core/RedisKey` enum으로만 조립(임의 문자열 금지). 조회 실패는 `CacheFailOpen`(Aspect)로 fail-open 가능. 분산락은 `DistributedLockExecutor`(+`DistributedLockPolicy`), 설정 `RedissonConfig`.
