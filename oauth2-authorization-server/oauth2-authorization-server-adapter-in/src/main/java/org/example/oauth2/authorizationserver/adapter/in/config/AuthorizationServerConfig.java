@@ -17,6 +17,7 @@ import org.springframework.security.oauth2.server.authorization.settings.Authori
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Duration;
 
@@ -26,6 +27,7 @@ public class AuthorizationServerConfig {
 
     private final JwtProperties jwtProperties;
     private final OAuth2RegisteredClientProperties oAuth2RegisteredClientProperties;
+    private final PasswordEncoder passwordEncoder;
 
     @Bean
     public AuthorizationServerSettings authorizationServerSettings() {
@@ -47,7 +49,7 @@ public class AuthorizationServerConfig {
     private RegisteredClient registeredClient() {
         return RegisteredClient.withId(oAuth2RegisteredClientProperties.id())
                 .clientId(oAuth2RegisteredClientProperties.id())
-                .clientSecret("{noop}"+oAuth2RegisteredClientProperties.secret())
+                .clientSecret(passwordEncoder.encode(oAuth2RegisteredClientProperties.secret()))
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.TOKEN_EXCHANGE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)

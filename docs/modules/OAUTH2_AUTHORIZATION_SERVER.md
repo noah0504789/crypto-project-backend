@@ -21,7 +21,7 @@
 내부 **OAuth2 Authorization Server**(Spring Authorization Server 기반). 시스템 내부에서 쓰는 JWT access/refresh 토큰을 발급·회전·저장·무효화한다.
 
 - 지원 Grant: **`TOKEN_EXCHANGE`**(RFC-8693, oauth2-client가 외부 OIDC 로그인 결과를 내부 토큰으로 교환) + **`REFRESH_TOKEN`**(재발급).
-- 등록 클라이언트: InMemory **단일** RegisteredClient(`client_secret_basic`).
+- 등록 클라이언트: InMemory **단일** RegisteredClient(`client_secret_basic`). secret은 `PasswordEncoderFactories.createDelegatingPasswordEncoder()`로 앱 기동 시 해시(`{bcrypt}...`)해 저장 — 원본 평문은 Vault(`${my.client-secret}`)에만 있다.
 - 서명: **RS256, 개인키는 Vault**에 있고 Config Server `/sign`(Vault Transit) 위임 서명(`Rs256JwtEncoder`).
 - 저장: **Redis Cluster**(`{auth}` 해시태그), Lua로 원자적 저장/삭제.
 - 대외 인터페이스: **gRPC `auth.v1`**(HTTP는 표준 OAuth2 토큰 엔드포인트만). 게이트웨이·oauth2-client가 gRPC 소비.
@@ -179,7 +179,6 @@ proto: `protobuf/src/main/proto/auth/v1/auth-service.proto`. 서버: adapter-in�
 미해결 확인/결정 항목은 [`../../TODO.md`](../../TODO.md)에서 통합 관리한다. oauth2-authorization-server 관련 항목:
 
 - **TODO 1.1** — `aud` claim 발급/검증 여부 (`TokenConfig`)
-- **TODO 1.3** — `{noop}` client secret (`AuthorizationServerConfig`)
 - **TODO 1.4** — 토큰 엔드포인트 TLS 미적용 (`server.port: 9000` `# TODO: tsl`)
 - **TODO 4.2** — 미사용 mysql 설정 (`oauth2-authorization-server.yml`)
 

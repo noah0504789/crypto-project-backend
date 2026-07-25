@@ -24,14 +24,15 @@
 - **Redis 키·Lua는 저장 계약**: `RedisKey`의 `{auth}:*` 패턴과 해시태그 `{auth}`, Lua 3종(`storeTokens`/`storeRefreshToken`/`deleteTokens`)의 키 순서·원자성을 함부로 바꾸지 않는다. 저장 로직 변경 시 Lua와 어댑터의 KEYS/ARGV 인자 순서를 함께 맞춘다.
 - **refresh 회전 불변식**: `RotatingRefreshTokenPolicy`는 매 발급마다 새 refresh를 만들고 저장한다. 재사용 허용으로 바꾸는 것은 보안 결정이므로 승인 없이 하지 않는다.
 - **gRPC 계약(`auth.v1`)**: `protobuf/.../auth/v1/auth-service.proto` 변경은 소비자(gateway, oauth2-client) 재빌드와 field number 규칙을 지킨다. proto 재생성 `./gradlew :protobuf:build`.
-- **client secret / registered client**: id/secret/registration-id는 `oauth2.registered-client.*`(Vault `${my.*}`)에서 오며 Config/Vault 양쪽이 일치해야 한다. 현재 secret은 `{noop}` 평문 접두(확인 필요 항목).
+- **client secret / registered client**: id/secret/registration-id는 `oauth2.registered-client.*`(Vault `${my.*}`)에서 오며 Config/Vault 양쪽이 일치해야 한다. secret은 `PasswordEncoderConfig`가 등록하는 `PasswordEncoder` bean(delegating, 기본 bcrypt)으로 앱 기동 시 해시해 저장한다 — `AuthorizationServerConfig`가 이 bean을 주입받는다.
 - 도메인 모듈이 없다. 상태는 Spring Security 값 타입 + Redis에 있으니, "도메인 엔티티"를 새로 만들기 전에 기존 구조(application이 오케스트레이션)를 우선한다.
 
 ## 주요 파일 안내
 
 | 파일 | 역할 |
 |---|---|
-| [`...adapter-in/.../config/AuthorizationServerConfig.java`](oauth2-authorization-server-adapter-in/src/main/java/org/example/oauth2/authorizationserver/adapter/in/config/AuthorizationServerConfig.java) | issuer, RegisteredClient(grant/TTL/refresh 정책) |
+| [`...adapter-in/.../config/AuthorizationServerConfig.java`](oauth2-authorization-server-adapter-in/src/main/java/org/example/oauth2/authorizationserver/adapter/in/config/AuthorizationServerConfig.java) | issuer, RegisteredClient(grant/TTL/refresh 정책, secret 해시) |
+| [`...adapter-in/.../config/PasswordEncoderConfig.java`](oauth2-authorization-server-adapter-in/src/main/java/org/example/oauth2/authorizationserver/adapter/in/config/PasswordEncoderConfig.java) | client secret 해시용 `PasswordEncoder` bean |
 | [`...adapter-in/.../config/TokenConfig.java`](oauth2-authorization-server-adapter-in/src/main/java/org/example/oauth2/authorizationserver/adapter/in/config/TokenConfig.java) | TokenGenerator + access claim(`roles`,`id`) 커스터마이저 |
 | [`...adapter-in/.../config/SecurityFilterChainConfig.java`](oauth2-authorization-server-adapter-in/src/main/java/org/example/oauth2/authorizationserver/adapter/in/config/SecurityFilterChainConfig.java) | 인가 서버 필터체인, 성공 핸들러 연결 |
 | [`...application/.../authorization/application/CustomOAuth2AuthorizationService.java`](oauth2-authorization-server-application/src/main/java/org/example/oauth2/authorizationserver/authorization/application/CustomOAuth2AuthorizationService.java) | Redis 기반 Authorization 저장/복원 |
@@ -57,8 +58,6 @@
 
 확정된 결함으로 단정하지 않는다. 코드 변경 전 사용자 확인이 필요하다. 상세·근거는 [`../docs/modules/OAUTH2_AUTHORIZATION_SERVER.md §14`](../docs/modules/OAUTH2_AUTHORIZATION_SERVER.md)와 [`../TODO.md`](../TODO.md).
 
-- `{noop}` 평문 client secret
-- access·refresh TTL 7일(주석상 access 의도 2h)
 - 발급 토큰의 `aud` claim 유무·검증 필요성(커스터마이저는 `roles`/`id`만 추가)
 - 미사용으로 보이는 `mysql.*` 설정
 - 토큰 엔드포인트 TLS 미적용(`# TODO: tsl`)

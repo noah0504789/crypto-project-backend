@@ -28,5 +28,4 @@ Refresh token 쿠키 속성을 계약으로 취급한다: `httpOnly`, `secure`, 
 ## 확인 필요 (사실 그대로 기록, 설계/결함 판정 금지 · 이번 작업에서 코드 미수정)
 - 게이트웨이에서 `aud`/`jti` 검증 미확인.
 - 로그인 성공 redirect에서 access token을 `?accessToken=` 쿼리로 전달.
-- client secret을 `{noop}`(평문)로 저장.
 위 항목은 운영 위험 후보로 문서화하되, 사용자 확인 전까지 코드/설정을 변경하지 않는다.

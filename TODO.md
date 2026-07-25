@@ -17,10 +17,6 @@
 - `[oauth2-as]` 발급측 분석: `TokenConfig` access 커스터마이저는 `roles`·`id` claim만 명시 추가한다. 표준 `aud`(=client) 포함 여부는 Spring `JwtGenerator` 기본 동작에 의존하며 모듈 커스텀 코드에서 설정하지 않음 → 실제 발급 토큰으로 `aud` 유무 확인 필요.
 `[출처: SERVICE_FLOWS.md, ARCHITECTURE.md #2, API_GATEWAY.md §18.3 / oauth2-authorization-server 분석]`
 
-#### 1.3 `{noop}` client secret
-Authorization Server가 client secret을 `{noop}`(평문) 접두로 저장(`AuthorizationServerConfig.registeredClient()`, InMemory 단일 client). secret 원본은 `oauth2.registered-client.secret` ← Vault `${my.client-secret}`. 의도 확인 필요.
-`[출처: SERVICE_FLOWS.md #4, ARCHITECTURE.md #6 / oauth2-authorization-server 분석]`
-
 #### 1.4 토큰 엔드포인트 TLS 미적용
 `oauth2-authorization-server.yml`의 `server.port: 9000` 옆에 `# TODO: tsl` 주석. 내부 토큰 엔드포인트(HTTP) TLS 적용 계획 확인 필요.
 `[출처: docs/modules/OAUTH2_AUTHORIZATION_SERVER.md §14]`
