@@ -33,6 +33,8 @@ public class UserCommandService implements UserCommandUseCase {
         User user = userRepository.findByPublicId(publicId)
                 .orElseThrow(() -> new UserNotFoundException(publicId));
 
+        user.validateOwner(publicId);
+
         user.updateNickname(command.nickname());
 
         userRepository.save(user);

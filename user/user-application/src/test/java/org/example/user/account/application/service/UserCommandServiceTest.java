@@ -5,6 +5,7 @@ import org.example.user.account.application.service.command.SignUpLocalCommand;
 import org.example.user.account.application.service.command.SignUpOauth2Command;
 import org.example.user.account.application.service.command.UpdateProfileCommand;
 import org.example.user.account.application.exception.UserNotFoundException;
+import org.example.user.account.domain.exception.UserAccessDeniedException;
 import org.example.user.account.domain.model.User;
 import org.example.user.role.application.port.out.RolePersistencePort;
 import org.example.user.role.application.exception.RoleNotFoundException;
@@ -30,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -84,8 +86,33 @@ class UserCommandServiceTest {
             InOrder inOrder = inOrder(userRepository, user);
 
             inOrder.verify(userRepository).findByPublicId(PUBLIC_ID);
+            inOrder.verify(user).validateOwner(PUBLIC_ID);
             inOrder.verify(user).updateNickname(NEW_NICKNAME);
             inOrder.verify(userRepository).save(user);
+        }
+
+        @Test
+        @DisplayName("소유자가 아니면 UserAccessDeniedException을 던지고 닉네임을 수정하거나 저장하지 않는다")
+        void updateProfile_should_throw_when_actor_is_not_owner() {
+            // given
+            User user = mock(User.class);
+
+            UpdateProfileCommand command = new UpdateProfileCommand(
+                    PUBLIC_ID,
+                    NEW_NICKNAME
+            );
+
+            given(userRepository.findByPublicId(PUBLIC_ID))
+                    .willReturn(Optional.of(user));
+            doThrow(new UserAccessDeniedException(PUBLIC_ID, PUBLIC_ID))
+                    .when(user).validateOwner(PUBLIC_ID);
+
+            // when & then
+            assertThatThrownBy(() -> sut.updateProfile(command))
+                    .isInstanceOf(UserAccessDeniedException.class);
+
+            verify(user, never()).updateNickname(anyString());
+            verify(userRepository, never()).save(any());
         }
 
         @Test

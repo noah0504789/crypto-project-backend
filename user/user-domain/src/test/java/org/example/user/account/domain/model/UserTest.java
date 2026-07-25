@@ -1,11 +1,17 @@
 package org.example.user.account.domain.model;
 
+import org.example.user.account.domain.exception.UserAccessDeniedException;
 import org.example.user.role.domain.model.RoleEnum;
 import org.example.user.role.domain.model.Role;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashSet;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class UserTest {
@@ -245,5 +251,60 @@ class UserTest {
 
         // then
         assertThat(defaultRole).isEqualTo(RoleEnum.USER);
+    }
+
+    @Nested
+    @DisplayName("validateOwner")
+    class ValidateOwnerTest {
+
+        private static final UUID PUBLIC_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        private static final UUID OTHER_ID = UUID.fromString("00000000-0000-0000-0000-000000000002");
+
+        @Test
+        @DisplayName("행위자가 본인(publicId 일치)이면 예외가 발생하지 않는다")
+        void validateOwner_shouldNotThrow_whenActorIsOwner() {
+            // given
+            User user = userWithPublicId(PUBLIC_ID);
+
+            // when & then
+            assertThatCode(() -> user.validateOwner(PUBLIC_ID))
+                    .doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("행위자 publicId가 본인과 다르면 UserAccessDeniedException이 발생한다")
+        void validateOwner_shouldThrow_whenActorIsNotOwner() {
+            // given
+            User user = userWithPublicId(PUBLIC_ID);
+
+            // when & then
+            assertThatThrownBy(() -> user.validateOwner(OTHER_ID))
+                    .isInstanceOf(UserAccessDeniedException.class);
+        }
+
+        @Test
+        @DisplayName("행위자 publicId가 null이면 UserAccessDeniedException이 발생한다")
+        void validateOwner_shouldThrow_whenActorIdIsNull() {
+            // given
+            User user = userWithPublicId(PUBLIC_ID);
+
+            // when & then
+            assertThatThrownBy(() -> user.validateOwner(null))
+                    .isInstanceOf(UserAccessDeniedException.class);
+        }
+
+        private User userWithPublicId(UUID publicId) {
+            return User.rehydrate(
+                    1L,
+                    publicId,
+                    "sub",
+                    "noah@test.com",
+                    "noah",
+                    "encoded-password",
+                    new HashSet<>(),
+                    null,
+                    null
+            );
+        }
     }
 }
