@@ -1,5 +1,5 @@
 package org.example.common.outbox.domain;
 
 public enum OutboxDomainType {
-    CHAT, MARKET
+    CHAT, MARKET, NOTIFICATION
 }

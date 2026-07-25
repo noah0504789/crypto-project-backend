@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.ToString;
 import org.example.common.enums.KafkaTopic;
 import org.example.common.outbox.domain.OutboxDispatchType;
+import org.example.common.outbox.domain.OutboxDomainType;
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 
 @ToString
@@ -28,5 +29,10 @@ public class MyChatRoomBadgeEvent extends AbstractOutboxEvent {
     @Override
     protected String getMessageType() {
         return MyChatRoomBadgeEvent.class.getName();
+    }
+
+    @Override
+    protected OutboxDomainType getDomainType() {
+        return OutboxDomainType.CHAT;
     }
 }

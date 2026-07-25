@@ -30,9 +30,7 @@ public abstract class AbstractOutboxEvent {
         return this.getClass().getName();
     }
 
-    protected OutboxDomainType getDomainType() {
-        return OutboxDomainType.CHAT;
-    }
+    protected abstract OutboxDomainType getDomainType();
 
     public Outbox toOutbox(String transactionId, String payload) {
         return Outbox.builder()

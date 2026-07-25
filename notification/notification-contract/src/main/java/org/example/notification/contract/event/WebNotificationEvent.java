@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.ToString;
 import org.example.common.enums.KafkaTopic;
+import org.example.common.outbox.domain.OutboxDomainType;
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 
 @Getter
@@ -31,5 +32,10 @@ public class WebNotificationEvent extends AbstractOutboxEvent {
             String partitionKey
     ) {
         return new WebNotificationEvent(payload, notificationId, partitionKey);
+    }
+
+    @Override
+    protected OutboxDomainType getDomainType() {
+        return OutboxDomainType.NOTIFICATION;
     }
 }
