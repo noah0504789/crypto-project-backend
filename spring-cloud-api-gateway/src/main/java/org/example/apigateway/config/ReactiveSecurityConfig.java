@@ -89,6 +89,15 @@ public class ReactiveSecurityConfig {
                         .pathMatchers(HttpMethod.GET, apiPathProperties.chat().roomPattern())
                         .hasRole(RoleKey.REQUIRED_USER.value())
 
+                        // market: 카탈로그 조회는 공개, 내 가격알림 설정은 인증 필요(X-User-Id 스코프)
+                        .pathMatchers(HttpMethod.GET, apiPathProperties.market().markets()).permitAll()
+                        .pathMatchers(apiPathProperties.market().priceAlertsPattern())
+                        .hasRole(RoleKey.REQUIRED_USER.value())
+
+                        // notification: 내 알림함/읽음은 인증 필요(X-User-Id 스코프)
+                        .pathMatchers(apiPathProperties.notification().notificationsPattern())
+                        .hasRole(RoleKey.REQUIRED_USER.value())
+
                         .pathMatchers(apiPathProperties.actuatorPattern()).permitAll()
                         .pathMatchers(apiPathProperties.auth().pattern()).permitAll()
                         .pathMatchers(apiPathProperties.user().pattern()).permitAll()

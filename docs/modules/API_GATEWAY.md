@@ -33,7 +33,7 @@ Reactive Spring Cloud Gateway 기반 OAuth2 Resource Server. 외부 HTTP·WebSoc
 
 | 클래스 | 경로 | 책임 |
 |---|---|---|
-| `ReactiveRouteConfig` | `src/main/java/org/example/apigateway/config/ReactiveRouteConfig.java` | `RouteLocator` Bean 4개 정의(OAuth2 Client / User Service / WebSocket Gateway / Chat Service 그룹). WebSocket 그룹 안에는 개별 Route 4건이 있음(§9) |
+| `ReactiveRouteConfig` | `src/main/java/org/example/apigateway/config/ReactiveRouteConfig.java` | `RouteLocator` Bean 6개 정의(OAuth2 Client / User Service / Market Service / Notification / WebSocket Gateway / Chat Service 그룹). WebSocket 그룹 안에는 개별 Route 4건이 있음(§9) |
 | `ReactiveSecurityConfig` | `src/main/java/org/example/apigateway/config/ReactiveSecurityConfig.java` | `SecurityWebFilterChain`, 경로별 인가, 403 응답 |
 | `ReactiveJwtDecoderConfig` | `src/main/java/org/example/apigateway/config/ReactiveJwtDecoderConfig.java` | JWKS 기반 `ReactiveJwtDecoder` + 검증 체인 조합 |
 | `CorsConfig` | `src/main/java/org/example/apigateway/config/CorsConfig.java` | CORS 정책 Bean 3종 |
@@ -48,7 +48,7 @@ Reactive Spring Cloud Gateway 기반 OAuth2 Resource Server. 외부 HTTP·WebSoc
 
 ```
 외부 요청
-  → [Route 매칭] ReactiveRouteConfig가 정의한 4개 RouteLocator Bean(그룹) 중 path로 매칭 → 그룹 내 개별 Route 결정
+  → [Route 매칭] ReactiveRouteConfig가 정의한 6개 RouteLocator Bean(그룹) 중 path로 매칭 → 그룹 내 개별 Route 결정
   → [인가 판단] ReactiveSecurityConfig.securityWebFilterChain의 authorizeExchange
       permitAll / hasRole(USER) / anyExchange().denyAll()(기본값) 중 하나로 결정
   → [JWT 검증] oauth2ResourceServer(jwt(...)) → ReactiveJwtDecoderConfig가 만든 디코더
@@ -106,22 +106,27 @@ Reactive Spring Cloud Gateway 기반 OAuth2 Resource Server. 외부 HTTP·WebSoc
 | 8 | `GET /chat/rooms/me`, `GET /chat/room/me/*` | `hasRole(USER)` |
 | 9 | `/chat/room/*/members`, `/chat/room/*/activity` | `hasRole(USER)` |
 | 10 | `GET /chat/room/*/messages` | `hasRole(USER)` |
-| 11 | `/actuator/**` | permitAll |
-| 12 | `/auth/**` | permitAll |
-| 13 | `/user/**`(나머지) | permitAll |
-| 14 | `/chat/**`(나머지) | permitAll |
+| 11 | `GET /markets` | permitAll(마켓 카탈로그 공개) |
+| 12 | `/price-alerts/**`(GET·PUT) | `hasRole(USER)` |
+| 13 | `/notifications/**`(GET·PATCH) | `hasRole(USER)` |
+| 14 | `/actuator/**` | permitAll |
+| 15 | `/auth/**` | permitAll |
+| 16 | `/user/**`(나머지) | permitAll |
+| 17 | `/chat/**`(나머지) | permitAll |
 | 기본값 | 그 외 전부 | `denyAll` |
 
 역할 문자열은 `RoleKey.REQUIRED_USER`="USER"(prefix 없이 `JwtGrantedAuthoritiesConverter.setAuthorityPrefix("")`로 `roles` claim 값을 그대로 authority로 사용, `ReactiveSecurityConfig.java:97-106`).
 
 ## 9. Route 계약 표
 
-`ReactiveRouteConfig`는 `RouteLocator` Bean 4개(`oauth2ClientRoutes`, `userRoutes`, `websocketGatewayRoutes`, `chatRoutes`)를 정의한다. 이 중 `websocketGatewayRoutes` 하나에 개별 Route 4건이 포함되어, 아래 표의 행 수(9행, `/internal/deployment/**`·`/actuator/**` 포함)는 Bean 개수(4개)보다 많다.
+`ReactiveRouteConfig`는 `RouteLocator` Bean 6개(`oauth2ClientRoutes`, `userRoutes`, `marketRoutes`, `notificationRoutes`, `websocketGatewayRoutes`, `chatRoutes`)를 정의한다. 이 중 `websocketGatewayRoutes` 하나에 개별 Route 4건이 포함되어, 아래 표의 행 수는 Bean 개수(6개)보다 많다.
 
 | 외부 경로 | 대상 서비스 | URI/Service ID | 적용 필터 | 인증 필요 | 근거 |
 |---|---|---|---|---|---|
 | `/oauth2/**`, `/login/oauth2/code/*`, `/auth/**` | oauth2-client | `lb://oauth2-client` | `X-From` 추가, `X-Gateway` 응답 추가 | 아니오 | `ReactiveRouteConfig.oauth2ClientRoutes` |
 | `/user/**` | user-service | `lb://user-service` | `X-From` 추가, `rewritePath(/user(?<seg>/.*)?$ → /api/v1/user${seg})`, `X-Gateway` 응답 | `GET /user/me`,`/user/*/profile`만 `hasRole(USER)` | `ReactiveRouteConfig.userRoutes` |
+| `/markets`,`/markets/**`,`/price-alerts`,`/price-alerts/**` | market-service | `lb://market-service` | `X-From` 추가, `rewritePath(/(?<seg>.*) → /api/v1/${seg})`, `X-Gateway` 응답 | `GET /markets`는 permitAll, `/price-alerts/**`는 `hasRole(USER)` | `ReactiveRouteConfig.marketRoutes` |
+| `/notifications`,`/notifications/**` | notification-service | `lb://notification-service` | `X-From` 추가, `rewritePath(/(?<seg>.*) → /api/v1/${seg})`, `X-Gateway` 응답 | `hasRole(USER)` | `ReactiveRouteConfig.notificationRoutes` |
 | `/ws-native`, `/ws-native/**`(upgrade) | websocket-gateway | `lb:ws://websocket-gateway` | 없음 | `GET`만 `hasRole(USER)` + 핸드셰이크 인증 | `websocketGatewayRoutes("ws-native-upgrade")` |
 | `/ws/**` + `Upgrade: websocket` 헤더 | websocket-gateway | `lb:ws://websocket-gateway` | 없음 | 동일 | `websocketGatewayRoutes("ws-upgrade")` |
 | `/ws/**`,`/ws-native`,`/ws-native/**`(HTTP) | websocket-gateway | `lb://websocket-gateway` | `dedupeResponseHeader`(CORS 3종) | `GET /ws/info/**`는 permitAll, 나머지 `GET`은 `hasRole(USER)` | `websocketGatewayRoutes("ws-http")` |
@@ -144,7 +149,7 @@ Gateway가 생성·추가하는 헤더는 다음 세 가지다. 셋 다 Route �
 
 `X-User-Id`는 일반 HTTP와 WebSocket에서 서로 다른 필터 체인(`GlobalFilter` vs `WebFilter`)이 독립적으로 주입한다는 점이 차이다. 두 경로 모두 값의 출처는 검증된 JWT의 `id` claim으로 동일하다.
 
-**클라이언트가 같은 이름으로 헤더를 직접 보낸 경우**: `X-User-Id`는 인증된 요청에서 Gateway가 `set`(덮어쓰기)하므로 인증된 흐름에서는 클라이언트 원본 값이 남지 않는다. 그러나 `permitAll` 경로로 들어와 이 필터들을 통과하지 않는 요청에서 클라이언트가 보낸 `X-User-Id`·`X-From`이 제거되는지는 코드로 확인되지 않았다 — 이 문서에서 확정하지 않고 §18.1로 이관한다.
+**클라이언트가 같은 이름으로 헤더를 직접 보낸 경우**: `X-User-Id`는 인증된 요청에서 Gateway가 `set`(덮어쓰기)하므로 인증된 흐름에서는 클라이언트 원본 값이 남지 않는다. 그러나 `IdentityPropagationGlobalFilter`는 인증된 분기에서만 `set`하고 미인증이면 `defaultIfEmpty(exchange)`로 원본을 그대로 통과시켜, `permitAll`·미인증 경로에서 클라이언트가 보낸 `X-User-Id`·`X-From`을 **제거하지 않는다**(코드 확정). 상세·대응은 §18.1, `TODO 1.8`.
 
 - Path Rewrite: `user`, `chat` route만 `/api/{userApiVersion|chatApiVersion}/...`로 rewrite(`api-path.route.user-api-version=v1`, `chat-api-version=v1`, `git-config-repo/dynamic/api-gateway.yml:48-50`). `oauth2-client`, `websocket-gateway` route는 rewrite 없이 그대로 전달.
 - Query Parameter Token: WebSocket 핸드셰이크 전용 `?access_token=`(§6). 일반 REST에는 쿼리 토큰 사용 없음.
@@ -176,6 +181,16 @@ Gateway가 생성·추가하는 헤더는 다음 세 가지다. 셋 다 Route �
 - Route: `/chat/**` → `lb://chat-service`, rewrite `→ /api/v1/chat${seg}`.
 - 전달 인증 정보: `X-User-Id`(인증된 경우만), `X-From: gateway`.
 - 공유 계약: `X-User-Id` 헤더, path rewrite 버전(`v1`), 채팅방 관련 GET 경로들의 gateway 레벨 `hasRole(USER)` 강제(§8).
+
+### market-service
+- Route: `/markets`,`/markets/**`,`/price-alerts`,`/price-alerts/**` → `lb://market-service`, rewrite `/(?<seg>.*) → /api/v1/${seg}`.
+- 전달 인증 정보: `X-User-Id`(`/price-alerts/**` 인증 경로), `X-From: gateway`.
+- 공유 계약: `GET /markets`는 permitAll(카탈로그), `/price-alerts/**`는 `hasRole(USER)` → `PriceAlertSettingController`가 `X-User-Id`(publicId)로 본인 스코프.
+
+### notification-service
+- Route: `/notifications`,`/notifications/**` → `lb://notification-service`, rewrite `/(?<seg>.*) → /api/v1/${seg}`.
+- 전달 인증 정보: `X-User-Id`(인증 경로), `X-From: gateway`.
+- 공유 계약: `/notifications/**` `hasRole(USER)` → `NotificationController`가 `X-User-Id`(receiverId)로 본인 스코프. 실시간 push는 별도(websocket-gateway STOMP).
 
 ## 12. Config Server 및 Eureka 의존성
 
@@ -211,7 +226,7 @@ Gateway가 생성·추가하는 헤더는 다음 세 가지다. 셋 다 Route �
 
 | 클래스 | 검증 항목 |
 |---|---|
-| `endpoint/ReactiveSecurityE2ETest` | 토큰 없음 401, role 없음 403(JSON body), `/auth/logout` permitAll 라우팅 |
+| `endpoint/ReactiveSecurityE2ETest` | 토큰 없음 401, role 없음 403(JSON body), `/auth/logout` permitAll 라우팅, `/price-alerts/me`·`/notifications/me` 401/403 |
 | `endpoint/ReactiveRouteE2ETest` | `/user/me` rewrite+라우팅, `/chat/rooms/me` rewrite+라우팅, `/auth/logout` 라우팅 |
 | `endpoint/IdentityPropagationE2ETest` | id claim 있음/없음에 따른 `X-User-Id` 전파 여부 |
 | `endpoint/GatewayCorsConfigTest` | CORS Origin 허용(테스트 전용 wildcard `TestGatewayCorsConfig`로 실제 `CorsConfig` 대체) |

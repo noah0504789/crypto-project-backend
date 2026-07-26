@@ -133,6 +133,7 @@ proto: `protobuf/src/main/proto/market/v1/market-service.proto`. 서버 구현�
 미해결 확인/결정 항목은 [`../../TODO.md`](../../TODO.md)에서 통합 관리한다. market 관련 항목:
 
 - **TODO 2.4** — `MarketCommandUseCase.changeMarkets`(카탈로그 쓰기 + `market-broadcast-event` 캐시 무효화)가 **인바운드 어댑터에 연결되어 있지 않다**(REST/gRPC/Kafka 트리거 부재). 현재 카탈로그는 `schema.sql` 시드로만 채워진다. 관리 엔드포인트 도입 여부/현황 확인 필요.
+- **게이트웨이 라우트·인가(해결됨)** — 과거 `GET /markets`·`GET`·`PUT /price-alerts/me`가 게이트웨이 라우트·인가 부재로 `denyAll`이었다. 이제 `ReactiveRouteConfig.marketRoutes`(`lb://market-service`, rewrite `/api/v1/${seg}`) + `ReactiveSecurityConfig`(`GET /markets` permitAll, `/price-alerts/**` `hasRole(USER)`)로 노출·보호된다.
 
 ## 13. 테스트 현황
 

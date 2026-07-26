@@ -10,6 +10,8 @@ public record ApiPathProperties(
         OAuth2 oauth2,
         Chat chat,
         User user,
+        Market market,
+        Notification notification,
         Route route,
         String optionsPattern,
         String actuatorPattern
@@ -78,8 +80,20 @@ public record ApiPathProperties(
             return base + "/**";
         }
     }
+    public record Market(
+            String markets,
+            String marketsPattern,
+            String priceAlerts,
+            String priceAlertsPattern
+    ) {}
+    public record Notification(
+            String notifications,
+            String notificationsPattern
+    ) {}
     public record Route(
             String userApiVersion,
-            String chatApiVersion
+            String chatApiVersion,
+            String marketApiVersion,
+            String notificationApiVersion
     ) {}
 }

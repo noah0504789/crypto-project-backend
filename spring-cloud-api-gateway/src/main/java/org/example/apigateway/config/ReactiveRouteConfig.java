@@ -79,6 +79,44 @@ public class ReactiveRouteConfig {
     }
 
     @Bean
+    public RouteLocator marketRoutes(RouteLocatorBuilder r) {
+        return r.routes()
+                .route("market-route", s -> s
+                        .path(
+                                apiPathProperties.market().markets(),
+                                apiPathProperties.market().marketsPattern(),
+                                apiPathProperties.market().priceAlerts(),
+                                apiPathProperties.market().priceAlertsPattern()
+                        )
+                        .filters(f -> f
+                                .addRequestHeader("X-From", "gateway")
+                                .rewritePath("/(?<seg>.*)", "/api/" + apiPathProperties.route().marketApiVersion() + "/${seg}")
+                                .addResponseHeader("X-Gateway", "reactive")
+                        )
+                        .uri("lb://market-service")
+                )
+                .build();
+    }
+
+    @Bean
+    public RouteLocator notificationRoutes(RouteLocatorBuilder r) {
+        return r.routes()
+                .route("notification-route", s -> s
+                        .path(
+                                apiPathProperties.notification().notifications(),
+                                apiPathProperties.notification().notificationsPattern()
+                        )
+                        .filters(f -> f
+                                .addRequestHeader("X-From", "gateway")
+                                .rewritePath("/(?<seg>.*)", "/api/" + apiPathProperties.route().notificationApiVersion() + "/${seg}")
+                                .addResponseHeader("X-Gateway", "reactive")
+                        )
+                        .uri("lb://notification-service")
+                )
+                .build();
+    }
+
+    @Bean
     public RouteLocator chatRoutes(RouteLocatorBuilder r) {
         return r.routes()
                 .route("chat-route", s -> s

@@ -112,4 +112,42 @@ class ReactiveSecurityE2ETest {
         assertThat(downstreamServers.lastOauth2ClientRequest().method()).isEqualTo("POST");
         assertThat(downstreamServers.lastOauth2ClientRequest().path()).isEqualTo("/auth/logout");
     }
+
+    @Test
+    @DisplayName("GET /price-alerts/me - 토큰이 없으면 401을 반환한다")
+    void priceAlertsMe_shouldReturnUnauthorized_whenTokenMissing() {
+        webTestClient.get()
+                .uri("/price-alerts/me")
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    @DisplayName("GET /price-alerts/me - ROLE_USER가 없으면 403을 반환한다")
+    void priceAlertsMe_shouldReturnForbidden_whenRoleMissing() {
+        webTestClient.get()
+                .uri("/price-alerts/me")
+                .headers(headers -> headers.setBearerAuth("no-role-token"))
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    @DisplayName("GET /notifications/me - 토큰이 없으면 401을 반환한다")
+    void notificationsMe_shouldReturnUnauthorized_whenTokenMissing() {
+        webTestClient.get()
+                .uri("/notifications/me")
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    @DisplayName("GET /notifications/me - ROLE_USER가 없으면 403을 반환한다")
+    void notificationsMe_shouldReturnForbidden_whenRoleMissing() {
+        webTestClient.get()
+                .uri("/notifications/me")
+                .headers(headers -> headers.setBearerAuth("no-role-token"))
+                .exchange()
+                .expectStatus().isForbidden();
+    }
 }

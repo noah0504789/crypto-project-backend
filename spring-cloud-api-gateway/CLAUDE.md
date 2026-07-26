@@ -20,7 +20,7 @@
 - `ReactiveSecurityConfig`의 `authorizeExchange` matcher 선언 순서는 의미가 있다(먼저 매칭되는 규칙이 우선 적용). 임의로 순서를 바꾸지 않는다.
 - 기본 정책 `anyExchange().denyAll()`을 유지한다. 새 경로를 추가할 때는 `permitAll` 또는 `hasRole(...)` 중 하나를 반드시 명시한다 — 누락하면 자동으로 403이 아니라 예상과 다른 인가 결과가 날 수 있다.
 - 공개 경로(`permitAll`)를 추가하거나 기존 패턴을 확대할 때는 보안 영향을 먼저 검토한다(`../.claude/rules/git-safety.md` Plan Mode 대상: OAuth2/Security 변경). `permitAll`은 Gateway가 이 경로에 JWT를 강제하지 않는다는 뜻일 뿐, 하위 서비스까지 공개라는 뜻은 아니다 — 실제 공개 범위는 하위 서비스 코드로 별도 확인한다.
-- Route를 변경할 때는 외부 Path, 내부 Service ID(`lb://...`), RewritePath 여부, 인증 요구사항(`ReactiveSecurityConfig`의 대응 규칙)을 하나의 계약으로 함께 검토한다. Route만 바꾸고 Security 규칙을 빠뜨리면(또는 반대) 계약이 깨진다. `ReactiveRouteConfig`는 4개의 `RouteLocator` Bean(그룹)을 정의하며, 그중 WebSocket 그룹 안에는 개별 Route가 여러 개 있다 — "Route 4개"는 Bean 개수이지 개별 Route 총개수가 아니다.
+- Route를 변경할 때는 외부 Path, 내부 Service ID(`lb://...`), RewritePath 여부, 인증 요구사항(`ReactiveSecurityConfig`의 대응 규칙)을 하나의 계약으로 함께 검토한다. Route만 바꾸고 Security 규칙을 빠뜨리면(또는 반대) 계약이 깨진다. `ReactiveRouteConfig`는 6개의 `RouteLocator` Bean(그룹)을 정의하며(oauth2-client/user/market/notification/websocket-gateway/chat), 그중 WebSocket 그룹 안에는 개별 Route가 여러 개 있다 — "Bean 개수"는 개별 Route 총개수가 아니다.
 - `lb://`, `lb:ws://` 뒤의 서비스 이름은 대상 서비스의 `spring.application.name`(Eureka 등록 이름)과 정확히 일치해야 한다.
 - Route/Security/JWT 관련 값을 바꿀 때는 로컬 코드뿐 아니라 Config Server 원격 설정도 함께 확인한다: `git-config-repo/dynamic/api-gateway.yml`(포트, `api-path.*` 패턴, gRPC 클라이언트), `git-config-repo/dynamic/jwt.yml`(issuer, JWKS, TTL).
 - `X-User-Id`, `X-From`, `X-Gateway` 헤더는 외부 계약으로 취급한다(→ `../.claude/rules/external-contracts.md`). 이름·의미를 임의로 바꾸지 않는다.
@@ -33,7 +33,7 @@
 
 | 파일 | 역할 |
 |---|---|
-| [`src/main/java/org/example/apigateway/config/ReactiveRouteConfig.java`](src/main/java/org/example/apigateway/config/ReactiveRouteConfig.java) | `RouteLocator` Bean 4개 정의(oauth2-client/user/websocket-gateway/chat 그룹) |
+| [`src/main/java/org/example/apigateway/config/ReactiveRouteConfig.java`](src/main/java/org/example/apigateway/config/ReactiveRouteConfig.java) | `RouteLocator` Bean 6개 정의(oauth2-client/user/market/notification/websocket-gateway/chat 그룹) |
 | [`src/main/java/org/example/apigateway/config/ReactiveSecurityConfig.java`](src/main/java/org/example/apigateway/config/ReactiveSecurityConfig.java) | 경로별 인가 규칙, 403 응답 처리 |
 | [`src/main/java/org/example/apigateway/config/ReactiveJwtDecoderConfig.java`](src/main/java/org/example/apigateway/config/ReactiveJwtDecoderConfig.java) | JWKS 기반 JWT 디코더, 검증 체인(issuer+blacklist+id) |
 | [`src/main/java/org/example/apigateway/config/CorsConfig.java`](src/main/java/org/example/apigateway/config/CorsConfig.java) | CORS 정책 |
