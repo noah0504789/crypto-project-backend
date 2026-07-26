@@ -36,6 +36,14 @@ api-path:
     room-members-pattern: /chat/room/*/members
     room-activity-pattern: /chat/room/*/activity
     room-messages-pattern: /chat/room/*/messages
+  market:
+    markets: /markets
+    markets-pattern: /markets/**
+    price-alerts: /price-alerts
+    price-alerts-pattern: /price-alerts/**
+  notification:
+    notifications: /notifications
+    notifications-pattern: /notifications/**
   oauth2:
     pattern: /oauth2/**
     login-callback-pattern: /login/oauth2/code/**
@@ -50,3 +58,5 @@ api-path:
   route:
     user-api-version: v1
     chat-api-version: v1
+    market-api-version: v1
+    notification-api-version: v1
