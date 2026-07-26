@@ -37,7 +37,7 @@ Reactive Spring Cloud Gateway 기반 OAuth2 Resource Server. 외부 HTTP·WebSoc
 | `ReactiveSecurityConfig` | `src/main/java/org/example/apigateway/config/ReactiveSecurityConfig.java` | `SecurityWebFilterChain`, 경로별 인가, 403 응답 |
 | `ReactiveJwtDecoderConfig` | `src/main/java/org/example/apigateway/config/ReactiveJwtDecoderConfig.java` | JWKS 기반 `ReactiveJwtDecoder` + 검증 체인 조합 |
 | `CorsConfig` | `src/main/java/org/example/apigateway/config/CorsConfig.java` | CORS 정책 Bean 3종 |
-| `IdentityPropagationGlobalFilter` | `src/main/java/org/example/apigateway/filter/IdentityPropagationGlobalFilter.java` | 일반 HTTP 요청의 `X-User-Id` 전파(`GlobalFilter`) |
+| `IdentityPropagationGlobalFilter` | `src/main/java/org/example/apigateway/filter/IdentityPropagationGlobalFilter.java` | 일반 HTTP 요청의 클라이언트 `X-User-Id`·`X-From` 제거 + 검증된 JWT `id`로 `X-User-Id` 전파(`GlobalFilter`, `HIGHEST_PRECEDENCE`) |
 | `WebsocketHandshakeAuthWebFilter` | `src/main/java/org/example/apigateway/filter/WebsocketHandshakeAuthWebFilter.java` | WebSocket 핸드셰이크 전용 쿼리 토큰 인증(`WebFilter`, `@Order(-1000)`) |
 | `BlacklistTokenService` | `src/main/java/org/example/apigateway/oauth2/application/service/BlacklistTokenService.java` | 블랙리스트 조회 유스케이스 |
 | `GrpcBlacklistTokenClientAdapter` | `src/main/java/org/example/apigateway/oauth2/adapter/out/grpc/GrpcBlacklistTokenClientAdapter.java` | `Oauth2AuthorizationServerClient`를 통한 gRPC blacklist 조회 |
@@ -59,7 +59,7 @@ Reactive Spring Cloud Gateway 기반 OAuth2 Resource Server. 외부 HTTP·WebSoc
   → [전달] Spring Cloud LoadBalancer가 lb://<서비스명>을 Eureka 인스턴스로 해석해 프록시
   → [응답] 정상 응답 그대로 반환 / 401(인증 실패, 기본 처리) / 403(인가 실패, writeError 커스텀)
 ```
-근거: `ReactiveRouteConfig.java`, `ReactiveSecurityConfig.java:44-95`, `ReactiveJwtDecoderConfig.java`, `IdentityPropagationGlobalFilter.java:20-33`.
+근거: `ReactiveRouteConfig.java`, `ReactiveSecurityConfig.java:44-95`, `ReactiveJwtDecoderConfig.java`, `IdentityPropagationGlobalFilter.java`.
 
 ## 6. WebSocket 핸드셰이크 처리 흐름
 
@@ -149,7 +149,7 @@ Gateway가 생성·추가하는 헤더는 다음 세 가지다. 셋 다 Route �
 
 `X-User-Id`는 일반 HTTP와 WebSocket에서 서로 다른 필터 체인(`GlobalFilter` vs `WebFilter`)이 독립적으로 주입한다는 점이 차이다. 두 경로 모두 값의 출처는 검증된 JWT의 `id` claim으로 동일하다.
 
-**클라이언트가 같은 이름으로 헤더를 직접 보낸 경우**: `X-User-Id`는 인증된 요청에서 Gateway가 `set`(덮어쓰기)하므로 인증된 흐름에서는 클라이언트 원본 값이 남지 않는다. 그러나 `IdentityPropagationGlobalFilter`는 인증된 분기에서만 `set`하고 미인증이면 `defaultIfEmpty(exchange)`로 원본을 그대로 통과시켜, `permitAll`·미인증 경로에서 클라이언트가 보낸 `X-User-Id`·`X-From`을 **제거하지 않는다**(코드 확정). 상세·대응은 §18.1, `TODO 1.8`.
+**클라이언트가 같은 이름으로 헤더를 직접 보낸 경우**: `IdentityPropagationGlobalFilter`(`Ordered.HIGHEST_PRECEDENCE`)가 **모든 요청 입구에서 클라이언트가 보낸 `X-User-Id`·`X-From`을 먼저 제거**하고, 인증된 경우에만 JWT `id`로 `X-User-Id`를 다시 `set`한다. 따라서 `permitAll`·미인증 경로로 위조 헤더를 보내도 하위 서비스로 새지 않는다(게이트웨이 **경유** 스푸핑 차단). 게이트웨이를 **우회**한 서비스 직접 접근 차단은 별개 방어(인프라: 서비스 포트 host-local 바인딩 + 방화벽) — infra `TODO.md` "보안 · 네트워크 노출".
 
 - Path Rewrite: `user`, `chat` route만 `/api/{userApiVersion|chatApiVersion}/...`로 rewrite(`api-path.route.user-api-version=v1`, `chat-api-version=v1`, `git-config-repo/dynamic/api-gateway.yml:48-50`). `oauth2-client`, `websocket-gateway` route는 rewrite 없이 그대로 전달.
 - Query Parameter Token: WebSocket 핸드셰이크 전용 `?access_token=`(§6). 일반 REST에는 쿼리 토큰 사용 없음.
@@ -228,7 +228,7 @@ Gateway가 생성·추가하는 헤더는 다음 세 가지다. 셋 다 Route �
 |---|---|
 | `endpoint/ReactiveSecurityE2ETest` | 토큰 없음 401, role 없음 403(JSON body), `/auth/logout` permitAll 라우팅, `/price-alerts/me`·`/notifications/me` 401/403 |
 | `endpoint/ReactiveRouteE2ETest` | `/user/me` rewrite+라우팅, `/chat/rooms/me` rewrite+라우팅, `/auth/logout` 라우팅 |
-| `endpoint/IdentityPropagationE2ETest` | id claim 있음/없음에 따른 `X-User-Id` 전파 여부 |
+| `endpoint/IdentityPropagationE2ETest` | id claim 있음/없음 전파, permitAll 경로 클라이언트 `X-User-Id` strip, 인증 요청 위조 `X-User-Id` override |
 | `endpoint/GatewayCorsConfigTest` | CORS Origin 허용(테스트 전용 wildcard `TestGatewayCorsConfig`로 실제 `CorsConfig` 대체) |
 | `filter/IdentityPropagationGlobalFilterTest` | 필터 단위 동작 |
 | `filter/WebsocketHandshakeAuthWebFilterTest` | non-ws 경로 통과, OPTIONS 통과, 토큰 없음/빈값 401, JWT 디코드 실패 401, id claim 없음 401, 정상 시 헤더+SecurityContext 설정, roles claim 없어도 정상 처리 |

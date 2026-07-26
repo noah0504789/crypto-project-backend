@@ -76,4 +76,39 @@ class IdentityPropagationE2ETest {
         assertThat(request).isNotNull();
         assertThat(request.xUserId()).isNull();
     }
+
+    @Test
+    @DisplayName("permitAll 경로에서 클라이언트가 보낸 X-User-Id는 제거되어 downstream에 전파되지 않는다")
+    void shouldStripClientUserIdHeader_onPermitAllPath() {
+        webTestClient.post()
+                .uri("/auth/logout")
+                .headers(headers -> headers.set("X-User-Id", "attacker-999"))
+                .exchange()
+                .expectStatus().isOk();
+
+        TestDownstreamServerConfig.TestDownstreamServers.CapturedRequest request =
+                downstreamServers.lastOauth2ClientRequest();
+
+        assertThat(request).isNotNull();
+        assertThat(request.xUserId()).isNull();
+    }
+
+    @Test
+    @DisplayName("인증 요청에 클라이언트가 X-User-Id를 위조해 보내도 JWT id로 덮어써진다")
+    void shouldOverrideSpoofedUserIdHeader_whenAuthenticated() {
+        webTestClient.get()
+                .uri("/user/me")
+                .headers(headers -> {
+                    headers.setBearerAuth("user-token");
+                    headers.set("X-User-Id", "attacker-999");
+                })
+                .exchange()
+                .expectStatus().isOk();
+
+        TestDownstreamServerConfig.TestDownstreamServers.CapturedRequest request =
+                downstreamServers.lastUserRequest();
+
+        assertThat(request).isNotNull();
+        assertThat(request.xUserId()).isEqualTo("user-1");
+    }
 }

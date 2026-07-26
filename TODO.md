@@ -38,15 +38,7 @@
 `oauth2-client.yml`의 google/kakao `redirect-uri`가 `https://localhost:8000/...`로 하드코딩(kakao에 `# TODO: 주입하기` 주석). 운영 값 주입 방식 확인 필요.
 `[출처: docs/modules/OAUTH2_CLIENT.md §12]`
 
-### user · spring-cloud-api-gateway
-
-#### 1.8 신뢰 헤더(X-User-Id, X-From) 위조 가능성과 하위 서비스 신뢰
-- 게이트웨이가 생성·추가하는 헤더는 `X-User-Id`, `X-From`, `X-Gateway`. `IdentityPropagationGlobalFilter`는 인증된 요청에 한해 `X-User-Id`를 `set`(덮어쓰기).
-- **코드 확정**: `IdentityPropagationGlobalFilter`는 인증된 분기에서만 `headers.set(X-User-Id)`를 하고, 미인증이면 `defaultIfEmpty(exchange)`로 **원본 요청을 그대로 통과**시킨다(클라이언트가 보낸 `X-User-Id`·`X-From`을 제거하지 않음). 따라서 `permitAll`·미인증 경로에서 외부 헤더 미제거가 확인됨(과거 "확인되지 않음" → **확인됨**).
-- **하위 서비스 X-User-Id 신뢰(확인된 소비 방식)**: `UserController`(`/me/profile` GET·PATCH), `PriceAlertSettingController`(`/price-alerts/me` GET·PUT의 `userPublicId`), `NotificationController`(`/notifications/me`·읽음의 `receiverId`) 모두 `X-User-Id`(`HttpHeaderKey.USER_ID_VALUE`)를 UUID로 **그대로 신뢰**하고 재검증하지 않는다. (PATCH `/me/profile`의 게이트웨이 `hasRole(USER)` 누락은 해소됨.)
-- **남은 확인 대상**: (1) permitAll·미인증 경로에서 외부 `X-User-Id`·`X-From` 제거(strip) 도입 여부, (2) 게이트웨이 우회(네트워크) 직접 접근 차단 여부(인프라 설정) — 특히 market/notification은 게이트웨이 강제 지점이 아예 없음(→ 1.13).
-- **결정 전까지** 헤더 강제 제거·하위 서비스 재검증 로직을 추가하지 않는다.
-`[출처: API_GATEWAY.md §18.1, §18.4 / user·market·notification 분석]`
+### user
 
 #### 1.9 BCrypt strength 5
 `PasswordEncoderConfig`가 `BCryptPasswordEncoder(5)` 사용(기본 10보다 낮음). 성능 의도인지 확인 필요.

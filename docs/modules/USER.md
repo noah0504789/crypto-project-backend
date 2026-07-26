@@ -76,7 +76,7 @@
 - `UserResponse`(REST, `adapter-in/.../web/dto/UserResponse`): `{ id=publicId(UUID), nickname, email, createdAt(Instant) }`. 내부 PK(`id`, Snowflake)는 노출하지 않고 `publicId`를 `id`로 내보낸다.
 - `X-User-Id` 헤더는 게이트웨이가 검증된 JWT의 `id` claim에서 주입한다(`common-core/HttpHeaderKey.USER_ID_VALUE`). **UserController는 이 값을 그대로 신뢰**해 `publicId`로 사용하며 재검증하지 않는다.
 - 게이트웨이 인가 근거: `spring-cloud-api-gateway/.../ReactiveSecurityConfig.java`. GET `me/profile`·`{publicId}/profile`만 `hasRole(USER)`, 그 외 `/user/**`는 `permitAll`.
-- PATCH `/me/profile`는 게이트웨이 `ReactiveSecurityConfig`에서 `hasRole(USER)`를 요구한다. 애플리케이션에서도 `UserCommandService.updateProfile`가 `User.validateOwner(publicId)`로 소유자 인가를 명시 검증한다. `X-User-Id` 주입/외부 헤더 제거 여부는 여전히 미해결(§12, TODO 1.8 헤더 신뢰 항목).
+- PATCH `/me/profile`는 게이트웨이 `ReactiveSecurityConfig`에서 `hasRole(USER)`를 요구한다. 애플리케이션에서도 `UserCommandService.updateProfile`가 `User.validateOwner(publicId)`로 소유자 인가를 명시 검증한다. `X-User-Id`는 게이트웨이가 입구에서 클라이언트 원본 헤더를 제거하고 검증된 JWT `id`로만 주입한다(`IdentityPropagationGlobalFilter`, 게이트웨이 경유 스푸핑 차단). 게이트웨이 **우회** 직접 접근 차단은 인프라 방어(서비스 포트 host-local 바인딩 등, infra `TODO.md` "보안 · 네트워크 노출").
 
 검증 규칙(`UserCreateRequest`, `UserProfileUpdateRequest`):
 - email: `@NotBlank` + `@Email`
@@ -176,7 +176,6 @@ proto: `protobuf/src/main/proto/user/v1/user-service.proto`. 서버 구현 `Grpc
 
 미해결 확인/결정 항목은 [`../../TODO.md`](../../TODO.md)에서 통합 관리한다. user 관련 항목:
 
-- **TODO 1.8** — 신뢰 헤더(`X-User-Id`·`X-From`) 위조 가능성과 무재검증 신뢰
 - **TODO 1.9** — BCrypt strength 5 (`PasswordEncoderConfig`)
 
 ## 17. 관련 문서와 rules
