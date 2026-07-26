@@ -45,7 +45,7 @@
 ### JWT
 - claim 변경(현재 `roles`, `id` 확인됨)은 gateway, websocket-gateway, 하위 서비스에 영향.
 - 발급(`Rs256JwtEncoder`, Vault Transit) ↔ 검증(gateway `ReactiveJwtDecoderConfig`) 양쪽을 함께 본다.
-- **확인 필요(사실 그대로 유지, 판정 금지)**: `aud`/`jti` 검증은 코드에서 확인되지 않음(게이트웨이는 issuer+blacklist+`id`만). 문서·계약에 `aud`를 넣기 전 실제 검증 여부를 확인한다. `DlqStatus.COMSUME_FAILED` 철자는 직렬화 계약일 수 있어 임의 수정 금지.
+- **확인 필요(사실 그대로 유지, 판정 금지)**: `aud`/`jti` 검증은 코드에서 확인되지 않음(게이트웨이는 issuer+blacklist+`id`만). 문서·계약에 `aud`를 넣기 전 실제 검증 여부를 확인한다. `DlqStatus` 소비 실패 상태는 `CONSUME_FAILED`다(과거 `COMSUME_FAILED` 오타는 코드에서 정정됨). `@Enumerated(STRING)`으로 이름이 그대로 저장되는 계약이라 값 변경 시 저장된 row 영향을 함께 본다.
 
 ### DB Schema
 - `schema.sql`, JPA 매핑, 기존 데이터 마이그레이션을 함께 본다. unique/index(예: user `public_id`, market `uk_markets_market_code`, price_alert_setting 복합 unique) 변경은 계약이다.
