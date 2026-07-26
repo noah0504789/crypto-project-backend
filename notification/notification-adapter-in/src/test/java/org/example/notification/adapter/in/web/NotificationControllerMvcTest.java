@@ -78,7 +78,9 @@ class NotificationControllerMvcTest {
                     .andExpect(jsonPath("$.items[0].recipientId").value("66f000000000000000000001"))
                     .andExpect(jsonPath("$.items[0].title").value("가격 알림"))
                     .andExpect(jsonPath("$.items[0].message").value("KRW-BTC이 7.0% 이상 상승했습니다."))
-                    .andExpect(jsonPath("$.items[0].read").value(false));
+                    .andExpect(jsonPath("$.items[0].read").value(false))
+                    // 커서용 deliveredAtMs(epoch millis) 방출 확인
+                    .andExpect(jsonPath("$.items[0].deliveredAtMs").isNumber());
 
             verify(notificationQueryUseCase).listInboxItems(query);
             verifyNoMoreInteractions(notificationQueryUseCase);
