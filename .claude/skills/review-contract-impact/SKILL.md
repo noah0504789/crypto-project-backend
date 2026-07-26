@@ -27,4 +27,4 @@ grep -Rn "<계약 문자열/타입>" --include="*.java" --include="*.proto" --in
 
 ## 4. 판단·보고
 - 호환/비호환을 명시하고 영향 서비스·파일을 나열한다.
-- 비호환이면 구현 전 승인 요청. `DlqStatus.COMSUME_FAILED`처럼 오타로 보여도 직렬화 계약일 수 있으므로 임의 수정하지 않는다.
+- 비호환이면 구현 전 승인 요청. `@Enumerated(STRING)` enum 이름(예: `DlqStatus.CONSUME_FAILED`)은 DB에 그대로 저장되는 직렬화 계약이므로, 오타처럼 보여도 저장된 row 영향을 확인하기 전엔 임의 수정하지 않는다.
