@@ -16,6 +16,8 @@
 | [SERVICE_FLOWS.md](SERVICE_FLOWS.md) | 주요 요청/이벤트 흐름(로그인·채팅·알림·Outbox 등) |
 | [CODE_STYLE.md](CODE_STYLE.md) | 코드 작성/리팩토링 기준(네이밍·DTO·도메인·예외·상수화 등) — 단일 정본 |
 | [CI_CD.md](CI_CD.md) | CI(affected 빌드)·CD(배포)·Config 재배포 파이프라인 |
+| [SCENARIO_TEST.md](SCENARIO_TEST.md) | 화면 카테고리별 시연/연동 테스트 시나리오 |
+| [../README.md](../README.md) | 프로젝트 소개(기획·외부 API·화면 시연·문서 지도) |
 | [../TODO.md](../TODO.md) | 미해결 확인/결정 항목 단일 관리처 |
 | [../CLAUDE.md](../CLAUDE.md) | 루트 공통 작업 규칙·문서 지도 |
 
