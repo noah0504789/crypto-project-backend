@@ -17,7 +17,9 @@ on:
           - crypto-chat-service
           - crypto-user-service
           - crypto-market-service
+          - crypto-notification-service
           - crypto-outbox-poller
+          - crypto-market-detection
 
       image_tag:
         description: "Docker image tag to deploy"
@@ -174,6 +176,12 @@ jobs:
                 "$IMAGE_TAG"
               ;;
 
+            crypto-market-detection)
+              echo "Scale input is ignored for crypto-market-detection safe recreate deployment."
+              ./scripts/deploy/deploy-market-detection-safe.sh \
+                "$IMAGE_TAG"
+              ;;
+
             crypto-user-service)
               ./scripts/deploy/deploy-user-service-bluegreen.sh \
                 "$IMAGE_TAG" \
@@ -182,6 +190,12 @@ jobs:
 
             crypto-market-service)
               ./scripts/deploy/deploy-market-service-bluegreen.sh \
+                "$IMAGE_TAG" \
+                "$TARGET_SCALE"
+              ;;
+
+            crypto-notification-service)
+              ./scripts/deploy/deploy-notification-service-bluegreen.sh \
                 "$IMAGE_TAG" \
                 "$TARGET_SCALE"
               ;;
