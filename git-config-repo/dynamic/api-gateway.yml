@@ -24,9 +24,8 @@ api-path:
   auth:
     pattern: /auth/**
   user:
-    pattern: /user/**
-    me: /user/me
-    profile-pattern: /user/*/profile
+    base: /user
+    me: /user/me/profile
   chat:
     pattern: /chat/**
     rooms-me: /chat/rooms/me
