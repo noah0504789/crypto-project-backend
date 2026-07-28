@@ -9,7 +9,7 @@ eureka:
 
   client:
     serviceUrl:
-      defaultZone: http://crypto-spring-cloud-eureka-server:8761/eureka/
+      defaultZone: ${uri.internal.eureka-server}/eureka/
     healthCheck:
       enabled: true
     fetch-registry: true

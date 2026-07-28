@@ -40,7 +40,7 @@
 - `eureka.server.enable-self-preservation: false`, `eviction-interval-timer-in-ms: 30000`, `response-cache-update-interval-ms: 10000`, `defaultOpenForTrafficCount: 0`.
 
 ### 4.2 클라이언트 공통 (`eureka-client.yml`, 소비 서비스가 import)
-- `client.serviceUrl.defaultZone: http://crypto-spring-cloud-eureka-server:8761/eureka/`.
+- `client.serviceUrl.defaultZone`은 공통 `application.yml`의 `uri.internal.eureka-server`를 참조해 `/eureka/` 경로를 구성한다.
 - `instance.lease-renewal-interval-in-seconds: 10`, `lease-expiration-duration-in-seconds: 30`.
 - `client.registry-fetch-interval-seconds: 10`, `healthCheck.enabled: true`, `fetch-registry: true`.
 - `instance.instance-id: ${spring.application.name}:${server.port}:${app.instance-id}`.

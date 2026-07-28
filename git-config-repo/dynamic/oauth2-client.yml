@@ -8,12 +8,12 @@ server:
 grpc:
   client:
     user-client:
-      address: discovery:///user-service
+      address: ${uri.discovery.user-service}
       negotiation-type: plaintext
       max-inbound-message-size:
         bytes: 16777216 # 16MB
     oauth2-authorization-server-client:
-      address: discovery:///oauth2-authorization-server
+      address: ${uri.discovery.oauth2-authorization-server}
       negotiation-type: plaintext
       max-inbound-message-size:
         bytes: 16777216 # 16MB
@@ -42,7 +42,7 @@ spring:
               - openid
               - profile
               - email
-            redirect-uri: https://localhost:8000/login/oauth2/code/google
+            redirect-uri: ${uri.public.api-gateway-origin}/login/oauth2/code/google
           kakao:
             provider: kakao
             client-id: ${kakao.client-id}
@@ -54,24 +54,24 @@ spring:
               - openid
               - profile_nickname
               - account_email
-            redirect-uri: https://localhost:8000/login/oauth2/code/kakao # TODO: 주입하기 (authorization server -> client의 redirect request param으로 사용)
+            redirect-uri: ${uri.public.api-gateway-origin}/login/oauth2/code/kakao
           my-authorization-server:
             provider: my-authorization-server
             client-id: ${my.client-id}
             client-secret: ${my.client-secret}
             client-authentication-method: client_secret_basic
             authorization-grant-type: urn:ietf:params:oauth:grant-type:token-exchange # refresh-token
-            redirect-uri: http://crypto-oauth2-authorization-server:9000/not/use
+            redirect-uri: ${uri.internal.oauth2-authorization-server}/not/use
         provider:
           google:
-            issuer-uri: https://accounts.google.com
+            issuer-uri: ${uri.provider.google.issuer}
             user-name-attribute: email # nameAttributeKey 필드에 대입
           kakao:
-            issuer-uri: https://kauth.kakao.com
+            issuer-uri: ${uri.provider.kakao.issuer}
             user-name-attribute: email # nameAttributeKey 필드에 대입
           my-authorization-server:
-            authorization-uri: http://crypto-oauth2-authorization-server:9000/oauth2/authorize # 인가 코드 요청
-            token-uri: http://crypto-oauth2-authorization-server:9000/oauth2/token
+            authorization-uri: ${uri.internal.oauth2-authorization-server}/oauth2/authorize # 인가 코드 요청
+            token-uri: ${uri.internal.oauth2-authorization-server}/oauth2/token
 
 oauth2:
   internal-auth-server:

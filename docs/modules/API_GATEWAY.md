@@ -79,9 +79,9 @@ Reactive Spring Cloud Gateway 기반 OAuth2 Resource Server. 외부 HTTP·WebSoc
 
 ## 7. JWT 인증·검증 구조
 
-- 디코더: `NimbusReactiveJwtDecoder.withJwkSetUri(jwtProperties.jwksUri())`. JWKS URI는 `git-config-repo/dynamic/jwt.yml:5` `http://crypto-spring-cloud-config:8888/.well-known/jwks.json?keyName=...`(Config Server가 JWKS 제공).
+- 디코더: `NimbusReactiveJwtDecoder.withJwkSetUri(jwtProperties.jwksUri())`. JWKS URI는 `git-config-repo/dynamic/jwt.yml`이 공통 `application.yml`의 `uri.internal.config-server`를 참조해 구성한다(Config Server가 JWKS 제공).
 - 검증 체인(`DelegatingOAuth2TokenValidator`, `ReactiveJwtDecoderConfig.java:27-35`):
-  1. `JwtValidators.createDefaultWithIssuer(jwtProperties.issuerUri())` — issuer 검증. issuer = `git-config-repo/dynamic/jwt.yml:4` `http://crypto-oauth2-authorization-server:9000`.
+  1. `JwtValidators.createDefaultWithIssuer(jwtProperties.issuerUri())` — issuer 검증. `git-config-repo/dynamic/jwt.yml`이 공통 `application.yml`의 `uri.internal.oauth2-authorization-server`를 참조한다.
   2. `BlacklistTokenValidator` — `GrpcBlacklistTokenClientAdapter`를 통해 oauth2-authorization-server에 gRPC로 블랙리스트 여부 조회(`existsBlacklist`). 존재하면 `invalid_token` 실패.
   3. `RequiredUserIdClaimValidator` — `id` claim(`JwtClaimKey.USER_ID`) 필수. 없거나 공백이면 실패.
 - **audience(`aud`) 검증은 확인되지 않음.** 위 3개 validator 외에 aud를 확인하는 코드는 없다(`ReactiveJwtDecoderConfig.java` 전체 검토 기준).
@@ -135,7 +135,7 @@ Reactive Spring Cloud Gateway 기반 OAuth2 Resource Server. 외부 HTTP·WebSoc
 | `POST /internal/deployment/**` | Gateway 자신 | N/A(Route 아님, 로컬 컨트롤러) | `DeploymentControlAuthWebFilter`(`X-Deploy-Token`) | JWT는 permitAll, Deploy Token 별도 필요 | `ReactiveSecurityConfig.java:56`, `common/common-actuator-webflux/.../DeploymentControlAuthWebFilter.java` |
 | `/actuator/**` | Gateway 자신 | N/A | 없음 | 아니오 | `ReactiveSecurityConfig.java:78` |
 
-**oauth2-authorization-server로 향하는 HTTP Route는 없다.** 연결은 gRPC(`Oauth2AuthorizationServerClient.existsBlacklist`)뿐이며, `grpc.client.oauth2-authorization-server-client.address=discovery:///oauth2-authorization-server`(`git-config-repo/dynamic/api-gateway.yml:13-19`).
+**oauth2-authorization-server로 향하는 HTTP Route는 없다.** 연결은 gRPC(`Oauth2AuthorizationServerClient.existsBlacklist`)뿐이며, `grpc.client.oauth2-authorization-server-client.address`는 공통 `application.yml`의 `uri.discovery.oauth2-authorization-server`를 참조한다.
 
 ## 10. Header 및 Path Rewrite 계약
 
@@ -196,14 +196,14 @@ Gateway가 생성·추가하는 헤더는 다음 세 가지다. 셋 다 Route �
 
 - Config Server: `spring.config.import: configserver:http://crypto-spring-cloud-config:8888`, 조합 프로파일 `api-gateway,eureka-client,jwt,frontend,monitoring`(`application.yml:3-7`).
 - 서버 포트·라우팅 패턴 등 실질적 동작값은 로컬이 아니라 원격 `git-config-repo/dynamic/api-gateway.yml`, `git-config-repo/dynamic/jwt.yml`, `git-config-repo/infrastructure/{frontend,eureka-client,monitoring}.yml`에 있다.
-- Eureka: `git-config-repo/infrastructure/eureka-client.yml` — `defaultZone: http://crypto-spring-cloud-eureka-server:8761/eureka/`, lease renewal 10s/expiration 30s.
+- Eureka: `git-config-repo/infrastructure/eureka-client.yml` — `defaultZone`은 공통 `application.yml`의 `uri.internal.eureka-server`를 참조하며, lease renewal 10s/expiration 30s.
 - `lb://`, `lb:ws://` 뒤의 이름은 대상 서비스가 Eureka에 등록하는 `spring.application.name`과 일치해야 라우팅이 성립한다(개별 서비스의 실제 등록 이름은 이 문서 범위 밖, §18 참고).
 
 ## 13. CORS 정책
 
 `CorsConfig.java` 기준.
 
-- Origin: `frontend.origin`(`git-config-repo/infrastructure/frontend.yml:2` = `http://localhost:5173`) — 설정값 1개만 허용.
+- Origin: `frontend.origin`은 공통 `application.yml`의 `uri.public.frontend-origin`을 참조하며 설정값 1개만 허용.
 - Methods: `OPTIONS, GET, POST, PUT, PATCH, DELETE` (**DELETE 포함**).
 - Headers: `*`(모두 허용).
 - `allowCredentials: true`.

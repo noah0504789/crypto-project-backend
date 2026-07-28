@@ -1,7 +1,7 @@
 spring:
   datasource:
     write:
-      url: jdbc:mysql://mysql-master:3306/${mysql.db}?serverTimezone=UTC&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
+      url: ${uri.datastore.mysql.write}
       username: ${mysql.username}
       password: ${mysql.password}
       driver-class-name: com.mysql.cj.jdbc.Driver
@@ -13,7 +13,7 @@ spring:
         connection-timeout: ${mysql.write.pool.connection-timeout:30000}
         pool-name: write-pool
     read:
-      url: jdbc:mysql://mysql-replica:3306/${mysql.db}?serverTimezone=UTC&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
+      url: ${uri.datastore.mysql.read}
       username: ${mysql.username}
       password: ${mysql.password}
       driver-class-name: com.mysql.cj.jdbc.Driver

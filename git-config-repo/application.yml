@@ -1,0 +1,25 @@
+uri:
+  public:
+    frontend-origin: http://localhost:5173
+    api-gateway-origin: https://localhost:8000
+  internal:
+    config-server: http://crypto-spring-cloud-config:8888
+    eureka-server: http://crypto-spring-cloud-eureka-server:8761
+    oauth2-authorization-server: http://crypto-oauth2-authorization-server:9000
+  discovery:
+    user-service: discovery:///user-service
+    market-service: discovery:///market-service
+    chat-service: discovery:///chat-service
+    oauth2-authorization-server: discovery:///oauth2-authorization-server
+  provider:
+    google:
+      issuer: https://accounts.google.com
+    kakao:
+      issuer: https://kauth.kakao.com
+    upbit:
+      websocket: wss://api.upbit.com/websocket/v1
+  datastore:
+    mysql:
+      write: jdbc:mysql://mysql-master:3306/${mysql.db}?serverTimezone=UTC&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
+      read: jdbc:mysql://mysql-replica:3306/${mysql.db}?serverTimezone=UTC&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
+    mongo: mongodb://${mongo.user}:${mongo.pass}@mongo-primary:27017,mongo-secondary-0:27018,mongo-secondary-1:27019/${mongo.db}?authSource=${mongo.authSource}

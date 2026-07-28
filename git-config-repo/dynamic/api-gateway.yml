@@ -13,7 +13,7 @@ server:
 grpc:
   client:
     oauth2-authorization-server-client:
-      address: discovery:///oauth2-authorization-server
+      address: ${uri.discovery.oauth2-authorization-server}
       negotiation-type: plaintext
       max-inbound-message-size:
         bytes: 16777216 # 16MB

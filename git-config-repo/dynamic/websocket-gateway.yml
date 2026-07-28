@@ -4,7 +4,7 @@ server:
 grpc:
   client:
     chat-client:
-      address: discovery:///chat-service
+      address: ${uri.discovery.chat-service}
       negotiation-type: plaintext
       max-inbound-message-size:
         bytes: 16777216 # 16MB

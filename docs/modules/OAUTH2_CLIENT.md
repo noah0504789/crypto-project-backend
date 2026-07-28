@@ -111,7 +111,9 @@ Authorization Bearer access → subject(email) 해석
 - gRPC 클라이언트: `user-client`(→user-service), `oauth2-authorization-server-client`(→oauth2-authorization-server), 둘 다 plaintext/16MB.
 - `spring.security.oauth2.client.registration`: `google`, `kakao`(client_secret_post), `my-authorization-server`(token-exchange grant, client_secret_basic). provider issuer/token-uri 포함.
 - `api-path.auth`(`/auth/**`, logout, refresh), `api-path.oauth2`(authorization/callback base).
-- 자격은 `${google.*}`, `${kakao.*}`, `${my.*}`(Vault/Config). frontend redirect는 `frontend.yml`(`FrontendProperties`).
+- 자격은 `${google.*}`, `${kakao.*}`, `${my.*}`(Vault/Config). 공개·내부·provider URI는 공통
+  `git-config-repo/application.yml`의 `${uri.*}`를 사용하고, 로그인 성공·실패 프론트 redirect는
+  `frontend.yml`(`FrontendProperties`)이 공통 frontend origin을 참조해 구성한다.
 
 ## 9. 테스트 현황
 
@@ -135,7 +137,8 @@ Authorization Bearer access → subject(email) 해석
 | `CustomLogoutSuccessHandler.java` | 블랙리스트·쿠키 삭제·AuthorizedClient 삭제(로그아웃 무결성) |
 | `CustomOAuth2AuthorizedClientService.java` | 저장/삭제 키(email) 일치 — 불일치 시 로그아웃 누락 |
 | `*OidcProviderProfileExtractor.java` | provider별 claim 해석. 신규 provider 추가 지점 |
-| `git-config-repo/dynamic/oauth2-client.yml` | registration/provider/redirect-uri/api-path |
+| `git-config-repo/application.yml` | 공개·내부·discovery·provider·datastore URI 정본 |
+| `git-config-repo/dynamic/oauth2-client.yml` | registration/provider/redirect-uri/api-path (`${uri.*}` 소비) |
 
 ## 12. 확인 필요 항목
 
