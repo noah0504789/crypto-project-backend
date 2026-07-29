@@ -240,7 +240,7 @@ Spring `ApplicationEventPublisher`를 직접 쓰지 않고 `EventUtils.raise(lis
 - 런타임 서비스는 로컬에 `application-*.yml` 프로파일 파일을 두지 않고, `spring-cloud-config`(`configserver:http://crypto-spring-cloud-config:8888`)에서 프로파일을 조합해 받는다.
 - Config Server 백엔드: git(`${CONFIG_REPO_URI}`, 검색 경로 root/`dynamic`/`infrastructure`, label `main`) + Vault(AppRole, KV v2 `secret`, Transit 서명). (`spring-cloud-config/.../bootstrap/src/main/resources/application.yml`)
 - 설정 저장소 `git-config-repo/`:
-  - `application.yml`: 모든 Config Client에 공통 병합되는 URI 레지스트리(공개·내부·discovery·provider)
+  - `application.yml`: 모든 Config Client에 공통 병합되는 URI 레지스트리와 공유 REST/WebSocket 경로 계약
   - `dynamic/`(12): `api-gateway.yml`, `chat-service.yml`, `idgen.yml`, `jwt.yml`, `market-detection.yml`, `market-service.yml`, `notification-service.yml`, `oauth2-authorization-server.yml`, `oauth2-client.yml`, `outbox-poller.yml`, `user-service.yml`, `websocket-gateway.yml`
   - `infrastructure/`(8): `eureka-client.yml`, `eureka-server.yml`, `frontend.yml`, `kafka.yml`, `mongo.yml`, `monitoring.yml`, `mysql.yml`, `redis.yml`
 - 실제 secret은 git-config-repo에 커밋되지 않고 `${...}` 플레이스홀더만 존재(Vault에서 주입). 보안 상세는 `.claude/rules/security.md` 참고.

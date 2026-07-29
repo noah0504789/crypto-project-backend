@@ -21,14 +21,14 @@ grpc:
 
 api-path:
   auth:
-    pattern: /auth/**
-    logout: /auth/logout
-    refresh: /auth/refresh
+    pattern: ${api-contract.auth.pattern}
+    logout: ${api-contract.auth.logout}
+    refresh: ${api-contract.auth.refresh}
   oauth2:
-    authorization-base-uri: /oauth2/authorization
-    authorization-pattern: /oauth2/**
-    login-callback-pattern: /login/oauth2/code/**
-    login-callback-base-uri: /login/oauth2/code/*
+    authorization-base-uri: ${api-contract.oauth2.authorization-base}
+    authorization-pattern: ${api-contract.oauth2.pattern}
+    login-callback-pattern: ${api-contract.oauth2.login-callback-pattern}
+    login-callback-base-uri: ${api-contract.oauth2.login-callback-base-uri}
 
 spring:
   security:
@@ -42,7 +42,7 @@ spring:
               - openid
               - profile
               - email
-            redirect-uri: ${uri.public.api-gateway-origin}/login/oauth2/code/google
+            redirect-uri: ${uri.public.api-gateway-origin}${api-contract.oauth2.login-callback-base}/google
           kakao:
             provider: kakao
             client-id: ${kakao.client-id}
@@ -54,7 +54,7 @@ spring:
               - openid
               - profile_nickname
               - account_email
-            redirect-uri: ${uri.public.api-gateway-origin}/login/oauth2/code/kakao
+            redirect-uri: ${uri.public.api-gateway-origin}${api-contract.oauth2.login-callback-base}/kakao
           my-authorization-server:
             provider: my-authorization-server
             client-id: ${my.client-id}

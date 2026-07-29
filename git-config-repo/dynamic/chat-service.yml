@@ -13,15 +13,15 @@ grpc:
 
 api-path:
   chat:
-    base: /chat
-    rooms-popular: /rooms/popular
-    rooms-me: /rooms/me
-    room: /room/{roomId}
-    room-me: /room/{roomId}/me
-    room-members: /room/{roomId}/members
-    room-activity: /room/{roomId}/activity
-    room-create: /room
-    room-messages: /room/{roomId}/messages
+    base: ${api-contract.chat.base}
+    rooms-popular: ${api-contract.chat.rooms-popular}
+    rooms-me: ${api-contract.chat.rooms-me}
+    room: ${api-contract.chat.room}
+    room-me: ${api-contract.chat.room-me}
+    room-members: ${api-contract.chat.room-members}
+    room-activity: ${api-contract.chat.room-activity}
+    room-create: ${api-contract.chat.room-create}
+    room-messages: ${api-contract.chat.room-messages}
 
 spring:
   messages:

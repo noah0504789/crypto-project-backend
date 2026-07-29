@@ -31,7 +31,7 @@
 - Gradle 경로: `:oauth2-client:*`(헥사고날 멀티모듈). 실행 모듈 `:oauth2-client-bootstrap`.
 - 실행 클래스: `org.example.oauth2.client.Main`. app name: `oauth2-client`. 포트 `8900`.
 - **gRPC 서버 없음**(`grpc.server.enabled: false`). gRPC 클라이언트로만 동작: `user-service`(`user.v1`), `oauth2-authorization-server`(`auth.v1`).
-- 저장소 없음(상태는 AS Redis에 위임). Config Server 연동: `spring.cloud.config.name: oauth2-client,eureka-client,jwt,frontend,monitoring`.
+- 저장소 없음(상태는 AS Redis에 위임). Config Server 연동: `spring.cloud.config.name: oauth2-client,eureka-client,jwt,frontend,kafka,monitoring`. 공유 `api-contract.*`는 Config Repository 루트 `application.yml`에서 자동 병합된다.
 - 핵심 라이브러리: `spring-boot-starter-oauth2-client`, `spring-boot-starter-web`, `common-core`, `user-contract`.
 
 ## 4. 모듈 구조 (헥사고날)
