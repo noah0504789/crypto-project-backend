@@ -41,9 +41,10 @@ api-path:
     pattern: /auth/**
     logout: /auth/logout
   user:
-    pattern: /user/**
-    me: /user/me
-    profile-pattern: /user/*/profile
+    base: /user
+    sign-up: /sign-up
+    me: /me/profile
+    profile: /{publicId}/profile
   chat:
     base: /chat/**
     rooms-popular: /chat/rooms/popular

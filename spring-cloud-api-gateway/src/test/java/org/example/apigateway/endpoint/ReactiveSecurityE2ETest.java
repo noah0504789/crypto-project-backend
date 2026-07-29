@@ -47,19 +47,19 @@ class ReactiveSecurityE2ETest {
     }
 
     @Test
-    @DisplayName("GET /user/me - 토큰이 없으면 401을 반환한다")
+    @DisplayName("GET /user/me/profile - 토큰이 없으면 401을 반환한다")
     void userMe_shouldReturnUnauthorized_whenTokenMissing() {
         webTestClient.get()
-                .uri("/user/me")
+                .uri("/user/me/profile")
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
 
     @Test
-    @DisplayName("GET /user/me - ROLE_USER가 없으면 403 JSON 에러 응답을 반환한다")
+    @DisplayName("GET /user/me/profile - ROLE_USER가 없으면 403 JSON 에러 응답을 반환한다")
     void userMe_shouldReturnForbiddenErrorBody_whenRoleMissing() {
         webTestClient.get()
-                .uri("/user/me")
+                .uri("/user/me/profile")
                 .headers(headers -> headers.setBearerAuth("no-role-token"))
                 .exchange()
                 .expectStatus().isForbidden()
@@ -68,15 +68,15 @@ class ReactiveSecurityE2ETest {
                 .jsonPath("$.status").isEqualTo(403)
                 .jsonPath("$.error").isEqualTo("FORBIDDEN")
                 .jsonPath("$.message").isEqualTo("Authorization required.")
-                .jsonPath("$.path").isEqualTo("/user/me")
+                .jsonPath("$.path").isEqualTo("/user/me/profile")
                 .jsonPath("$.timestamp").exists();
     }
 
     @Test
-    @DisplayName("PATCH /user/me - 토큰이 없으면 401을 반환한다")
+    @DisplayName("PATCH /user/me/profile - 토큰이 없으면 401을 반환한다")
     void patchUserMe_shouldReturnUnauthorized_whenTokenMissing() {
         webTestClient.patch()
-                .uri("/user/me")
+                .uri("/user/me/profile")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("{\"nickname\":\"noah\"}")
                 .exchange()
@@ -84,10 +84,10 @@ class ReactiveSecurityE2ETest {
     }
 
     @Test
-    @DisplayName("PATCH /user/me - ROLE_USER가 없으면 403 JSON 에러 응답을 반환한다")
+    @DisplayName("PATCH /user/me/profile - ROLE_USER가 없으면 403 JSON 에러 응답을 반환한다")
     void patchUserMe_shouldReturnForbiddenErrorBody_whenRoleMissing() {
         webTestClient.patch()
-                .uri("/user/me")
+                .uri("/user/me/profile")
                 .headers(headers -> headers.setBearerAuth("no-role-token"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("{\"nickname\":\"noah\"}")
@@ -97,7 +97,7 @@ class ReactiveSecurityE2ETest {
                 .expectBody()
                 .jsonPath("$.status").isEqualTo(403)
                 .jsonPath("$.error").isEqualTo("FORBIDDEN")
-                .jsonPath("$.path").isEqualTo("/user/me");
+                .jsonPath("$.path").isEqualTo("/user/me/profile");
     }
 
     @Test
