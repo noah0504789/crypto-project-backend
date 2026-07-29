@@ -65,7 +65,7 @@ class JpaUserAdapterTest {
 
         // then
         verify(managedUser).updateProfile(user);
-        then(userRepository).should(never()).save(any(JpaUser.class));
+        then(userRepository).should(never()).saveAndFlush(any(JpaUser.class));
         then(roleRepository).shouldHaveNoInteractions();
     }
 
@@ -93,7 +93,7 @@ class JpaUserAdapterTest {
         given(jpaRole.toDomain())
                 .willReturn(role);
 
-        given(userRepository.save(any(JpaUser.class)))
+        given(userRepository.saveAndFlush(any(JpaUser.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
 
         // when
@@ -112,7 +112,7 @@ class JpaUserAdapterTest {
         ArgumentCaptor<JpaUser> captor = ArgumentCaptor.forClass(JpaUser.class);
 
         then(userRepository).should()
-                .save(captor.capture());
+                .saveAndFlush(captor.capture());
 
         JpaUser savedJpaUser = captor.getValue();
 
@@ -132,7 +132,7 @@ class JpaUserAdapterTest {
                 "encoded-password"
         );
 
-        given(userRepository.save(any(JpaUser.class)))
+        given(userRepository.saveAndFlush(any(JpaUser.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
 
         // when
@@ -147,7 +147,7 @@ class JpaUserAdapterTest {
         ArgumentCaptor<JpaUser> captor = ArgumentCaptor.forClass(JpaUser.class);
 
         then(userRepository).should()
-                .save(captor.capture());
+                .saveAndFlush(captor.capture());
 
         assertThat(captor.getValue().getRoles()).isEmpty();
     }
@@ -180,6 +180,6 @@ class JpaUserAdapterTest {
                 .findByName(RoleEnum.USER);
 
         then(userRepository).should(never())
-                .save(any(JpaUser.class));
+                .saveAndFlush(any(JpaUser.class));
     }
 }

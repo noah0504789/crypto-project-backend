@@ -41,7 +41,7 @@ public class JpaUserAdapter implements UserPersistencePort {
                         .orElseThrow(() -> new IllegalArgumentException("Role not found: " + role.getName()))
         );
 
-        return userRepository.save(jpaUser).toDomain();
+        return userRepository.saveAndFlush(jpaUser).toDomain();
     }
 
     @Override
