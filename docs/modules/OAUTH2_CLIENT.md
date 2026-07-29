@@ -137,7 +137,7 @@ Authorization Bearer access → subject(email) 해석
 | `CustomLogoutSuccessHandler.java` | 블랙리스트·쿠키 삭제·AuthorizedClient 삭제(로그아웃 무결성) |
 | `CustomOAuth2AuthorizedClientService.java` | 저장/삭제 키(email) 일치 — 불일치 시 로그아웃 누락 |
 | `*OidcProviderProfileExtractor.java` | provider별 claim 해석. 신규 provider 추가 지점 |
-| `git-config-repo/application.yml` | 공개·내부·discovery·provider·datastore URI 정본 |
+| `git-config-repo/application.yml` | 공개·내부·discovery·provider URI 정본 |
 | `git-config-repo/dynamic/oauth2-client.yml` | registration/provider/redirect-uri/api-path (`${uri.*}` 소비) |
 
 ## 12. 확인 필요 항목

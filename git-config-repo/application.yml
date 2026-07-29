@@ -18,8 +18,3 @@ uri:
       issuer: https://kauth.kakao.com
     upbit:
       websocket: wss://api.upbit.com/websocket/v1
-  datastore:
-    mysql:
-      write: jdbc:mysql://mysql-master:3306/${mysql.db}?serverTimezone=UTC&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
-      read: jdbc:mysql://mysql-replica:3306/${mysql.db}?serverTimezone=UTC&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
-    mongo: mongodb://${mongo.user}:${mongo.pass}@mongo-primary:27017,mongo-secondary-0:27018,mongo-secondary-1:27019/${mongo.db}?authSource=${mongo.authSource}
