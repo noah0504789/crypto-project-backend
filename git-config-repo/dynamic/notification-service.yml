@@ -7,6 +7,11 @@ server:
       charset: UTF-8
       force: true
 
+api-path:
+  notification:
+    me: ${api-contract.notification.me}
+    read: ${api-contract.notification.read}
+
 spring:
   cloud:
     function:
@@ -34,7 +39,3 @@ mongo:
   pass: ${mongo.notification.password}
   db: ${mongo.notification.db}
   authSource: notification
-api-path:
-  notification:
-    me: ${api-contract.notification.me}
-    read: ${api-contract.notification.read}
