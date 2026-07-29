@@ -35,7 +35,7 @@ import java.net.URI;
 import java.util.List;
 
 @RestController
-@RequestMapping("${api-path.chat.base:/chat}")
+@RequestMapping("${api-path.chat.base}")
 @RequiredArgsConstructor
 @Validated
 public class ChatRoomController {
@@ -43,7 +43,7 @@ public class ChatRoomController {
     private final ChatRoomQueryUseCase chatRoomQueryUseCase;
     private final ChatRoomCommandUseCase chatRoomCommandUseCase;
 
-    @GetMapping("${api-path.chat.rooms-popular:/rooms/popular}")
+    @GetMapping("${api-path.chat.rooms-popular}")
     public ResponseEntity<CursorPage<ChatRoomResponse>> popularChatRooms(
             @RequestParam("category") ChatRoomCategory category,
             @RequestParam(value = "limit", defaultValue = "10") Integer limit,
@@ -62,7 +62,7 @@ public class ChatRoomController {
         );
     }
 
-    @GetMapping("${api-path.chat.rooms-me:/rooms/me}")
+    @GetMapping("${api-path.chat.rooms-me}")
     public ResponseEntity<CursorPage<MyChatRoomResponse>> myChatRooms(
             @RequestParam(value = "limit", defaultValue = "10") Integer limit,
             @ModelAttribute MyChatRoomCursor cursor,
@@ -81,7 +81,7 @@ public class ChatRoomController {
         );
     }
 
-    @GetMapping("${api-path.chat.room:/room/{roomId}}")
+    @GetMapping("${api-path.chat.room}")
     public ResponseEntity<ChatRoomResponse> chatRoom(
             @PathVariable("roomId") String roomId
     ) {
@@ -90,7 +90,7 @@ public class ChatRoomController {
         return ResponseEntity.ok(ChatRoomResponse.fromDomain(chatRoom));
     }
 
-    @GetMapping("${api-path.chat.room-me:/room/{roomId}/me}")
+    @GetMapping("${api-path.chat.room-me}")
     public ResponseEntity<MyChatRoomResponse> myChatRoom(
             @PathVariable("roomId") String roomId,
             @RequestHeader(HttpHeaderKey.USER_ID_VALUE) String myUserId
@@ -102,7 +102,7 @@ public class ChatRoomController {
         return ResponseEntity.ok(MyChatRoomResponse.from(summary));
     }
 
-    @PostMapping("${api-path.chat.room-members:/room/{roomId}/members}")
+    @PostMapping("${api-path.chat.room-members}")
     public ResponseEntity<Void> join(
             @PathVariable("roomId") String roomId,
             @RequestHeader(HttpHeaderKey.USER_ID_VALUE) String myUserId) {
@@ -113,7 +113,7 @@ public class ChatRoomController {
                 ResponseEntity.noContent().build();
     }
 
-    @DeleteMapping("${api-path.chat.room-members:/room/{roomId}/members}")
+    @DeleteMapping("${api-path.chat.room-members}")
     public ResponseEntity<Void> leave(
             @PathVariable("roomId") String roomId,
             @RequestHeader(HttpHeaderKey.USER_ID_VALUE) String myUserId) {
@@ -122,7 +122,7 @@ public class ChatRoomController {
         return ResponseEntity.noContent().build();
     }
 
-    @PutMapping("${api-path.chat.room-activity:/room/{roomId}/activity}")
+    @PutMapping("${api-path.chat.room-activity}")
     public ResponseEntity<Void> activity(
             @PathVariable("roomId") String roomId,
             @RequestParam("lastMsgReadSeq") Long lastMsgReadSeq,
@@ -133,7 +133,7 @@ public class ChatRoomController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("${api-path.chat.room-create:/room}")
+    @PostMapping("${api-path.chat.room-create}")
     public ResponseEntity<Void> create(
             @RequestBody @Valid ChatRoomCreateRequest request,
             @RequestHeader(HttpHeaderKey.USER_ID_VALUE) String hostId
@@ -143,7 +143,7 @@ public class ChatRoomController {
         return ResponseEntity.created(URI.create("/home")).build();
     }
 
-    @PatchMapping("${api-path.chat.room:/room/{roomId}}")
+    @PatchMapping("${api-path.chat.room}")
     public ResponseEntity<Void> update(
             @PathVariable("roomId") @NotBlank String roomId,
             @RequestHeader(HttpHeaderKey.USER_ID_VALUE) String myUserId,
@@ -158,7 +158,7 @@ public class ChatRoomController {
         return ResponseEntity.noContent().build();
     }
 
-    @DeleteMapping("${api-path.chat.room:/room/{roomId}}")
+    @DeleteMapping("${api-path.chat.room}")
     public ResponseEntity<Void> delete(
             @PathVariable("roomId") String roomId,
             @RequestHeader(HttpHeaderKey.USER_ID_VALUE) String myUserId
