@@ -9,6 +9,8 @@ public interface UserPersistencePort {
 
     User save(User user);
 
+    void updateProfile(User user);
+
     Optional<User> findByPublicId(UUID publicId);
 
     Optional<User> findByEmailWithRoles(String email);

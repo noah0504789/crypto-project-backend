@@ -43,4 +43,12 @@ public class JpaUserAdapter implements UserPersistencePort {
 
         return userRepository.save(jpaUser).toDomain();
     }
+
+    @Override
+    public void updateProfile(User user) {
+        JpaUser jpaUser = userRepository.findById(user.getId())
+                .orElseThrow(() -> new IllegalStateException("User not found: " + user.getId()));
+
+        jpaUser.updateProfile(user);
+    }
 }

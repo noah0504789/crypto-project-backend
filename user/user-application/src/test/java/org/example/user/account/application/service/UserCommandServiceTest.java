@@ -88,7 +88,7 @@ class UserCommandServiceTest {
             inOrder.verify(userRepository).findByPublicId(PUBLIC_ID);
             inOrder.verify(user).validateOwner(PUBLIC_ID);
             inOrder.verify(user).updateNickname(NEW_NICKNAME);
-            inOrder.verify(userRepository).save(user);
+            inOrder.verify(userRepository).updateProfile(user);
         }
 
         @Test
@@ -112,7 +112,7 @@ class UserCommandServiceTest {
                     .isInstanceOf(UserAccessDeniedException.class);
 
             verify(user, never()).updateNickname(anyString());
-            verify(userRepository, never()).save(any());
+            verify(userRepository, never()).updateProfile(any());
         }
 
         @Test
@@ -132,7 +132,7 @@ class UserCommandServiceTest {
                     .isInstanceOf(UserNotFoundException.class);
 
             verify(userRepository).findByPublicId(PUBLIC_ID);
-            verify(userRepository, never()).save(any());
+            verify(userRepository, never()).updateProfile(any());
         }
     }
 

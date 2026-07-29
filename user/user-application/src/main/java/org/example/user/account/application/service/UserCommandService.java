@@ -37,7 +37,7 @@ public class UserCommandService implements UserCommandUseCase {
 
         user.updateNickname(command.nickname());
 
-        userRepository.save(user);
+        userRepository.updateProfile(user);
     }
 
     @Override
