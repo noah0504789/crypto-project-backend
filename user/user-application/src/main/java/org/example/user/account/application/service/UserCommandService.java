@@ -22,6 +22,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserCommandService implements UserCommandUseCase {
 
+    private static final String OAUTH2_NICKNAME_SUFFIX_SEPARATOR = "_";
+
     private final UserPersistencePort userRepository;
     private final RolePersistencePort roleRepository;
     private final PasswordEncoder passwordEncoder;
@@ -44,11 +46,12 @@ public class UserCommandService implements UserCommandUseCase {
     @Transactional
     public User signUpOauth2(SignUpOauth2Command command) {
         Role role = getDefaultRole();
+        String nickname = resolveAvailableOauth2Nickname(command.nickname());
 
         User newUser = User.ofOAuth2(
                 command.sub(),
                 command.email(),
-                command.nickname()
+                nickname
         );
 
         newUser.addRole(role);
@@ -79,5 +82,23 @@ public class UserCommandService implements UserCommandUseCase {
 
         return roleRepository.findByName(defaultRole)
                 .orElseThrow(() -> new RoleNotFoundException(defaultRole));
+    }
+
+    private String resolveAvailableOauth2Nickname(String nickname) {
+        if (!userRepository.existsByNickname(nickname)) {
+            return nickname;
+        }
+
+        int suffix = 1;
+
+        while (true) {
+            String candidate = nickname + OAUTH2_NICKNAME_SUFFIX_SEPARATOR + suffix;
+
+            if (!userRepository.existsByNickname(candidate)) {
+                return candidate;
+            }
+
+            suffix++;
+        }
     }
 }

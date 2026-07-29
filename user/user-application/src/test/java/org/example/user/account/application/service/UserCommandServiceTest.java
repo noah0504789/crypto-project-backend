@@ -154,6 +154,9 @@ class UserCommandServiceTest {
             given(roleRepository.findByName(defaultRole))
                     .willReturn(Optional.of(role));
 
+            given(userRepository.existsByNickname(NICKNAME))
+                    .willReturn(false);
+
             given(userRepository.save(newUser))
                     .willReturn(savedUser);
 
@@ -173,11 +176,54 @@ class UserCommandServiceTest {
                 InOrder inOrder = inOrder(roleRepository, newUser, userRepository);
 
                 inOrder.verify(roleRepository).findByName(defaultRole);
+                inOrder.verify(userRepository).existsByNickname(NICKNAME);
                 inOrder.verify(newUser).addRole(role);
                 inOrder.verify(userRepository).save(newUser);
 
                 mockedUser.verify(User::getDefaultRole);
                 mockedUser.verify(() -> User.ofOAuth2(SUB, EMAIL, NICKNAME));
+            }
+        }
+
+        @Test
+        @DisplayName("OAuth2 nickname이 중복되면 사용 가능한 숫자 suffix를 붙여 저장한다")
+        void signUpOauth2_should_append_numeric_suffix_when_nickname_exists() {
+            // given
+            RoleEnum defaultRole = RoleEnum.USER;
+            Role role = mock(Role.class);
+            User newUser = mock(User.class);
+            User savedUser = mock(User.class);
+
+            SignUpOauth2Command command = new SignUpOauth2Command(SUB, EMAIL, "noah");
+
+            given(roleRepository.findByName(defaultRole))
+                    .willReturn(Optional.of(role));
+            given(userRepository.existsByNickname("noah"))
+                    .willReturn(true);
+            given(userRepository.existsByNickname("noah_1"))
+                    .willReturn(true);
+            given(userRepository.existsByNickname("noah_2"))
+                    .willReturn(false);
+            given(userRepository.save(newUser))
+                    .willReturn(savedUser);
+
+            try (MockedStatic<User> mockedUser = Mockito.mockStatic(User.class)) {
+                mockedUser.when(User::getDefaultRole)
+                        .thenReturn(defaultRole);
+                mockedUser.when(() -> User.ofOAuth2(SUB, EMAIL, "noah_2"))
+                        .thenReturn(newUser);
+
+                // when
+                User result = sut.signUpOauth2(command);
+
+                // then
+                assertThat(result).isSameAs(savedUser);
+                verify(userRepository).existsByNickname("noah");
+                verify(userRepository).existsByNickname("noah_1");
+                verify(userRepository).existsByNickname("noah_2");
+                verify(newUser).addRole(role);
+                verify(userRepository).save(newUser);
+                mockedUser.verify(() -> User.ofOAuth2(SUB, EMAIL, "noah_2"));
             }
         }
 
@@ -201,6 +247,7 @@ class UserCommandServiceTest {
                         .isInstanceOf(RoleNotFoundException.class);
 
                 verify(roleRepository).findByName(defaultRole);
+                verify(userRepository, never()).existsByNickname(anyString());
                 verify(userRepository, never()).save(any());
 
                 mockedUser.verify(User::getDefaultRole);
