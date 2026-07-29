@@ -15,7 +15,7 @@ public class MarketController {
 
     private final MarketQueryUseCase marketQueryUseCase;
 
-    @GetMapping("${api-path.market.markets:/markets}")
+    @GetMapping("${api-path.market.markets}")
     public ResponseEntity<List<MarketResponse>> getMarkets() {
         List<MarketResponse> response = marketQueryUseCase.getMarkets()
                 .stream()

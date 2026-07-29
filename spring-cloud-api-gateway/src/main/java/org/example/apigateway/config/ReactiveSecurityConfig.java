@@ -59,10 +59,10 @@ public class ReactiveSecurityConfig {
                         .pathMatchers(HttpMethod.GET, apiPathProperties.websocket().infoPattern()).permitAll()
                         .pathMatchers(apiPathProperties.websocket().msgPattern()).permitAll()
 
-                        .pathMatchers(HttpMethod.GET, apiPathProperties.user().me(), apiPathProperties.user().profilePattern())
+                        .pathMatchers(HttpMethod.GET, apiPathProperties.user().mePath(), apiPathProperties.user().profilePattern())
                         .hasRole(RoleKey.REQUIRED_USER.value())
 
-                        .pathMatchers(HttpMethod.PATCH, apiPathProperties.user().me())
+                        .pathMatchers(HttpMethod.PATCH, apiPathProperties.user().mePath())
                         .hasRole(RoleKey.REQUIRED_USER.value())
 
                         .pathMatchers(HttpMethod.GET, apiPathProperties.websocket().pattern(), apiPathProperties.websocket().nativePath(), apiPathProperties.websocket().nativePattern())

@@ -17,3 +17,8 @@ spring:
 eureka:
   client:
     enabled: false
+
+api-path:
+  notification:
+    me: /notifications/me
+    read: /notifications/{notificationId}/read

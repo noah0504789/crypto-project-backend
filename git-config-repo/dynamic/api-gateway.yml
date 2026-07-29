@@ -25,7 +25,9 @@ api-path:
     pattern: ${api-contract.auth.pattern}
   user:
     base: ${api-contract.user.base}
-    me: ${api-contract.user.me-path}
+    sign-up: ${api-contract.user.sign-up}
+    me: ${api-contract.user.me}
+    profile: ${api-contract.user.profile}
   chat:
     pattern: ${api-contract.chat.pattern}
     rooms-me: ${api-contract.chat.rooms-me-path}

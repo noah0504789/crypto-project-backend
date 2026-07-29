@@ -22,7 +22,7 @@ public class PriceAlertSettingController {
     private final PriceAlertSettingQueryUseCase priceAlertSettingQueryUseCase;
     private final PriceAlertSettingCommandUseCase priceAlertSettingCommandUseCase;
 
-    @GetMapping("${api-path.market.price-alerts-me:/price-alerts/me}")
+    @GetMapping("${api-path.market.price-alerts-me}")
     public ResponseEntity<MyPriceAlertSettingsResponse> getMySettings(
             @RequestHeader(USER_ID_VALUE) UUID userPublicId
     ) {
@@ -31,7 +31,7 @@ public class PriceAlertSettingController {
         return ResponseEntity.ok(MyPriceAlertSettingsResponse.from(results));
     }
 
-    @PutMapping("${api-path.market.price-alerts-me:/price-alerts/me}")
+    @PutMapping("${api-path.market.price-alerts-me}")
     public ResponseEntity<Void> changeMySettings(
             @RequestHeader(USER_ID_VALUE) UUID userPublicId,
             @RequestBody @Valid PriceAlertSettingChangeRequest request
