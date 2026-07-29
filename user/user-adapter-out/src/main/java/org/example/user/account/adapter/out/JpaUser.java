@@ -93,4 +93,8 @@ public class JpaUser extends BaseEntity {
                 updatedAt
         );
     }
+
+    public void updateProfile(User user) {
+        this.nickname = user.getNickname();
+    }
 }

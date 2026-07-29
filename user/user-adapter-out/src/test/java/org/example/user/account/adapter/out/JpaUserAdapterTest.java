@@ -14,6 +14,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -22,6 +24,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class JpaUserAdapterTest {
@@ -34,6 +37,37 @@ class JpaUserAdapterTest {
 
     @InjectMocks
     private JpaUserAdapter adapter;
+
+    @Test
+    @DisplayName("updateProfile(): 기존 JpaUser의 프로필만 변경하고 역할 관계를 재생성하지 않는다")
+    void updateProfile_updatesManagedUserWithoutRecreatingRoles() {
+        // given
+        long userId = 1L;
+        UUID publicId = UUID.randomUUID();
+        User user = User.rehydrate(
+                userId,
+                publicId,
+                null,
+                "noah@test.com",
+                "updated-noah",
+                "encoded-password",
+                Set.of(Role.rehydrate(1L, RoleEnum.USER)),
+                null,
+                null
+        );
+        JpaUser managedUser = mock(JpaUser.class);
+
+        given(userRepository.findById(userId))
+                .willReturn(Optional.of(managedUser));
+
+        // when
+        adapter.updateProfile(user);
+
+        // then
+        verify(managedUser).updateProfile(user);
+        then(userRepository).should(never()).save(any(JpaUser.class));
+        then(roleRepository).shouldHaveNoInteractions();
+    }
 
     @Test
     @DisplayName("save(): User의 Role을 JpaRole로 변환해 저장하고 저장된 User를 반환한다")
