@@ -25,7 +25,7 @@ public class NotificationController {
     private final NotificationQueryUseCase notificationQueryUseCase;
     private final NotificationCommandUseCase notificationCommandUseCase;
 
-    @GetMapping("/notifications/me")
+    @GetMapping("${api-path.notification.me}")
     public ResponseEntity<CursorPage<NotificationResponse>> myNotifications(
             @RequestHeader(USER_ID_VALUE) UUID receiverId,
             @ModelAttribute NotificationCursor cursor,
@@ -44,7 +44,7 @@ public class NotificationController {
         );
     }
 
-    @PatchMapping("/notifications/{notificationId}/read")
+    @PatchMapping("${api-path.notification.read}")
     public ResponseEntity<Void> readNotification(
             @RequestHeader(USER_ID_VALUE) UUID receiverId,
             @PathVariable String notificationId

@@ -25,7 +25,7 @@
 - 실행 클래스: `org.example.user.Main`(`@SpringBootApplication(scanBasePackages="org.example")`, `@ConfigurationPropertiesScan`).
 - app name: `user-service`. 포트: REST `8090`, gRPC `18090`(`git-config-repo/dynamic/user-service.yml`). 컨텍스트 경로 `/api/v1`(`server.servlet.context-path: /api/${server.version}`).
 - 저장소: MySQL(`user` DB). 스키마는 `spring.sql.init`(`schema-locations: classpath:sql/schema.sql`, `mode: always`)로 초기화.
-- Config Server 연동: `application.yml`의 `spring.config.import: configserver:...`, `spring.cloud.config.name: user-service,eureka-client,idgen,mysql,monitoring`.
+- Config Server 연동: `application.yml`의 `spring.config.import: configserver:...`, `spring.cloud.config.name: user-service,eureka-client,idgen,mysql,kafka,monitoring`. 공유 `api-contract.*`는 Config Repository 루트 `application.yml`에서 자동 병합된다.
 - 부트스트랩 의존성: Config Client, Eureka Client, `spring-cloud-starter-bus-kafka`, Micrometer/Prometheus, `common-actuator-webmvc`.
 
 ## 4. 모듈 구조 (헥사고날)

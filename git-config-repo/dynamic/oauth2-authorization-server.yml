@@ -5,7 +5,7 @@ server:
 grpc:
   client:
     user-client:
-      address: discovery:///user-service
+      address: ${uri.discovery.user-service}
       negotiation-type: plaintext
       max-inbound-message-size:
         bytes: 16777216 # 16MB

@@ -31,7 +31,7 @@
 - Gradle 경로: `:oauth2-client:*`(헥사고날 멀티모듈). 실행 모듈 `:oauth2-client-bootstrap`.
 - 실행 클래스: `org.example.oauth2.client.Main`. app name: `oauth2-client`. 포트 `8900`.
 - **gRPC 서버 없음**(`grpc.server.enabled: false`). gRPC 클라이언트로만 동작: `user-service`(`user.v1`), `oauth2-authorization-server`(`auth.v1`).
-- 저장소 없음(상태는 AS Redis에 위임). Config Server 연동: `spring.cloud.config.name: oauth2-client,eureka-client,jwt,frontend,monitoring`.
+- 저장소 없음(상태는 AS Redis에 위임). Config Server 연동: `spring.cloud.config.name: oauth2-client,eureka-client,jwt,frontend,kafka,monitoring`. 공유 `api-contract.*`는 Config Repository 루트 `application.yml`에서 자동 병합된다.
 - 핵심 라이브러리: `spring-boot-starter-oauth2-client`, `spring-boot-starter-web`, `common-core`, `user-contract`.
 
 ## 4. 모듈 구조 (헥사고날)
@@ -111,7 +111,9 @@ Authorization Bearer access → subject(email) 해석
 - gRPC 클라이언트: `user-client`(→user-service), `oauth2-authorization-server-client`(→oauth2-authorization-server), 둘 다 plaintext/16MB.
 - `spring.security.oauth2.client.registration`: `google`, `kakao`(client_secret_post), `my-authorization-server`(token-exchange grant, client_secret_basic). provider issuer/token-uri 포함.
 - `api-path.auth`(`/auth/**`, logout, refresh), `api-path.oauth2`(authorization/callback base).
-- 자격은 `${google.*}`, `${kakao.*}`, `${my.*}`(Vault/Config). frontend redirect는 `frontend.yml`(`FrontendProperties`).
+- 자격은 `${google.*}`, `${kakao.*}`, `${my.*}`(Vault/Config). 공개·내부·provider URI는 공통
+  `git-config-repo/application.yml`의 `${uri.*}`를 사용하고, 로그인 성공·실패 프론트 redirect는
+  `frontend.yml`(`FrontendProperties`)이 공통 frontend origin을 참조해 구성한다.
 
 ## 9. 테스트 현황
 
@@ -135,7 +137,8 @@ Authorization Bearer access → subject(email) 해석
 | `CustomLogoutSuccessHandler.java` | 블랙리스트·쿠키 삭제·AuthorizedClient 삭제(로그아웃 무결성) |
 | `CustomOAuth2AuthorizedClientService.java` | 저장/삭제 키(email) 일치 — 불일치 시 로그아웃 누락 |
 | `*OidcProviderProfileExtractor.java` | provider별 claim 해석. 신규 provider 추가 지점 |
-| `git-config-repo/dynamic/oauth2-client.yml` | registration/provider/redirect-uri/api-path |
+| `git-config-repo/application.yml` | 공개·내부·discovery·provider URI 정본 |
+| `git-config-repo/dynamic/oauth2-client.yml` | registration/provider/redirect-uri/api-path (`${uri.*}` 소비) |
 
 ## 12. 확인 필요 항목
 

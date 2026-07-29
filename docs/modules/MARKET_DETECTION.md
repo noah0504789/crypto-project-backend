@@ -35,7 +35,7 @@ Upbit 실시간 시세를 수집해 **단기 이동평균 대비 변동률**을 
 
 ### 4.1 수집 (Upbit WebSocket → 큐)
 
-- `UpbitWebsocketClientStarter`가 `ApplicationReadyEvent`에서 OkHttp WebSocket(`wss://api.upbit.com/websocket/v1`)을 연다.
+- `UpbitWebsocketClientStarter`가 `ApplicationReadyEvent`에서 공통 `application.yml`의 `uri.provider.upbit.websocket`으로 설정된 OkHttp WebSocket을 연다.
 - `UpbitWebsocketListener.onOpen` → `UpbitWebsocketService.subscribe`로 **구독 코드 목록**을 보낸다. 구독 코드는 **market gRPC `getEnabledMarkets`**(→ `market.v1`)에서 가져온다(활성 마켓만; 비면 `IllegalStateException`).
 - `onMessage` → `UpbitWebsocketService.deserialize`가 `type=ticker`만 `UpbitTickerEvent`로 변환.
 - **스로틀링**: 코드별 발행 간격 `ticker-publish-interval`(3s). `tryUpdateTickerLastSent`가 `ConcurrentMap<code, AtomicLong>` + CAS로 간격 미만 이벤트를 버린다.

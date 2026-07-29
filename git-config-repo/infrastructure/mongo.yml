@@ -1,6 +1,5 @@
 spring:
   data:
     mongodb:
-#      uri: mongodb://${mongo.user}:${mongo.pass}@mongo-primary:27017,mongo-secondary-0:27017,,mongo-secondary-1:27017/${mongo.db}?authSource=${mongo.authSource}
       uri: mongodb://${mongo.user}:${mongo.pass}@mongo-primary:27017,mongo-secondary-0:27018,mongo-secondary-1:27019/${mongo.db}?authSource=${mongo.authSource}
       auto-index-creation: true

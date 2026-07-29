@@ -20,6 +20,9 @@
 두 가지 역할을 겸하는 **인프라 · 크립토 허브**다.
 
 1. **Spring Cloud Config Server**(`@EnableConfigServer`): git(`git-config-repo`) + Vault(KV v2) 백엔드에서 런타임 설정을 제공한다. 모든 실행 서비스가 `spring.config.import: configserver:http://crypto-spring-cloud-config:8888`로 이 서버에서 설정을 로드한다(서비스에 로컬 `application-*.yml` 없음).
+   - Git 저장소 루트의 `application.yml`은 모든 Config Client 응답에 공통 병합된다. 공개·내부·discovery·provider URI와 공유 REST/WebSocket 경로의 정본이며, 개별 설정은 `${uri.*}`·`${api-contract.*}`로 참조한다. datastore 연결 정보는 각 infrastructure 설정이 소유한다.
+   - 공유 경로를 공통 파일에 둬 Config Bus refresh와 서비스 이미지 배포 순서가 달라도 기존
+     컨테이너가 새 계약값을 자동으로 받을 수 있다.
 2. **JWT 서명/JWKS 대행**(Vault Transit): 헥사고날 어댑터로 두 엔드포인트를 노출한다.
    - `GET /.well-known/jwks.json?keyName=` — Vault Transit의 최신 public key로 JWKS를 만들어 반환. **JWT 검증측**(`spring-cloud-api-gateway`, `oauth2-client`)이 사용한다.
    - `POST /sign` — `header.payload` digest를 Vault Transit로 RS256 서명. **JWT 발급측**(`oauth2-authorization-server`의 `Rs256JwtEncoder`)이 사용한다.

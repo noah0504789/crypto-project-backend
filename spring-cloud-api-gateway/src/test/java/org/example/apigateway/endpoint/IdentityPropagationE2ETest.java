@@ -49,7 +49,7 @@ class IdentityPropagationE2ETest {
     @DisplayName("JWT id claim이 있으면 X-User-Id 헤더로 downstream에 전파된다")
     void shouldPropagateUserIdHeader_whenJwtHasIdClaim() {
         webTestClient.get()
-                .uri("/user/me")
+                .uri("/user/me/profile")
                 .headers(headers -> headers.setBearerAuth("user-token"))
                 .exchange()
                 .expectStatus().isOk();
@@ -65,7 +65,7 @@ class IdentityPropagationE2ETest {
     @DisplayName("JWT id claim이 없으면 X-User-Id 헤더를 전파하지 않는다")
     void shouldNotPropagateUserIdHeader_whenJwtHasNoIdClaim() {
         webTestClient.get()
-                .uri("/user/me")
+                .uri("/user/me/profile")
                 .headers(headers -> headers.setBearerAuth("no-id-token"))
                 .exchange()
                 .expectStatus().isOk();
@@ -97,7 +97,7 @@ class IdentityPropagationE2ETest {
     @DisplayName("인증 요청에 클라이언트가 X-User-Id를 위조해 보내도 JWT id로 덮어써진다")
     void shouldOverrideSpoofedUserIdHeader_whenAuthenticated() {
         webTestClient.get()
-                .uri("/user/me")
+                .uri("/user/me/profile")
                 .headers(headers -> {
                     headers.setBearerAuth("user-token");
                     headers.set("X-User-Id", "attacker-999");

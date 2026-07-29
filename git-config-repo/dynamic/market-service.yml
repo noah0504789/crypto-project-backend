@@ -11,6 +11,11 @@ grpc:
   server:
     port: 18200
 
+api-path:
+  market:
+    markets: ${api-contract.market.markets}
+    price-alerts-me: ${api-contract.market.price-alerts-me}
+
 spring:
   messages:
     basename: messages,common-validation-messages

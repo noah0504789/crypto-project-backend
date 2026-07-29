@@ -137,13 +137,13 @@ proto: `protobuf/src/main/proto/auth/v1/auth-service.proto`. 서버: adapter-in�
 
 `git-config-repo/dynamic/oauth2-authorization-server.yml`:
 - `server.port: 9000`(TODO 주석: TLS), gRPC `server.port: 19000`.
-- `grpc.client.user-client.address: discovery:///user-service`(plaintext, 16MB).
+- `grpc.client.user-client.address`는 공통 `application.yml`의 `uri.discovery.user-service`를 참조한다(plaintext, 16MB).
 - `oauth2.registered-client.{id,secret,registration-id}` ← `${my.*}`(Vault/Config).
 - `mysql.*` 블록이 있으나 `config.name`에 mysql 미포함 + DB 사용 코드 없음(§14).
 
 `git-config-repo/dynamic/jwt.yml`:
 - `key-name: my-authorization-server-jwt`, `key-version: 1`.
-- `issuer-uri: http://crypto-oauth2-authorization-server:9000`.
+- `issuer-uri`는 공통 `application.yml`의 `uri.internal.oauth2-authorization-server`를 참조한다.
 - `jwks-uri`/`sign-uri` → Config Server.
 - `access-token-expiration-ms` = `7200000`(2시간), `refresh-token-expiration-ms` = `604800000`(7일).
 

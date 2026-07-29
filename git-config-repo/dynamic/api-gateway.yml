@@ -13,7 +13,7 @@ server:
 grpc:
   client:
     oauth2-authorization-server-client:
-      address: discovery:///oauth2-authorization-server
+      address: ${uri.discovery.oauth2-authorization-server}
       negotiation-type: plaintext
       max-inbound-message-size:
         bytes: 16777216 # 16MB
@@ -22,38 +22,40 @@ api-path:
   actuator-pattern: /actuator/**
   options-pattern: /**
   auth:
-    pattern: /auth/**
+    pattern: ${api-contract.auth.pattern}
   user:
-    base: /user
-    me: /user/me/profile
+    base: ${api-contract.user.base}
+    sign-up: ${api-contract.user.sign-up}
+    me: ${api-contract.user.me}
+    profile: ${api-contract.user.profile}
   chat:
-    pattern: /chat/**
-    rooms-me: /chat/rooms/me
-    room-create: /chat/room
-    room-pattern: /chat/room/*
-    room-me-pattern: /chat/room/*/me
-    room-members-pattern: /chat/room/*/members
-    room-activity-pattern: /chat/room/*/activity
-    room-messages-pattern: /chat/room/*/messages
+    pattern: ${api-contract.chat.pattern}
+    rooms-me: ${api-contract.chat.rooms-me-path}
+    room-create: ${api-contract.chat.room-create-path}
+    room-pattern: ${api-contract.chat.room-pattern}
+    room-me-pattern: ${api-contract.chat.room-me-pattern}
+    room-members-pattern: ${api-contract.chat.room-members-pattern}
+    room-activity-pattern: ${api-contract.chat.room-activity-pattern}
+    room-messages-pattern: ${api-contract.chat.room-messages-pattern}
   market:
-    markets: /markets
-    markets-pattern: /markets/**
-    price-alerts: /price-alerts
-    price-alerts-pattern: /price-alerts/**
+    markets: ${api-contract.market.markets}
+    markets-pattern: ${api-contract.market.markets-pattern}
+    price-alerts: ${api-contract.market.price-alerts}
+    price-alerts-pattern: ${api-contract.market.price-alerts-pattern}
   notification:
-    notifications: /notifications
-    notifications-pattern: /notifications/**
+    notifications: ${api-contract.notification.base}
+    notifications-pattern: ${api-contract.notification.pattern}
   oauth2:
-    pattern: /oauth2/**
-    login-callback-pattern: /login/oauth2/code/**
-    login-callback-base-uri: /login/oauth2/code/*
+    pattern: ${api-contract.oauth2.pattern}
+    login-callback-pattern: ${api-contract.oauth2.login-callback-pattern}
+    login-callback-base-uri: ${api-contract.oauth2.login-callback-base-uri}
   websocket:
-    prefix: /ws
-    pattern: /ws/**
-    info-pattern: /ws/info/**
-    native-path: /ws-native
-    native-pattern: /ws-native/**
-    msg-pattern: /msg/**
+    prefix: ${api-contract.websocket.sock-js-endpoint}
+    pattern: ${api-contract.websocket.pattern}
+    info-pattern: ${api-contract.websocket.info-pattern}
+    native-path: ${api-contract.websocket.native-endpoint}
+    native-pattern: ${api-contract.websocket.native-pattern}
+    msg-pattern: ${api-contract.websocket.message-pattern}
   route:
     user-api-version: v1
     chat-api-version: v1

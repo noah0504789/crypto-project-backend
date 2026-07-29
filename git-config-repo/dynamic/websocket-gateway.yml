@@ -4,7 +4,7 @@ server:
 grpc:
   client:
     chat-client:
-      address: discovery:///chat-service
+      address: ${uri.discovery.chat-service}
       negotiation-type: plaintext
       max-inbound-message-size:
         bytes: 16777216 # 16MB
@@ -16,11 +16,11 @@ grpc:
 
 api-path:
   websocket:
-    sock-js-endpoint: /ws
-    native-endpoint: /ws-native
+    sock-js-endpoint: ${api-contract.websocket.sock-js-endpoint}
+    native-endpoint: ${api-contract.websocket.native-endpoint}
   stomp:
-    application-destination-prefix: /msg
-    user-destination-prefix: /user
+    application-destination-prefix: ${api-contract.websocket.application-destination-prefix}
+    user-destination-prefix: ${api-contract.websocket.user-destination-prefix}
 
 spring:
   cloud:

@@ -13,10 +13,10 @@ grpc:
 
 api-path:
   user:
-    base: /user
-    sign-up: /sign-up
-    me: /me/profile
-    profile: /{publicId}/profile
+    base: ${api-contract.user.base}
+    sign-up: ${api-contract.user.sign-up}
+    me: ${api-contract.user.me}
+    profile: ${api-contract.user.profile}
 
 spring:
   sql:

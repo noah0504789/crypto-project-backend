@@ -32,7 +32,7 @@
 - 실행 클래스: `org.example.notification.Main`(`@SpringBootApplication(scanBasePackages="org.example")`, `@ConfigurationPropertiesScan`).
 - app name: `notification-service`. 포트: REST `8300`(gRPC 서버 없음). 컨텍스트 경로 `/api/v1`.
 - 저장소: **MongoDB**(`notification` DB, authSource `notification` — `notification`·`notification_recipient` 컬렉션) + **MySQL**(Outbox 이벤트 저장, `common-outbox` 경유, `DatasourceConfig`의 `spring.datasource.write`).
-- Config Server 연동: `spring.cloud.config.name: notification-service,eureka-client,mysql,mongo,kafka,monitoring`.
+- Config Server 연동: `spring.cloud.config.name: notification-service,eureka-client,mysql,mongo,kafka,monitoring`. 공유 `api-contract.*`는 Config Repository 루트 `application.yml`에서 자동 병합된다.
 - Kafka 트랜잭션: `spring.cloud.stream.kafka.binder.transaction.transaction-id-prefix: tx-notification-${app.instance-id}`.
 - 부트스트랩 의존성: `common-actuator-webmvc`, Config Client, Eureka Client, `spring-cloud-starter-bus-kafka`, Micrometer/Prometheus.
 

@@ -30,8 +30,8 @@
 - 실행 클래스: `org.example.websocket.gateway.Main`(`@SpringBootApplication(scanBasePackages="org.example")`, `@ConfigurationPropertiesScan`).
 - app name: `websocket-gateway`. 포트 `8100`(컨텍스트 경로 없음).
 - 저장소: **Redis Cluster**(세션 위치, hash tag `{session}`)만. DB 없음. 로컬 세션은 Caffeine.
-- gRPC 클라이언트: `chat-client`(`discovery:///chat-service`, plaintext, max inbound 16MB). gRPC 서버 비활성.
-- Config Server 연동: `spring.cloud.config.name: websocket-gateway,eureka-client,kafka,redis,monitoring`.
+- gRPC 클라이언트: `chat-client`(공통 `application.yml`의 `uri.discovery.chat-service` 참조, plaintext, max inbound 16MB). gRPC 서버 비활성.
+- Config Server 연동: `spring.cloud.config.name: websocket-gateway,eureka-client,kafka,redis,monitoring`. 공유 `api-contract.*`는 Config Repository 루트 `application.yml`에서 자동 병합된다.
 - 관측성: bootstrap이 **OpenTelemetry javaagent**(`copyOtelAgent`)를 빌드 산출물에 포함. Micrometer/Prometheus + `ws_active_sessions` gauge.
 
 ## 4. 모듈 구조 (헥사고날)

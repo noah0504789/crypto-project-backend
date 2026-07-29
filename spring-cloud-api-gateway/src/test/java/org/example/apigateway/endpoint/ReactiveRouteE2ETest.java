@@ -46,10 +46,10 @@ class ReactiveRouteE2ETest {
     }
 
     @Test
-    @DisplayName("GET /user/me - user-service로 rewrite되어 라우팅된다")
+    @DisplayName("GET /user/me/profile - user-service로 rewrite되어 라우팅된다")
     void userMe_shouldRewriteAndRouteToUserService() {
         webTestClient.get()
-                .uri("/user/me")
+                .uri("/user/me/profile")
                 .headers(headers -> headers.setBearerAuth("user-token"))
                 .exchange()
                 .expectStatus().isOk()
@@ -60,7 +60,7 @@ class ReactiveRouteE2ETest {
 
         assertThat(request).isNotNull();
         assertThat(request.method()).isEqualTo("GET");
-        assertThat(request.path()).isEqualTo("/api/v1/user/me");
+        assertThat(request.path()).isEqualTo("/api/v1/user/me/profile");
         assertThat(request.xFrom()).isEqualTo("gateway");
     }
 

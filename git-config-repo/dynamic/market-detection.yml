@@ -3,7 +3,7 @@ server.port: 8500
 grpc:
   client:
     market-client:
-      address: discovery:///market-service
+      address: ${uri.discovery.market-service}
       negotiation-type: plaintext
       max-inbound-message-size:
         bytes: 16777216
@@ -36,7 +36,7 @@ spring:
 
 upbit:
   websocket:
-    url: wss://api.upbit.com/websocket/v1
+    url: ${uri.provider.upbit.websocket}
     ticket: test
     ticker-publish-interval: 3s
     ticker-queue-capacity: 100

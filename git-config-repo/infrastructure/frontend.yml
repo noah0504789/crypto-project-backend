@@ -1,5 +1,5 @@
 frontend:
-  origin: http://localhost:5173
+  origin: ${uri.public.frontend-origin}
   oauth2:
     success-redirect-path: /login-success
     failure-redirect-path: /login-failure

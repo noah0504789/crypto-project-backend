@@ -21,13 +21,13 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("${api-path.chat.base:/chat}")
+@RequestMapping("${api-path.chat.base}")
 @RequiredArgsConstructor
 public class ChatMessageController {
 
     private final ChatMessageQueryUseCase chatMessageQueryUseCase;
 
-    @GetMapping("${api-path.chat.room-messages:/room/{roomId}/messages}")
+    @GetMapping("${api-path.chat.room-messages}")
     public ResponseEntity<CursorPage<ChatMessageResponse>> cursorRecentChatMessages(
             @PathVariable("roomId") String roomId,
             @RequestHeader(HttpHeaderKey.USER_ID_VALUE) String myUserId,

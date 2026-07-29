@@ -1,0 +1,78 @@
+uri:
+  public:
+    frontend-origin: http://localhost:5173
+    api-gateway-origin: https://localhost:8000
+  internal:
+    config-server: http://crypto-spring-cloud-config:8888
+    eureka-server: http://crypto-spring-cloud-eureka-server:8761
+    oauth2-authorization-server: http://crypto-oauth2-authorization-server:9000
+  discovery:
+    user-service: discovery:///user-service
+    market-service: discovery:///market-service
+    chat-service: discovery:///chat-service
+    oauth2-authorization-server: discovery:///oauth2-authorization-server
+  provider:
+    google:
+      issuer: https://accounts.google.com
+    kakao:
+      issuer: https://kauth.kakao.com
+    upbit:
+      websocket: wss://api.upbit.com/websocket/v1
+
+api-contract:
+  auth:
+    base: /auth
+    pattern: ${api-contract.auth.base}/**
+    logout: ${api-contract.auth.base}/logout
+    refresh: ${api-contract.auth.base}/refresh
+  user:
+    base: /user
+    sign-up: /sign-up
+    me: /me/profile
+    profile: /{publicId}/profile
+    me-path: ${api-contract.user.base}${api-contract.user.me}
+  chat:
+    base: /chat
+    pattern: ${api-contract.chat.base}/**
+    rooms-popular: /rooms/popular
+    rooms-me: /rooms/me
+    room: /room/{roomId}
+    room-me: /room/{roomId}/me
+    room-members: /room/{roomId}/members
+    room-activity: /room/{roomId}/activity
+    room-create: /room
+    room-messages: /room/{roomId}/messages
+    rooms-me-path: ${api-contract.chat.base}${api-contract.chat.rooms-me}
+    room-create-path: ${api-contract.chat.base}${api-contract.chat.room-create}
+    room-pattern: ${api-contract.chat.base}/room/*
+    room-me-pattern: ${api-contract.chat.base}/room/*/me
+    room-members-pattern: ${api-contract.chat.base}/room/*/members
+    room-activity-pattern: ${api-contract.chat.base}/room/*/activity
+    room-messages-pattern: ${api-contract.chat.base}/room/*/messages
+  market:
+    markets: /markets
+    markets-pattern: ${api-contract.market.markets}/**
+    price-alerts: /price-alerts
+    price-alerts-pattern: ${api-contract.market.price-alerts}/**
+    price-alerts-me: ${api-contract.market.price-alerts}/me
+  notification:
+    base: /notifications
+    pattern: ${api-contract.notification.base}/**
+    me: ${api-contract.notification.base}/me
+    read: ${api-contract.notification.base}/{notificationId}/read
+  oauth2:
+    base: /oauth2
+    authorization-base: ${api-contract.oauth2.base}/authorization
+    pattern: ${api-contract.oauth2.base}/**
+    login-callback-base: /login/oauth2/code
+    login-callback-pattern: ${api-contract.oauth2.login-callback-base}/**
+    login-callback-base-uri: ${api-contract.oauth2.login-callback-base}/*
+  websocket:
+    sock-js-endpoint: /ws
+    pattern: ${api-contract.websocket.sock-js-endpoint}/**
+    info-pattern: ${api-contract.websocket.sock-js-endpoint}/info/**
+    native-endpoint: /ws-native
+    native-pattern: ${api-contract.websocket.native-endpoint}/**
+    application-destination-prefix: /msg
+    message-pattern: ${api-contract.websocket.application-destination-prefix}/**
+    user-destination-prefix: /user
