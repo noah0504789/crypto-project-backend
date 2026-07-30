@@ -104,6 +104,7 @@ DB `event`(`mysql.event.*`), persistence unit `event`, 단일 write 데이터소
 
 - **TODO 1.12** — DLQ 제어 API(`PUT /dlq-poller/start|stop`)에 모듈 계층 인증이 확인되지 않는다. 정지 시 DLQ 재처리가 멈춰 이벤트 적체로 이어질 수 있어, 게이트웨이 라우팅/네트워크 격리 전제와 접근 통제 여부 확인 필요(config-server 무인증 엔드포인트 TODO 1.10과 같은 성격).
 - **TODO 4.1**(기존) — 배포 대상 갭은 CI/CD 항목에서 함께 관리.
+- **TODO 4.5** — 현재 at-least-once poller를 유지하되 처리량·DB polling 부하·상태 관리 비용이 커지고 Kafka Connect 운영 역량이 확보되면 Debezium CDC Outbox 전환을 재검토한다.
 
 ## 8. 테스트 현황
 
