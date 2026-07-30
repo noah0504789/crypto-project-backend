@@ -67,6 +67,53 @@ Upbit WS ─(ticker)→ Listener(구독=market gRPC, 3s 스로틀, 큐 100)
    → Kafka: price-alert-detected-event → [notification]
 ```
 
+### 4.5 Kafka Streams EOS 적용 배경과 트랜잭션 경계
+
+이 모듈은 Outbox relay와 달리 Kafka 레코드를 소비해 상태 저장소를 갱신하고 다시 Kafka 레코드를 만드는 전형적인 **Consume–Process–Produce** 구조다. 입력 처리는 다음 세 결과를 하나의 논리적 작업으로 만든다.
+
+1. `upbit-ticker-event` 입력 offset 진행
+2. `upbit-ticker-store` WindowStore 및 changelog 변경
+3. 하나 이상의 `PriceAlertDetectedEvent` 출력
+
+EOS 적용 전에는 `Consumer<KStream<...>>` 내부의 `UpbitTickerProcessor`가 `StreamBridge.send`를 부수 효과로 호출했다. 이 방식은 출력이 Kafka Streams 토폴로지 밖에서 발생하므로, 일반 binder의 `transaction-id-prefix`가 설정되어 있어도 Streams의 입력 offset·state store·출력을 하나의 트랜잭션으로 만들지 못한다. 예를 들어 출력은 성공했지만 offset commit 전에 장애가 발생하면 같은 입력을 다시 처리해 탐지 이벤트가 중복될 수 있다.
+
+현재는 다음과 같이 구성한다.
+
+- binder 빈을 `Function<KStream<String, UpbitTickerEvent>, KStream<String, PriceAlertDetectedEvent>>`로 정의해 출력도 Streams 토폴로지에 포함한다.
+- `UpbitTickerProcessor`는 `StreamBridge` 대신 `ProcessorContext.forward`로 탐지 이벤트를 반환한다. 한 ticker가 3%·5%·7%를 모두 충족해 여러 이벤트를 만들더라도 같은 입력 처리 트랜잭션에 포함된다.
+- `spring.cloud.stream.kafka.streams.binder.configuration.processing.guarantee=exactly_once_v2`를 사용한다.
+- 일반 binder의 `spring.cloud.stream.kafka.binder.transaction.transaction-id-prefix`는 사용하지 않는다. Kafka Streams가 application/task 기준의 transactional producer와 transaction ID를 내부적으로 관리한다.
+
+정상 처리와 장애 처리는 다음과 같다.
+
+```text
+입력 poll
+ → WindowStore 갱신
+ → PriceAlertDetectedEvent forward
+ → 출력 레코드 + state changelog + 입력 offset을 Kafka transaction으로 commit
+```
+
+처리 도중 예외나 인스턴스 장애가 발생하면 Kafka transaction이 abort된다. `isolation.level=read_committed` consumer에게 abort된 출력은 보이지 않고, commit되지 않은 offset의 입력은 다시 처리된다. state store도 changelog를 기준으로 commit된 상태와 일치하도록 복구된다.
+
+| 범위 | EOS가 보장하는 것 | EOS가 보장하지 않는 것 |
+|---|---|---|
+| `upbit-ticker-event` → Streams 처리 → `price-alert-detected-event` | 입력 offset, WindowStore/changelog, 출력 레코드의 Kafka 원자성 | 외부 DB·gRPC·HTTP side effect |
+| 한 ticker에서 여러 임계값 이벤트 생성 | 출력 이벤트들을 같은 Streams transaction에 포함 | notification consumer의 MongoDB/Outbox 처리 |
+| 장애 후 재처리 | abort된 출력 비노출, commit 전 입력 재처리 | 시스템 전체의 end-to-end exactly-once |
+| Upbit queue Supplier → `upbit-ticker-event` | 단일 Kafka produce에 공통 producer idempotence 적용 | Supplier 발행과 이후 Streams 처리까지 하나로 묶는 트랜잭션 |
+
+따라서 이 모듈에서 말하는 exactly-once는 **Kafka Streams 처리 구간의 EOS**다. 하류 notification이 수행하는 MySQL Outbox 저장이나 MongoDB 반영까지 포함하는 분산 트랜잭션은 아니며, 하류 consumer의 멱등성·재시도·DLQ는 별도로 필요하다.
+
+EOS의 트레이드오프는 다음과 같다.
+
+| 선택 | 장점 | 비용·주의점 |
+|---|---|---|
+| at-least-once + 외부 `StreamBridge` | 구현 단순, transaction overhead 없음 | offset/state/output 사이 부분 성공과 중복 가능 |
+| Kafka Streams `exactly_once_v2` | Consume–Process–Produce와 state store를 원자화, abort 레코드 격리 | transaction commit 비용으로 지연·처리량 부담, broker/transaction timeout·producer fencing 운영 고려 |
+| Outbox 도입 | 외부 DB 상태와 이벤트 의도를 DB transaction으로 보존 가능 | 이 모듈은 DB가 없고 Kafka state store가 기준이므로 별도 DB/poller 운영 비용이 과함 |
+
+market-detection은 stateful Kafka 처리 결과가 곧 Kafka 출력이고 외부 DB 변경이 없으므로, Outbox보다 Kafka Streams EOS가 문제와 경계에 직접 맞는다.
+
 ## 5. 계약
 
 - **생산(외부 계약)**: `market-detection-contract`의 `PriceAlertDetectedEvent`(record, `implements KafkaEvent, ProducibleEvent`). 필드 `{ code, price, timestamp, avgInterval, avgPrice, changeRate, threshold }`, 토픽 `PRICE_ALERT_DETECTED`(binding `upbitTickerAlertEventProcessor-out-0` → `price-alert-detected-event`), 파티션 키 = `code`. `toPayload()`는 `PriceAlertDetectedPayloadKeys`(TypedKey)로 키-값 페이로드를 만든다(notification이 web push payload로 전달). 소비자 `notification`과 함께 변경한다(→ `../../.claude/rules/external-contracts.md`).
