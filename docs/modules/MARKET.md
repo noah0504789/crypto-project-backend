@@ -103,6 +103,14 @@ proto: `protobuf/src/main/proto/market/v1/market-service.proto`. 서버 구현�
 - **무효화 발행**: `MarketCommandService.changeMarkets()`가 DB 반영 후 `MarketCatalogChangedEvent`를 Outbox로 발행(`OutboxEventListPublishPort` → `outbox-poller` → Kafka `market-broadcast-event`). 이벤트는 `getDomainType()=MARKET`을 override(공용 기본값 `CHAT`을 올바르게 덮어씀 — TODO 3.2 참조).
 - **무효화 수신**: 각 market 인스턴스가 `marketEventConsumer`로 `market-broadcast-event`를 소비한다. consumer group이 **`market-broadcast-${app.instance-id}`(인스턴스마다 고유)** 라서 모든 인스턴스가 같은 메시지를 각자 받아 `MarketEventService.handle` → `@CacheEvict(cacheNames="markets", key="'enabled'")`로 자기 로컬 캐시를 비운다. → 로컬 캐시의 클러스터 정합성 확보.
 
+### 컨슈머 멱등 전략
+
+| 컨슈머 이벤트 | 하는 일 | 사용한 전략 |
+|---|---|---|
+| `MarketCatalogChangedEvent` | 각 market 인스턴스의 활성 마켓 Caffeine 캐시 무효화 | 동일 cache key 반복 eviction을 허용하는 자연 멱등 연산 |
+
+이 consumer는 인스턴스별 고유 Kafka group을 사용하므로 모든 인스턴스가 같은 이벤트를 각각 받아야 한다. 따라서 공유 `inbox_event`를 적용하면 첫 인스턴스 외의 캐시 무효화가 차단될 수 있어 사용하지 않는다. Kafka `event_id`는 추적에만 사용하고, 멱등성은 반복 eviction 자체로 확보한다.
+
 ## 9. 도메인 · 영속성 · 스키마
 
 ### 도메인 모델

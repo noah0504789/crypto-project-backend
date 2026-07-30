@@ -22,6 +22,7 @@ STOMP destination·Kafka 소비·gRPC 계약에 걸친 변경은 `../.claude/rul
 - **송신 보상 로직 유지**: `ChatMessageSendService`는 gRPC 저장 실패 중 `DEADLINE_EXCEEDED`면 `hardDelete`로 보상한다(저장됐을 수 있는 메시지 제거). messageId는 gRPC 호출 전에 게이트웨이가 생성한다(클라이언트 상관용). 이 순서·보상을 깨지 않는다.
 - **세션 이중 관리 정합성**: 로컬(Caffeine)과 Redis(`{session}:user:{userId}`)를 함께 갱신한다(connect save, subscribe refreshTtl, disconnect `deleteIfServerMatches`). disconnect는 serverId 일치할 때만 삭제(재접속 레이스 방지) — 이 조건을 제거하지 않는다. Redis key는 `common-core/RedisKey.SESSION_INFO`로만, hash tag `{session}` 유지.
 - **best-effort push 인지**: 브로드캐스트 소비자는 DLQ/재시도가 없다(실시간 push는 유실 시 클라이언트 REST 재조회 전제). 이를 durable로 바꾸려면 chat/notification 영속 경로와 함께 설계한다.
+- **공유 Inbox 적용 금지**: 브로드캐스트 consumer는 인스턴스별 group으로 모든 gateway가 자기 로컬 세션에 전송해야 한다. 공유 `(consumer_name,event_id)` 선점은 다른 인스턴스 push를 막으므로 적용하지 않고, 클라이언트가 `messageId`/`notificationId`로 중복 제거한다.
 - **gRPC 소비 계약**: `chatmessage.v1`(save/hardDelete)은 chat이 서버, 여기가 클라이언트다. proto 변경은 chat과 함께(external-contracts). client 설정은 `websocket-gateway.yml`의 `grpc.client.chat-client`.
 - **핸드셰이크 인증**: `StompConfig.determineUser`는 `X-User-Id` 헤더로 Principal을 만든다(없으면 거부). 헤더 주입/토큰 전달 방식 변경은 게이트웨이·oauth2-client 핸드셰이크와 함께 본다(→ `../.claude/rules/security.md`).
 

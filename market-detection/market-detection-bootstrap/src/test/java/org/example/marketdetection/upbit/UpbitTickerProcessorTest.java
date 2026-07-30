@@ -5,6 +5,7 @@ import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
 import org.apache.kafka.streams.state.WindowStore;
 import org.apache.kafka.streams.state.WindowStoreIterator;
+import org.example.common.enums.KafkaHeaderKey;
 import org.example.marketdetection.contract.event.PriceAlertDetectedEvent;
 import org.example.marketdetection.infra.properties.UpbitProperties;
 import org.example.marketdetection.upbit.event.UpbitTickerEvent;
@@ -17,6 +18,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 
@@ -143,7 +145,7 @@ class UpbitTickerProcessorTest {
                 .containsOnly(CODE);
 
         assertThat(events)
-                .extracting(PriceAlertDetectedEvent::threshold)
+                .extracting(PriceAlertDetectedEvent::getThreshold)
                 .containsExactlyInAnyOrder(
                         "PERCENT_3",
                         "PERCENT_5",
@@ -151,12 +153,22 @@ class UpbitTickerProcessorTest {
                 );
 
         for (PriceAlertDetectedEvent detectedEvent : events) {
-            assertThat(detectedEvent.code()).isEqualTo(CODE);
-            assertThat(detectedEvent.price()).isEqualTo(110.0);
-            assertThat(detectedEvent.timestamp()).isEqualTo(TIMESTAMP);
-            assertThat(detectedEvent.avgInterval()).isEqualTo(3);
-            assertThat(detectedEvent.avgPrice()).isEqualTo(100.0);
-            assertThat(detectedEvent.changeRate()).isEqualTo(0.1);
+            assertThat(detectedEvent.getEventId()).isNotBlank();
+            assertThat(detectedEvent.getCode()).isEqualTo(CODE);
+            assertThat(detectedEvent.getPrice()).isEqualTo(110.0);
+            assertThat(detectedEvent.getTimestamp()).isEqualTo(TIMESTAMP);
+            assertThat(detectedEvent.getAvgInterval()).isEqualTo(3);
+            assertThat(detectedEvent.getAvgPrice()).isEqualTo(100.0);
+            assertThat(detectedEvent.getChangeRate()).isEqualTo(0.1);
+        }
+
+        for (Record<String, PriceAlertDetectedEvent> outputRecord : recordCaptor.getAllValues()) {
+            assertThat(outputRecord.headers().lastHeader(KafkaHeaderKey.EVENT_ID.value()))
+                    .isNotNull();
+            assertThat(new String(
+                    outputRecord.headers().lastHeader(KafkaHeaderKey.EVENT_ID.value()).value(),
+                    StandardCharsets.UTF_8
+            )).isEqualTo(outputRecord.value().getEventId());
         }
     }
 
