@@ -117,3 +117,7 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 
 처리량·polling DB 부하·poller 상태 관리 비용이 증가하거나 Kafka Connect 운영 역량이 확보되면 Debezium Outbox Event Router 기반 CDC 전환을 다시 검토한다. 검토 시 MySQL binlog 보존/replication 권한, Kafka Connect HA, connector offset·schema history·lag 모니터링, 장애 후 중복 가능성과 consumer 멱등성을 함께 설계한다. Debezium offset 기반 재개는 전달 누락 위험을 줄이지만, 기본 구성만으로 같은 `transaction_id`의 여러 토픽 발행이 하나의 Kafka transaction으로 원자화되지는 않으므로 단일 Envelope, transaction metadata 기반 집계 또는 후속 Kafka transaction 필요 여부도 별도로 결정한다.
 `[출처: docs/modules/OUTBOX_POLLER.md §5 트랜잭션 경계와 보장 수준]`
+
+#### 4.6 `FAILED` Outbox 재처리 경로 추가
+`OutboxService.publishPending`은 `PENDING` 레코드만 조회하고 retry를 소진하면 `FAILED`로 전환한다. 실패 레코드는 DB에 보존되지만, 저장소 코드에는 원인 해결 후 `FAILED`를 다시 `PENDING`으로 전환하거나 선택적으로 재처리하는 API·스케줄러·운영 작업이 확인되지 않는다. at-least-once relay가 운영 복구까지 포함해 최종 수렴하려면 재처리 대상 선택, retry count 초기화 여부, 중복 발행 경고·감사 로그와 접근 통제를 포함한 복구 경로를 설계한다.
+`[출처: docs/modules/OUTBOX_POLLER.md §5 트랜잭션 경계와 보장 수준]`
