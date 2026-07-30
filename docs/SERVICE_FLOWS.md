@@ -187,7 +187,7 @@ Upbit WebSocket (OkHttp)
 
 ```
 Kafka(upbit-ticker-event)
- → KafkaMarketDetectionBinder.upbitTickerAlertEventConsumer (KStream)
+ → KafkaMarketDetectionBinder.upbitTickerAlertEventProcessor (KStream)
  → UpbitTickerProcessor.process:
      WindowStore(upbit-ticker-store, window/retention 3m)로 이동평균·변동률 계산
 ```
@@ -201,7 +201,7 @@ Kafka(upbit-ticker-event)
 ```
 UpbitTickerProcessor
  → PriceAlertChangeRateThreshold.matchedBy로 임계치 매칭
- → PriceAlertDetectedEvent 발행(StreamBridge → price-alert-detected-event)
+ → PriceAlertDetectedEvent 발행(KStream output → price-alert-detected-event)
 ```
 
 근거: `market-detection/.../upbit/UpbitTickerProcessor.java`, `market-detection/market-detection-contract/.../PriceAlertDetectedEvent.java`.

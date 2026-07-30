@@ -5,7 +5,6 @@ import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
 import org.apache.kafka.streams.state.WindowStore;
 import org.apache.kafka.streams.state.WindowStoreIterator;
-import org.example.common.enums.KafkaTopic;
 import org.example.marketdetection.contract.event.PriceAlertDetectedEvent;
 import org.example.marketdetection.infra.properties.UpbitProperties;
 import org.example.marketdetection.upbit.event.UpbitTickerEvent;
@@ -17,8 +16,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.cloud.stream.function.StreamBridge;
-import org.springframework.messaging.Message;
 
 import java.time.Duration;
 import java.util.List;
@@ -38,10 +35,7 @@ class UpbitTickerProcessorTest {
     private final UpbitProperties properties = createProperties();
 
     @Mock
-    private StreamBridge streamBridge;
-
-    @Mock
-    private ProcessorContext<Void, Void> context;
+    private ProcessorContext<String, PriceAlertDetectedEvent> context;
 
     @Mock
     private WindowStore<String, UpbitTickerValue> upbitTickerStore;
@@ -52,10 +46,7 @@ class UpbitTickerProcessorTest {
     void setUp() {
         given(context.getStateStore(STORE_NAME)).willReturn(upbitTickerStore);
 
-        sut = new UpbitTickerProcessor(
-                streamBridge,
-                properties
-        );
+        sut = new UpbitTickerProcessor(properties);
 
         sut.init(context);
     }
@@ -72,7 +63,7 @@ class UpbitTickerProcessorTest {
 
         // then
         verifyNoInteractions(upbitTickerStore);
-        verifyNoInteractions(streamBridge);
+        verify(context, never()).forward(any());
     }
 
     @Test
@@ -103,7 +94,7 @@ class UpbitTickerProcessorTest {
                 eq(TIMESTAMP)
         );
 
-        verifyNoInteractions(streamBridge);
+        verify(context, never()).forward(any());
     }
 
     @Test
@@ -124,8 +115,6 @@ class UpbitTickerProcessorTest {
                 eq(TIMESTAMP)
         )).willReturn(iterator);
 
-        given(streamBridge.send(anyString(), any(Message.class))).willReturn(true);
-
         // when
         sut.process(record);
 
@@ -136,22 +125,18 @@ class UpbitTickerProcessorTest {
                 eq(TIMESTAMP)
         );
 
-        ArgumentCaptor<String> bindingNameCaptor = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<Message<?>> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        ArgumentCaptor<Record<String, PriceAlertDetectedEvent>> recordCaptor =
+                ArgumentCaptor.forClass(Record.class);
+        verify(context, times(3)).forward(recordCaptor.capture());
 
-        verify(streamBridge, times(3)).send(
-                bindingNameCaptor.capture(),
-                messageCaptor.capture()
-        );
-
-        List<PriceAlertDetectedEvent> events = messageCaptor.getAllValues()
+        List<PriceAlertDetectedEvent> events = recordCaptor.getAllValues()
                 .stream()
-                .map(Message::getPayload)
-                .map(PriceAlertDetectedEvent.class::cast)
+                .map(Record::value)
                 .toList();
 
-        assertThat(bindingNameCaptor.getAllValues())
-                .containsOnly(KafkaTopic.PRICE_ALERT_DETECTED.getBindingName());
+        assertThat(recordCaptor.getAllValues())
+                .extracting(Record::key)
+                .containsOnly(CODE);
 
         assertThat(events)
                 .extracting(PriceAlertDetectedEvent::getPartitionKey)
@@ -200,7 +185,7 @@ class UpbitTickerProcessorTest {
                 eq(TIMESTAMP)
         );
 
-        verifyNoInteractions(streamBridge);
+        verify(context, never()).forward(any());
     }
 
     @Test
@@ -219,7 +204,7 @@ class UpbitTickerProcessorTest {
 
         // then
         verifyNoInteractions(upbitTickerStore);
-        verifyNoInteractions(streamBridge);
+        verify(context, never()).forward(any());
     }
 
     @SuppressWarnings("unchecked")
