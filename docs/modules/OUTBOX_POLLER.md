@@ -56,6 +56,40 @@ Transactional Outbox 패턴의 **공용 릴레이**. 모든 서비스가 자기 
 - 초기 상태는 `DlqPollerStateInitializer`(`@PostConstruct`)가 `poller.dlq.enabled`로 설정.
 - **관찰**: 이 제어 엔드포인트에 모듈 계층 인증이 확인되지 않는다(스타터는 `web`, security 없음). 정지 시 DLQ 재처리가 멈추므로 접근 통제 전제 확인 필요 → §7, TODO.
 
+### 트랜잭션 경계와 보장 수준
+
+이 모듈은 **Kafka 다중 레코드 원자성보다 at-least-once 전달과 최종 수렴을 선택**한다. 같은 요청에서 파생된 Outbox 이벤트는 `transaction_id`로 논리적으로 묶이지만, poller는 `transaction_id` 단위가 아니라 `dispatchType + PENDING` 조건으로 조회하고 각 레코드를 `StreamBridge.send`로 개별 발행한다.
+
+| 단계 | 트랜잭션·보장 | 보장하지 않는 것 |
+|---|---|---|
+| 생산 서비스의 `OutboxEventListListener` → `OutboxService.saveAll` | 같은 EventList의 Outbox 레코드를 event DB에 한 번에 저장 | MongoDB 등 다른 저장소와 event DB 사이의 2PC |
+| `OutboxService.publishPending` | JPA `transactionManager`가 조회 후 `PUBLISHED`/`FAILED`/`retryCnt` 상태 변경을 묶음 | 이 JPA 트랜잭션과 Kafka send의 원자적 커밋 |
+| `KafkaEventPublisher.publish` | Outbox 레코드 하나당 한 번의 Kafka send. 공통 producer의 idempotence·`acks=all` 사용 | 같은 `transaction_id`의 여러 토픽/레코드를 하나의 Kafka 트랜잭션으로 묶는 것 |
+| 소비 단계 | consumer별 retry·DLQ·멱등 처리로 최종 수렴 | 서로 다른 consumer와 저장소의 분산 트랜잭션 |
+
+`outbox-poller.yml`의 일반 binder `transaction-id-prefix`는 의도적으로 비활성 상태다. 이를 활성화하는 것만으로 Outbox의 `transaction_id`가 Kafka transaction ID가 되거나 같은 요청의 이벤트가 자동으로 묶이지 않는다. `transaction_id` 단위 원자 발행을 도입하려면 조회·스케줄링을 그룹 단위로 바꾸고, 해당 그룹의 여러 send를 명시적인 Kafka 트랜잭션 경계 안에서 수행해야 한다. 현재 `GENERAL`과 `BROADCAST`는 요구 지연 시간이 달라 별도 스케줄러가 처리하므로 같은 `transaction_id`가 두 경로로 나뉠 수 있다.
+
+현재 선택의 결과는 다음과 같다.
+
+- **장점**: 구조와 운영이 단순하고, 실시간 `BROADCAST`와 일반 이벤트의 polling 주기를 독립적으로 최적화할 수 있다. 일시 실패한 레코드는 다음 polling에서 다시 시도하므로 관련 이벤트 사이에 시간 차이가 생겨도 최종적으로 모두 발행되는 방향으로 수렴한다.
+- **부분 발행**: 같은 `transaction_id`의 일부 이벤트가 먼저 `PUBLISHED`되고 나머지가 `PENDING` 또는 `FAILED`일 수 있다. 따라서 “모두 동시에 보이거나 모두 보이지 않음”은 보장하지 않는다.
+- **중복 가능성**: Kafka 발행 후 DB 상태 커밋 전에 장애가 발생하면 같은 Outbox가 다시 선택되어 재발행될 수 있다. Kafka producer idempotence는 한 producer session의 전송 재시도 중복을 줄이지만, 이후 polling에서 발생한 애플리케이션 수준 재발행까지 제거하지 않는다.
+- **운영 복구**: retry를 소진한 Outbox는 삭제되지 않고 `FAILED`로 남아 조회·원인 분석이 가능하다. 다만 현재 poller는 `PENDING`만 자동 조회하며, `FAILED`를 다시 `PENDING`으로 전환하는 애플리케이션 API/작업은 코드에서 확인되지 않는다. 최종 수렴에는 상태 복구를 위한 운영 절차나 재처리 기능이 별도로 필요하다.
+- **consumer 전제**: 발행 및 소비 재시도로 중복이 가능하므로 consumer는 이벤트 식별자를 기준으로 멱등하게 처리해야 한다.
+
+`transaction_id`는 현재 Kafka 트랜잭션 ID가 아니라 **한 요청에서 파생된 이벤트들의 correlation ID**다. 요청 단위 조회, 부분 실패 추적, 관련 이벤트 재처리 후보 식별에 사용하며 Kafka 헤더 `transaction_id`로 하류에도 전달한다. 향후 원자 발행이 실제 요구사항이 되면 그룹 조회의 기준으로 재사용할 수 있다.
+
+대안은 다음과 같다.
+
+| 선택지 | 얻는 것 | 비용·한계 |
+|---|---|---|
+| 현재 poller 유지 | at-least-once, 상태 가시성, dispatchType별 지연 최적화 | 일시적 부분 발행과 중복 허용, FAILED 운영 복구 필요 |
+| `transaction_id` 단위 Kafka transaction | 같은 그룹의 Kafka 레코드를 모두 commit/abort | GENERAL/BROADCAST 분리 재설계, DB 상태와 Kafka 사이 중복 구간은 여전히 존재 |
+| 단일 Envelope 이벤트 | 요청 단위 발행을 레코드 하나로 단순화 | 이벤트 계약·소비자 결합 증가, 독립 확장·재시도 어려움 |
+| Debezium CDC Outbox | MySQL binlog offset 기반 재개, 애플리케이션 poller/발행 상태 로직 축소 | Kafka Connect·connector·binlog 운영 부담, 기본 구성만으로 다중 토픽 원자성은 생기지 않음 |
+
+현재 요구사항은 관련 이벤트가 같은 순간에 노출되는 것보다 **보존된 이벤트를 재시도·운영 복구하여 최종 전달하는 것**을 우선하므로, at-least-once poller를 유지한다.
+
 ## 6. event DB 스키마 (`schema.sql`)
 
 DB `event`(`mysql.event.*`), persistence unit `event`, 단일 write 데이터소스(`spring.datasource.write`) + `transactionManager`(JPA).
@@ -70,6 +104,8 @@ DB `event`(`mysql.event.*`), persistence unit `event`, 단일 write 데이터소
 
 - **TODO 1.12** — DLQ 제어 API(`PUT /dlq-poller/start|stop`)에 모듈 계층 인증이 확인되지 않는다. 정지 시 DLQ 재처리가 멈춰 이벤트 적체로 이어질 수 있어, 게이트웨이 라우팅/네트워크 격리 전제와 접근 통제 여부 확인 필요(config-server 무인증 엔드포인트 TODO 1.10과 같은 성격).
 - **TODO 4.1**(기존) — 배포 대상 갭은 CI/CD 항목에서 함께 관리.
+- **TODO 4.5** — 현재 at-least-once poller를 유지하되 처리량·DB polling 부하·상태 관리 비용이 커지고 Kafka Connect 운영 역량이 확보되면 Debezium CDC Outbox 전환을 재검토한다.
+- **TODO 4.6** — retry를 소진해 `FAILED`가 된 Outbox를 원인 해결 후 안전하게 다시 처리할 수 있는 운영·애플리케이션 복구 경로를 추가한다.
 
 ## 8. 테스트 현황
 

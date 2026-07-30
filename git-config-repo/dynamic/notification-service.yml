@@ -29,10 +29,10 @@ spring:
         web-notification-broadcast-event-out:
           destination: web-notification-broadcast-event
           content-type: application/json
-      kafka:
-        binder:
-          transaction:
-            transaction-id-prefix: tx-notification-${app.instance-id}
+#      kafka:
+#        binder:
+#          transaction:
+#            transaction-id-prefix: tx-notification-${app.instance-id}
 
 mongo:
   user: ${mongo.notification.username}
