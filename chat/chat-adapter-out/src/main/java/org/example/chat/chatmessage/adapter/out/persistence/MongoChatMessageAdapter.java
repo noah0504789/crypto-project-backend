@@ -67,7 +67,7 @@ public class MongoChatMessageAdapter implements ChatMessagePersistencePort {
     @Override
     public ChatMessage save(ChatMessage domain) {
         try {
-            repository.save(MongoChatMessage.fromDomain(domain));
+            repository.insert(MongoChatMessage.fromDomain(domain));
             return domain;
         } catch (Exception e) {
             throw MongoChatPersistenceExceptionTranslator.translateChatMessageSave(

@@ -306,7 +306,7 @@ class MongoChatMessageAdapterTest {
             assertThat(result).isSameAs(domain);
 
             ArgumentCaptor<MongoChatMessage> captor = ArgumentCaptor.forClass(MongoChatMessage.class);
-            verify(repository).save(captor.capture());
+            verify(repository).insert(captor.capture());
 
             MongoChatMessage saved = captor.getValue();
 
@@ -326,7 +326,7 @@ class MongoChatMessageAdapterTest {
 
             DuplicateKeyException exception = new DuplicateKeyException("duplicate message");
 
-            given(repository.save(any(MongoChatMessage.class)))
+            given(repository.insert(any(MongoChatMessage.class)))
                     .willThrow(exception);
 
             // when & then
@@ -336,7 +336,7 @@ class MongoChatMessageAdapterTest {
                     .hasMessageContaining(MESSAGE_ID_1)
                     .hasCause(exception);
 
-            verify(repository).save(any(MongoChatMessage.class));
+            verify(repository).insert(any(MongoChatMessage.class));
         }
 
         @Test
@@ -348,7 +348,7 @@ class MongoChatMessageAdapterTest {
             TransientDataAccessResourceException exception =
                     new TransientDataAccessResourceException("temporary mongo failure");
 
-            given(repository.save(any(MongoChatMessage.class)))
+            given(repository.insert(any(MongoChatMessage.class)))
                     .willThrow(exception);
 
             // when & then
@@ -358,7 +358,7 @@ class MongoChatMessageAdapterTest {
                     .hasMessageContaining(MESSAGE_ID_1)
                     .hasCause(exception);
 
-            verify(repository).save(any(MongoChatMessage.class));
+            verify(repository).insert(any(MongoChatMessage.class));
         }
 
         @Test
@@ -369,7 +369,7 @@ class MongoChatMessageAdapterTest {
 
             RuntimeException exception = new RuntimeException("unexpected mongo failure");
 
-            given(repository.save(any(MongoChatMessage.class)))
+            given(repository.insert(any(MongoChatMessage.class)))
                     .willThrow(exception);
 
             // when & then
@@ -379,7 +379,7 @@ class MongoChatMessageAdapterTest {
                     .hasMessageContaining(MESSAGE_ID_1)
                     .hasCause(exception);
 
-            verify(repository).save(any(MongoChatMessage.class));
+            verify(repository).insert(any(MongoChatMessage.class));
         }
     }
 
