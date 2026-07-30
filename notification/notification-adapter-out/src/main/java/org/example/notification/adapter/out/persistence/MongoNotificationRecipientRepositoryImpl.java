@@ -87,15 +87,27 @@ public class MongoNotificationRecipientRepositoryImpl implements MongoNotificati
 
         for (int i = 0; i < recipients.size(); i += BATCH_SIZE) {
             int end = Math.min(i + BATCH_SIZE, recipients.size());
-
             List<MongoNotificationRecipient> batch = recipients.subList(i, end);
+            BulkOperations operations = primaryMongoTemplate.bulkOps(
+                    BulkOperations.BulkMode.UNORDERED,
+                    MongoNotificationRecipient.class
+            );
 
-            primaryMongoTemplate.bulkOps(
-                            BulkOperations.BulkMode.UNORDERED,
-                            MongoNotificationRecipient.class
-                    )
-                    .insert(batch)
-                    .execute();
+            batch.forEach(recipient -> operations.upsert(
+                    Query.query(
+                            Criteria.where("notificationId").is(recipient.getNotificationId())
+                                    .and("receiverId").is(recipient.getReceiverId())
+                    ),
+                    new Update()
+                            .setOnInsert("_id", recipient.getId())
+                            .setOnInsert("notificationId", recipient.getNotificationId())
+                            .setOnInsert("receiverId", recipient.getReceiverId())
+                            .setOnInsert("read", recipient.isRead())
+                            .setOnInsert("readAt", recipient.getReadAt())
+                            .setOnInsert("deliveredAt", recipient.getDeliveredAt())
+            ));
+
+            operations.execute();
         }
     }
 
