@@ -26,7 +26,7 @@
 - **인박스 읽기 분리 유지**: 최신 페이지는 `primaryMongoTemplate`, 과거 페이지는 `secondaryMongoTemplate`(`secondaryPreferred`)로 읽는다. 이 primary/secondary 분리를 임의로 바꾸지 않는다.
 - **도메인 상태 변경은 도메인/영속 메서드로**: 알림 생성은 `Notification.createPriceAlert`, 읽음은 recipient `updateFirst`(`read=false`일 때만). public setter를 열지 않는다.
 - **Mongo 인덱스는 계약**: `notification`/`notification_recipient`의 unique(`{notificationId, receiverId}`)·인박스 커서 인덱스를 영향 분석 없이 바꾸지 않는다.
-- **REST 경로·포트·Kafka·DB 설정은 원격 Config**: `../git-config-repo/dynamic/notification-service.yml`(포트 8300, stream 바인딩, `mongo.notification.*`, Kafka `transaction-id-prefix`). X-User-Id(UUID) 신뢰 방식 변경은 게이트웨이와 함께(→ `../.claude/rules/security.md`).
+- **REST 경로·포트·Kafka·DB 설정은 원격 Config**: `../git-config-repo/dynamic/notification-service.yml`(포트 8300, stream 바인딩, `mongo.notification.*`). notification의 Kafka 생산은 Outbox를 거치므로 binder `transaction-id-prefix`는 비활성 상태다. X-User-Id(UUID) 신뢰 방식 변경은 게이트웨이와 함께(→ `../.claude/rules/security.md`).
 
 ## 주요 파일 안내
 
