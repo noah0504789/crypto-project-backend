@@ -127,6 +127,7 @@ class PackageArchitectureTest {
                 "common/common-web",
                 "common/common-grpc",
                 "common/common-id",
+                "common/common-inbox",
                 "common/common-outbox",
                 "common/common-redis",
                 "common/common-util",

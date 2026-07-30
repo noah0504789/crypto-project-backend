@@ -3,6 +3,7 @@ package org.example.notification.adapter.in.stream;
 import lombok.extern.slf4j.Slf4j;
 import org.example.common.enums.KafkaHeaderKey;
 import org.example.common.event.HandleableEvent;
+import org.example.common.inbox.exception.DuplicateInboxEventException;
 import org.example.marketdetection.contract.event.PriceAlertDetectedEvent;
 import org.example.notification.application.port.in.PriceAlertNotificationCommandUseCase;
 import org.example.notification.application.service.command.PriceAlertNotificationCreateCommand;
@@ -26,22 +27,31 @@ public class KafkaNotificationBinder {
     public Consumer<Message<PriceAlertDetectedEvent>> priceAlertDetectedEventConsumer(PriceAlertNotificationCommandUseCase priceAlertNotificationCommandUseCase) {
         return message -> {
             PriceAlertDetectedEvent event = message.getPayload();
+            String eventId = event.extractEventId(message);
             String transactionId = message.getHeaders().get(KafkaHeaderKey.TRANSACTION_ID.value()) + "";
 
             PriceAlertNotificationCreateCommand command =
                     PriceAlertNotificationCreateCommand.builder()
-                            .code(event.code())
-                            .price(event.price())
-                            .timestamp(event.timestamp())
-                            .avgInterval(event.avgInterval())
-                            .avgPrice(event.avgPrice())
-                            .changeRate(event.changeRate())
-                            .threshold(event.threshold())
+                            .eventId(eventId)
+                            .code(event.getCode())
+                            .price(event.getPrice())
+                            .timestamp(event.getTimestamp())
+                            .avgInterval(event.getAvgInterval())
+                            .avgPrice(event.getAvgPrice())
+                            .changeRate(event.getChangeRate())
+                            .threshold(event.getThreshold())
                             .typedPayload(event.toPayload())
                             .transactionId(transactionId)
                             .build();
 
-            priceAlertNotificationCommandUseCase.create(command);
+            try {
+                priceAlertNotificationCommandUseCase.create(command);
+            } catch (DuplicateInboxEventException e) {
+                log.info(
+                        "Duplicate price alert event skipped. eventId={}",
+                        eventId
+                );
+            }
         };
     }
 }

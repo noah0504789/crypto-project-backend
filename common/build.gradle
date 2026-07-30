@@ -9,6 +9,7 @@ dependencies {
     api project(':common:common-web')
     api project(':common:common-grpc')
     api project(':common:common-id')
+    api project(':common:common-inbox')
     api project(':common:common-outbox')
     api project(':common:common-redis')
     api project(':common:common-redisson')

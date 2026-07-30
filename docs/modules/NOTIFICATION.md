@@ -112,6 +112,15 @@ DB `notification`(authSource `notification`). `MongoConfig`가 커넥션 풀(min
 
 - unique `(notificationId, receiverId)`가 동일 알림의 수신자 중복 저장을 막는다(멱등 기반).
 
+### 컨슈머 멱등 전략
+
+| 컨슈머 이벤트 | 하는 일 | 사용한 전략 |
+|---|---|---|
+| `PriceAlertDetectedEvent` | 새 알림 ID를 생성하고 `NotificationSaveEvent`·`WebNotificationEvent`를 Outbox에 기록 | `(consumer_name,event_id)` unique Inbox를 Outbox 저장과 같은 event DB 트랜잭션에서 선점; 중복이면 알림 생성 전에 성공 종료 |
+| `NotificationSaveEvent` | 알림 본문과 사용자별 수신자 레코드를 MongoDB에 저장 | `notificationId` 문서 저장 + `(notificationId,receiverId)` 자연 키 bulk upsert; 같은 Mongo 트랜잭션에서 반복 저장을 동일 결과로 수렴 |
+
+market-detection은 최초 이벤트 생성 시 무작위 UUID를 만들어 Kafka `event_id` 헤더에 기록하고, notification Binder는 payload가 아니라 이 헤더를 Command에 전달한다. Inbox INSERT가 성공한 consumer만 알림 ID 생성과 Outbox fan-out을 수행하며, 처리 중 실패하면 Inbox row와 Outbox row가 함께 롤백된다. `NotificationSaveEvent`는 event DB와 MongoDB를 하나의 트랜잭션으로 묶지 않고 도메인 자연 키로 재전달을 흡수한다. 기존 수신자 레코드는 `$setOnInsert` upsert로 보존하므로 이미 읽은 알림의 상태를 중복 이벤트가 되돌리지 않는다.
+
 ## 10. Kafka 계약
 
 토픽 카탈로그: `common-core/KafkaTopic`. 바인딩: `notification-service.yml`.

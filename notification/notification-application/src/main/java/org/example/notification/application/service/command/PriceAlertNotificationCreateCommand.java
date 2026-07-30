@@ -7,6 +7,7 @@ import java.util.Map;
 
 @Builder
 public record PriceAlertNotificationCreateCommand(
+        String eventId,
         String code,
         Double price,
         Long timestamp,
@@ -18,12 +19,18 @@ public record PriceAlertNotificationCreateCommand(
         String transactionId
 ) {
 
+    public static final String CONSUMER_NAME = "notification.price-alert-detected";
+
     public PriceAlertNotificationCreateCommand {
         typedPayload = typedPayload == null ? TypedPayload.empty() : typedPayload;
     }
 
     public Map<String, Object> toPayload() {
         return typedPayload.toMap();
+    }
+
+    public String consumerName() {
+        return CONSUMER_NAME;
     }
 
     public String partitionKey() {

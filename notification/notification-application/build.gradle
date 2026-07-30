@@ -6,6 +6,7 @@ dependencies {
     api project(':notification:notification-domain')
 
     implementation project(':common:common-outbox')
+    implementation project(':common:common-inbox')
     implementation project(':common:common-mongo')
     implementation project(':notification:notification-contract')
 
