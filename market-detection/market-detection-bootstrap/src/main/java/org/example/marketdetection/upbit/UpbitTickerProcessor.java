@@ -1,6 +1,5 @@
 package org.example.marketdetection.upbit;
 
-import lombok.RequiredArgsConstructor;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
@@ -11,21 +10,23 @@ import org.example.marketdetection.contract.event.PriceAlertDetectedEvent;
 import org.example.marketdetection.infra.properties.UpbitProperties;
 import org.example.marketdetection.upbit.event.UpbitTickerEvent;
 import org.example.marketdetection.upbit.event.UpbitTickerValue;
-import org.springframework.cloud.stream.function.StreamBridge;
-
 import java.util.ArrayList;
 import java.util.List;
 
-@RequiredArgsConstructor
-public class UpbitTickerProcessor implements Processor<String, UpbitTickerEvent, Void, Void> {
+public class UpbitTickerProcessor implements Processor<String, UpbitTickerEvent, String, PriceAlertDetectedEvent> {
 
-    private final StreamBridge streamBridge;
     private final UpbitProperties properties;
 
+    private ProcessorContext<String, PriceAlertDetectedEvent> context;
     private WindowStore<String, UpbitTickerValue> upbitTickerStore;
 
+    public UpbitTickerProcessor(UpbitProperties properties) {
+        this.properties = properties;
+    }
+
     @Override
-    public void init(ProcessorContext<Void, Void> context) {
+    public void init(ProcessorContext<String, PriceAlertDetectedEvent> context) {
+        this.context = context;
         this.upbitTickerStore = context.getStateStore(properties.store().ticker().name());
     }
 
@@ -52,11 +53,13 @@ public class UpbitTickerProcessor implements Processor<String, UpbitTickerEvent,
             return;
         }
 
-        matchedChangeRateThresholds.forEach(threshold ->
-            publishPriceAlertDetected(
-                createPriceAlertDetectedEvent(code, currentPrice, timestamp, averagePrice, changeRate, threshold)
-            )
-        );
+        matchedChangeRateThresholds.forEach(threshold -> context.forward(
+                new Record<>(
+                        code,
+                        createPriceAlertDetectedEvent(code, currentPrice, timestamp, averagePrice, changeRate, threshold),
+                        timestamp
+                )
+        ));
     }
 
     private boolean isProcessable(Record<String, UpbitTickerEvent> record) {
@@ -118,10 +121,6 @@ public class UpbitTickerProcessor implements Processor<String, UpbitTickerEvent,
                 .changeRate(changeRate)
                 .threshold(threshold.name())
                 .build();
-    }
-
-    private void publishPriceAlertDetected(PriceAlertDetectedEvent event) {
-        streamBridge.send(event.getTopic().getBindingName(), event.toMessage());
     }
 
     private long getWindowStartTime(long timestamp) {

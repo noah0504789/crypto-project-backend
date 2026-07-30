@@ -1,6 +1,5 @@
 package org.example.marketdetection.upbit;
 
-import org.example.common.enums.KafkaTopic;
 import org.example.common.test.config.TestBootApplication;
 import config.TestPropertiesConfig;
 import config.TestUpbitExternalDependencyConfig;
@@ -8,10 +7,12 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.TestInputTopic;
+import org.apache.kafka.streams.TestOutputTopic;
 import org.apache.kafka.streams.TopologyTestDriver;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Named;
+import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.state.StoreBuilder;
 import org.apache.kafka.streams.state.Stores;
 import org.apache.kafka.streams.state.WindowStore;
@@ -23,22 +24,15 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.kafka.support.serializer.JsonSerde;
-import org.springframework.messaging.Message;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
-
 @SpringBootTest(classes = {
         TestBootApplication.class,
 
@@ -52,19 +46,18 @@ import static org.mockito.Mockito.*;
 class UpbitTickerProcessorTopologyTest {
 
     private static final String INPUT_TOPIC = "upbit-ticker-in";
+    private static final String OUTPUT_TOPIC = "price-alert-detected-out";
     private static final String CODE = "KRW-BTC";
 
     @Autowired
     private UpbitProperties properties;
 
-    private StreamBridge streamBridge;
     private TopologyTestDriver testDriver;
     private TestInputTopic<String, UpbitTickerEvent> inputTopic;
+    private TestOutputTopic<String, PriceAlertDetectedEvent> outputTopic;
 
     @BeforeEach
     void setUp() {
-        streamBridge = mockStreamBridge();
-
         StreamsBuilder builder = new StreamsBuilder();
         String storeName = properties.store().ticker().name();
 
@@ -73,6 +66,7 @@ class UpbitTickerProcessorTopologyTest {
 
         testDriver = createTopologyTestDriver(builder);
         inputTopic = createInputTopic(testDriver);
+        outputTopic = createOutputTopic(testDriver);
     }
 
     @AfterEach
@@ -118,7 +112,7 @@ class UpbitTickerProcessorTopologyTest {
         inputTopic.pipeInput(CODE, tickerEvent(CODE, 102.0), Instant.ofEpochMilli(3_000L));
 
         // then
-        verify(streamBridge, never()).send(anyString(), any(Message.class));
+        assertThat(outputTopic.isEmpty()).isTrue();
     }
 
     @Test
@@ -130,22 +124,7 @@ class UpbitTickerProcessorTopologyTest {
         inputTopic.pipeInput(CODE, tickerEvent(CODE, 110.0), Instant.ofEpochMilli(3_000L));
 
         // then
-        ArgumentCaptor<String> bindingNameCaptor = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<Message<?>> messageCaptor = ArgumentCaptor.forClass(Message.class);
-
-        verify(streamBridge, times(3)).send(
-                bindingNameCaptor.capture(),
-                messageCaptor.capture()
-        );
-
-        List<PriceAlertDetectedEvent> events = messageCaptor.getAllValues()
-                .stream()
-                .map(Message::getPayload)
-                .map(PriceAlertDetectedEvent.class::cast)
-                .toList();
-
-        assertThat(bindingNameCaptor.getAllValues())
-                .containsOnly(KafkaTopic.PRICE_ALERT_DETECTED.getBindingName());
+        List<PriceAlertDetectedEvent> events = outputTopic.readValuesToList();
 
         assertThat(events)
                 .extracting(PriceAlertDetectedEvent::getPartitionKey)
@@ -180,22 +159,7 @@ class UpbitTickerProcessorTopologyTest {
         inputTopic.pipeInput(CODE, tickerEvent(CODE, 110.0), Instant.ofEpochMilli(242_000L));
 
         // then
-        ArgumentCaptor<String> bindingNameCaptor = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<Message<?>> messageCaptor = ArgumentCaptor.forClass(Message.class);
-
-        verify(streamBridge, times(3)).send(
-                bindingNameCaptor.capture(),
-                messageCaptor.capture()
-        );
-
-        List<PriceAlertDetectedEvent> events = messageCaptor.getAllValues()
-                .stream()
-                .map(Message::getPayload)
-                .map(PriceAlertDetectedEvent.class::cast)
-                .toList();
-
-        assertThat(bindingNameCaptor.getAllValues())
-                .containsOnly(KafkaTopic.PRICE_ALERT_DETECTED.getBindingName());
+        List<PriceAlertDetectedEvent> events = outputTopic.readValuesToList();
 
         assertThat(events)
                 .extracting(PriceAlertDetectedEvent::getPartitionKey)
@@ -259,15 +223,6 @@ class UpbitTickerProcessorTopologyTest {
         );
     }
 
-    private StreamBridge mockStreamBridge() {
-        StreamBridge mockedStreamBridge = mock(StreamBridge.class);
-
-        when(mockedStreamBridge.send(anyString(), any(Message.class)))
-                .thenReturn(true);
-
-        return mockedStreamBridge;
-    }
-
     private void addTickerWindowStore(StreamsBuilder builder, String storeName) {
         StoreBuilder<WindowStore<String, UpbitTickerValue>> storeBuilder =
                 Stores.windowStoreBuilder(
@@ -293,10 +248,13 @@ class UpbitTickerProcessorTopologyTest {
                 )
         );
 
-        stream.process(
-                () -> new UpbitTickerProcessor(streamBridge, properties),
+        stream.<String, PriceAlertDetectedEvent>process(
+                () -> new UpbitTickerProcessor(properties),
                 Named.as("upbit-ticker-watcher"),
                 storeName
+        ).to(
+                OUTPUT_TOPIC,
+                Produced.with(Serdes.String(), new JsonSerde<>(PriceAlertDetectedEvent.class))
         );
     }
 
@@ -326,6 +284,14 @@ class UpbitTickerProcessorTopologyTest {
                 INPUT_TOPIC,
                 Serdes.String().serializer(),
                 new JsonSerde<>(UpbitTickerEvent.class).serializer()
+        );
+    }
+
+    private TestOutputTopic<String, PriceAlertDetectedEvent> createOutputTopic(TopologyTestDriver testDriver) {
+        return testDriver.createOutputTopic(
+                OUTPUT_TOPIC,
+                Serdes.String().deserializer(),
+                new JsonSerde<>(PriceAlertDetectedEvent.class).deserializer()
         );
     }
 }
