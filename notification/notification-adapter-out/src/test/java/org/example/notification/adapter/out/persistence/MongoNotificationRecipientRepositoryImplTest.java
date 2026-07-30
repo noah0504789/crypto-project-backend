@@ -258,7 +258,7 @@ class MongoNotificationRecipientRepositoryImplTest {
     class SaveAllBulkTest {
 
         @Test
-        @DisplayName("NotificationRecipient 목록을 bulk insert 한다")
+        @DisplayName("NotificationRecipient 목록을 자연 키 기준 bulk upsert 한다")
         void saveAllBulk_shouldInsertRecipients() {
             List<MongoNotificationRecipient> recipients = List.of(
                     createRecipient(recipientId1, notificationId1, receiverId1, false, null, time1),
@@ -274,6 +274,22 @@ class MongoNotificationRecipientRepositoryImplTest {
             assertThat(actual)
                     .extracting(MongoNotificationRecipient::getId)
                     .containsExactlyInAnyOrder(recipientId1, recipientId2, recipientId3);
+        }
+
+        @Test
+        @DisplayName("같은 notificationId와 receiverId를 다시 저장해도 수신자 레코드는 하나다")
+        void saveAllBulk_shouldIgnoreDuplicateNaturalKey() {
+            MongoNotificationRecipient recipient =
+                    createRecipient(recipientId1, notificationId1, receiverId1, false, null, time1);
+
+            sut.saveAllBulk(List.of(recipient));
+            sut.saveAllBulk(List.of(recipient));
+
+            List<MongoNotificationRecipient> actual =
+                    mongoTemplate.findAll(MongoNotificationRecipient.class);
+
+            assertThat(actual).hasSize(1);
+            assertThat(actual.get(0).getId()).isEqualTo(recipientId1);
         }
 
         @Test
