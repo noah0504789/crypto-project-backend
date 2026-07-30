@@ -15,7 +15,7 @@ Transactional Outbox 패턴의 **공용 릴레이**(단일 모듈, `crypto-boots
 
 ## 주요 변경 규칙
 
-- **발행 헤더·목적지 계약 보존**: `KafkaEventPublisher`의 헤더(`KafkaHeaders.KEY`, `transaction_id`, `dlq_id`, `__TypeId__`)와 목적지(`Outbox.getDestination()`=`aggregateType`=토픽)는 모든 소비자가 의존하는 계약이다. 임의 변경 금지(→ `../.claude/rules/external-contracts.md`).
+- **발행 헤더·목적지 계약 보존**: `KafkaEventFactory`가 생성하는 헤더(`KafkaHeaders.KEY`, `event_id`, `transaction_id`, `dlq_id`, `__TypeId__`)와 `KafkaEventPublisher`가 선택하는 목적지(`Outbox.getDestination()`=`aggregateType`=토픽)는 모든 소비자가 의존하는 계약이다. `event_id`는 Outbox/DLQ 레코드 ID를 사용해 재발행에도 동일하게 유지한다. 임의 변경 금지(→ `../.claude/rules/external-contracts.md`).
 - **폴링 정책은 Config**: 주기/배치/재시도는 `../git-config-repo/dynamic/outbox-poller.yml`의 `poller.*`. `BROADCAST`(100ms)와 `GENERAL`(2500ms) 분리, DLQ(10000ms)를 유지한다. 스케줄 상수를 코드에 하드코딩하지 않는다.
 - **상태 전이는 도메인 메서드로**: 폴링 성공/실패 처리는 common-outbox의 `OutboxService.publishPending`/`DlqService.publishPending`가 담당한다. 여기서 직접 SQL로 상태를 바꾸지 않는다. 실패 시 재시도/`FAILED` 전이 로직(retryCnt, maxRetryCnt)을 우회하지 않는다.
 - **at-least-once 전제 유지**: Kafka 트랜잭션이 비활성(주석)이라 send 성공 후 `markPublished` 반영 전 크래시 시 중복 발행이 가능하다. 소비자 멱등성 전제를 깨는 변경(트랜잭션 on/off, 발행 순서)은 전 소비자 영향을 함께 본다.
@@ -28,7 +28,8 @@ Transactional Outbox 패턴의 **공용 릴레이**(단일 모듈, `crypto-boots
 |---|---|
 | [`.../outbox/OutboxEventScheduler.java`](src/main/java/org/example/outboxpoller/outbox/OutboxEventScheduler.java) | GENERAL/BROADCAST 폴링(`publishPending`) |
 | [`.../dlq/DlqEventScheduler.java`](src/main/java/org/example/outboxpoller/dlq/DlqEventScheduler.java) | DLQ 폴링(상태 게이트) |
-| [`.../infra/event/KafkaEventPublisher.java`](src/main/java/org/example/outboxpoller/infra/event/KafkaEventPublisher.java) | `EventPublisherPort` 구현(헤더·목적지·StreamBridge) |
+| [`../common/common-event/.../KafkaEventFactory.java`](../common/common-event/src/main/java/org/example/common/event/KafkaEventFactory.java) | payload와 Kafka 공통 헤더로 `Message` 생성 |
+| [`.../infra/event/KafkaEventPublisher.java`](src/main/java/org/example/outboxpoller/infra/event/KafkaEventPublisher.java) | `EventPublisherPort` 구현(목적지·StreamBridge 전송) |
 | [`.../dlq/DlqPollerController.java`](src/main/java/org/example/outboxpoller/dlq/DlqPollerController.java) · [`DlqPollerState.java`](src/main/java/org/example/outboxpoller/dlq/DlqPollerState.java) | DLQ 런타임 start/stop |
 | [`.../infra/datasource/DataSourceConfig.java`](src/main/java/org/example/outboxpoller/infra/datasource/DataSourceConfig.java) | event DB 데이터소스 + `transactionManager` |
 | `src/main/resources/sql/schema.sql` | `outbox`/`dlq` 스키마(공유) |
