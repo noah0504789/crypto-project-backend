@@ -14,7 +14,8 @@
 - **common은 서비스 모듈에 의존 금지**: `common-*`가 서비스(`chat`/`user`/… ) 모듈이나 그 패키지를 import하면 `common-arch-test`가 실패한다. 방향은 항상 서비스 → common.
 - **아키텍처 변경 시 게이트 실행**: 의존/계층/패키지 구조를 건드리면 `./gradlew :common:common-arch-test:test`(ArchUnit)를 반드시 실행한다. 규칙 자체(`ModuleArchitectureTest`/`PackageArchitectureTest`)를 완화해 통과시키지 않는다(→ git-safety).
 - **파사드 목록 관리**: 새 공통 모듈을 만들면 `settings.gradle` 등록 + 파사드 재수출 여부(`common/build.gradle`)를 명시적으로 결정한다. 테스트/CI/모니터링 성격 모듈은 파사드에 넣지 않는다.
-- **Outbox/DLQ 흐름 보존**(`common-outbox`): 상태 변경은 도메인 메서드로만(`markPublished`·`markFailed`·`increaseRetryCnt`·`markCompleted`). 발행은 `EventUtils.raise` → `OutboxEventListListener` → `OutboxService.saveAll` 경로를 지키고 `ApplicationEventPublisher`를 직접 쓰지 않는다. `__TypeId__`·`transaction_id`·`dlq_id` 헤더는 계약이다. `DlqStatus`는 `@Enumerated(STRING)`으로 이름이 저장되는 계약이다(소비 실패 상태 = `CONSUME_FAILED`). 값 추가/변경 시 저장된 row 영향을 함께 본다.
+- **Outbox/DLQ 흐름 보존**(`common-outbox`): 상태 변경은 도메인 메서드로만(`markPublished`·`markFailed`·`increaseRetryCnt`·`markCompleted`). 발행은 `EventUtils.raise` → `OutboxEventListListener` → `OutboxService.saveAll` 경로를 지키고 `ApplicationEventPublisher`를 직접 쓰지 않는다. `__TypeId__`·`event_id`·`transaction_id`·`dlq_id` 헤더는 계약이다. `event_id`는 Outbox/DLQ 레코드 ID로 같은 레코드 재발행에서도 유지된다. `DlqStatus`는 `@Enumerated(STRING)`으로 이름이 저장되는 계약이다(소비 실패 상태 = `CONSUME_FAILED`). 값 추가/변경 시 저장된 row 영향을 함께 본다.
+- **Inbox 경계 유지**(`common-inbox`): 비멱등 consumer는 `InboxEventService`의 `(consumer_name,event_id)` unique INSERT와 비즈니스 처리를 같은 event DB 트랜잭션에 묶는다. `AbstractInboxEvent`가 header용 ID를 만들고 `extractEventId(Message<?>)`로 consumer의 `event_id` header를 읽는다.
 - **Read Replica 규칙**(`common-jpa`): `@ReadReplica`가 read 라우팅 트리거다. `@Transactional(readOnly=true)`만으로 read로 보내지 않는다. `ReadReplicaAspect`/`DataSourceContextHolder`/`ReplicationRoutingDataSource` 동작을 바꾸면 전 JPA 서비스에 영향.
 - **예외 매핑 일관성**: REST 예외는 `common-web/GlobalExceptionHandler`(`ErrorResponse`/`ValidationResult` 형식), gRPC 예외는 `common-grpc/BaseGrpcExceptionAdvice`가 담당한다. 응답 형식을 흔들지 않는다.
 - **actuator 선택**: MVC 서비스는 `common-actuator-webmvc`, gateway(WebFlux)는 `common-actuator-webflux`를 쓴다(공용 코어는 `common-actuator-core`). 배포 제어 토큰은 `deployment.control.token`(`${DEPLOY_TOKEN}`).
@@ -27,6 +28,11 @@
 | [`common-core/.../exception/`](common-core/src/main/java/org/example/common/exception/) | 공통 예외 계층·`ErrorResponse` |
 | [`common-jpa/.../aop/ReadReplicaAspect.java`](common-jpa/src/main/java/org/example/common/jpa/aop/ReadReplicaAspect.java) | read 라우팅 트리거 |
 | [`common-event/.../EventUtils.java`](common-event/src/main/java/org/example/common/event/EventUtils.java) | 도메인 이벤트 수집·발행 진입점 |
+| [`common-event/.../KafkaEventFactory.java`](common-event/src/main/java/org/example/common/event/KafkaEventFactory.java) | Kafka `Message`와 공통 헤더 생성 책임 |
+| [`common-inbox/.../AbstractInboxEvent.java`](common-inbox/src/main/java/org/example/common/inbox/event/AbstractInboxEvent.java) | Inbox 대상 이벤트의 `eventId` 상속·무작위 UUID 생성 |
+| [`common-inbox/.../inbox/`](common-inbox/src/main/java/org/example/common/inbox/) | `(consumer_name,event_id)` unique 기반 consumer 중복 선점·header 추출 |
+
+Inbox 예외는 HTTP 상태나 인프라 실패를 뜻하지 않는 `InboxException` 계층으로 묶는다. 구체 예외는 이 타입을 상속하고 Kafka adapter가 처리 정책을 결정한다.
 | [`common-outbox/.../outbox/`](common-outbox/src/main/java/org/example/common/outbox/) · [`.../dlq/`](common-outbox/src/main/java/org/example/common/dlq/) | Outbox/DLQ 도메인·서비스 |
 | [`common-web/.../exception/GlobalExceptionHandler.java`](common-web/src/main/java/org/example/common/exception/GlobalExceptionHandler.java) | REST 예외 매핑 |
 | [`common-grpc/.../exception/BaseGrpcExceptionAdvice.java`](common-grpc/src/main/java/org/example/common/grpc/exception/BaseGrpcExceptionAdvice.java) | gRPC 예외 매핑 |

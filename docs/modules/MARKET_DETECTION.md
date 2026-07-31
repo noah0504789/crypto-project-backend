@@ -43,7 +43,7 @@ Upbit 실시간 시세를 수집해 **단기 이동평균 대비 변동률**을 
 
 ### 4.2 발행 (Supplier → `upbit-ticker-event`)
 
-- `upbitTickerEventSupplier`(Spring Cloud Stream `Supplier`)가 **poller 0.5s**(`fixed-delay 500ms`)마다 큐를 `poll`해 `UpbitTickerEvent`를 발행한다. 파티션 키 = 마켓 코드(`KafkaEvent.toMessage()` → `KafkaHeaders.KEY`). 목적지 바인딩 `upbitTickerEventSupplier-out-0` → `upbit-ticker-event`.
+- `upbitTickerEventSupplier`(Spring Cloud Stream `Supplier`)가 **poller 0.5s**(`fixed-delay 500ms`)마다 큐를 `poll`해 `UpbitTickerEvent`를 발행한다. 파티션 키 = 마켓 코드(`KafkaEventFactory.createEventMessage(...)` → `KafkaHeaders.KEY`). 목적지 바인딩 `upbitTickerEventSupplier-out-0` → `upbit-ticker-event`.
 
 ### 4.3 처리 (Kafka Streams → 임계 탐지 → `price-alert-detected-event`)
 
@@ -104,6 +104,14 @@ EOS 적용 전에는 `Consumer<KStream<...>>` 내부의 `UpbitTickerProcessor`�
 
 따라서 이 모듈에서 말하는 exactly-once는 **Kafka Streams 처리 구간의 EOS**다. 하류 notification이 수행하는 MySQL Outbox 저장이나 MongoDB 반영까지 포함하는 분산 트랜잭션은 아니며, 하류 consumer의 멱등성·재시도·DLQ는 별도로 필요하다.
 
+### 컨슈머 멱등 전략
+
+| 컨슈머 이벤트 | 하는 일 | 사용한 전략 |
+|---|---|---|
+| `UpbitTickerEvent` | WindowStore에 시세를 기록하고 이동평균·임계값을 계산해 `PriceAlertDetectedEvent` 발행 | Kafka Streams `exactly_once_v2`로 입력 offset·WindowStore·출력을 하나의 Kafka 트랜잭션으로 처리 |
+
+탐지 결과의 `eventId`는 최초 `PriceAlertDetectedEvent` 생성 시 무작위 UUID로 한 번 생성해 Kafka `event_id` 헤더에만 전달한다. payload에서는 `@JsonIgnore`로 제외하며 Kafka 재전달에서는 header의 같은 ID가 보존되므로 하류 notification Inbox가 중복 알림 생성을 차단한다. 동일 입력이 별도의 새 이벤트로 다시 생성되면 새 ID를 갖는 별개 이벤트로 취급한다. 이 ID는 순서 제어용이 아니며, ticker 순서는 Kafka key인 market code로 같은 파티션에 모은다.
+
 EOS의 트레이드오프는 다음과 같다.
 
 | 선택 | 장점 | 비용·주의점 |
@@ -116,7 +124,7 @@ market-detection은 stateful Kafka 처리 결과가 곧 Kafka 출력이고 외�
 
 ## 5. 계약
 
-- **생산(외부 계약)**: `market-detection-contract`의 `PriceAlertDetectedEvent`(record, `implements KafkaEvent, ProducibleEvent`). 필드 `{ code, price, timestamp, avgInterval, avgPrice, changeRate, threshold }`, 토픽 `PRICE_ALERT_DETECTED`(binding `upbitTickerAlertEventProcessor-out-0` → `price-alert-detected-event`), 파티션 키 = `code`. `toPayload()`는 `PriceAlertDetectedPayloadKeys`(TypedKey)로 키-값 페이로드를 만든다(notification이 web push payload로 전달). 소비자 `notification`과 함께 변경한다(→ `../../.claude/rules/external-contracts.md`).
+- **생산(외부 계약)**: `market-detection-contract`의 `PriceAlertDetectedEvent`(`AbstractInboxEvent` 상속, `implements KafkaEvent, ProducibleEvent`). 내부 `eventId`는 JSON에서 제외하고 Kafka header로 전달하며, payload는 `{ code, price, timestamp, avgInterval, avgPrice, changeRate, threshold }`로 구성한다. 토픽은 `PRICE_ALERT_DETECTED`(binding `upbitTickerAlertEventProcessor-out-0` → `price-alert-detected-event`), 파티션 키는 `code`다. `toPayload()`는 `PriceAlertDetectedPayloadKeys`(TypedKey)로 키-값 페이로드를 만든다(notification이 web push payload로 전달). 소비자 `notification`과 함께 변경한다(→ `../../.claude/rules/external-contracts.md`).
 - **소비(외부)**: market `market.v1 GetEnabledMarkets`(구독 대상). 임계값 enum `common-core/PriceAlertChangeRateThreshold`(`PERCENT_3/5/7`)는 market-detection(탐지)·notification(수신자 조회 rate 변환)·market(정확 일치 조회)이 **공유하는 계약**이다.
 - **내부 토픽**: `upbit-ticker-event`(수집 원본 — Supplier 출력이자 Kafka Streams 입력). auto-create(`auto-create-topics: true`).
 

@@ -2,6 +2,8 @@ package org.example.notification.application.service;
 
 import org.example.common.clock.Clock;
 import org.example.common.event.TypedPayload;
+import org.example.common.inbox.application.service.InboxEventService;
+import org.example.common.inbox.exception.DuplicateInboxEventException;
 import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
 import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
 import org.example.notification.application.event.NotificationEventList;
@@ -55,9 +57,13 @@ class PriceAlertNotificationCommandServiceTest {
     @Mock
     private OutboxEventListPublishPort outboxEventListPublishPort;
 
+    @Mock
+    private InboxEventService inboxEventService;
+
     private PriceAlertNotificationCommandService sut;
 
     private static final String NOTIFICATION_ID = "notification-1";
+    private static final String EVENT_ID = "event-1";
     private static final String CODE = "KRW-BTC";
     private static final Double CHANGE_RATE = 0.05;
     private static final String THRESHOLD = "3";
@@ -79,13 +85,38 @@ class PriceAlertNotificationCommandServiceTest {
                 clock,
                 idGeneratorPort,
                 priceAlertRecipientQueryPort,
-                outboxEventListPublishPort
+                outboxEventListPublishPort,
+                inboxEventService
         );
+
     }
 
     @Nested
     @DisplayName("create")
     class CreateTest {
+
+        @Test
+        @DisplayName("이미 처리한 event_id면 예외를 전파하고 알림과 Outbox 이벤트를 만들지 않는다")
+        void create_should_throw_duplicate_event() {
+            PriceAlertNotificationCreateCommand command = mock(PriceAlertNotificationCreateCommand.class);
+            given(command.eventId()).willReturn(EVENT_ID);
+            given(command.consumerName()).willReturn(PriceAlertNotificationCreateCommand.CONSUMER_NAME);
+            doThrow(new DuplicateInboxEventException(
+                    PriceAlertNotificationCreateCommand.CONSUMER_NAME,
+                    EVENT_ID,
+                    new RuntimeException("duplicate")
+            )).when(inboxEventService).save(
+                    PriceAlertNotificationCreateCommand.CONSUMER_NAME,
+                    EVENT_ID
+            );
+
+            assertThatThrownBy(() -> sut.create(command))
+                    .isInstanceOf(DuplicateInboxEventException.class);
+
+            verify(idGeneratorPort, never()).generate();
+            verify(priceAlertRecipientQueryPort, never()).findReceiverIds(anyString(), anyString());
+            verify(outboxEventListPublishPort, never()).publish(any());
+        }
 
         @Test
         @DisplayName("가격 알림 생성 명령을 처리하면 수신자를 조회하고 Notification 이벤트를 발행한다")
@@ -501,6 +532,7 @@ class PriceAlertNotificationCommandServiceTest {
                 mock(PriceAlertNotificationCreateCommand.class);
 
         given(command.code()).willReturn(CODE);
+        given(command.eventId()).willReturn(EVENT_ID);
         given(command.changeRate()).willReturn(CHANGE_RATE);
         given(command.threshold()).willReturn(THRESHOLD);
         given(command.toPayload()).willReturn(PAYLOAD);

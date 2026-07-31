@@ -31,3 +31,13 @@ CREATE TABLE IF NOT EXISTS event.dlq (
     primary key (id),
     index idx_dlq_status_created_at (status, created_at)
 );
+
+CREATE TABLE IF NOT EXISTS event.inbox_event (
+    id            varchar(191) not null,
+    consumer_name varchar(100) not null,
+    event_id      varchar(64)  not null,
+    created_at    timestamp(3) default current_timestamp(3),
+    updated_at    timestamp(3) default current_timestamp(3) on update current_timestamp(3),
+    primary key (id),
+    constraint uk_inbox_event_consumer_event unique (consumer_name, event_id)
+);

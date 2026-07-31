@@ -131,7 +131,7 @@ class UpbitTickerProcessorTopologyTest {
                 .containsOnly(CODE);
 
         assertThat(events)
-                .extracting(PriceAlertDetectedEvent::threshold)
+                .extracting(PriceAlertDetectedEvent::getThreshold)
                 .containsExactlyInAnyOrder(
                         "PERCENT_3",
                         "PERCENT_5",
@@ -139,12 +139,13 @@ class UpbitTickerProcessorTopologyTest {
                 );
 
         for (PriceAlertDetectedEvent event : events) {
-            assertThat(event.code()).isEqualTo(CODE);
-            assertThat(event.price()).isEqualTo(110.0);
-            assertThat(event.timestamp()).isEqualTo(3_000L);
-            assertThat(event.avgInterval()).isEqualTo(properties.ticker().alert().windowMinutes());
-            assertThat(event.avgPrice()).isEqualTo(100.0);
-            assertThat(event.changeRate()).isEqualTo(0.1);
+            assertThat(event.getEventId()).isNotBlank();
+            assertThat(event.getCode()).isEqualTo(CODE);
+            assertThat(event.getPrice()).isEqualTo(110.0);
+            assertThat(event.getTimestamp()).isEqualTo(3_000L);
+            assertThat(event.getAvgInterval()).isEqualTo(properties.ticker().alert().windowMinutes());
+            assertThat(event.getAvgPrice()).isEqualTo(100.0);
+            assertThat(event.getChangeRate()).isEqualTo(0.1);
         }
     }
 
@@ -166,7 +167,7 @@ class UpbitTickerProcessorTopologyTest {
                 .containsOnly(CODE);
 
         assertThat(events)
-                .extracting(PriceAlertDetectedEvent::threshold)
+                .extracting(PriceAlertDetectedEvent::getThreshold)
                 .containsExactlyInAnyOrder(
                         "PERCENT_3",
                         "PERCENT_5",
@@ -174,12 +175,13 @@ class UpbitTickerProcessorTopologyTest {
                 );
 
         for (PriceAlertDetectedEvent event : events) {
-            assertThat(event.code()).isEqualTo(CODE);
-            assertThat(event.price()).isEqualTo(110.0);
-            assertThat(event.timestamp()).isEqualTo(242_000L);
-            assertThat(event.avgInterval()).isEqualTo(properties.ticker().alert().windowMinutes());
-            assertThat(event.avgPrice()).isEqualTo(100.0);
-            assertThat(event.changeRate()).isEqualTo(0.1);
+            assertThat(event.getEventId()).isNotBlank();
+            assertThat(event.getCode()).isEqualTo(CODE);
+            assertThat(event.getPrice()).isEqualTo(110.0);
+            assertThat(event.getTimestamp()).isEqualTo(242_000L);
+            assertThat(event.getAvgInterval()).isEqualTo(properties.ticker().alert().windowMinutes());
+            assertThat(event.getAvgPrice()).isEqualTo(100.0);
+            assertThat(event.getChangeRate()).isEqualTo(0.1);
         }
     }
 

@@ -70,6 +70,16 @@
 
 `KafkaWebsocketGatewayBinder`가 3개 Kafka consumer를 등록한다. 모두 **인스턴스별 고유 group**(`...-${app.instance-id}`)·`concurrency: 2`·`ack-mode: record`라, 전 인스턴스가 같은 이벤트를 받아 **자기 로컬 세션 보유자에게만** 전달한다.
 
+### 컨슈머 멱등 전략
+
+| 컨슈머 이벤트 | 하는 일 | 사용한 전략 |
+|---|---|---|
+| `ChatMessageBroadcastEvent` | 로컬 세션의 채팅방 구독자에게 STOMP 메시지 push | 각 클라이언트가 안정적인 `messageId`로 중복 제거; 서버 push는 best-effort |
+| `MyChatRoomBadgeEvent` | 로컬 사용자 세션에 방 배지 상태 push | 최신 상태를 다시 적용할 수 있는 payload와 클라이언트 상태 갱신으로 수렴 |
+| `WebNotificationEvent` | 로컬 사용자 세션에 알림 push | 안정적인 `notificationId`로 클라이언트 중복 제거; 영속 알림함 REST 조회로 reconciliation |
+
+세 consumer는 인스턴스별 group으로 모든 gateway 인스턴스가 처리해야 한다. 공유 `(consumer_name,event_id)` Inbox를 적용하면 한 인스턴스의 선점이 다른 인스턴스의 로컬 세션 전송을 차단하므로 사용하지 않는다. Kafka `event_id`는 로그·추적에 사용하며, 서버 측 중복 억제가 필요해지면 공유 키가 아니라 `(instanceId,eventId)` 범위의 짧은 best-effort 기록만 고려한다. STOMP 전송은 DB 트랜잭션으로 원자화할 수 없으므로 exactly-once로 간주하지 않는다.
+
 | consumer | 소비 토픽 | 이벤트 | push 대상(로컬 세션 보유 시) |
 |---|---|---|---|
 | `chatMessageBroadcastEventConsumer` | `chatmessage-broadcast-event` | `ChatMessageBroadcastEvent{payload, memberIds, clientMessageId}` | `/topic/chat/{roomId}`(방 공유 토픽), memberIds에 로컬 세션 있으면 전송 |

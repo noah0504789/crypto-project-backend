@@ -1,15 +1,19 @@
 package org.example.marketdetection.upbit;
 
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
 import org.apache.kafka.streams.state.WindowStore;
 import org.apache.kafka.streams.state.WindowStoreIterator;
+import org.example.common.enums.KafkaHeaderKey;
 import org.example.common.enums.PriceAlertChangeRateThreshold;
 import org.example.marketdetection.contract.event.PriceAlertDetectedEvent;
 import org.example.marketdetection.infra.properties.UpbitProperties;
 import org.example.marketdetection.upbit.event.UpbitTickerEvent;
 import org.example.marketdetection.upbit.event.UpbitTickerValue;
+
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -53,13 +57,17 @@ public class UpbitTickerProcessor implements Processor<String, UpbitTickerEvent,
             return;
         }
 
-        matchedChangeRateThresholds.forEach(threshold -> context.forward(
-                new Record<>(
-                        code,
-                        createPriceAlertDetectedEvent(code, currentPrice, timestamp, averagePrice, changeRate, threshold),
-                        timestamp
-                )
-        ));
+        matchedChangeRateThresholds.forEach(threshold -> {
+            PriceAlertDetectedEvent event =
+                    createPriceAlertDetectedEvent(code, currentPrice, timestamp, averagePrice, changeRate, threshold);
+            RecordHeaders headers = new RecordHeaders(record.headers());
+            headers.add(
+                    KafkaHeaderKey.EVENT_ID.value(),
+                    event.getEventId().getBytes(StandardCharsets.UTF_8)
+            );
+
+            context.forward(new Record<>(code, event, timestamp, headers));
+        });
     }
 
     private boolean isProcessable(Record<String, UpbitTickerEvent> record) {

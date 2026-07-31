@@ -29,7 +29,8 @@
 |---|---|---|---|
 | `common-core` | 계약 상수·공통 예외·프로퍼티·검증·시계 | enums(`RedisKey`·`KafkaTopic`·`KafkaHeaderKey`·`StompDestination`·`JwtClaimKey`·`JwtHeaderKey`·`HttpHeaderKey`·`AuthTokenKey`·`RoleKey`·`PriceAlertChangeRateThreshold`), 예외(`InfrastructureException`·`InvalidRequestException`·`ResourceNotFoundException` 등), 프로퍼티(`JwtProperties`·`ApiPathProperties`·`AppRedisProperties`·`FrontendProperties`), `ValidationResult`·`@NotBlankIfPresent`, `Clock`/`ClockService` | validation starter |
 | `common-jpa` | JPA + Read Replica 라우팅 | `BaseEntity`, `@ReadReplica`, `ReadReplicaAspect`, `DataSourceContextHolder`, `DataSourceType`, `ReplicationRoutingDataSource` | data-jpa, aop, mysql(runtime) |
-| `common-event` | Kafka 이벤트 계약·발행 유틸 | `KafkaEvent`, `EventUtils`, `EventsInitializer`, `HandleableEvent`, `ProducibleEvent`, `RecoverableEvent`, `TypedKey`/`TypedPayload` | common-core, stream-kafka |
+| `common-event` | Kafka 이벤트 계약·메시지 생성·발행 유틸 | `KafkaEvent`, `KafkaEventFactory`, `EventUtils`, `EventsInitializer`, `HandleableEvent`, `ProducibleEvent`, `RecoverableEvent`, `TypedKey`/`TypedPayload` | common-core, stream-kafka |
+| `common-inbox` | Consumer Inbox 멱등 처리 | `AbstractInboxEvent`, `InboxEvent`/`InboxEventService`, `InboxException` 계층 | common-jpa, common-core, common-util, spring-messaging |
 | `common-web` | REST(MVC) 공통 | `GlobalExceptionHandler`(`@RestControllerAdvice`), `CursorPage`/`CursorPages`, `MessageConverterConfig` | common-core, web, validation |
 | `common-grpc` | gRPC 예외 처리 | `BaseGrpcExceptionAdvice`, `GrpcExceptionTranslator`, `GrpcClientException`, `GrpcFailureCode` | common-core, grpc(bom/stub/server-starter) |
 | `common-outbox` | Outbox/DLQ 도메인·서비스(헥사고날) | `Outbox`/`OutboxStatus`/`OutboxService`/`OutboxEventListListener`, `Dlq`/`DlqStatus`/`DlqService`, `Abstract*OutboxEvent(List)`, `*PublishPort` | common-jpa, common-event, common-util, jackson |
@@ -37,7 +38,7 @@
 | `common-redisson` | 분산락 | `DistributedLockExecutor`, `DistributedLockPolicy`, `RedissonConfig` | common-core, redisson starter |
 | `common-id` | ID 생성 | `SnowflakeIdGenerator`/`SnowflakeIdProvider`, `@SnowflakeId`, `ObjectIdGenerator`(Mongo `ObjectId`), `IdGenProperties` | common-core, mongodb-bson, data-jpa |
 | `common-mongo` | Mongo 매핑 설정 | `SnakeCaseFieldNamingStrategy`, `Date↔LocalDateTime` 컨버터 | common-core, data-mongodb |
-| `common-util` | 유틸리티 | `EventIdUtils`(ULID 기반) | ulid-creator |
+| `common-util` | 유틸리티 | `EventIdUtils`(단조 ULID·무작위 UUID) | ulid-creator, JDK UUID |
 | `common-test` | 테스트 인프라 | Testcontainers(Kafka·Mongo·MySQL RW·Redis) + Initializer/Extension, `TestBootApplication` | boot-test, testcontainers* |
 | `common-arch-test` | ArchUnit 아키텍처 게이트 | `ModuleArchitectureTest`, `PackageArchitectureTest` (전 서비스 `testRuntimeOnly` 참조) | archunit-junit5 |
 | `common-actuator-core` | 배포 제어·readiness 코어 | `DeploymentReadiness`, `DeploymentReadinessHealthIndicator`, `DeploymentControlProperties` | actuator |
@@ -48,7 +49,7 @@
 
 `common-core`는 **여러 서비스가 공유하는 계약 문자열·상수의 단일 출처**다. 아래는 외부 계약(→ `external-contracts.md`)으로 취급한다.
 
-- `RedisKey`(pattern + expectedArgCount, hash tag `{chat}`/`{auth}`/`{session}`), `KafkaTopic`·`KafkaHeaderKey`(`transaction_id`·`dlq_id`·`__TypeId__` 등), `StompDestination`, `JwtClaimKey`/`JwtHeaderKey`, `HttpHeaderKey`(`X-User-Id` 등), `AuthTokenKey`(refresh 쿠키명 등), `RoleKey`(`ROLE_*`).
+- `RedisKey`(pattern + expectedArgCount, hash tag `{chat}`/`{auth}`/`{session}`), `KafkaTopic`·`KafkaHeaderKey`(`event_id`·`transaction_id`·`dlq_id`·`__TypeId__` 등), `StompDestination`, `JwtClaimKey`/`JwtHeaderKey`, `HttpHeaderKey`(`X-User-Id` 등), `AuthTokenKey`(refresh 쿠키명 등), `RoleKey`(`ROLE_*`).
 - 예외 계층: `InfrastructureException`/`InvalidRequestException`/`ResourceNotFoundException`을 기반으로 각 서비스·common 모듈이 파생(예: `common-outbox`의 `*PersistenceException`, `common-config`의 예외). REST 매핑은 `common-web/GlobalExceptionHandler`, gRPC 매핑은 `common-grpc`가 담당한다.
 - 프로퍼티 레코드: `JwtProperties`(`keyName`·`jwksUri`·`signUri`·TTL 등, → `SPRING_CLOUD_CONFIG.md`/`OAUTH2_*`), `ApiPathProperties`, `AppRedisProperties`, `FrontendProperties`.
 
@@ -83,8 +84,20 @@ Outbox 패턴의 핵심 모듈. **비즈니스 DB write와 이벤트 기록을 �
 - **DLQ도 대칭 구조**: `DlqEventListPublishPort` → `SpringDlqEventListPublishAdapter`(`EventUtils.raise`) → `@EventListener DlqEventListListener` → `DlqService`(`markCompleted()` 등). 재처리 완료/실패는 `DlqService.complete/fail`. `DlqStatus` 소비 실패 상태는 `CONSUME_FAILED`(과거 `COMSUME_FAILED` 오타를 정정). `@Enumerated(STRING)`으로 이름이 그대로 저장되므로 기존 `COMSUME_FAILED` row가 있으면 마이그레이션 필요.
 - Spring `ApplicationEventPublisher`를 서비스에서 직접 쓰지 않고 항상 `EventUtils`/포트를 경유한다.
 
-### 5.2 common-event
+#### Consumer Inbox
+
+호출 consumer 서비스가 `@Transactional("transactionManager")` 경계를 소유하고, 트랜잭션 시작 직후 `InboxEventService.save(consumerName,eventId)`를 호출한다. 이 메서드는 `inbox_event`의 `(consumer_name,event_id)`를 `saveAndFlush`로 즉시 INSERT해 비즈니스 처리 전에 unique 중복 검사를 확정한다. 동시 중복은 unique constraint에서 대기 후 하나만 성공하며, 최초 처리 실패 시 Inbox row와 Outbox write가 호출 서비스의 트랜잭션에서 함께 롤백되어 Kafka 재시도가 다시 처리할 수 있다. 서로 다른 consumer가 같은 이벤트를 각각 처리해야 하므로 event ID 단독이 아니라 consumer name과의 복합 unique를 사용한다.
+
+중복 INSERT는 트랜잭션을 rollback-only로 만들 수 있으므로 `DuplicateInboxEventException`은 호출 서비스 밖의 Kafka adapter가 중복 성공으로 변환한다. `save()`만 사용하면 INSERT가 commit 직전까지 지연되어 두 consumer가 비즈니스 로직을 먼저 실행할 수 있으므로 선점에는 `saveAndFlush()`를 유지한다.
+
+이 패턴은 자연 키가 없고 반복 실행 시 새로운 알림·fan-out처럼 결과가 누적되는 consumer에 사용한다. 자연 키 INSERT, 값 덮어쓰기, 삭제처럼 연산 자체가 멱등한 consumer에는 처리 이력 저장 비용을 추가하지 않는다. 외부 REST/STOMP 호출은 event DB 트랜잭션으로 원자화되지 않는다.
+
+### 5.2 common-event / common-inbox
 - `KafkaEvent`·`ProducibleEvent`·`HandleableEvent`·`RecoverableEvent`가 이벤트 계약 인터페이스. `EventUtils`가 수집·발행 진입점, `EventsInitializer`가 이벤트 목록 초기화. payload 타입 키는 `TypedKey`/`TypedPayload`.
+- `KafkaEventFactory`가 Kafka `Message` 생성 책임을 집중한다. 일반 이벤트는 `createEventMessage`, Outbox는 `createOutboxEventMessage`, DLQ는 `createDlqEventMessage`를 사용하고 공통 헤더 조립은 private 메서드가 담당한다. Outbox/DLQ 발행의 `event_id`는 각각 레코드 ID를 사용해 poll 재시도에도 동일하게 유지한다. `KafkaEvent`는 partition key 계약만 제공하며, 발행 adapter가 Factory를 직접 호출한다.
+- `AbstractInboxEvent`는 Inbox 중복 제거 대상이라는 타입 의미와 header용 `eventId` 생성을 제공한다. `eventId`는 `@JsonIgnore`로 payload에서 제외하고 Kafka `event_id` 헤더를 단일 기준으로 사용한다. consumer adapter는 header를 Command에 전달하며 역직렬화된 payload 객체 내부 ID를 처리 기준으로 사용하지 않는다.
+- `AbstractInboxEvent.extractEventId(Message<?>)`는 `event_id`가 `byte[]` 또는 `String`으로 매핑되는 경우를 공통 처리하고 누락·공백이면 예외를 던진다. 이 API는 Inbox 대상 이벤트 하위 타입에서만 사용할 수 있다.
+- Inbox 예외는 모듈 소속만 나타내는 `InboxException` 계층으로 묶고 HTTP·인프라 예외 의미를 부여하지 않는다. Kafka Inbox 중복은 MVC 예외 처리 경로가 아니므로 각 inbound adapter가 `DuplicateInboxEventException`을 성공적인 중복 제거로 종료한다.
 
 ### 5.3 common-jpa (Read Replica)
 - `@ReadReplica`가 **명시적 read 라우팅 지시자**다. `@Transactional(readOnly=true)`만으로는 read 노드로 가지 않는다(`ReadReplicaAspect`가 `@ReadReplica`를 트리거로 `DataSourceContextHolder`를 통해 `ReplicationRoutingDataSource`를 전환). 이미 write 트랜잭션이 활성이면 write 우선.
