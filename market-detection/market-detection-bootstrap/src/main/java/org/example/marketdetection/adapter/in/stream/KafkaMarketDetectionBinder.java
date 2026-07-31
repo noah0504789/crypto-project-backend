@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Named;
 import org.example.common.event.KafkaEvent;
+import org.example.common.event.KafkaEventFactory;
 import org.example.marketdetection.contract.event.PriceAlertDetectedEvent;
 import org.example.marketdetection.upbit.event.UpbitTickerEvent;
 import org.example.marketdetection.infra.properties.UpbitProperties;
@@ -31,7 +32,11 @@ public class KafkaMarketDetectionBinder {
                 return null;
             }
 
-            return event.toMessage();
+            return KafkaEventFactory.createEventMessage(
+                    event,
+                    event.getPartitionKey(),
+                    event.getClass().getName()
+            );
         };
     }
 
