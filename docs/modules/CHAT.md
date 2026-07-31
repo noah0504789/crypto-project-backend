@@ -167,6 +167,23 @@ proto: `protobuf/src/main/proto/chatmessage/v1/chatmessage-service.proto`. 서�
 
 토픽 카탈로그: `common-core/KafkaTopic`. chat 바인딩: `chat-service.yml`의 `spring.cloud.function.definition` + `spring.cloud.stream.bindings`.
 
+### 컨슈머 멱등 전략
+
+| 컨슈머 이벤트 | 하는 일 | 사용한 전략 |
+|---|---|---|
+| `ChatRoomPersistedEvent` | 채팅방 Mongo 저장 | `chatRoomId` 자연 키로 동일 문서를 저장 |
+| `ChatRoomUpdatedEvent` | 방 정보 갱신 | `chatRoomId` 기준 절대값 update |
+| `ChatRoomJoinedEvent` | 멤버십 추가 | `(roomId, memberId)` unique와 중복 추가 무시 |
+| `ChatRoomLeavedEvent` | 멤버십 제거 | 동일 대상 반복 제거를 성공으로 취급 |
+| `ChatRoomDeletedEvent` | 방·멤버십 삭제 | ID 기준 반복 삭제 허용 |
+| `ChatRoomActiveEvent` | 마지막 메시지·활동 점수 갱신 | 동일 멤버십 키에 최신 활동 값을 반영 |
+| `ChatRoomCacheSave/UpdateEvent` | 방 캐시 저장·복구 | 동일 Redis key 덮어쓰기 |
+| `ChatRoomCacheDelete/InvalidateEvent` | 방 캐시 삭제·무효화 | 반복 삭제 허용 |
+| `ChatMessagePersistEvent` | 메시지 저장 후 방 `msgCnt` 증가·멤버 점수 갱신 | `messageId`로 Mongo `insert`; 중복 키면 `DuplicateChatMessageException`으로 성공 종료해 증분 연산을 실행하지 않음 |
+| ChatRoom/ChatMessage DLQ 이벤트 | 원본 처리 복구 후 DLQ 완료 상태 반영 | 원본 도메인 자연 키 + 안정적인 `dlq_id`/`event_id`; 중복 키는 성공 처리 |
+
+Kafka `event_id`는 추적 계약으로 함께 전달하지만, chat은 서로 다른 이벤트 ID로 같은 도메인 대상이 들어오는 경우까지 막을 수 있도록 자연 키를 멱등 기준으로 삼는다. 특히 `ChatMessagePersistEvent`는 `MongoRepository.save`가 기존 `_id`를 replace할 수 있으므로 신규 삽입 전용 `insert`를 사용한다. 같은 `messageId`의 동시 소비에서는 Mongo unique `_id`가 하나만 성공시키고, 같은 Mongo 트랜잭션의 `msgCnt`·멤버십 점수 변경은 중복 소비에서 실행되지 않는다.
+
 | 토픽 | 방향 | 이벤트 | 처리 |
 |---|---|---|---|
 | `chatroom-event` (`.dlq`) | chat 소비(group `chat`) | `ChatRoom*Event`(persist/update/join/leave/deleted/active) + 캐시-복구 이벤트 | `ChatRoomEventService` → Mongo/캐시. 실패→DLQ |
