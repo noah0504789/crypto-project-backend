@@ -5,6 +5,7 @@ import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
 import org.apache.kafka.streams.state.WindowStore;
 import org.apache.kafka.streams.state.WindowStoreIterator;
+import org.example.common.clock.Clock;
 import org.example.common.enums.KafkaHeaderKey;
 import org.example.marketdetection.contract.event.PriceAlertDetectedEvent;
 import org.example.marketdetection.infra.properties.UpbitProperties;
@@ -42,13 +43,16 @@ class UpbitTickerProcessorTest {
     @Mock
     private WindowStore<String, UpbitTickerValue> upbitTickerStore;
 
+    @Mock
+    private Clock clock;
+
     private UpbitTickerProcessor sut;
 
     @BeforeEach
     void setUp() {
         given(context.getStateStore(STORE_NAME)).willReturn(upbitTickerStore);
 
-        sut = new UpbitTickerProcessor(properties);
+        sut = new UpbitTickerProcessor(properties, clock);
 
         sut.init(context);
     }
@@ -58,6 +62,22 @@ class UpbitTickerProcessorTest {
     void process_tradePriceIsNull_doNothing() {
         // given
         UpbitTickerEvent event = tickerEvent(null);
+        Record<String, UpbitTickerEvent> record = new Record<>(CODE, event, TIMESTAMP);
+
+        // when
+        sut.process(record);
+
+        // then
+        verifyNoInteractions(upbitTickerStore);
+        verify(context, never()).forward(any());
+    }
+
+    @Test
+    @DisplayName("허용 지연 시간을 초과한 이벤트는 상태 저장과 알림 발행을 하지 않는다")
+    void process_staleEvent_doNothing() {
+        // given
+        given(clock.nowMs()).willReturn(TIMESTAMP + Duration.ofSeconds(10).toMillis() + 1);
+        UpbitTickerEvent event = tickerEvent(110.0);
         Record<String, UpbitTickerEvent> record = new Record<>(CODE, event, TIMESTAMP);
 
         // when
@@ -262,7 +282,8 @@ class UpbitTickerProcessorTest {
                 ),
                 new UpbitProperties.Ticker(
                         new UpbitProperties.Ticker.Alert(
-                                3
+                                3,
+                                Duration.ofSeconds(10)
                         )
                 ),
                 new UpbitProperties.Store(

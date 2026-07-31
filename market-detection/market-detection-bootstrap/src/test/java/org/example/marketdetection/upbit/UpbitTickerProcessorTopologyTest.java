@@ -17,6 +17,7 @@ import org.apache.kafka.streams.state.StoreBuilder;
 import org.apache.kafka.streams.state.Stores;
 import org.apache.kafka.streams.state.WindowStore;
 import org.example.marketdetection.contract.event.PriceAlertDetectedEvent;
+import org.example.common.clock.Clock;
 import org.example.marketdetection.infra.properties.UpbitProperties;
 import org.example.marketdetection.upbit.event.UpbitTickerEvent;
 import org.example.marketdetection.upbit.event.UpbitTickerValue;
@@ -33,6 +34,8 @@ import java.util.List;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 @SpringBootTest(classes = {
         TestBootApplication.class,
 
@@ -55,9 +58,11 @@ class UpbitTickerProcessorTopologyTest {
     private TopologyTestDriver testDriver;
     private TestInputTopic<String, UpbitTickerEvent> inputTopic;
     private TestOutputTopic<String, PriceAlertDetectedEvent> outputTopic;
+    private final Clock clock = mock(Clock.class);
 
     @BeforeEach
     void setUp() {
+        when(clock.nowMs()).thenReturn(0L);
         StreamsBuilder builder = new StreamsBuilder();
         String storeName = properties.store().ticker().name();
 
@@ -251,7 +256,7 @@ class UpbitTickerProcessorTopologyTest {
         );
 
         stream.<String, PriceAlertDetectedEvent>process(
-                () -> new UpbitTickerProcessor(properties),
+                () -> new UpbitTickerProcessor(properties, clock),
                 Named.as("upbit-ticker-watcher"),
                 storeName
         ).to(

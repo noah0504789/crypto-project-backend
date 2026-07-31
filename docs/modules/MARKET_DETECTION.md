@@ -49,12 +49,13 @@ Upbit 실시간 시세를 수집해 **단기 이동평균 대비 변동률**을 
 
 - `upbitTickerAlertEventProcessor`(`Function<KStream<String, UpbitTickerEvent>, KStream<String, PriceAlertDetectedEvent>>`)가 KStream을 `UpbitTickerProcessor`로 `process`한다. 입력 바인딩 `upbitTickerAlertEventProcessor-in-0` → **`upbit-ticker-event`**(Supplier 출력과 동일 토픽), group `upbit-ticker-alert`.
 - `UpbitTickerProcessor`(state store `upbit-ticker-store`, persistent WindowStore, retention/window `3m`):
-  1. 윈도우 `[timestamp - 3m, timestamp]`의 저장 시세로 **이동평균** 계산(없으면 현재가로 fallback).
-  2. `changeRate = (current - avg) / avg`.
-  3. 현재 시세를 store에 `put`.
-  4. `PriceAlertChangeRateThreshold.matchedBy(changeRate)`로 **초과한 임계값 전부**(절대값 기준 3%/5%/7%) 매칭.
-  5. 매칭된 임계값마다 `PriceAlertDetectedEvent`(code·price·timestamp·avgInterval(=windowMinutes 3)·avgPrice·changeRate·threshold enum명)를 processor context로 forward한다.
-  6. 출력 KStream 바인딩 `upbitTickerAlertEventProcessor-out-0`이 `price-alert-detected-event`로 발행한다. WindowStore 갱신·출력 레코드·입력 offset은 Kafka Streams EOS 트랜잭션으로 함께 커밋된다.
+  1. Upbit `tradeTimestamp`(없으면 Kafka record timestamp)가 현재 시각보다 `max-event-age`(10s) 초과해 오래된 이벤트면 상태 저장과 알림 발행 없이 폐기한다.
+  2. 윈도우 `[timestamp - 3m, timestamp]`의 저장 시세로 **이동평균** 계산(없으면 현재가로 fallback).
+  3. `changeRate = (current - avg) / avg`.
+  4. 현재 시세를 store에 `put`.
+  5. `PriceAlertChangeRateThreshold.matchedBy(changeRate)`로 **초과한 임계값 전부**(절대값 기준 3%/5%/7%) 매칭.
+  6. 매칭된 임계값마다 `PriceAlertDetectedEvent`(code·price·timestamp·avgInterval(=windowMinutes 3)·avgPrice·changeRate·threshold enum명)를 processor context로 forward한다.
+  7. 출력 KStream 바인딩 `upbitTickerAlertEventProcessor-out-0`이 `price-alert-detected-event`로 발행한다. WindowStore 갱신·출력 레코드·입력 offset은 Kafka Streams EOS 트랜잭션으로 함께 커밋된다.
 - 소비자: `notification`(`price-alert-detected-event`).
 
 ### 4.4 흐름도
@@ -63,7 +64,7 @@ Upbit 실시간 시세를 수집해 **단기 이동평균 대비 변동률**을 
 Upbit WS ─(ticker)→ Listener(구독=market gRPC, 3s 스로틀, 큐 100)
    → Supplier(0.5s poll) → Kafka: upbit-ticker-event
    → KStream(upbit-ticker-event) → UpbitTickerProcessor
-        WindowStore(3m) 이동평균·변동률 → 임계 매칭(3/5/7%)
+        10s 초과 stale 폐기 → WindowStore(3m) 이동평균·변동률 → 임계 매칭(3/5/7%)
    → Kafka: price-alert-detected-event → [notification]
 ```
 

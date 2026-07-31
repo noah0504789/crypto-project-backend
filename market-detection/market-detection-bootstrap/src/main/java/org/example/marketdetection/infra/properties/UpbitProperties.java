@@ -20,7 +20,10 @@ public record UpbitProperties(
     }
 
     public record Ticker(Alert alert) {
-        public record Alert(int windowMinutes) {
+        public record Alert(
+                int windowMinutes,
+                Duration maxEventAge
+        ) {
             public Duration windowDuration() {
                 return Duration.ofMinutes(windowMinutes);
             }
