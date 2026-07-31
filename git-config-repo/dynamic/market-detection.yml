@@ -44,6 +44,7 @@ upbit:
   ticker:
     alert:
       window-minutes: 3
+      max-event-age: 10s
 
   store:
     ticker:

@@ -15,6 +15,7 @@ upbit:
   ticker:
     alert:
       window-minutes: 3
+      max-event-age: 10s
       threshold-rate: 0.05
 
   store:

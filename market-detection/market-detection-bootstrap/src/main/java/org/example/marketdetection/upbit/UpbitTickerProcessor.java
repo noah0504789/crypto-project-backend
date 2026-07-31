@@ -1,11 +1,13 @@
 package org.example.marketdetection.upbit;
 
+import lombok.RequiredArgsConstructor;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
 import org.apache.kafka.streams.state.WindowStore;
 import org.apache.kafka.streams.state.WindowStoreIterator;
+import org.example.common.clock.Clock;
 import org.example.common.enums.KafkaHeaderKey;
 import org.example.common.enums.PriceAlertChangeRateThreshold;
 import org.example.marketdetection.contract.event.PriceAlertDetectedEvent;
@@ -17,16 +19,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+@RequiredArgsConstructor
 public class UpbitTickerProcessor implements Processor<String, UpbitTickerEvent, String, PriceAlertDetectedEvent> {
 
     private final UpbitProperties properties;
+    private final Clock clock;
 
     private ProcessorContext<String, PriceAlertDetectedEvent> context;
     private WindowStore<String, UpbitTickerValue> upbitTickerStore;
-
-    public UpbitTickerProcessor(UpbitProperties properties) {
-        this.properties = properties;
-    }
 
     @Override
     public void init(ProcessorContext<String, PriceAlertDetectedEvent> context) {
@@ -42,6 +42,10 @@ public class UpbitTickerProcessor implements Processor<String, UpbitTickerEvent,
 
         String code = record.key();
         UpbitTickerEvent tickerEvent = record.value();
+
+        if (isStale(tickerEvent, record.timestamp())) {
+            return;
+        }
 
         long timestamp = record.timestamp();
         double currentPrice = tickerEvent.tradePrice();
@@ -60,6 +64,7 @@ public class UpbitTickerProcessor implements Processor<String, UpbitTickerEvent,
         matchedChangeRateThresholds.forEach(threshold -> {
             PriceAlertDetectedEvent event =
                     createPriceAlertDetectedEvent(code, currentPrice, timestamp, averagePrice, changeRate, threshold);
+
             RecordHeaders headers = new RecordHeaders(record.headers());
             headers.add(
                     KafkaHeaderKey.EVENT_ID.value(),
@@ -76,6 +81,14 @@ public class UpbitTickerProcessor implements Processor<String, UpbitTickerEvent,
                 && !record.key().isBlank()
                 && record.value() != null
                 && record.value().tradePrice() != null;
+    }
+
+    private boolean isStale(UpbitTickerEvent tickerEvent, long recordTimestamp) {
+        long eventTimestamp = tickerEvent.tradeTimestamp() != null
+                ? tickerEvent.tradeTimestamp()
+                : recordTimestamp;
+
+        return clock.nowMs() - eventTimestamp > properties.ticker().alert().maxEventAge().toMillis();
     }
 
     private double calculateAveragePrice(String code, long timestamp, double fallbackPrice) {

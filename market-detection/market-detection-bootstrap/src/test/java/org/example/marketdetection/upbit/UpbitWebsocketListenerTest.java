@@ -278,7 +278,8 @@ class UpbitWebsocketListenerTest {
                 ),
                 new UpbitProperties.Ticker(
                         new UpbitProperties.Ticker.Alert(
-                                3
+                                3,
+                                Duration.ofSeconds(10)
                         )
                 ),
                 new UpbitProperties.Store(
