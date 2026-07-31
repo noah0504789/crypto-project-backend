@@ -47,9 +47,10 @@ Transactional Outbox 패턴의 **공용 릴레이**. 모든 서비스가 자기 
 ## 5. 발행 · DLQ 제어
 
 ### KafkaEventPublisher (`EventPublisherPort` 구현)
-- `publish(Outbox)`: payload = `outbox.getPayload()`(JSON), 헤더 `KafkaHeaders.KEY=partitionKey`, `transaction_id`, `__TypeId__=eventType`. 목적지 = `outbox.getDestination()`(= `aggregateType` = 토픽명). `StreamBridge.send` 실패 시 `OutboxPollerInfrastructureException` → 상위(`OutboxService`)가 잡아 retry/fail 처리.
-- `publish(Dlq)`: payload = `dlq.getPayload()`, 헤더 `KEY=aggregateId`, `dlq_id`, `transaction_id`, `__TypeId__=eventType`. 목적지 = `dlq.getDestination()`.
-- 헤더 계약(`transaction_id`, `dlq_id`, `__TypeId__`, `KafkaHeaders.KEY`)은 외부 계약 — 소비자(각 서비스의 DLQ consumer 등)와 함께 본다(→ `../../.claude/rules/external-contracts.md`).
+- 메시지 조립은 common-event의 `KafkaEventFactory`에 위임하고, Publisher는 목적지 선택·`StreamBridge.send`·실패 변환만 담당한다.
+- `publish(Outbox)`: Factory 입력은 payload = `outbox.getPayload()`(JSON), `KEY=partitionKey`, `event_id=outbox.id`, `transaction_id`, `__TypeId__=eventType`. 목적지 = `outbox.getDestination()`(= `aggregateType` = 토픽명). `StreamBridge.send` 실패 시 `OutboxPollerInfrastructureException` → 상위(`OutboxService`)가 잡아 retry/fail 처리.
+- `publish(Dlq)`: Factory 입력은 payload = `dlq.getPayload()`, `KEY=aggregateId`, `event_id=dlq.id`, `dlq_id`, `transaction_id`, `__TypeId__=eventType`. 목적지 = `dlq.getDestination()`.
+- 헤더 계약(`event_id`, `transaction_id`, `dlq_id`, `__TypeId__`, `KafkaHeaders.KEY`)은 외부 계약 — 소비자(각 서비스의 DLQ consumer 등)와 함께 본다(→ `../../.claude/rules/external-contracts.md`).
 
 ### DLQ 런타임 제어 (REST)
 - `DlqPollerController`: `PUT /dlq-poller/start`, `PUT /dlq-poller/stop`(경로는 `api-path.dlq-poller.*`). `DlqPollerState`(`AtomicBoolean`)를 토글해 DLQ 폴링을 런타임에 켜고 끈다.
@@ -96,6 +97,7 @@ DB `event`(`mysql.event.*`), persistence unit `event`, 단일 write 데이터소
 
 - **`outbox`**: `id varchar(36)`, `transaction_id char(36)`, `aggregate_type`, `partition_key`, `payload json`, `event_type`, `domain_type`, `dispatch_type`, `status char(20)`, `retry_cnt`, timestamps. index `idx_outbox_dispatch_type_status_created_at (dispatch_type, status, created_at)` — 폴링 쿼리(`dispatchType+status` 정렬 `createdAt`)에 정합.
 - **`dlq`**: `id varchar(26)`(ULID, `ulid-creator`), `source_id`, `event_type`, `aggregate_id`, `aggregate_type`, `transaction_id varchar(26)`, `domain_type`, `status varchar(30)`, `error_message`, `payload json`. index `idx_dlq_status_created_at (status, created_at)`.
+- **`inbox_event`**: 비멱등 consumer 처리 선점 테이블. `(consumer_name,event_id)` unique로 동일 consumer의 동시·재전달 중복을 막고, 처리 결과 Outbox write와 같은 event DB 트랜잭션에서 commit/rollback한다.
 - 이 스키마는 모든 서비스의 Outbox/DLQ 기록 대상이자 poller의 폴링 대상이다(공유 계약).
 
 ## 7. 확인 필요 항목
@@ -123,7 +125,8 @@ DB `event`(`mysql.event.*`), persistence unit `event`, 단일 write 데이터소
 
 | 파일 | 이유 |
 |---|---|
-| `KafkaEventPublisher.java` | 발행 헤더·목적지 계약(모든 소비자 영향) |
+| common-event `KafkaEventFactory.java` | 발행 헤더 계약(모든 소비자 영향) |
+| `KafkaEventPublisher.java` | 발행 목적지·전송·실패 처리(모든 소비자 영향) |
 | `outbox-poller/.../sql/schema.sql` | 전 서비스가 공유하는 event DB 스키마·인덱스 |
 | `git-config-repo/dynamic/outbox-poller.yml` | 폴링 주기/배치/재시도·트랜잭션·DB |
 | common-outbox `OutboxService`/`DlqService` | 폴링·상태 전이 로직(→ `COMMON.md §5.1`) |

@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 public enum KafkaHeaderKey {
 
     TRANSACTION_ID("transaction_id"),
+    EVENT_ID("event_id"),
     TYPE_ID("__TypeId__"),
     DLQ_ID("dlq_id");
 

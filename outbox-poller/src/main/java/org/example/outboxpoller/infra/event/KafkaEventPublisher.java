@@ -2,14 +2,12 @@ package org.example.outboxpoller.infra.event;
 
 import lombok.RequiredArgsConstructor;
 import org.example.common.outbox.application.port.out.EventPublisherPort;
-import org.example.common.enums.KafkaHeaderKey;
 import org.example.common.dlq.domain.Dlq;
+import org.example.common.event.KafkaEventFactory;
 import org.example.common.outbox.domain.Outbox;
 import org.example.outboxpoller.infra.exception.OutboxPollerInfrastructureException;
 import org.springframework.cloud.stream.function.StreamBridge;
-import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -19,22 +17,26 @@ public class KafkaEventPublisher implements EventPublisherPort {
     private final StreamBridge streamBridge;
 
     public void publish(Outbox outbox) {
-        Message<String> message = MessageBuilder.withPayload(outbox.getPayload())
-                .setHeader(KafkaHeaders.KEY, outbox.getPartitionKey())
-                .setHeader(KafkaHeaderKey.TRANSACTION_ID.value(), outbox.getTransactionId())
-                .setHeader(KafkaHeaderKey.TYPE_ID.value(), outbox.getEventType())
-                .build();
+        Message<String> message = KafkaEventFactory.createOutboxEventMessage(
+                outbox.getPayload(),
+                outbox.getPartitionKey(),
+                outbox.getEventType(),
+                outbox.getId(),
+                outbox.getTransactionId()
+        );
 
         send(outbox.getDestination(), message, "outbox");
     }
 
     public void publish(Dlq dlq) {
-        Message<String> message = MessageBuilder.withPayload(dlq.getPayload())
-                .setHeader(KafkaHeaders.KEY, dlq.getAggregateId())
-                .setHeader(KafkaHeaderKey.DLQ_ID.value(), dlq.getId())
-                .setHeader(KafkaHeaderKey.TRANSACTION_ID.value(), dlq.getTransactionId())
-                .setHeader(KafkaHeaderKey.TYPE_ID.value(), dlq.getEventType())
-                .build();
+        Message<String> message = KafkaEventFactory.createDlqEventMessage(
+                dlq.getPayload(),
+                dlq.getAggregateId(),
+                dlq.getEventType(),
+                dlq.getId(),
+                dlq.getTransactionId(),
+                dlq.getId()
+        );
 
         send(dlq.getDestination(), message, "dlq");
     }

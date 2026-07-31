@@ -43,6 +43,6 @@ public abstract class AbstractDlqEvent {
     }
 
     private String generateId() {
-        return EventIdUtils.generateId();
+        return EventIdUtils.generateUlid();
     }
 }

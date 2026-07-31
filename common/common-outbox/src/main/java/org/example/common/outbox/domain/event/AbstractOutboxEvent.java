@@ -49,6 +49,6 @@ public abstract class AbstractOutboxEvent {
     }
 
     public String generateId() {
-        return EventIdUtils.generateId();
+        return EventIdUtils.generateUlid();
     }
 }
