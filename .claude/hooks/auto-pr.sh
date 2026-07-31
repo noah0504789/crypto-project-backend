@@ -17,6 +17,7 @@ if ! gh pr view "$BRANCH" &>/dev/null; then
 fi
 
 PR_TITLE=$(gh pr view "$BRANCH" --json title -q .title)
+PR_NUMBER=$(gh pr view "$BRANCH" --json number -q .number)
 gh pr merge "$BRANCH" --auto --squash --delete-branch \
-  --subject "$PR_TITLE" \
+  --subject "$PR_TITLE (#$PR_NUMBER)" \
   --body ""
