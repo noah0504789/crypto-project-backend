@@ -18,7 +18,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 @ExtendWith(MockitoExtension.class)
-class BlacklistTokenValidatorTest {
+class BlacklistTokenValidatorUnitTest {
 
     private static final String ACCESS_TOKEN = "access-token";
 
@@ -83,7 +83,7 @@ class BlacklistTokenValidatorTest {
     private Jwt jwt() {
         Instant issuedAt = Instant.now();
 
-        return Jwt.withTokenValue(BlacklistTokenValidatorTest.ACCESS_TOKEN)
+        return Jwt.withTokenValue(BlacklistTokenValidatorUnitTest.ACCESS_TOKEN)
                 .header("alg", "none")
                 .issuedAt(issuedAt)
                 .expiresAt(issuedAt.plusSeconds(3600))

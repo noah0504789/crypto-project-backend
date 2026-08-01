@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
                 TestGatewayCorsConfig.class
         }
 )
-class GatewayCorsConfigTest {
+class GatewayCorsConfigIntegrationTest {
 
     @Autowired
     private CorsConfigurationSource corsConfigurationSource;

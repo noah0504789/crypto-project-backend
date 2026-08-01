@@ -11,7 +11,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class RequiredUserIdClaimValidatorTest {
+class RequiredUserIdClaimValidatorUnitTest {
 
     private final RequiredUserIdClaimValidator sut = new RequiredUserIdClaimValidator();
 

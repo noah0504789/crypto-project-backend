@@ -26,7 +26,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 @ExtendWith(MockitoExtension.class)
-class IdentityPropagationGlobalFilterTest {
+class IdentityPropagationGlobalFilterUnitTest {
 
     private static final String USER_ID_HEADER = "X-User-Id";
 

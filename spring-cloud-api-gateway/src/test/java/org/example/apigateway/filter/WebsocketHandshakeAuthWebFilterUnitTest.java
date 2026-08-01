@@ -34,7 +34,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
-class WebsocketHandshakeAuthWebFilterTest {
+class WebsocketHandshakeAuthWebFilterUnitTest {
 
     private static final String VALID_TOKEN = "valid-access-token";
     private static final String INVALID_TOKEN = "invalid-access-token";
