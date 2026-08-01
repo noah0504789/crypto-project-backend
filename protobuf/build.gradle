@@ -1,15 +1,7 @@
-buildscript {
-    ext {
-        protobufPluginVersion = '0.9.4'
-        protobufVersion = '3.25.3'
-        grpcVersion = '1.64.0'
-    }
-}
-
 plugins {
     id 'java-library'
     id 'maven-publish'
-    id 'com.google.protobuf' version "${protobufPluginVersion}"
+    alias(libs.plugins.protobuf)
 }
 
 group = 'org.example'
@@ -31,7 +23,7 @@ configurations {
 }
 
 dependencies {
-    compileOnly 'org.apache.tomcat:annotations-api:6.0.53'
+    compileOnly(libs.tomcat.annotations.api)
 
     api(platform(libs.grpc.bom))
     api(libs.grpc.protobuf)
@@ -39,13 +31,17 @@ dependencies {
     api(libs.protobuf.java)
     api(libs.protobuf.util)
 
-    testImplementation platform('org.junit:junit-bom:5.9.1')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
 }
 
+def catalog = extensions.getByType(VersionCatalogsExtension).named('libs')
+def protocVersion = catalog.findVersion('protobuf').get().requiredVersion
+def grpcCodegenVersion = catalog.findVersion('grpc').get().requiredVersion
+
 protobuf {
-    protoc {artifact = "com.google.protobuf:protoc:${protobufVersion}"}
-    plugins {grpc {artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}"}}
+    protoc {artifact = "com.google.protobuf:protoc:${protocVersion}"}
+    plugins {grpc {artifact = "io.grpc:protoc-gen-grpc-java:${grpcCodegenVersion}"}}
     generateProtoTasks {all()*.plugins { grpc {} }}
 }
 

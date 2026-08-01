@@ -15,5 +15,5 @@ dependencies {
 
     testImplementation project(':chat:chat-adapter-out')
     testImplementation project(':common:common-test')
-    testImplementation 'org.mongodb:bson'
+    testImplementation(libs.mongodb.bson)
 }

@@ -4,11 +4,11 @@ plugins {
 
 dependencies {
     api project(':common:common-jpa')
-    api 'org.springframework:spring-messaging'
+    api(libs.spring.messaging)
 
     implementation project(':common:common-core')
     implementation project(':common:common-util')
-    implementation 'com.fasterxml.jackson.core:jackson-annotations'
+    implementation(libs.jackson.annotations)
 
-    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    testImplementation(libs.jackson.databind)
 }
