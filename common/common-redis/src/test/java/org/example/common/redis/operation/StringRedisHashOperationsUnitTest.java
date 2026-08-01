@@ -10,14 +10,14 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
-class StringRedisHashOperationsTest {
+class StringRedisHashOperationsUnitTest {
 
     private final RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
     private final HashOperations<String, String, String> hashOperations = mock(HashOperations.class);
     private final StringRedisHashOperations operations;
 
     @SuppressWarnings("unchecked")
-    StringRedisHashOperationsTest() {
+    StringRedisHashOperationsUnitTest() {
         when(redisTemplate.<String, String>opsForHash()).thenReturn(hashOperations);
         operations = new StringRedisHashOperations(redisTemplate);
     }

@@ -7,7 +7,7 @@ import org.springframework.messaging.Message;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class KafkaEventFactoryTest {
+class KafkaEventFactoryUnitTest {
 
     @Test
     @DisplayName("직접 발행 메시지는 payload와 필수 Kafka 헤더를 생성한다")

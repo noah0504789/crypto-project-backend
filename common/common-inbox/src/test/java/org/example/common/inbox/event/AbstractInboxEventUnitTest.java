@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class AbstractInboxEventTest {
+class AbstractInboxEventUnitTest {
 
     @Test
     @DisplayName("기본 생성자는 매번 새로운 UUID eventId를 만든다")

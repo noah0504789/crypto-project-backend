@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.Status;
 
-class DeploymentReadinessHealthIndicatorTest {
+class DeploymentReadinessHealthIndicatorUnitTest {
 
     @Test
     @DisplayName("not-ready 상태이면 OUT_OF_SERVICE를 반환한다")

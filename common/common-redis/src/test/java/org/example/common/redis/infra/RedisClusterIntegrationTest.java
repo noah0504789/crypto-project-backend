@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicLong;
         classes = {TestBootApplication.class, TestRedisConfig.class},
         initializers = RedisTestContainerInitializer.class
 )
-class RedisClusterTest {
+class RedisClusterIntegrationTest {
 
     @Autowired
     private RedisTemplate<String, String> redisTemplate;

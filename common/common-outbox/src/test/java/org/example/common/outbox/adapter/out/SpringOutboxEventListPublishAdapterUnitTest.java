@@ -16,7 +16,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
-class SpringOutboxEventListPublishAdapterTest {
+class SpringOutboxEventListPublishAdapterUnitTest {
 
     private final SpringOutboxEventListPublishAdapter sut = new SpringOutboxEventListPublishAdapter();
 

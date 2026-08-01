@@ -10,7 +10,7 @@ import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
-class DeploymentControlAuthFilterTest {
+class DeploymentControlAuthFilterUnitTest {
 
     @Test
     @DisplayName("배포 제어 경로가 아니면 필터를 적용하지 않는다")

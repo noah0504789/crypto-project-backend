@@ -5,7 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
-class DeploymentReadinessWebFluxControllerTest {
+class DeploymentReadinessWebFluxControllerE2ETest {
 
     @Test
     @DisplayName("현재 배포 readiness 상태를 조회한다")

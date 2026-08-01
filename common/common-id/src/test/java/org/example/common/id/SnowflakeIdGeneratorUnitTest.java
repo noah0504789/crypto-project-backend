@@ -12,7 +12,7 @@ import java.time.Instant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class SnowflakeIdGeneratorTest {
+class SnowflakeIdGeneratorUnitTest {
 
     private static final long SEQ_BITS = 12;
     private static final long WK_BITS = 5;

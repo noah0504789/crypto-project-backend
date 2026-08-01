@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-class DeploymentReadinessTest {
+class DeploymentReadinessUnitTest {
 
     @Test
     @DisplayName("기본 상태는 not ready 이다")

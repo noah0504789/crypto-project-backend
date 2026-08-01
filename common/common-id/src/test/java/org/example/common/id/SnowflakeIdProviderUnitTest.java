@@ -13,7 +13,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class SnowflakeIdProviderTest {
+class SnowflakeIdProviderUnitTest {
 
     private static final long SEQ_BITS = 12;
     private static final long WK_BITS = 5;

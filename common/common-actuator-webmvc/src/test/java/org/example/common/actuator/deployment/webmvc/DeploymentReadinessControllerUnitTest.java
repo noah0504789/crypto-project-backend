@@ -8,7 +8,7 @@ import org.example.common.actuator.deployment.core.DeploymentReadiness;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-class DeploymentReadinessControllerTest {
+class DeploymentReadinessControllerUnitTest {
 
     @Test
     @DisplayName("현재 배포 readiness 상태를 조회한다")

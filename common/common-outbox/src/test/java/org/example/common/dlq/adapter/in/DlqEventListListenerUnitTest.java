@@ -34,7 +34,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
-class DlqEventListListenerTest {
+class DlqEventListListenerUnitTest {
 
     @Mock
     private DlqService dlqService;

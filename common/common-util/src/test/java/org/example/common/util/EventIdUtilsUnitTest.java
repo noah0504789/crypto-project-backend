@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class EventIdUtilsTest {
+class EventIdUtilsUnitTest {
 
     @Test
     @DisplayName("ULID는 호출할 때마다 새로운 26자 식별자를 생성한다")

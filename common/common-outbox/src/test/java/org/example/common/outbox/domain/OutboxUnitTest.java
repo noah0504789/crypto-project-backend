@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class OutboxTest {
+class OutboxUnitTest {
 
     @Test
     @DisplayName("create는 PENDING 상태와 retryCnt 0으로 Outbox를 생성한다")

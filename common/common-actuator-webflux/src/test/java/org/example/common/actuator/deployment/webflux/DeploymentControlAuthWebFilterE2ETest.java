@@ -8,7 +8,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.server.WebFilter;
 import reactor.core.publisher.Mono;
 
-class DeploymentControlAuthWebFilterTest {
+class DeploymentControlAuthWebFilterE2ETest {
 
     private static final String TOKEN = "test-deploy-token";
 
