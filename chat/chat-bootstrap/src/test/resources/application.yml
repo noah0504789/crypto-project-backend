@@ -1,0 +1,29 @@
+# 스모크 테스트 전용. main의 application.yml(Config Server import)을 덮어써 실제 git-config-repo
+# 설정을 직접 import 한다. mysql/mongo/kafka는 Testcontainers가 채우고, redis 클러스터 노드는
+# lazy(validate:false)라 접속하지 않는다. eager 접속하는 Redisson은 테스트에서 mock 한다.
+spring:
+  application.name: chat-service
+  config:
+    import:
+      - optional:file:${smoke.config.repo}/application.yml
+      - optional:file:${smoke.config.repo}/infrastructure/eureka-client.yml
+      - optional:file:${smoke.config.repo}/infrastructure/mysql.yml
+      - optional:file:${smoke.config.repo}/infrastructure/mongo.yml
+      - optional:file:${smoke.config.repo}/infrastructure/redis.yml
+      - optional:file:${smoke.config.repo}/infrastructure/kafka.yml
+      - optional:file:${smoke.config.repo}/infrastructure/monitoring.yml
+      - optional:file:${smoke.config.repo}/dynamic/chat-service.yml
+  cloud:
+    config:
+      enabled: false
+    bus:
+      enabled: false
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+deployment:
+  control-token: smoke-test

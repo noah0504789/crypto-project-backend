@@ -1,0 +1,19 @@
+# 스모크 테스트 전용. main의 application.yml(Config Server import)을 덮어써 실제 git-config-repo
+# 설정을 직접 import 한다. mysql/kafka는 Testcontainers가 채우고, 스키마는 Hibernate가 생성한다.
+spring:
+  application.name: outbox-poller
+  config:
+    import:
+      - optional:file:${smoke.config.repo}/application.yml
+      - optional:file:${smoke.config.repo}/infrastructure/mysql.yml
+      - optional:file:${smoke.config.repo}/infrastructure/kafka.yml
+      - optional:file:${smoke.config.repo}/infrastructure/monitoring.yml
+      - optional:file:${smoke.config.repo}/dynamic/outbox-poller.yml
+  cloud:
+    config:
+      enabled: false
+    bus:
+      enabled: false
+
+deployment:
+  control-token: smoke-test
