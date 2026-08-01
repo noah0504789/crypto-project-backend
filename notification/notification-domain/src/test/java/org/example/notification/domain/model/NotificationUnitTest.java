@@ -13,7 +13,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(MockitoExtension.class)
-class NotificationTest {
+class NotificationUnitTest {
 
     private static final String ID = "notification-id-1";
     private static final String MARKET_CODE = "KRW-BTC";

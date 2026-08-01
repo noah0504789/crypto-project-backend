@@ -35,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         TestBootApplication.class,
         NotificationController.class
 })
-class NotificationControllerMvcTest {
+class NotificationControllerE2ETest {
 
     @Autowired
     private MockMvc mockMvc;

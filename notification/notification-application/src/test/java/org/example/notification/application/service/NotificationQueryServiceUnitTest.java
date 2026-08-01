@@ -20,7 +20,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
-class NotificationQueryServiceTest {
+class NotificationQueryServiceUnitTest {
 
     @Mock
     private NotificationPersistencePort notificationPersistencePort;

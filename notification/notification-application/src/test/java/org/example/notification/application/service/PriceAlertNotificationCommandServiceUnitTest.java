@@ -43,7 +43,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class PriceAlertNotificationCommandServiceTest {
+class PriceAlertNotificationCommandServiceUnitTest {
 
     @Mock
     private Clock clock;

@@ -20,7 +20,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-class KafkaNotificationBinderTest {
+class KafkaNotificationBinderUnitTest {
 
     private static final String EVENT_ID = "event-1";
 

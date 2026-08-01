@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         classes = {TestBootApplication.class, TestMongoConfig.class},
         initializers = MongoDBTestContainerInitializer.class
 )
-class MongoNotificationRecipientRepositoryImplTest {
+class MongoNotificationRecipientRepositoryImplIntegrationTest {
 
     @Autowired
     private MongoNotificationRecipientRepository sut;
