@@ -29,6 +29,7 @@ Upbit 실시간 시세를 수집해 **단기 이동평균 대비 변동률**을 
 - app name: `market-detection`. 포트 `8500`(server.port만, 컨텍스트 경로 없음).
 - 핵심 라이브러리: OkHttp(WebSocket 클라이언트), `spring-cloud-stream-binder-kafka-streams`(Kafka Streams), `market-client`(gRPC), `spring-cloud-starter-bus-kafka`.
 - Config Server 연동: `spring.cloud.config.name: market-detection,eureka-client,kafka,monitoring`.
+- DB가 없는데도 발행 계약(`market-detection-contract`의 `PriceAlertDetectedEvent`가 `AbstractInboxEvent` 상속 → `common-inbox` → `common-jpa`)이 `spring-boot-starter-data-jpa`를 **전이로** classpath에 끌어온다. 그대로 두면 `DataSourceAutoConfiguration`이 강제 활성화돼 datasource url 없이 부팅이 깨진다. 그래서 `market-detection.yml`에서 `spring.autoconfigure.exclude`로 `DataSourceAutoConfiguration`·`HibernateJpaAutoConfiguration`을 제외한다. **이 제외를 지우면 부팅이 실패한다.**
 - Kafka Streams 처리 보장: `processing.guarantee: exactly_once_v2`. 입력 offset, WindowStore 변경, 탐지 이벤트 출력을 하나의 Kafka 트랜잭션으로 처리한다. 브로커 공통 설정(idempotence, acks=all, `isolation.level: read_committed`, native enc/dec)은 `infrastructure/kafka.yml`.
 
 ## 4. 데이터 흐름

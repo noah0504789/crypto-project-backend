@@ -23,6 +23,10 @@ api-path:
     user-destination-prefix: ${api-contract.websocket.user-destination-prefix}
 
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
   cloud:
     function:
       definition: myChatRoomBadgeEventConsumer;chatMessageBroadcastEventConsumer;webNotificationEventConsumer
