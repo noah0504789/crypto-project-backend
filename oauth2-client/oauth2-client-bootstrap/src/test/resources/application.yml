@@ -1,0 +1,56 @@
+# 스모크 테스트 전용. main의 application.yml(Config Server import)을 덮어써 실제 git-config-repo
+# 설정을 직접 import 한다. 외부 OIDC(Google/Kakao) 디스커버리를 피하려고 provider의 issuer-uri를
+# 비우고 명시 엔드포인트(더미)를 준다 → 기동 시 외부 접속 없음. bus를 꺼 kafka 의존도 없앤다.
+spring:
+  application.name: oauth2-client
+  config:
+    import:
+      - optional:file:${smoke.config.repo}/application.yml
+      - optional:file:${smoke.config.repo}/infrastructure/eureka-client.yml
+      - optional:file:${smoke.config.repo}/dynamic/jwt.yml
+      - optional:file:${smoke.config.repo}/infrastructure/frontend.yml
+      - optional:file:${smoke.config.repo}/infrastructure/monitoring.yml
+      - optional:file:${smoke.config.repo}/dynamic/oauth2-client.yml
+  cloud:
+    config:
+      enabled: false
+    bus:
+      enabled: false
+  security:
+    oauth2:
+      client:
+        provider:
+          google:
+            issuer-uri:
+            authorization-uri: http://localhost/oauth2/authorize
+            token-uri: http://localhost/oauth2/token
+            user-info-uri: http://localhost/userinfo
+            jwk-set-uri: http://localhost/oauth2/jwks
+            user-name-attribute: email
+          kakao:
+            issuer-uri:
+            authorization-uri: http://localhost/oauth2/authorize
+            token-uri: http://localhost/oauth2/token
+            user-info-uri: http://localhost/userinfo
+            jwk-set-uri: http://localhost/oauth2/jwks
+            user-name-attribute: email
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+# config-repo가 참조하는 시크릿 플레이스홀더(원래 Vault)를 더미로 채운다.
+google:
+  client-id: smoke-google
+  client-secret: smoke-google-secret
+kakao:
+  client-id: smoke-kakao
+  client-secret: smoke-kakao-secret
+my:
+  client-id: smoke-my
+  client-secret: smoke-my-secret
+
+deployment:
+  control-token: smoke-test
