@@ -25,7 +25,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class UpbitWebsocketListenerTest {
+class UpbitWebsocketListenerUnitTest {
 
     private static final String CODE = "KRW-BTC";
     private static final String OTHER_CODE = "KRW-ETH";
@@ -296,8 +296,8 @@ class UpbitWebsocketListenerTest {
     private MarketResponse marketResponse() {
         return new MarketResponse(
                 1L,
-                UpbitWebsocketListenerTest.CODE,
-                UpbitWebsocketListenerTest.CODE.replace("KRW-", ""),
+                UpbitWebsocketListenerUnitTest.CODE,
+                UpbitWebsocketListenerUnitTest.CODE.replace("KRW-", ""),
                 "테스트",
                 "Test"
         );

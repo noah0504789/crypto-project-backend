@@ -25,7 +25,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
-class UpbitWebsocketServiceTest {
+class UpbitWebsocketServiceUnitTest {
 
     private static final String CODE = "KRW-BTC";
     private static final String TICKET = "test-ticket";

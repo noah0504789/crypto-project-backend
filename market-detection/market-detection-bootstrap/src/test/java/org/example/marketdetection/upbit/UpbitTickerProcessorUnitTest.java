@@ -29,7 +29,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class UpbitTickerProcessorTest {
+class UpbitTickerProcessorUnitTest {
 
     private static final String STORE_NAME = "upbit-ticker-store";
     private static final String CODE = "KRW-BTC";
@@ -300,7 +300,7 @@ class UpbitTickerProcessorTest {
     private UpbitTickerEvent tickerEvent(Double tradePrice) {
         return new UpbitTickerEvent(
                 "ticker",
-                UpbitTickerProcessorTest.CODE,
+                UpbitTickerProcessorUnitTest.CODE,
                 null,
                 null,
                 null,

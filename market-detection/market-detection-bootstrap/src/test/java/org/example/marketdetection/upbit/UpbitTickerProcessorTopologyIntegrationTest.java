@@ -46,7 +46,7 @@ import static org.mockito.Mockito.when;
         TestPropertiesConfig.class,
         TestUpbitExternalDependencyConfig.class
 })
-class UpbitTickerProcessorTopologyTest {
+class UpbitTickerProcessorTopologyIntegrationTest {
 
     private static final String INPUT_TOPIC = "upbit-ticker-in";
     private static final String OUTPUT_TOPIC = "price-alert-detected-out";
