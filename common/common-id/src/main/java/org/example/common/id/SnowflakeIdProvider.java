@@ -3,11 +3,15 @@ package org.example.common.id;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.example.common.id.properties.IdGenProperties;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+// snowflake ID를 실제로 쓰는 서비스(idgen 설정을 로드하는 서비스)에서만 등록한다.
+// idgen 미설정 서비스가 common-id를 넓게 스캔해도 @PostConstruct init이 돌지 않아 부팅이 깨지지 않는다.
 @Component
+@ConditionalOnProperty(prefix = "idgen", name = "epoch")
 @RequiredArgsConstructor
 public class SnowflakeIdProvider {
 
