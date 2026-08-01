@@ -1,0 +1,15 @@
+# 스모크 테스트 전용. main의 application.yml(Config Server import)을 덮어써 실제 git-config-repo
+# 설정을 직접 import 한다. 외부 인프라 의존 없이 부팅한다.
+spring:
+  application.name: eureka-server
+  config:
+    import:
+      - optional:file:${smoke.config.repo}/application.yml
+      - optional:file:${smoke.config.repo}/infrastructure/eureka-server.yml
+      - optional:file:${smoke.config.repo}/infrastructure/monitoring.yml
+  cloud:
+    config:
+      enabled: false
+
+deployment:
+  control-token: smoke-test
