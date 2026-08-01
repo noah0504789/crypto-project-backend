@@ -22,7 +22,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class PriceAlertSettingCommandServiceTest {
+class PriceAlertSettingCommandServiceUnitTest {
 
     @Mock
     private PriceAlertSettingPersistencePort priceAlertSettingPersistencePort;

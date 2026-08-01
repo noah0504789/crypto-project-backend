@@ -25,7 +25,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class JpaPriceAlertSettingAdapterTest {
+class JpaPriceAlertSettingAdapterUnitTest {
 
     @Mock
     private JpaPriceAlertSettingRepository priceAlertSettingRepository;

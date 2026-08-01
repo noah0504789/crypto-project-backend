@@ -25,7 +25,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
-class JpaMarketAdapterTest {
+class JpaMarketAdapterUnitTest {
 
     @Mock
     private JpaMarketRepository marketRepository;

@@ -39,7 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         PriceAlertSettingController.class,
         GlobalExceptionHandler.class
 })
-class PriceAlertSettingControllerWebMvcTest {
+class PriceAlertSettingControllerE2ETest {
 
     @Autowired
     private MockMvc mockMvc;

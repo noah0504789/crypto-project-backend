@@ -20,7 +20,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class MarketCommandServiceTest {
+class MarketCommandServiceUnitTest {
 
     @Mock
     private MarketPersistencePort marketPersistencePort;
