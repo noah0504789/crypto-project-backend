@@ -32,7 +32,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 @ExtendWith(MockitoExtension.class)
-class RefreshTokenServiceTest {
+class RefreshTokenServiceUnitTest {
 
     private static final String CLIENT_REGISTRATION_ID = "google";
     private static final String USERNAME = "user@test.com";

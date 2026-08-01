@@ -39,7 +39,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 @ExtendWith(MockitoExtension.class)
-class CustomOidcUserServiceTest {
+class CustomOidcUserServiceUnitTest {
 
     private static final String REGISTRATION_ID = "google";
     private static final String PROVIDER_SUB = "provider-sub";
@@ -341,8 +341,8 @@ class CustomOidcUserServiceTest {
     }
 
     private ClientRegistration clientRegistration() {
-        return ClientRegistration.withRegistrationId(CustomOidcUserServiceTest.REGISTRATION_ID)
-                .clientId(CustomOidcUserServiceTest.REGISTRATION_ID + "-client-id")
+        return ClientRegistration.withRegistrationId(CustomOidcUserServiceUnitTest.REGISTRATION_ID)
+                .clientId(CustomOidcUserServiceUnitTest.REGISTRATION_ID + "-client-id")
                 .clientSecret("client-secret")
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
@@ -353,16 +353,16 @@ class CustomOidcUserServiceTest {
                 .userInfoUri("https://example.com/userinfo")
                 .userNameAttributeName(IdTokenClaimNames.SUB)
                 .scope("openid", "profile", "email")
-                .clientName(CustomOidcUserServiceTest.REGISTRATION_ID)
+                .clientName(CustomOidcUserServiceUnitTest.REGISTRATION_ID)
                 .build();
     }
 
     private Map<String, Object> claims() {
         Map<String, Object> claims = new HashMap<>();
-        claims.put(IdTokenClaimNames.SUB, CustomOidcUserServiceTest.PROVIDER_SUB);
-        claims.put("email", CustomOidcUserServiceTest.EMAIL);
-        claims.put("name", CustomOidcUserServiceTest.NICKNAME);
-        claims.put("nickname", CustomOidcUserServiceTest.NICKNAME);
+        claims.put(IdTokenClaimNames.SUB, CustomOidcUserServiceUnitTest.PROVIDER_SUB);
+        claims.put("email", CustomOidcUserServiceUnitTest.EMAIL);
+        claims.put("name", CustomOidcUserServiceUnitTest.NICKNAME);
+        claims.put("nickname", CustomOidcUserServiceUnitTest.NICKNAME);
         return claims;
     }
 

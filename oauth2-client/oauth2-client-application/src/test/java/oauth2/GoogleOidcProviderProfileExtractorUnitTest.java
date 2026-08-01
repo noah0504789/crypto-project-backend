@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @ExtendWith(MockitoExtension.class)
-class GoogleOidcProviderProfileExtractorTest {
+class GoogleOidcProviderProfileExtractorUnitTest {
 
     private static final String REGISTRATION_ID = "google";
     private static final String PROVIDER_SUB = "google-sub";
@@ -160,9 +160,9 @@ class GoogleOidcProviderProfileExtractorTest {
 
     private Map<String, Object> claims() {
         Map<String, Object> claims = new HashMap<>();
-        claims.put(IdTokenClaimNames.SUB, GoogleOidcProviderProfileExtractorTest.PROVIDER_SUB);
-        claims.put("email", GoogleOidcProviderProfileExtractorTest.EMAIL);
-        claims.put("name", GoogleOidcProviderProfileExtractorTest.NAME);
+        claims.put(IdTokenClaimNames.SUB, GoogleOidcProviderProfileExtractorUnitTest.PROVIDER_SUB);
+        claims.put("email", GoogleOidcProviderProfileExtractorUnitTest.EMAIL);
+        claims.put("name", GoogleOidcProviderProfileExtractorUnitTest.NAME);
         return claims;
     }
 }

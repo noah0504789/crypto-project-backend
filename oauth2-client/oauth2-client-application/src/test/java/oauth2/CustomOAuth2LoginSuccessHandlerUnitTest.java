@@ -42,7 +42,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
-class CustomOAuth2LoginSuccessHandlerTest {
+class CustomOAuth2LoginSuccessHandlerUnitTest {
 
     private static final String PROVIDER_REGISTRATION_ID = "google";
     private static final String INTERNAL_CLIENT_REGISTRATION_ID = "my-authorization-server";

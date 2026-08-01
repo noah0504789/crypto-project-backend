@@ -23,7 +23,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 @ExtendWith(MockitoExtension.class)
-class AuthControllerTest {
+class AuthControllerUnitTest {
 
     private static final String OLD_REFRESH_TOKEN = "old-refresh-token";
     private static final String NEW_ACCESS_TOKEN = "new-access-token";

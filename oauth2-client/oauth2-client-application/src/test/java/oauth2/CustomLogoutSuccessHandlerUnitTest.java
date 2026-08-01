@@ -36,7 +36,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 @ExtendWith(MockitoExtension.class)
-class CustomLogoutSuccessHandlerTest {
+class CustomLogoutSuccessHandlerUnitTest {
 
     private static final String CLIENT_REGISTRATION_ID = "my-authorization-server";
     private static final String EMAIL = "user@test.com";

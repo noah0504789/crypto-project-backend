@@ -29,7 +29,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
-class CustomOAuth2AuthorizedClientTokenServiceTest {
+class CustomOAuth2AuthorizedClientTokenServiceUnitTest {
 
     private static final String REGISTRATION_ID = "google";
     private static final String CLIENT_ID = "google-client-id";
