@@ -1,10 +1,11 @@
 # 테스트 · 빌드 규칙
 
-이 파일은 테스트 작성·실행·검증 시 읽는다. 변경 후 검증 절차는 `verify-change` skill을 사용한다.
+이 파일은 테스트 작성·실행·검증 시 읽는다. 변경 후 검증 절차는 `verify-change` skill을 사용한다. 테스트 4계층(단위·통합·E2E·부팅 스모크) 구조·Testcontainers 하니스·부팅 스모크 설계의 상세는 [`../../docs/TESTING.md`](../../docs/TESTING.md)를 본다.
 
 ## 프레임워크
 - JUnit 5, Mockito, AssertJ. 통합 테스트는 `common-test`의 Testcontainers/embedded(mysql·redis·mongo) 우선.
 - `org.junit.Assert` 사용 금지, AssertJ 사용. Mockito BDD(`given`/`then`) 가능.
+- **부팅 스모크(각 실행 모듈 `BootSmokeTest`)**: 실제 `git-config-repo` 설정 + Testcontainers로 전체 `Main` 컨텍스트가 뜨는지 검증한다. 자동설정·컴포넌트 스캔·`@Conditional`·빈 와이어링 오류를 잡는 유일한 층이다. 하니스(`common-test` 이니셜라이저·`SmokeConfigRepo`·`smoke.config.repo` 시스템 프로퍼티)와 서비스별 특이점은 `docs/TESTING.md §3–4`. 새 실행 서비스를 추가하면 `BootSmokeTest`도 추가한다.
 
 ## 작성 원칙
 - 테스트 메서드에 한글 `@DisplayName`, `given/when/then` 구조.
