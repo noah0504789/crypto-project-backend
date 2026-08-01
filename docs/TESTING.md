@@ -44,7 +44,7 @@
 - **테스트 헬퍼는 접미사 대상이 아니다**: `Test*Config`·`Test*DependencyConfig`(테스트 전용 빈/설정)는 테스트 클래스가 아니므로 이름을 바꾸지 않는다.
 - **ArchUnit**(`ModuleArchitectureTest`/`PackageArchitectureTest`)는 구조 검증 특수 케이스로 현 이름을 유지한다.
 
-> 현재 저장소는 이 컨벤션을 **완전히 따르지는 않는다**(`*Test`·`*MvcTest`·`*WebMvcTest`·`*E2ETest`·`*IntegrationTest` 혼재). 정합화(rename)는 별도 작업으로 진행한다(§8).
+> 저장소 전체가 이 컨벤션을 따른다(테스트 클래스명 정합화 완료). 새 테스트도 이 접미사 규칙으로 작성한다.
 
 ## 3. Testcontainers 인프라 (`common-test`)
 
@@ -148,9 +148,9 @@
 - ✓ 있음 / ✗ 없음 / △ 부분(slice) / — 해당 없음.
 - "통합 ✗"는 그 모듈의 어댑터가 mock 단위로만 검증되고 실제 인프라 통합은 부팅 스모크가 커버한다는 뜻이다(부팅까지만, 동작 세부는 아님).
 
-## 8. 남은 작업 — 네이밍 정합화
+## 8. 네이밍 정합화 (완료)
 
-§2.1 컨벤션(`*UnitTest`/`*IntegrationTest`/`*E2ETest`/`BootSmokeTest`)에 맞춰 기존 테스트 클래스명을 정리한다(현재 `*Test`·`*MvcTest`·`*WebMvcTest` 등 혼재). 층별 정확 분류가 필요한 다수 파일의 기계적 rename이라 별도 작업으로 진행한다. 헬퍼(`Test*Config`)·ArchUnit은 대상 제외.
+전 테스트 클래스명을 §2.1 컨벤션에 맞춰 정리했다(112개: Unit 91 / Integration 12 / E2E 9). 층은 실제 구현(Mockito·Testcontainers·MockMvc/WebTestClient·@SpringBootTest)으로 판별했다. `BootSmokeTest`·헬퍼(`Test*Config`)·ArchUnit(`*ArchitectureTest`)은 대상에서 제외했다. 동작 변경 없는 이름 정리다.
 
 ## 9. 관련 문서·규칙
 

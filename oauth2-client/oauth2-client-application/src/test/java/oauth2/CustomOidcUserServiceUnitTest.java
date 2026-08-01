@@ -1,0 +1,383 @@
+package oauth2;
+
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.example.oauth2.client.oidc.CustomOidcUser;
+import org.example.oauth2.client.oidc.CustomOidcUserService;
+import org.example.oauth2.client.oidc.profile.OidcProviderProfile;
+import org.example.oauth2.client.oidc.profile.OidcProviderProfileResolver;
+import org.example.oauth2.client.user.application.service.UserCommandService;
+import org.example.oauth2.client.user.application.service.UserQueryService;
+import org.example.contract.user.UserResponse;
+import org.example.oauth2.client.user.application.service.UserRoleAuthorityMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.core.*;
+import org.springframework.security.oauth2.core.oidc.IdTokenClaimNames;
+import org.springframework.security.oauth2.core.oidc.OidcIdToken;
+import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
+import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+
+@ExtendWith(MockitoExtension.class)
+class CustomOidcUserServiceUnitTest {
+
+    private static final String REGISTRATION_ID = "google";
+    private static final String PROVIDER_SUB = "provider-sub";
+    private static final String EMAIL = "user@test.com";
+    private static final String NICKNAME = "테스트유저";
+
+    @Mock
+    private OidcUserService delegate;
+
+    @Mock
+    private OidcProviderProfileResolver profileResolver;
+
+    @Mock
+    private UserQueryService userQueryService;
+
+    @Mock
+    private UserCommandService userCommandService;
+
+    private final UserRoleAuthorityMapper userRoleAuthorityMapper = new UserRoleAuthorityMapper();
+
+    private CustomOidcUserService sut;
+
+    @BeforeEach
+    void setUp() {
+        sut = new CustomOidcUserService(
+                delegate,
+                profileResolver,
+                userQueryService,
+                userCommandService,
+                userRoleAuthorityMapper
+        );
+    }
+
+    @Test
+    @DisplayName("기존 회원이면 회원가입하지 않고 CustomOidcUser를 반환한다")
+    void loadUser_shouldReturnCustomOidcUser_whenUserExists() {
+        // given
+        OidcUserRequest userRequest = oidcUserRequest(claims(
+        ));
+
+        OidcUser oidcUser = oidcUser(claims(
+        ));
+
+        OidcProviderProfile profile = new OidcProviderProfile(
+                PROVIDER_SUB,
+                EMAIL,
+                NICKNAME
+        );
+
+        UserResponse userResponse = userResponse();
+
+        given(delegate.loadUser(userRequest))
+                .willReturn(oidcUser);
+
+        given(profileResolver.resolve(
+                REGISTRATION_ID,
+                userRequest.getIdToken(),
+                oidcUser
+        )).willReturn(profile);
+
+        given(userQueryService.findByEmail(EMAIL))
+                .willReturn(Optional.of(userResponse));
+
+        // when
+        OidcUser result = sut.loadUser(userRequest);
+
+        // then
+        assertThat(result).isInstanceOf(CustomOidcUser.class);
+
+        assertThat(result.getName()).isEqualTo(EMAIL);
+        assertThat(result.<String>getAttribute("id")).isEqualTo(userResponse.id());
+        assertThat(result.<String>getAttribute("userId")).isEqualTo(userResponse.id());
+        assertThat(result.<String>getAttribute("sub")).isEqualTo(userResponse.sub());
+        assertThat(result.<String>getAttribute("email")).isEqualTo(EMAIL);
+        assertThat(result.<String>getAttribute("nickname")).isEqualTo(NICKNAME);
+        assertThat(result.<String>getAttribute("clientRegistrationId")).isEqualTo(REGISTRATION_ID);
+
+        assertThat(result.getAuthorities())
+                .extracting(GrantedAuthority::getAuthority)
+                .containsExactly("ROLE_USER");
+
+        then(userCommandService)
+                .shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("신규 회원이면 OAuth2 회원가입 후 CustomOidcUser를 반환한다")
+    void loadUser_shouldSignUpAndReturnCustomOidcUser_whenUserDoesNotExist() {
+        // given
+        OidcUserRequest userRequest = oidcUserRequest(claims(
+        ));
+
+        OidcUser oidcUser = oidcUser(claims(
+        ));
+
+        OidcProviderProfile profile = new OidcProviderProfile(
+                PROVIDER_SUB,
+                EMAIL,
+                NICKNAME
+        );
+
+        UserResponse userResponse = userResponse();
+
+        given(delegate.loadUser(userRequest))
+                .willReturn(oidcUser);
+
+        given(profileResolver.resolve(
+                REGISTRATION_ID,
+                userRequest.getIdToken(),
+                oidcUser
+        )).willReturn(profile);
+
+        given(userQueryService.findByEmail(EMAIL))
+                .willReturn(Optional.empty());
+
+        given(userCommandService.signUpOauth2(PROVIDER_SUB, EMAIL, NICKNAME))
+                .willReturn(userResponse);
+
+        // when
+        OidcUser result = sut.loadUser(userRequest);
+
+        // then
+        assertThat(result).isInstanceOf(CustomOidcUser.class);
+
+        assertThat(result.getName()).isEqualTo(EMAIL);
+        assertThat(result.<String>getAttribute("id")).isEqualTo(userResponse.id());
+        assertThat(result.<String>getAttribute("userId")).isEqualTo(userResponse.id());
+        assertThat(result.<String>getAttribute("sub")).isEqualTo(userResponse.sub());
+        assertThat(result.<String>getAttribute("email")).isEqualTo(EMAIL);
+        assertThat(result.<String>getAttribute("nickname")).isEqualTo(NICKNAME);
+        assertThat(result.<String>getAttribute("clientRegistrationId")).isEqualTo(REGISTRATION_ID);
+
+        assertThat(result.getAuthorities())
+                .extracting(GrantedAuthority::getAuthority)
+                .containsExactly("ROLE_USER");
+
+        then(userCommandService)
+                .should()
+                .signUpOauth2(PROVIDER_SUB, EMAIL, NICKNAME);
+    }
+
+    @Test
+    @DisplayName("roles에 ROLE_ prefix가 없으면 ROLE_을 붙여 권한을 생성한다")
+    void loadUser_shouldAddRolePrefix_whenRoleDoesNotHavePrefix() {
+        // given
+        OidcUserRequest userRequest = oidcUserRequest(claims(
+        ));
+
+        OidcUser oidcUser = oidcUser(claims(
+        ));
+
+        OidcProviderProfile profile = new OidcProviderProfile(
+                PROVIDER_SUB,
+                EMAIL,
+                NICKNAME
+        );
+
+        UserResponse userResponse = userResponse(List.of("USER", "ADMIN"));
+
+        given(delegate.loadUser(userRequest))
+                .willReturn(oidcUser);
+
+        given(profileResolver.resolve(
+                REGISTRATION_ID,
+                userRequest.getIdToken(),
+                oidcUser
+        )).willReturn(profile);
+
+        given(userQueryService.findByEmail(EMAIL))
+                .willReturn(Optional.of(userResponse));
+
+        // when
+        OidcUser result = sut.loadUser(userRequest);
+
+        // then
+        assertThat(result.getAuthorities())
+                .extracting(GrantedAuthority::getAuthority)
+                .containsExactly("ROLE_USER", "ROLE_ADMIN");
+    }
+
+    @Test
+    @DisplayName("roles가 비어 있으면 기본 권한 ROLE_USER를 사용한다")
+    void loadUser_shouldUseDefaultRole_whenRolesEmpty() {
+        // given
+        OidcUserRequest userRequest = oidcUserRequest(claims(
+        ));
+
+        OidcUser oidcUser = oidcUser(claims(
+        ));
+
+        OidcProviderProfile profile = new OidcProviderProfile(
+                PROVIDER_SUB,
+                EMAIL,
+                NICKNAME
+        );
+
+        UserResponse userResponse = userResponse(List.of());
+
+        given(delegate.loadUser(userRequest))
+                .willReturn(oidcUser);
+
+        given(profileResolver.resolve(
+                REGISTRATION_ID,
+                userRequest.getIdToken(),
+                oidcUser
+        )).willReturn(profile);
+
+        given(userQueryService.findByEmail(EMAIL))
+                .willReturn(Optional.of(userResponse));
+
+        // when
+        OidcUser result = sut.loadUser(userRequest);
+
+        // then
+        assertThat(result.getAuthorities())
+                .extracting(GrantedAuthority::getAuthority)
+                .containsExactly("ROLE_USER");
+    }
+
+    @Test
+    @DisplayName("profileResolver가 예외를 던지면 회원 조회와 회원가입을 수행하지 않는다")
+    void loadUser_shouldNotQueryOrSignUp_whenProfileResolveFails() {
+        // given
+        OidcUserRequest userRequest = oidcUserRequest(claims(
+        ));
+
+        OidcUser oidcUser = oidcUser(claims(
+        ));
+
+        OAuth2AuthenticationException exception = new OAuth2AuthenticationException(
+                new OAuth2Error("missing_email"),
+                "OIDC email claim is missing"
+        );
+
+        given(delegate.loadUser(userRequest))
+                .willReturn(oidcUser);
+
+        given(profileResolver.resolve(
+                REGISTRATION_ID,
+                userRequest.getIdToken(),
+                oidcUser
+        )).willThrow(exception);
+
+        // when & then
+        assertThatThrownBy(() -> sut.loadUser(userRequest))
+                .isSameAs(exception);
+
+        then(userQueryService)
+                .shouldHaveNoInteractions();
+
+        then(userCommandService)
+                .shouldHaveNoInteractions();
+    }
+
+    private OidcUserRequest oidcUserRequest(Map<String, Object> claims) {
+        ClientRegistration clientRegistration = clientRegistration();
+
+        OidcIdToken idToken = new OidcIdToken(
+                "id-token",
+                Instant.now(),
+                Instant.now().plusSeconds(3600),
+                claims
+        );
+
+        OAuth2AccessToken accessToken = new OAuth2AccessToken(
+                OAuth2AccessToken.TokenType.BEARER,
+                "access-token",
+                Instant.now(),
+                Instant.now().plusSeconds(3600)
+        );
+
+        return new OidcUserRequest(
+                clientRegistration,
+                accessToken,
+                idToken
+        );
+    }
+
+    private OidcUser oidcUser(Map<String, Object> claims) {
+        OidcIdToken idToken = new OidcIdToken(
+                "id-token",
+                Instant.now(),
+                Instant.now().plusSeconds(3600),
+                claims
+        );
+
+        OidcUserInfo userInfo = new OidcUserInfo(claims);
+
+        String userNameAttributeName = claims.containsKey(IdTokenClaimNames.SUB)
+                ? IdTokenClaimNames.SUB
+                : "email";
+
+        return new DefaultOidcUser(
+                List.of(new SimpleGrantedAuthority("SCOPE_openid")),
+                idToken,
+                userInfo,
+                userNameAttributeName
+        );
+    }
+
+    private ClientRegistration clientRegistration() {
+        return ClientRegistration.withRegistrationId(CustomOidcUserServiceUnitTest.REGISTRATION_ID)
+                .clientId(CustomOidcUserServiceUnitTest.REGISTRATION_ID + "-client-id")
+                .clientSecret("client-secret")
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
+                .authorizationUri("https://example.com/oauth2/authorize")
+                .tokenUri("https://example.com/oauth2/token")
+                .jwkSetUri("https://example.com/oauth2/jwks")
+                .userInfoUri("https://example.com/userinfo")
+                .userNameAttributeName(IdTokenClaimNames.SUB)
+                .scope("openid", "profile", "email")
+                .clientName(CustomOidcUserServiceUnitTest.REGISTRATION_ID)
+                .build();
+    }
+
+    private Map<String, Object> claims() {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(IdTokenClaimNames.SUB, CustomOidcUserServiceUnitTest.PROVIDER_SUB);
+        claims.put("email", CustomOidcUserServiceUnitTest.EMAIL);
+        claims.put("name", CustomOidcUserServiceUnitTest.NICKNAME);
+        claims.put("nickname", CustomOidcUserServiceUnitTest.NICKNAME);
+        return claims;
+    }
+
+    private UserResponse userResponse() {
+        return userResponse(List.of("ROLE_USER"));
+    }
+
+    private UserResponse userResponse(List<String> roles) {
+        return UserResponse.builder()
+                .id("internal-user-id")
+                .sub(PROVIDER_SUB)
+                .nickname(NICKNAME)
+                .email(EMAIL)
+                .roles(roles)
+                .createdAt(LocalDateTime.now())
+                .build();
+    }
+}
