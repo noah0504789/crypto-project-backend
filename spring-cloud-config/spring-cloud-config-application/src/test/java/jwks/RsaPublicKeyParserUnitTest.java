@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("RsaPublicKeyParser 단위 테스트")
-class RsaPublicKeyParserTest {
+class RsaPublicKeyParserUnitTest {
 
     private final RsaPublicKeyParser parser = new RsaPublicKeyParser(createRsaKeyFactory());
 
