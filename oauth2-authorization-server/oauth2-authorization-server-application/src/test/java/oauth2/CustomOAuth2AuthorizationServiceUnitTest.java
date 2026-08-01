@@ -35,7 +35,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
-class CustomOAuth2AuthorizationServiceTest {
+class CustomOAuth2AuthorizationServiceUnitTest {
 
     private final String CLIENT_ID = "my-client-id";
     private final String CLIENT_SECRET = "my-client-secret";

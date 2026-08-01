@@ -44,7 +44,7 @@ import org.springframework.security.oauth2.server.authorization.settings.ClientS
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 
 @ExtendWith(MockitoExtension.class)
-class CustomAuthenticationSuccessHandlerTest {
+class CustomAuthenticationSuccessHandlerUnitTest {
 
     private final String CLIENT_ID = "my-client-id";
     private final String CLIENT_SECRET = "my-client-secret";

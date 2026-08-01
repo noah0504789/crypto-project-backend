@@ -28,7 +28,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
-class RedisAuthorizedClientAdapterTest {
+class RedisAuthorizedClientAdapterUnitTest {
 
     @Mock
     private RedisAccessTokenAdapter redisAccessTokenAdapter;

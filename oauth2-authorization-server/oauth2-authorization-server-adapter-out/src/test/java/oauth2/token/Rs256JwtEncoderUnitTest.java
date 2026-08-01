@@ -38,7 +38,7 @@ import static org.mockito.BDDMockito.then;
         TestObjectMapperConfig.class,
         TestPropertiesConfig.class
 })
-class Rs256JwtEncoderTest {
+class Rs256JwtEncoderUnitTest {
 
     @Autowired
     private JwtProperties jwtProperties;

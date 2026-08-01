@@ -76,7 +76,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @AutoConfigureMockMvc
 @ContextConfiguration(initializers = RedisTestContainerInitializer.class)
-class OAuth2TokenEndpointIntegrationTest {
+class OAuth2TokenEndpointE2ETest {
 
     private static final String CLIENT_ID = "my-client-id";
     private static final String CLIENT_SECRET = "my-client-secret";

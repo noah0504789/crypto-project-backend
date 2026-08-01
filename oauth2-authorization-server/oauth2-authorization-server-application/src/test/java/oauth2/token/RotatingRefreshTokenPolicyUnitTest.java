@@ -34,7 +34,7 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Toke
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator;
 
 @ExtendWith(MockitoExtension.class)
-class RotatingRefreshTokenPolicyTest {
+class RotatingRefreshTokenPolicyUnitTest {
 
     private final String CLIENT_ID = "my-client-id";
     private final String CLIENT_SECRET = "my-client-secret";

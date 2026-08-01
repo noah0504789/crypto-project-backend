@@ -24,7 +24,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 @ExtendWith(MockitoExtension.class)
-class RedisRefreshTokenAdapterTest {
+class RedisRefreshTokenAdapterUnitTest {
 
     @Mock
     private StringRedisTemplate stringRedisTemplate;
