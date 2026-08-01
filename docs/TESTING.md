@@ -28,6 +28,24 @@
 - 실패한 테스트를 통과시키려 Assertion을 약화하지 않는다(→ `../.claude/rules/git-safety.md`).
 - 통합 테스트의 인프라는 **직접 컨테이너를 띄우지 않고** `common-test`의 재사용 이니셜라이저를 쓴다(§3).
 
+## 2.1 클래스 네이밍 컨벤션
+
+테스트 층을 **클래스 이름 접미사**로 드러낸다. 이름만으로 어떤 층인지, 무엇을 필요로 하는지(인프라/컨텍스트) 알 수 있게 한다.
+
+| 층 | 접미사 | 판별 기준 |
+|---|---|---|
+| 단위 | `XxxUnitTest` | Spring Context·컨테이너 없음. Mockito(`@ExtendWith(MockitoExtension.class)`)로 협력자 mock |
+| 통합 | `XxxIntegrationTest` | 실제 인프라(Testcontainers)·slice(`@DataJpaTest` 등)·부분 `@SpringBootTest`로 어댑터/리포지토리를 실제로 검증 |
+| E2E | `XxxE2ETest` | `MockMvc`/`WebTestClient`로 컨트롤러~보안~변환까지 엔드포인트 흐름 |
+| 부팅 스모크 | `BootSmokeTest`(모듈당 1개) | 진짜 `Main` 전체 컨텍스트 부팅(§4) |
+
+규칙:
+- **이름이 층을 말한다**: `*AdapterTest`처럼 층이 모호한 접미사 대신 위 4종만 쓴다. 예: mock 기반 어댑터 테스트는 `...AdapterUnitTest`, Testcontainer 기반은 `...AdapterIntegrationTest`.
+- **테스트 헬퍼는 접미사 대상이 아니다**: `Test*Config`·`Test*DependencyConfig`(테스트 전용 빈/설정)는 테스트 클래스가 아니므로 이름을 바꾸지 않는다.
+- **ArchUnit**(`ModuleArchitectureTest`/`PackageArchitectureTest`)는 구조 검증 특수 케이스로 현 이름을 유지한다.
+
+> 현재 저장소는 이 컨벤션을 **완전히 따르지는 않는다**(`*Test`·`*MvcTest`·`*WebMvcTest`·`*E2ETest`·`*IntegrationTest` 혼재). 정합화(rename)는 별도 작업으로 진행한다(§8).
+
 ## 3. Testcontainers 인프라 (`common-test`)
 
 모든 컨테이너는 `common-test`에 **재사용 가능한 컴포넌트**로 정의되어 있어, 각 테스트는 컨테이너 기동/프로퍼티 주입을 다시 작성하지 않는다. `@Reuse(true)`로 실행 간 컨테이너를 재활용한다.
@@ -107,7 +125,34 @@
 - 전체: `./gradlew serviceCi` — Testcontainers를 다수 기동하므로 시간이 오래 걸린다. 요청·승인 없이 상시 실행하지 않는다.
 - Docker가 필요하다(Testcontainers). 컨테이너는 `@Reuse(true)`로 재사용된다.
 
-## 6. 관련 문서·규칙
+## 7. 모듈별 테스트 커버리지
+
+각 실행 서비스·공통 모듈에 어떤 층이 존재하는지(2026-08-01 기준, 코드 스캔).
+
+| 모듈 | 단위 | 통합 | E2E | 부팅 스모크 | 비고 |
+|---|:--:|:--:|:--:|:--:|---|
+| user | ✓ | ✗ | ✓ | ✓ | 어댑터 테스트는 mock 기반(단위). E2E는 `UserControllerWebMvcTest` |
+| chat | ✓ | ✓ | ✓ | ✓ | Mongo/Redis 어댑터·리포지토리 Testcontainer 통합 |
+| market | ✓ | ✗ | ✓ | ✓ | JPA 어댑터는 mock(단위). DB 통합은 부팅 스모크로만 |
+| market-detection | ✓ | ✓ | — | ✓ | Kafka Streams `TopologyTestDriver`·Upbit 외부 통합. 웹 없음(E2E 해당 없음) |
+| notification | ✓ | ✓ | ✓ | ✓ | Mongo 리포지토리 Testcontainer 통합 |
+| websocket-gateway | ✓ | ✗ | ✗ | ✓ | 어댑터·세션 캐시 단위. 통합/E2E 미보유 |
+| oauth2-authorization-server | ✓ | ✓ | ✓ | ✓ | Redis 어댑터 통합, 토큰 엔드포인트 통합/E2E |
+| oauth2-client | ✓ | ✗ | ✓ | ✓ | 인증 흐름 E2E(`*E2ETest`) |
+| spring-cloud-api-gateway | ✓ | △ | ✓ | ✓ | 라우팅/보안/식별 전파 E2E, CORS slice(`GatewayCorsConfigTest`) |
+| spring-cloud-config | ✓ | ✗ | ✓ | ✓ | Vault Transit 서명·JWKS 단위, `JwksControllerTest` E2E |
+| outbox-poller | ✓ | ✗ | ✗ | ✓ | 스케줄러·발행 단위 |
+| spring-cloud-eureka-server | ✗ | ✗ | ✗ | ✓ | 자체 로직 없음 → 부팅 스모크만 |
+| common-* | ✓ | ✓ | ✓ | — | 라이브러리(실행 모듈 아님). ReadReplica·RedisCluster 통합, actuator WebFlux E2E, ArchUnit |
+
+- ✓ 있음 / ✗ 없음 / △ 부분(slice) / — 해당 없음.
+- "통합 ✗"는 그 모듈의 어댑터가 mock 단위로만 검증되고 실제 인프라 통합은 부팅 스모크가 커버한다는 뜻이다(부팅까지만, 동작 세부는 아님).
+
+## 8. 남은 작업 — 네이밍 정합화
+
+§2.1 컨벤션(`*UnitTest`/`*IntegrationTest`/`*E2ETest`/`BootSmokeTest`)에 맞춰 기존 테스트 클래스명을 정리한다(현재 `*Test`·`*MvcTest`·`*WebMvcTest` 등 혼재). 층별 정확 분류가 필요한 다수 파일의 기계적 rename이라 별도 작업으로 진행한다. 헬퍼(`Test*Config`)·ArchUnit은 대상 제외.
+
+## 9. 관련 문서·규칙
 
 - 실행/작성 짧은 규칙: [`../.claude/rules/testing.md`](../.claude/rules/testing.md)
 - CI/CD(affected 빌드): [`CI_CD.md`](CI_CD.md)
