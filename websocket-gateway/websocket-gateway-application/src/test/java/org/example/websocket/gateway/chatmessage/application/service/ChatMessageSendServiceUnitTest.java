@@ -28,7 +28,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class ChatMessageSendServiceTest {
+class ChatMessageSendServiceUnitTest {
 
     @Mock
     private ChatMessageCommandPort chatMessageCommandPort;

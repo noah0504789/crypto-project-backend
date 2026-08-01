@@ -29,7 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
-class GrpcChatMessageCommandAdapterTest {
+class GrpcChatMessageCommandAdapterUnitTest {
 
     @Mock
     private ChatMessageClient chatMessageClient;
