@@ -7,4 +7,5 @@ dependencies {
 
     api 'org.mongodb:bson:5.1.0'
     compileOnly 'org.hibernate.orm:hibernate-core'
+    testImplementation 'org.hibernate.orm:hibernate-core'
 }
