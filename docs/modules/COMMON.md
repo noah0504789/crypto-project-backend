@@ -143,6 +143,7 @@ Outbox 패턴의 핵심 모듈. **비즈니스 DB write와 이벤트 기록을 �
 - Kafka/Outbox 사용 서비스(chat·market·notification·outbox-poller 등): `common-event`·`common-outbox`.
 - JPA 서비스(user·market 등): `common-jpa`(+ Read Replica). Mongo 서비스(chat·notification): `common-mongo`.
 - ID 필요 서비스(user 등): `common-id`(Snowflake, `idgen.yml`). 분산락 필요 시 `common-redisson`.
+  - `SnowflakeIdProvider`는 `@ConditionalOnProperty(prefix="idgen", name="epoch")`로 **idgen 설정을 로드하는 서비스에서만 등록**된다(`@PostConstruct`가 epoch 등을 검증). `@SnowflakeId`를 쓰는 서비스(user·market)는 config.name에 `idgen`을 포함해야 한다. `common-id`를 넓게 스캔하지만 snowflake ID를 안 쓰는 서비스(websocket-gateway 등)는 idgen이 없어 이 빈이 등록되지 않으므로 부팅이 깨지지 않는다.
 
 ## 7. 테스트 · CI
 
