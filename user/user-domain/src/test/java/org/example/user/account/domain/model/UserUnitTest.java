@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class UserTest {
+class UserUnitTest {
 
     @Test
     @DisplayName("ofLocal은 Role 없이 로컬 회원가입 User를 생성한다")

@@ -43,7 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         UniqueUserNicknameValidator.class,
         GlobalExceptionHandler.class
 })
-class UserControllerWebMvcTest {
+class UserControllerE2ETest {
 
     @Autowired
     private MockMvc mockMvc;

@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class UserControllerTest {
+class UserControllerUnitTest {
 
     @Mock
     private UserQueryUseCase userQueryUseCase;

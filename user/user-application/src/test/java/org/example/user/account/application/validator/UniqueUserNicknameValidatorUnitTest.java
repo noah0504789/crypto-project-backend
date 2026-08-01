@@ -14,7 +14,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 @ExtendWith(MockitoExtension.class)
-class UniqueUserNicknameValidatorTest {
+class UniqueUserNicknameValidatorUnitTest {
 
     @Mock
     private UserPersistencePort userPersistencePort;
