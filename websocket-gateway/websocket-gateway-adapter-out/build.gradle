@@ -13,7 +13,7 @@ dependencies {
     implementation project(':websocket-gateway:websocket-gateway-application')
 
     implementation(libs.spring.boot.starter.websocket)
-    implementation(libs.grpc.netty)
-    implementation(libs.grpc.client.spring.boot.starter)
+    runtimeOnly(libs.grpc.netty)
+    runtimeOnly(libs.grpc.client.spring.boot.starter)
     implementation(libs.micrometer.core)
 }

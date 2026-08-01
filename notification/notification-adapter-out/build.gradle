@@ -6,7 +6,6 @@ dependencies {
     implementation project(':common:common-core')
     implementation project(':common:common-id')
     implementation project(':common:common-jpa')
-    implementation project(':common:common-web')
     implementation project(':common:common-mongo')
     implementation project(':market:market-client')
     implementation project(':notification:notification-application')

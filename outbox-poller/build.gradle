@@ -14,7 +14,6 @@ dependencies {
     implementation(libs.spring.cloud.config.client)
     implementation(libs.spring.cloud.starter.bus.kafka)
     implementation(libs.micrometer.registry.prometheus)
-    implementation(libs.ulid.creator)
 
     testImplementation project(':common:common-test')
 }
