@@ -1,0 +1,30 @@
+# 스모크 테스트 전용. main의 application.yml(Config Server import)을 test classpath에서 덮어써,
+# Config Server 대신 실제 git-config-repo 파일을 직접 import 한다(${smoke.config.repo}는 Gradle이 주입).
+spring:
+  application.name: websocket-gateway
+  config:
+    import:
+      - optional:file:${smoke.config.repo}/application.yml
+      - optional:file:${smoke.config.repo}/infrastructure/eureka-client.yml
+      - optional:file:${smoke.config.repo}/infrastructure/kafka.yml
+      - optional:file:${smoke.config.repo}/infrastructure/redis.yml
+      - optional:file:${smoke.config.repo}/infrastructure/monitoring.yml
+      - optional:file:${smoke.config.repo}/dynamic/websocket-gateway.yml
+  cloud:
+    config:
+      enabled: false
+    bus:
+      enabled: false
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+grpc:
+  server:
+    port: 0
+
+deployment:
+  control-token: smoke-test

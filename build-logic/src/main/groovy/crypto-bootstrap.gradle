@@ -51,6 +51,8 @@ if (project.name.endsWith('-bootstrap')) {
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
     jvmArgs '--add-opens', 'java.base/java.time=ALL-UNNAMED'
+    // 부팅 스모크 테스트가 Config Server 없이 실제 git-config-repo 설정을 import 하도록 절대경로를 넘긴다.
+    systemProperty 'smoke.config.repo', "${rootProject.projectDir}/git-config-repo"
 }
 
 tasks.named('bootRun') {
