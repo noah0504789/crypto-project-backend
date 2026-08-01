@@ -31,6 +31,7 @@
 - app name: `websocket-gateway`. 포트 `8100`(컨텍스트 경로 없음).
 - 저장소: **Redis Cluster**(세션 위치, hash tag `{session}`)만. DB 없음. 로컬 세션은 Caffeine.
   - DB가 없는데도 소비하는 이벤트 계약(`chat-contract`/`notification-contract` → `common-outbox` → `common-jpa`; broadcast 이벤트가 `AbstractOutboxEvent`를 상속하고 그 base가 JPA `@Entity Outbox`를 참조)이 `spring-boot-starter-data-jpa`를 **전이로** classpath에 끌어온다. 그대로 두면 `DataSourceAutoConfiguration`이 강제 활성화돼 datasource url 없이 부팅이 깨진다. 그래서 `websocket-gateway.yml`에서 `spring.autoconfigure.exclude`로 `DataSourceAutoConfiguration`·`HibernateJpaAutoConfiguration`을 제외한다. **이 제외를 지우면 부팅이 실패한다**(전이 JPA는 계약 구조상 제거하기 어렵다).
+  - 같은 이유로 `Main`은 `@ComponentScan(basePackages="org.example")`에서 `org.example.common.(outbox|dlq).*`를 `excludeFilters`로 제외한다. `common-outbox`의 `OutboxService`·`DlqService` 등은 항상 등록되는 `@Service`/`@Component`이고 JPA Repository(`OutboxRepository`/`DlqRepository`)를 요구하는데, 이 서비스는 outbox 발행/DLQ를 쓰지 않고 broadcast 이벤트 **클래스**만 소비하므로 스캔하면 부팅이 깨진다(datasource 없음). broadcast 이벤트 역직렬화는 빈이 아니라 POJO라 스캔 제외와 무관하다. **이 스캔 제외도 지우면 부팅이 실패한다.**
 - gRPC 클라이언트: `chat-client`(공통 `application.yml`의 `uri.discovery.chat-service` 참조, plaintext, max inbound 16MB). gRPC 서버 비활성.
 - Config Server 연동: `spring.cloud.config.name: websocket-gateway,eureka-client,kafka,redis,monitoring`. 공유 `api-contract.*`는 Config Repository 루트 `application.yml`에서 자동 병합된다.
 - 관측성: bootstrap이 **OpenTelemetry javaagent**(`copyOtelAgent`)를 빌드 산출물에 포함. Micrometer/Prometheus + `ws_active_sessions` gauge.

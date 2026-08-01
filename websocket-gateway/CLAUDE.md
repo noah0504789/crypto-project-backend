@@ -25,6 +25,7 @@ STOMP destination·Kafka 소비·gRPC 계약에 걸친 변경은 `../.claude/rul
 - **공유 Inbox 적용 금지**: 브로드캐스트 consumer는 인스턴스별 group으로 모든 gateway가 자기 로컬 세션에 전송해야 한다. 공유 `(consumer_name,event_id)` 선점은 다른 인스턴스 push를 막으므로 적용하지 않고, 클라이언트가 `messageId`/`notificationId`로 중복 제거한다.
 - **gRPC 소비 계약**: `chatmessage.v1`(save/hardDelete)은 chat이 서버, 여기가 클라이언트다. proto 변경은 chat과 함께(external-contracts). client 설정은 `websocket-gateway.yml`의 `grpc.client.chat-client`.
 - **DataSource/JPA 자동설정 제외 유지**: 이 서비스는 DB가 없지만 소비 계약(`chat-contract`/`notification-contract` → `common-outbox` → `common-jpa`)이 `spring-boot-starter-data-jpa`를 전이로 끌어온다. `websocket-gateway.yml`의 `spring.autoconfigure.exclude`(`DataSourceAutoConfiguration`·`HibernateJpaAutoConfiguration`)를 제거하면 `DataSourceAutoConfiguration`이 강제 활성화돼 부팅이 실패한다. 지우지 않는다(상세: `../docs/modules/WEBSOCKET_GATEWAY.md §3`).
+- **common 영속 서비스 빈 스캔 제외 유지**: 같은 이유로 `Main`의 `@ComponentScan`이 `org.example.common.(outbox|dlq|inbox).*`를 `excludeFilters`로 제외한다(`OutboxService`·`DlqService` 등이 JPA Repository를 요구). 이 서비스는 이벤트 클래스만 소비하고 outbox/DLQ/Inbox는 쓰지 않는다. 이 필터를 지우면 부팅이 실패한다.
 - **핸드셰이크 인증**: `StompConfig.determineUser`는 `X-User-Id` 헤더로 Principal을 만든다(없으면 거부). 헤더 주입/토큰 전달 방식 변경은 게이트웨이·oauth2-client 핸드셰이크와 함께 본다(→ `../.claude/rules/security.md`).
 
 ## 주요 파일 안내
