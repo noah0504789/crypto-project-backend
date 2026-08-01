@@ -8,8 +8,6 @@ dependencies {
     implementation project(':oauth2-authorization-server:oauth2-authorization-server-application')
     implementation project(':user:user-client')
 
-    implementation(libs.spring.security.oauth2.authorization.server)
-    implementation(libs.micrometer.registry.prometheus)
     implementation(libs.caffeine)
 
     testImplementation project(':common:common-test')

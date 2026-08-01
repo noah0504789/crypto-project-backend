@@ -11,5 +11,5 @@ dependencies {
     api(libs.spring.boot.starter.aop)
 
     testImplementation project(':common:common-test')
-    testImplementation libs.mysql.connector.j
+    testRuntimeOnly libs.mysql.connector.j
 }
