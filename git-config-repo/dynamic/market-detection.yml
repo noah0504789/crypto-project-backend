@@ -9,6 +9,10 @@ grpc:
         bytes: 16777216
 
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
   cloud:
     function:
       definition: upbitTickerEventSupplier;upbitTickerAlertEventProcessor
