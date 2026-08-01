@@ -16,4 +16,5 @@ dependencies {
     implementation(libs.micrometer.registry.prometheus)
 
     testImplementation(libs.spring.security.test)
+    testImplementation project(':common:common-test')
 }
