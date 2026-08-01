@@ -1,16 +1,18 @@
-package org.example.common.dlq.domain;
+package org.example.common.dlq.adapter.out;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.example.common.dlq.domain.DlqStatus;
 import org.example.common.jpa.BaseEntity;
 import org.example.common.outbox.domain.OutboxDomainType;
 
 @Entity
+@Table(name = "dlq")
 @Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Dlq extends BaseEntity {
+public class JpaDlq extends BaseEntity {
 
     @Id
     private String id;
@@ -32,7 +34,7 @@ public class Dlq extends BaseEntity {
     @Column(nullable = false)
     private String payload;
 
-    public static Dlq ofPending(
+    public static JpaDlq ofPending(
             String id,
             String sourceId,
             String eventType,
@@ -43,7 +45,7 @@ public class Dlq extends BaseEntity {
             String errorMessage,
             String payload
     ) {
-        return Dlq.builder()
+        return JpaDlq.builder()
                 .id(id)
                 .sourceId(sourceId)
                 .eventType(eventType)

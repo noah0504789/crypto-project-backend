@@ -1,9 +1,9 @@
 package org.example.common.dlq.application.service;
 
 import org.example.common.exception.DlqNotFoundException;
-import org.example.common.dlq.adapter.out.DlqRepository;
+import org.example.common.dlq.adapter.out.JpaDlqRepository;
 import org.example.common.outbox.application.port.out.EventPublisherPort;
-import org.example.common.dlq.domain.Dlq;
+import org.example.common.dlq.adapter.out.JpaDlq;
 import org.example.common.dlq.domain.DlqStatus;
 import org.example.common.dlq.properties.DlqPollerProperties;
 import org.example.common.outbox.domain.OutboxDomainType;
@@ -35,7 +35,7 @@ class DlqServiceUnitTest {
     private EventPublisherPort eventPublisher;
 
     @Mock
-    private DlqRepository dlqRepository;
+    private JpaDlqRepository jpaDlqRepository;
 
     @Mock
     private ObjectProvider<DlqPollerProperties> dlqPollerPropertiesProvider;
@@ -47,27 +47,27 @@ class DlqServiceUnitTest {
 
     @BeforeEach
     void setUp() {
-        sut = new DlqService(eventPublisherProvider, dlqRepository, dlqPollerPropertiesProvider);
+        sut = new DlqService(eventPublisherProvider, jpaDlqRepository, dlqPollerPropertiesProvider);
     }
 
     @Test
     @DisplayName("DLQ 단건을 저장한다")
     void save_delegatesToRepository() {
         // given
-        Dlq dlq = createDlq("dlq-1");
+        JpaDlq dlq = createDlq("dlq-1");
 
         // when
         sut.save(dlq);
 
         // then
-        verify(dlqRepository).save(dlq);
+        verify(jpaDlqRepository).save(dlq);
     }
 
     @Test
     @DisplayName("DLQ 목록을 저장한다")
     void saveAll_delegatesToRepository() {
         // given
-        List<Dlq> dlqList = List.of(
+        List<JpaDlq> dlqList = List.of(
                 createDlq("dlq-1"),
                 createDlq("dlq-2")
         );
@@ -76,16 +76,16 @@ class DlqServiceUnitTest {
         sut.saveAll(dlqList);
 
         // then
-        verify(dlqRepository).saveAll(dlqList);
+        verify(jpaDlqRepository).saveAll(dlqList);
     }
 
     @Test
     @DisplayName("DLQ 처리를 완료 상태로 변경한다")
     void complete_marksCompleted() {
         // given
-        Dlq dlq = createDlq("dlq-1");
+        JpaDlq dlq = createDlq("dlq-1");
 
-        when(dlqRepository.findById("dlq-1"))
+        when(jpaDlqRepository.findById("dlq-1"))
                 .thenReturn(Optional.of(dlq));
 
         // when
@@ -100,7 +100,7 @@ class DlqServiceUnitTest {
     @DisplayName("DLQ 완료 대상이 없으면 예외를 던진다")
     void complete_whenDlqDoesNotExist_throwsException() {
         // given
-        when(dlqRepository.findById("missing-dlq"))
+        when(jpaDlqRepository.findById("missing-dlq"))
                 .thenReturn(Optional.empty());
 
         // when & then
@@ -112,9 +112,9 @@ class DlqServiceUnitTest {
     @DisplayName("DLQ 처리를 실패 상태로 변경하고 에러 메시지를 남긴다")
     void fail_marksFailed() {
         // given
-        Dlq dlq = createDlq("dlq-1");
+        JpaDlq dlq = createDlq("dlq-1");
 
-        when(dlqRepository.findById("dlq-1"))
+        when(jpaDlqRepository.findById("dlq-1"))
                 .thenReturn(Optional.of(dlq));
 
         // when
@@ -131,7 +131,7 @@ class DlqServiceUnitTest {
     @DisplayName("DLQ 실패 처리 대상이 없으면 예외를 던진다")
     void fail_whenDlqDoesNotExist_throwsException() {
         // given
-        when(dlqRepository.findById("missing-dlq"))
+        when(jpaDlqRepository.findById("missing-dlq"))
                 .thenReturn(Optional.empty());
 
         // when & then
@@ -150,7 +150,7 @@ class DlqServiceUnitTest {
         when(eventPublisherProvider.getObject())
                 .thenReturn(eventPublisher);
 
-        when(dlqRepository.findByStatusOrderByCreatedAtAsc(
+        when(jpaDlqRepository.findByStatusOrderByCreatedAtAsc(
                 eq(DlqStatus.PENDING),
                 any(Pageable.class)
         )).thenReturn(List.of());
@@ -162,7 +162,7 @@ class DlqServiceUnitTest {
         sut.publishPending();
 
         // then
-        verify(dlqRepository).findByStatusOrderByCreatedAtAsc(
+        verify(jpaDlqRepository).findByStatusOrderByCreatedAtAsc(
                 eq(DlqStatus.PENDING),
                 pageableCaptor.capture()
         );
@@ -177,7 +177,7 @@ class DlqServiceUnitTest {
     @DisplayName("DLQ publish에 성공하면 PUBLISHED 상태로 변경한다")
     void publishPending_whenPublishSucceeds_marksPublished() {
         // given
-        Dlq dlq = createDlq("dlq-1");
+        JpaDlq dlq = createDlq("dlq-1");
 
         when(dlqPollerProperties.batchSize())
                 .thenReturn(10);
@@ -186,7 +186,7 @@ class DlqServiceUnitTest {
         when(eventPublisherProvider.getObject())
                 .thenReturn(eventPublisher);
 
-        when(dlqRepository.findByStatusOrderByCreatedAtAsc(
+        when(jpaDlqRepository.findByStatusOrderByCreatedAtAsc(
                 eq(DlqStatus.PENDING),
                 any(Pageable.class)
         )).thenReturn(List.of(dlq));
@@ -205,7 +205,7 @@ class DlqServiceUnitTest {
     @DisplayName("DLQ publish에 실패하면 PUBLISH_FAILED 상태로 변경한다")
     void publishPending_whenPublishFails_marksPublishFailed() {
         // given
-        Dlq dlq = createDlq("dlq-1");
+        JpaDlq dlq = createDlq("dlq-1");
 
         when(dlqPollerProperties.batchSize())
                 .thenReturn(10);
@@ -214,7 +214,7 @@ class DlqServiceUnitTest {
         when(eventPublisherProvider.getObject())
                 .thenReturn(eventPublisher);
 
-        when(dlqRepository.findByStatusOrderByCreatedAtAsc(
+        when(jpaDlqRepository.findByStatusOrderByCreatedAtAsc(
                 eq(DlqStatus.PENDING),
                 any(Pageable.class)
         )).thenReturn(List.of(dlq));
@@ -237,8 +237,8 @@ class DlqServiceUnitTest {
     @DisplayName("한 DLQ publish가 실패해도 다음 DLQ 처리를 계속한다")
     void publishPending_whenOneFails_continuesNextDlq() {
         // given
-        Dlq failedDlq = createDlq("dlq-1");
-        Dlq successDlq = createDlq("dlq-2");
+        JpaDlq failedDlq = createDlq("dlq-1");
+        JpaDlq successDlq = createDlq("dlq-2");
 
         when(dlqPollerProperties.batchSize())
                 .thenReturn(10);
@@ -247,7 +247,7 @@ class DlqServiceUnitTest {
         when(eventPublisherProvider.getObject())
                 .thenReturn(eventPublisher);
 
-        when(dlqRepository.findByStatusOrderByCreatedAtAsc(
+        when(jpaDlqRepository.findByStatusOrderByCreatedAtAsc(
                 eq(DlqStatus.PENDING),
                 any(Pageable.class)
         )).thenReturn(List.of(failedDlq, successDlq));
@@ -270,8 +270,8 @@ class DlqServiceUnitTest {
                 .isEqualTo(DlqStatus.PUBLISHED);
     }
 
-    private Dlq createDlq(String id) {
-        return Dlq.ofPending(
+    private JpaDlq createDlq(String id) {
+        return JpaDlq.ofPending(
                 id,
                 "outbox-" + id,
                 "ChatMessageCreatedEvent",

@@ -6,7 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.common.outbox.adapter.out.OutboxPersistenceExceptionTranslator;
 import org.example.common.outbox.application.service.OutboxService;
-import org.example.common.outbox.domain.Outbox;
+import org.example.common.outbox.adapter.out.JpaOutbox;
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 import org.example.common.outbox.domain.event.AbstractOutboxEventList;
 import org.example.common.outbox.exception.OutboxPersistenceException;
@@ -30,7 +30,7 @@ public class OutboxEventListListener {
         String txId = eventList.getTxId();
 
         try {
-            List<Outbox> outboxes = new ArrayList<>();
+            List<JpaOutbox> outboxes = new ArrayList<>();
 
             for (AbstractOutboxEvent event : eventList.getEventList()) {
                 String payload = objectMapper.writeValueAsString(event);

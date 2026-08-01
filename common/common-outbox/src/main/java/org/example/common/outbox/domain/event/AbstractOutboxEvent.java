@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.example.common.util.EventIdUtils;
-import org.example.common.outbox.domain.Outbox;
+import org.example.common.outbox.adapter.out.JpaOutbox;
 import org.example.common.outbox.domain.OutboxDispatchType;
 import org.example.common.outbox.domain.OutboxDomainType;
 import org.example.common.outbox.domain.OutboxStatus;
@@ -32,8 +32,8 @@ public abstract class AbstractOutboxEvent {
 
     protected abstract OutboxDomainType getDomainType();
 
-    public Outbox toOutbox(String transactionId, String payload) {
-        return Outbox.builder()
+    public JpaOutbox toOutbox(String transactionId, String payload) {
+        return JpaOutbox.builder()
                 .id(generateId())
                 .transactionId(transactionId)
                 .aggregateId(aggregateId)

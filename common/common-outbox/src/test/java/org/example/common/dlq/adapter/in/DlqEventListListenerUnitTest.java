@@ -3,7 +3,7 @@ package org.example.common.dlq.adapter.in;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.common.dlq.application.service.DlqService;
-import org.example.common.dlq.domain.Dlq;
+import org.example.common.dlq.adapter.out.JpaDlq;
 import org.example.common.dlq.domain.event.AbstractDlqEvent;
 import org.example.common.dlq.domain.event.AbstractDlqEventList;
 import org.example.common.dlq.exception.DlqPersistenceException;
@@ -52,7 +52,7 @@ class DlqEventListListenerUnitTest {
     class HandleDlqEventListTest {
 
         @Test
-        @DisplayName("DLQ 이벤트 리스트를 받으면 이벤트를 직렬화하고 Dlq로 변환하여 저장한다")
+        @DisplayName("DLQ 이벤트 리스트를 받으면 이벤트를 직렬화하고 JpaDlq로 변환하여 저장한다")
         void handleDlqEventList() throws Exception {
             // given
             AbstractDlqEventList eventList = mock(AbstractDlqEventList.class);
@@ -60,8 +60,8 @@ class DlqEventListListenerUnitTest {
             AbstractDlqEvent event1 = mock(AbstractDlqEvent.class);
             AbstractDlqEvent event2 = mock(AbstractDlqEvent.class);
 
-            Dlq dlq1 = mock(Dlq.class);
-            Dlq dlq2 = mock(Dlq.class);
+            JpaDlq dlq1 = mock(JpaDlq.class);
+            JpaDlq dlq2 = mock(JpaDlq.class);
 
             given(eventList.getTxId()).willReturn(txId);
             given(eventList.getEventList()).willReturn(List.of(event1, event2));
@@ -80,7 +80,7 @@ class DlqEventListListenerUnitTest {
             sut.handleDlqEventList(eventList);
 
             // then
-            ArgumentCaptor<List<Dlq>> captor =
+            ArgumentCaptor<List<JpaDlq>> captor =
                     ArgumentCaptor.forClass(List.class);
 
             verify(dlqService).saveAll(captor.capture());
@@ -96,7 +96,7 @@ class DlqEventListListenerUnitTest {
         }
 
         @Test
-        @DisplayName("DLQ 이벤트 리스트가 비어 있어도 빈 Dlq 목록을 저장한다")
+        @DisplayName("DLQ 이벤트 리스트가 비어 있어도 빈 JpaDlq 목록을 저장한다")
         void handleDlqEventListWithEmptyEventList() throws JsonProcessingException {
             // given
             AbstractDlqEventList eventList = mock(AbstractDlqEventList.class);
@@ -108,7 +108,7 @@ class DlqEventListListenerUnitTest {
             sut.handleDlqEventList(eventList);
 
             // then
-            ArgumentCaptor<List<Dlq>> captor =
+            ArgumentCaptor<List<JpaDlq>> captor =
                     ArgumentCaptor.forClass(List.class);
 
             verify(dlqService).saveAll(captor.capture());
@@ -152,7 +152,7 @@ class DlqEventListListenerUnitTest {
             // given
             AbstractDlqEventList eventList = mock(AbstractDlqEventList.class);
             AbstractDlqEvent event = mock(AbstractDlqEvent.class);
-            Dlq dlq = mock(Dlq.class);
+            JpaDlq dlq = mock(JpaDlq.class);
 
             DataAccessException exception =
                     new DataRetrievalFailureException("dlq save failed");
@@ -189,7 +189,7 @@ class DlqEventListListenerUnitTest {
             // given
             AbstractDlqEventList eventList = mock(AbstractDlqEventList.class);
             AbstractDlqEvent event = mock(AbstractDlqEvent.class);
-            Dlq dlq = mock(Dlq.class);
+            JpaDlq dlq = mock(JpaDlq.class);
 
             DataAccessException exception =
                     new TransientDataAccessResourceException("temporary dlq save failed");

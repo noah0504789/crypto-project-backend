@@ -7,7 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.common.dlq.adapter.out.DlqPersistenceExceptionTranslator;
 import org.example.common.dlq.domain.event.AbstractDlqEvent;
 import org.example.common.dlq.domain.event.AbstractDlqEventList;
-import org.example.common.dlq.domain.Dlq;
+import org.example.common.dlq.adapter.out.JpaDlq;
 import org.example.common.dlq.application.service.DlqService;
 import org.example.common.dlq.exception.DlqPersistenceException;
 import org.example.common.outbox.adapter.out.OutboxPersistenceExceptionTranslator;
@@ -34,7 +34,7 @@ public class DlqEventListListener {
         String txId = eventList.getTxId();
 
         try {
-            List<Dlq> dlqList = new ArrayList<>();
+            List<JpaDlq> dlqList = new ArrayList<>();
 
             for (AbstractDlqEvent event : eventList.getEventList()) {
                 String payload = objectMapper.writeValueAsString(event);

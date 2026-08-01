@@ -1,9 +1,9 @@
 package event;
 
-import org.example.common.dlq.domain.Dlq;
+import org.example.common.dlq.adapter.out.JpaDlq;
 import org.example.outboxpoller.infra.event.KafkaEventPublisher;
 import org.example.outboxpoller.infra.exception.OutboxPollerInfrastructureException;
-import org.example.common.outbox.domain.Outbox;
+import org.example.common.outbox.adapter.out.JpaOutbox;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,10 +29,10 @@ class KafkaEventPublisherUnitTest {
     private KafkaEventPublisher sut;
 
     @Test
-    @DisplayName("Outbox를 publish하면 destination으로 payload와 headers를 담은 메시지를 전송한다")
+    @DisplayName("JpaOutbox를 publish하면 destination으로 payload와 headers를 담은 메시지를 전송한다")
     void publishOutbox_sendsMessage() {
         // given
-        Outbox outbox = mock(Outbox.class);
+        JpaOutbox outbox = mock(JpaOutbox.class);
 
         when(outbox.getDestination()).thenReturn("chat-outbox-out-0");
         when(outbox.getPayload()).thenReturn("{\"message\":\"hello\"}");
@@ -61,10 +61,10 @@ class KafkaEventPublisherUnitTest {
     }
 
     @Test
-    @DisplayName("Outbox publish 실패 시 예외가 발생한다")
+    @DisplayName("JpaOutbox publish 실패 시 예외가 발생한다")
     void publishOutbox_throwsExceptionWhenSendFails() {
         // given
-        Outbox outbox = mock(Outbox.class);
+        JpaOutbox outbox = mock(JpaOutbox.class);
 
         when(outbox.getDestination()).thenReturn("chat-outbox-out-0");
         when(outbox.getPayload()).thenReturn("{}");
@@ -85,10 +85,10 @@ class KafkaEventPublisherUnitTest {
     }
 
     @Test
-    @DisplayName("Dlq를 publish하면 destination으로 payload와 headers를 담은 메시지를 전송한다")
+    @DisplayName("JpaDlq를 publish하면 destination으로 payload와 headers를 담은 메시지를 전송한다")
     void publishDlq_sendsMessage() {
         // given
-        Dlq dlq = mock(Dlq.class);
+        JpaDlq dlq = mock(JpaDlq.class);
 
         when(dlq.getDestination()).thenReturn("chat-dlq-out-0");
         when(dlq.getPayload()).thenReturn("{\"failed\":\"event\"}");
@@ -119,10 +119,10 @@ class KafkaEventPublisherUnitTest {
     }
 
     @Test
-    @DisplayName("Dlq publish 실패 시 예외가 발생한다")
+    @DisplayName("JpaDlq publish 실패 시 예외가 발생한다")
     void publishDlq_throwsExceptionWhenSendFails() {
         // given
-        Dlq dlq = mock(Dlq.class);
+        JpaDlq dlq = mock(JpaDlq.class);
 
         when(dlq.getDestination()).thenReturn("chat-dlq-out-0");
         when(dlq.getPayload()).thenReturn("{}");

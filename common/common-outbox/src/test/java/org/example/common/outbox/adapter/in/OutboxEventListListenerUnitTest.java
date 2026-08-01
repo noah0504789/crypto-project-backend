@@ -3,7 +3,7 @@ package org.example.common.outbox.adapter.in;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.common.outbox.application.service.OutboxService;
-import org.example.common.outbox.domain.Outbox;
+import org.example.common.outbox.adapter.out.JpaOutbox;
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 import org.example.common.outbox.domain.event.AbstractOutboxEventList;
 import org.example.common.outbox.exception.OutboxPersistenceException;
@@ -49,7 +49,7 @@ class OutboxEventListListenerUnitTest {
     private final String txId = "tx-1";
 
     @Test
-    @DisplayName("OutboxEventList를 받으면 이벤트들을 직렬화하고 Outbox로 변환하여 저장한다")
+    @DisplayName("OutboxEventList를 받으면 이벤트들을 직렬화하고 JpaOutbox로 변환하여 저장한다")
     void handleOutboxEventList() throws Exception {
         // given
         AbstractOutboxEventList eventList = mock(AbstractOutboxEventList.class);
@@ -57,8 +57,8 @@ class OutboxEventListListenerUnitTest {
         AbstractOutboxEvent event1 = mock(AbstractOutboxEvent.class);
         AbstractOutboxEvent event2 = mock(AbstractOutboxEvent.class);
 
-        Outbox outbox1 = mock(Outbox.class);
-        Outbox outbox2 = mock(Outbox.class);
+        JpaOutbox outbox1 = mock(JpaOutbox.class);
+        JpaOutbox outbox2 = mock(JpaOutbox.class);
 
         given(eventList.getTxId()).willReturn(txId);
         given(eventList.getEventList()).willReturn(List.of(event1, event2));
@@ -90,7 +90,7 @@ class OutboxEventListListenerUnitTest {
         inOrder.verify(objectMapper).writeValueAsString(event2);
         inOrder.verify(event2).toOutbox(txId, "payload-2");
 
-        ArgumentCaptor<List<Outbox>> captor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<JpaOutbox>> captor = ArgumentCaptor.forClass(List.class);
 
         verify(outboxService).saveAll(captor.capture());
 
@@ -99,7 +99,7 @@ class OutboxEventListListenerUnitTest {
     }
 
     @Test
-    @DisplayName("이벤트 리스트가 비어 있어도 빈 Outbox 목록을 저장한다")
+    @DisplayName("이벤트 리스트가 비어 있어도 빈 JpaOutbox 목록을 저장한다")
     void handleOutboxEventListWithEmptyEvents() throws JsonProcessingException {
         // given
         AbstractOutboxEventList eventList = mock(AbstractOutboxEventList.class);
@@ -111,7 +111,7 @@ class OutboxEventListListenerUnitTest {
         sut.handleOutboxEventList(eventList);
 
         // then
-        ArgumentCaptor<List<Outbox>> captor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<JpaOutbox>> captor = ArgumentCaptor.forClass(List.class);
 
         verify(outboxService).saveAll(captor.capture());
 
@@ -147,12 +147,12 @@ class OutboxEventListListenerUnitTest {
     }
 
     @Test
-    @DisplayName("Outbox 저장 중 일반 DataAccessException이 발생하면 OutboxPersistenceException으로 감싼다")
+    @DisplayName("JpaOutbox 저장 중 일반 DataAccessException이 발생하면 OutboxPersistenceException으로 감싼다")
     void handleOutboxEventListThrowsOutboxPersistenceExceptionWhenSaveFails() throws Exception {
         // given
         AbstractOutboxEventList eventList = mock(AbstractOutboxEventList.class);
         AbstractOutboxEvent event = mock(AbstractOutboxEvent.class);
-        Outbox outbox = mock(Outbox.class);
+        JpaOutbox outbox = mock(JpaOutbox.class);
 
         DataAccessException exception =
                 new DataRetrievalFailureException("outbox save failed");
@@ -180,12 +180,12 @@ class OutboxEventListListenerUnitTest {
     }
 
     @Test
-    @DisplayName("Outbox 저장 중 일시적 DataAccessException이 발생하면 TemporaryOutboxPersistenceException으로 감싼다")
+    @DisplayName("JpaOutbox 저장 중 일시적 DataAccessException이 발생하면 TemporaryOutboxPersistenceException으로 감싼다")
     void handleOutboxEventListThrowsTemporaryOutboxPersistenceExceptionWhenTemporarySaveFails() throws Exception {
         // given
         AbstractOutboxEventList eventList = mock(AbstractOutboxEventList.class);
         AbstractOutboxEvent event = mock(AbstractOutboxEvent.class);
-        Outbox outbox = mock(Outbox.class);
+        JpaOutbox outbox = mock(JpaOutbox.class);
 
         DataAccessException exception =
                 new TransientDataAccessResourceException("temporary outbox save failed");

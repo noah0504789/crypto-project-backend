@@ -1,15 +1,19 @@
-package org.example.common.outbox.domain;
+package org.example.common.outbox.adapter.out;
 
 import jakarta.persistence.*;
 import lombok.*;
 import org.example.common.jpa.BaseEntity;
+import org.example.common.outbox.domain.OutboxDispatchType;
+import org.example.common.outbox.domain.OutboxDomainType;
+import org.example.common.outbox.domain.OutboxStatus;
 
 @Entity
+@Table(name = "outbox")
 @Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Outbox extends BaseEntity {
+public class JpaOutbox extends BaseEntity {
 
     @Id
     private String id;
@@ -36,7 +40,7 @@ public class Outbox extends BaseEntity {
 
     private Integer retryCnt;
 
-    public static Outbox ofPending(
+    public static JpaOutbox ofPending(
             String id,
             String transactionId,
             String aggregateId,
@@ -47,7 +51,7 @@ public class Outbox extends BaseEntity {
             OutboxDomainType domainType,
             OutboxDispatchType dispatchType
     ) {
-        return Outbox.builder()
+        return JpaOutbox.builder()
                 .id(id)
                 .transactionId(transactionId)
                 .aggregateId(aggregateId)

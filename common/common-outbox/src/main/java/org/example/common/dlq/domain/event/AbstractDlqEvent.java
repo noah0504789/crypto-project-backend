@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.example.common.util.EventIdUtils;
 import org.example.common.dlq.domain.DlqStatus;
-import org.example.common.dlq.domain.Dlq;
+import org.example.common.dlq.adapter.out.JpaDlq;
 import org.example.common.outbox.domain.OutboxDomainType;
 
 @Getter
@@ -27,8 +27,8 @@ public abstract class AbstractDlqEvent {
     @JsonIgnore
     private final String errorMessage;
 
-    public Dlq toDlq(String transactionId, String payload) {
-        return Dlq.builder()
+    public JpaDlq toDlq(String transactionId, String payload) {
+        return JpaDlq.builder()
                 .id(generateId())
                 .sourceId(this.sourceId)
                 .eventType(this.getClass().getName())

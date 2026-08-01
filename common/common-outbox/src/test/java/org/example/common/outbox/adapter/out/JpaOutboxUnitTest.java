@@ -1,17 +1,20 @@
-package org.example.common.outbox.domain;
+package org.example.common.outbox.adapter.out;
 
+import org.example.common.outbox.domain.OutboxDispatchType;
+import org.example.common.outbox.domain.OutboxDomainType;
+import org.example.common.outbox.domain.OutboxStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class OutboxUnitTest {
+class JpaOutboxUnitTest {
 
     @Test
-    @DisplayName("create는 PENDING 상태와 retryCnt 0으로 Outbox를 생성한다")
+    @DisplayName("create는 PENDING 상태와 retryCnt 0으로 JpaOutbox를 생성한다")
     void of_createsPendingOutbox() {
         // when
-        Outbox outbox = ofOutbox();
+        JpaOutbox outbox = ofOutbox();
 
         // then
         assertThat(outbox.getId()).isEqualTo("outbox-1");
@@ -32,7 +35,7 @@ class OutboxUnitTest {
     @DisplayName("getDestination은 aggregateType을 반환한다")
     void getDestination_returnsAggregateType() {
         // given
-        Outbox outbox = ofOutbox();
+        JpaOutbox outbox = ofOutbox();
 
         // when
         String destination = outbox.getDestination();
@@ -45,7 +48,7 @@ class OutboxUnitTest {
     @DisplayName("markPublished는 상태를 PUBLISHED로 변경한다")
     void markPublished_changesStatusToPublished() {
         // given
-        Outbox outbox = ofOutbox();
+        JpaOutbox outbox = ofOutbox();
 
         // when
         outbox.markPublished();
@@ -58,7 +61,7 @@ class OutboxUnitTest {
     @DisplayName("markFailed는 상태를 FAILED로 변경한다")
     void markFailed_changesStatusToFailed() {
         // given
-        Outbox outbox = ofOutbox();
+        JpaOutbox outbox = ofOutbox();
 
         // when
         outbox.markFailed();
@@ -71,7 +74,7 @@ class OutboxUnitTest {
     @DisplayName("increaseRetryCnt는 retryCnt를 1 증가시킨다")
     void increaseRetryCnt_increasesRetryCount() {
         // given
-        Outbox outbox = ofOutbox();
+        JpaOutbox outbox = ofOutbox();
 
         // when
         outbox.increaseRetryCnt();
@@ -84,7 +87,7 @@ class OutboxUnitTest {
     @DisplayName("increaseRetryCnt는 여러 번 호출되면 호출 횟수만큼 증가한다")
     void increaseRetryCnt_increasesEveryCall() {
         // given
-        Outbox outbox = ofOutbox();
+        JpaOutbox outbox = ofOutbox();
 
         // when
         outbox.increaseRetryCnt();
@@ -99,7 +102,7 @@ class OutboxUnitTest {
     @DisplayName("retryCnt가 maxRetryCnt 이상이면 재시도 소진으로 판단한다")
     void isRetryExhausted_returnsTrueWhenRetryCntIsGreaterThanOrEqualMaxRetryCnt() {
         // given
-        Outbox outbox = ofOutbox();
+        JpaOutbox outbox = ofOutbox();
 
         outbox.increaseRetryCnt();
         outbox.increaseRetryCnt();
@@ -115,7 +118,7 @@ class OutboxUnitTest {
     @DisplayName("retryCnt가 null이면 재시도 소진으로 판단하지 않는다")
     void isRetryExhausted_returnsFalseWhenRetryCntIsNull() {
         // given
-        Outbox outbox = Outbox.ofPending(
+        JpaOutbox outbox = JpaOutbox.ofPending(
                 "outbox-1",
                 "tx-1",
                 "aggregate-1",
@@ -131,8 +134,8 @@ class OutboxUnitTest {
         assertThat(outbox.isRetryExhausted(1)).isFalse();
     }
 
-    private Outbox ofOutbox() {
-        return Outbox.ofPending(
+    private JpaOutbox ofOutbox() {
+        return JpaOutbox.ofPending(
                 "outbox-1",
                 "tx-1",
                 "aggregate-1",

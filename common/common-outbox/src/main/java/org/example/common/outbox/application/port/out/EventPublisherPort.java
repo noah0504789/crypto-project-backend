@@ -1,11 +1,11 @@
 package org.example.common.outbox.application.port.out;
 
-import org.example.common.dlq.domain.Dlq;
-import org.example.common.outbox.domain.Outbox;
+import org.example.common.dlq.adapter.out.JpaDlq;
+import org.example.common.outbox.adapter.out.JpaOutbox;
 
 public interface EventPublisherPort {
 
-    void publish(Outbox outbox);
+    void publish(JpaOutbox outbox);
 
-    void publish(Dlq dlq);
+    void publish(JpaDlq dlq);
 }
