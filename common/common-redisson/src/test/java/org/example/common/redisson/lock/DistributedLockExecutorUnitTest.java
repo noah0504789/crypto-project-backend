@@ -1,4 +1,4 @@
-package org.example.common.redis.lock;
+package org.example.common.redisson.lock;
 
 import org.example.common.exception.DistributedLockAcquireFailedException;
 import org.example.common.exception.DistributedLockInterruptedException;

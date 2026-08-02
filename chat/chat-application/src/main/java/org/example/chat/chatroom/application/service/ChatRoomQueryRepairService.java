@@ -10,8 +10,8 @@ import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException;
-import org.example.common.redis.lock.DistributedLockExecutor;
-import org.example.common.redis.lock.DistributedLockPolicy;
+import org.example.common.redisson.lock.DistributedLockExecutor;
+import org.example.common.redisson.lock.DistributedLockPolicy;
 import org.springframework.stereotype.Service;
 
 import java.util.*;

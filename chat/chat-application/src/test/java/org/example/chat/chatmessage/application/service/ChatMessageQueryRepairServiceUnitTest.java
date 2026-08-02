@@ -4,8 +4,8 @@ import org.example.chat.chatmessage.application.service.query.ListChatMessagesQu
 import org.example.chat.chatmessage.application.port.out.ChatMessageCachePort;
 import org.example.chat.chatmessage.application.port.out.ChatMessagePersistencePort;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
-import org.example.common.redis.lock.DistributedLockExecutor;
-import org.example.common.redis.lock.DistributedLockPolicy;
+import org.example.common.redisson.lock.DistributedLockExecutor;
+import org.example.common.redisson.lock.DistributedLockPolicy;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

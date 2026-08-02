@@ -1,4 +1,4 @@
-package org.example.common.redis.config;
+package org.example.common.redisson.config;
 
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;

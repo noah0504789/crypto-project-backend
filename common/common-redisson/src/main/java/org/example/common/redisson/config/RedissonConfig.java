@@ -1,4 +1,4 @@
-package org.example.common.redis.config;
+package org.example.common.redisson.config;
 
 import lombok.RequiredArgsConstructor;
 import org.example.common.properties.AppRedisProperties;
