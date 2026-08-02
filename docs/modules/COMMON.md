@@ -27,14 +27,14 @@
 
 | 모듈 | 역할 | 핵심 산출물 | 주요 의존 |
 |---|---|---|---|
-| `common-core` | 계약 상수·공통 예외·프로퍼티·검증·시계 | enums(`RedisKey`·`KafkaTopic`·`KafkaHeaderKey`·`StompDestination`·`JwtClaimKey`·`JwtHeaderKey`·`HttpHeaderKey`·`AuthTokenKey`·`RoleKey`·`PriceAlertChangeRateThreshold`), 예외(`InfrastructureException`·`InvalidRequestException`·`ResourceNotFoundException` 등), 프로퍼티(`JwtProperties`·`ApiPathProperties`·`AppRedisProperties`·`FrontendProperties`), `ValidationResult`·`@NotBlankIfPresent`, `Clock`/`ClockService` | validation starter |
+| `common-core` | 계약 상수·공통 예외·프로퍼티·검증·시계 | enums(`RedisKey`·`KafkaTopic`·`KafkaHeaderKey`·`StompDestination`·`JwtClaimKey`·`JwtHeaderKey`·`HttpHeaderKey`·`AuthTokenKey`·`RoleKey`·`PriceAlertChangeRateThreshold`), 예외(`InfrastructureException`·`InvalidRequestException`·`ResourceNotFoundException` 등), 프로퍼티(`JwtProperties`·`ApiPathProperties`·`AppRedisProperties`·`FrontendProperties`), `ValidationResult`·`@NotBlankIfPresent`, `Clock`/`ClockService`, 시간(`ServiceZoneUtils`(ZONE_ID)·`ServiceTimeConverter`(LocalDateTime↔Instant 변환)) | validation starter |
 | `common-jpa` | JPA + Read Replica 라우팅 | `BaseEntity`, `@ReadReplica`, `ReadReplicaAspect`, `DataSourceContextHolder`, `DataSourceType`, `ReplicationRoutingDataSource` | data-jpa, aop, mysql(runtime) |
 | `common-event` | Kafka 이벤트 계약·메시지 생성·발행 유틸 | `KafkaEvent`, `KafkaEventFactory`, `EventUtils`, `EventsInitializer`, `HandleableEvent`, `ProducibleEvent`, `RecoverableEvent`, `TypedKey`/`TypedPayload` | common-core, stream-kafka |
 | `common-inbox` | Consumer Inbox 멱등 처리 | `AbstractInboxEvent`, `InboxEvent`/`InboxEventService`, `InboxException` 계층 | common-jpa, common-core, common-util, spring-messaging |
 | `common-web` | REST(MVC) 공통 | `GlobalExceptionHandler`(`@RestControllerAdvice`), `CursorPage`/`CursorPages`, `MessageConverterConfig` | common-core, web, validation |
 | `common-grpc` | gRPC 예외 처리 | `BaseGrpcExceptionAdvice`, `GrpcExceptionTranslator`, `GrpcClientException`, `GrpcFailureCode` | common-core, grpc(bom/stub/server-starter) |
 | `common-outbox` | Outbox/DLQ 도메인·서비스(헥사고날) | `Outbox`/`OutboxStatus`/`OutboxService`/`OutboxEventListListener`, `Dlq`/`DlqStatus`/`DlqService`, `Abstract*OutboxEvent(List)`, `*PublishPort` | common-jpa, common-event, common-util, jackson |
-| `common-redis` | Redis 코덱·Fail-open·연산 | `RedisValueCodec`, `RedisHashCodec`, `CacheFailOpen`(+`Aspect`), `StringRedisHashOperations`, `RedisConnectionFactorySupport` | common-core, data-redis, aop |
+| `common-redis` | Redis 코덱·Fail-open·연산 | `RedisValueCodec`, `RedisHashCodec`, `RedisCodecSupport`/`RedisCodecException`(codec 공통 헬퍼: str/parse/toJson/fromJson), `CacheFailOpen`(+`Aspect`), `StringRedisHashOperations`, `RedisConnectionFactorySupport` | common-core, data-redis, aop, jackson |
 | `common-redisson` | 분산락 | `DistributedLockExecutor`, `DistributedLockPolicy`, `RedissonConfig` | common-core, redisson starter |
 | `common-id` | ID 생성 | `SnowflakeIdGenerator`/`SnowflakeIdProvider`, `@SnowflakeId`, `ObjectIdGenerator`(Mongo `ObjectId`), `IdGenProperties` | common-core, mongodb-bson, data-jpa |
 | `common-mongo` | Mongo 매핑 설정 | `SnakeCaseFieldNamingStrategy`, `Date↔LocalDateTime` 컨버터 | common-core, data-mongodb |
