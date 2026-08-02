@@ -32,7 +32,7 @@ public class ChatRoomCacheUpdateEvent extends AbstractOutboxEvent implements Han
     }
 
     @Override
-    protected OutboxDomainType getDomainType() {
+    public OutboxDomainType getDomainType() {
         return OutboxDomainType.CHAT;
     }
 }

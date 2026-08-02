@@ -31,17 +31,17 @@ public class ChatMessageBroadcastEvent extends AbstractOutboxEvent {
     }
 
     @Override
-    protected OutboxDispatchType getDispatchType() {
+    public OutboxDispatchType getDispatchType() {
         return OutboxDispatchType.BROADCAST;
     }
 
     @Override
-    protected String getMessageType() {
+    public String getMessageType() {
         return ChatMessageBroadcastEvent.class.getName();
     }
 
     @Override
-    protected OutboxDomainType getDomainType() {
+    public OutboxDomainType getDomainType() {
         return OutboxDomainType.CHAT;
     }
 }

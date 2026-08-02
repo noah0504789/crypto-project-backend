@@ -75,9 +75,9 @@ public class JpaOutbox extends BaseEntity {
                 .aggregateType(event.getAggregateType())
                 .partitionKey(event.getPartitionKey())
                 .payload(payload)
-                .eventType(event.messageType())
-                .domainType(event.domainType())
-                .dispatchType(event.dispatchType())
+                .eventType(event.getMessageType())
+                .domainType(event.getDomainType())
+                .dispatchType(event.getDispatchType())
                 .status(OutboxStatus.PENDING)
                 .retryCnt(0)
                 .build();

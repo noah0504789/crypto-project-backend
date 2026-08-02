@@ -34,7 +34,7 @@ public class ChatRoomUpdatedEvent extends AbstractOutboxEvent implements Handlea
     }
 
     @Override
-    protected OutboxDomainType getDomainType() {
+    public OutboxDomainType getDomainType() {
         return OutboxDomainType.CHAT;
     }
 }
