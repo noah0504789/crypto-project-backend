@@ -10,8 +10,7 @@ import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException;
-import org.example.common.redisson.lock.DistributedLockExecutor;
-import org.example.common.redisson.lock.DistributedLockPolicy;
+import org.example.common.redisson.singleflight.SingleFlight;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -27,14 +26,13 @@ public class ChatRoomQueryRepairService {
 
     private final ChatRoomCachePort cache;
     private final ChatRoomPersistencePort persistence;
-    private final DistributedLockExecutor distributedLockExecutor;
+    private final SingleFlight singleFlight;
 
     public ChatRoom repairRoom(String roomId) {
-        return distributedLockExecutor.execute(
+        return singleFlight.execute(
                 "chatroom:findById:" + roomId,
                 () -> cache.findById(roomId)
-                        .orElseGet(() -> loadRoomAndWarmUp(roomId)),
-                DistributedLockPolicy.CACHE_WARM_UP
+                        .orElseGet(() -> loadRoomAndWarmUp(roomId))
         );
     }
 
@@ -50,50 +48,46 @@ public class ChatRoomQueryRepairService {
     }
 
     public List<ChatRoom> repairPopularRooms(ChatRoomCategory category, int limit) {
-        return distributedLockExecutor.execute(
+        return singleFlight.execute(
                 "chatroom:listMostPopular:" + category.name() + ":" + limit,
                 () -> repairCachedRooms(
                         cache.listPopularRooms(category, limit),
                         () -> loadPopularRoomsAndWarmUp(category, limit),
                         limit
-                ),
-                DistributedLockPolicy.CACHE_WARM_UP
+                )
         );
     }
 
     public List<ChatRoom> repairPopularRoomsAfter(ListPopularChatRoomsQuery query) {
-        return distributedLockExecutor.execute(
+        return singleFlight.execute(
                 "chatroom:listNextPopular:" + query.category().name() + ":" + query.lastRoomId() + ":" + query.lastPopularity() + ":" + query.limit(),
                 () -> repairCachedRooms(
                         cache.listPopularRoomsAfter(query.category(), query.lastRoomId(), query.lastPopularity(), query.limit()),
                         () -> loadPopularRoomsAfterAndWarmUp(query.category(), query.lastRoomId(), query.lastPopularity(), query.limit()),
                         query.limit()
-                ),
-                DistributedLockPolicy.CACHE_WARM_UP
+                )
         );
     }
 
     public List<ChatRoom> repairMyRooms(String memberId, int limit) {
-        return distributedLockExecutor.execute(
+        return singleFlight.execute(
                 "chatroom:listLatestActive:" + memberId + ":" + limit,
                 () -> repairCachedRooms(
                         cache.listLatestActiveRooms(memberId, limit),
                         () -> loadMyRoomsAndWarmUp(memberId, limit),
                         limit
-                ),
-                DistributedLockPolicy.CACHE_WARM_UP
+                )
         );
     }
 
     public List<ChatRoom> repairMyRoomsBefore(ListMyChatRoomsQuery query, Long score) {
-        return distributedLockExecutor.execute(
+        return singleFlight.execute(
                 "chatroom:listActiveBefore:" + query.memberId() + ":" + query.lastMsgId() + ":" + score + ":" + query.limit(),
                 () -> repairCachedRooms(
                         cache.listActiveRoomsBefore(query.memberId(), query.lastMsgId(), score, query.limit()),
                         () -> loadMyRoomsBeforeAndWarmUp(query.memberId(), query.lastMsgId(), score, query.limit()),
                         query.limit()
-                ),
-                DistributedLockPolicy.CACHE_WARM_UP
+                )
         );
     }
 

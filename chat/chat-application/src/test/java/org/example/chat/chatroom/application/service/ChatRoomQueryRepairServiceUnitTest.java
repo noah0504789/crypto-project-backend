@@ -8,8 +8,7 @@ import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
-import org.example.common.redisson.lock.DistributedLockExecutor;
-import org.example.common.redisson.lock.DistributedLockPolicy;
+import org.example.common.redisson.singleflight.SingleFlight;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -38,12 +37,11 @@ class ChatRoomQueryRepairServiceUnitTest {
     private ChatRoomPersistencePort persistence;
 
     @Mock
-    private DistributedLockExecutor distributedLockExecutor;
+    private SingleFlight singleFlight;
 
     @InjectMocks
     private ChatRoomQueryRepairService sut;
 
-    private final DistributedLockPolicy distributedLockPolicy = DistributedLockPolicy.CACHE_WARM_UP;
 
     @Mock
     private ChatRoom room;
@@ -70,10 +68,9 @@ class ChatRoomQueryRepairServiceUnitTest {
             // then
             assertThat(result).isSameAs(room);
 
-            verify(distributedLockExecutor).execute(
+            verify(singleFlight).execute(
                     anyString(),
-                    any(),
-                    eq(distributedLockPolicy)
+                    any()
             );
             verify(persistence, never()).findByIdWithLatestMessage(anyString());
             verify(cache, never()).warmUp(any());
@@ -210,7 +207,7 @@ class ChatRoomQueryRepairServiceUnitTest {
             // then
             assertThat(result).isEmpty();
 
-            verify(distributedLockExecutor, never()).execute(anyString(), any(), any());
+            verify(singleFlight, never()).execute(anyString(), any());
         }
 
         @Test
@@ -222,7 +219,7 @@ class ChatRoomQueryRepairServiceUnitTest {
             // then
             assertThat(result).isEmpty();
 
-            verify(distributedLockExecutor, never()).execute(anyString(), any(), any());
+            verify(singleFlight, never()).execute(anyString(), any());
         }
     }
 
@@ -566,10 +563,9 @@ class ChatRoomQueryRepairServiceUnitTest {
     }
 
     private void givenLockExecutorRunsSupplier() {
-        when(distributedLockExecutor.execute(
+        when(singleFlight.execute(
                 anyString(),
-                any(),
-                eq(distributedLockPolicy)
+                any()
         )).thenAnswer(invocation -> {
             Supplier<?> supplier = invocation.getArgument(1);
             return supplier.get();
