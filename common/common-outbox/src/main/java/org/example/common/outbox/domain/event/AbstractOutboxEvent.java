@@ -4,10 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.example.common.util.EventIdUtils;
-import org.example.common.outbox.adapter.out.JpaOutbox;
 import org.example.common.outbox.domain.OutboxDispatchType;
 import org.example.common.outbox.domain.OutboxDomainType;
-import org.example.common.outbox.domain.OutboxStatus;
 
 @Getter
 @RequiredArgsConstructor
@@ -32,20 +30,17 @@ public abstract class AbstractOutboxEvent {
 
     protected abstract OutboxDomainType getDomainType();
 
-    public JpaOutbox toOutbox(String transactionId, String payload) {
-        return JpaOutbox.builder()
-                .id(generateId())
-                .transactionId(transactionId)
-                .aggregateId(aggregateId)
-                .aggregateType(aggregateType)
-                .partitionKey(partitionKey)
-                .payload(payload)
-                .eventType(getMessageType())
-                .domainType(getDomainType())
-                .dispatchType(getDispatchType())
-                .status(OutboxStatus.PENDING)
-                .retryCnt(0)
-                .build();
+    // adapter(out) 매핑용 공개 접근자. 실제 값 계산은 protected 훅에 위임해 하위 override를 그대로 존중한다.
+    public OutboxDispatchType dispatchType() {
+        return getDispatchType();
+    }
+
+    public String messageType() {
+        return getMessageType();
+    }
+
+    public OutboxDomainType domainType() {
+        return getDomainType();
     }
 
     public String generateId() {

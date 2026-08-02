@@ -12,9 +12,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataRetrievalFailureException;
@@ -26,11 +26,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -66,36 +65,23 @@ class OutboxEventListListenerUnitTest {
         given(objectMapper.writeValueAsString(event1)).willReturn("payload-1");
         given(objectMapper.writeValueAsString(event2)).willReturn("payload-2");
 
-        given(event1.toOutbox(txId, "payload-1")).willReturn(outbox1);
-        given(event2.toOutbox(txId, "payload-2")).willReturn(outbox2);
+        try (MockedStatic<JpaOutbox> jpaOutbox = mockStatic(JpaOutbox.class)) {
+            jpaOutbox.when(() -> JpaOutbox.from(event1, txId, "payload-1")).thenReturn(outbox1);
+            jpaOutbox.when(() -> JpaOutbox.from(event2, txId, "payload-2")).thenReturn(outbox2);
 
-        // when
-        sut.handleOutboxEventList(eventList);
+            // when
+            sut.handleOutboxEventList(eventList);
 
-        // then
-        InOrder inOrder = inOrder(
-                eventList,
-                objectMapper,
-                event1,
-                event2,
-                outboxService
-        );
-
-        inOrder.verify(eventList).getTxId();
-        inOrder.verify(eventList).getEventList();
-
-        inOrder.verify(objectMapper).writeValueAsString(event1);
-        inOrder.verify(event1).toOutbox(txId, "payload-1");
-
-        inOrder.verify(objectMapper).writeValueAsString(event2);
-        inOrder.verify(event2).toOutbox(txId, "payload-2");
+            // then
+            verify(objectMapper).writeValueAsString(event1);
+            verify(objectMapper).writeValueAsString(event2);
+            jpaOutbox.verify(() -> JpaOutbox.from(event1, txId, "payload-1"));
+            jpaOutbox.verify(() -> JpaOutbox.from(event2, txId, "payload-2"));
+        }
 
         ArgumentCaptor<List<JpaOutbox>> captor = ArgumentCaptor.forClass(List.class);
-
         verify(outboxService).saveAll(captor.capture());
-
-        assertThat(captor.getValue())
-                .containsExactly(outbox1, outbox2);
+        assertThat(captor.getValue()).containsExactly(outbox1, outbox2);
     }
 
     @Test
@@ -112,11 +98,8 @@ class OutboxEventListListenerUnitTest {
 
         // then
         ArgumentCaptor<List<JpaOutbox>> captor = ArgumentCaptor.forClass(List.class);
-
         verify(outboxService).saveAll(captor.capture());
-
         assertThat(captor.getValue()).isEmpty();
-
         verify(objectMapper, never()).writeValueAsString(any());
     }
 
@@ -132,17 +115,19 @@ class OutboxEventListListenerUnitTest {
         given(eventList.getTxId()).willReturn(txId);
         given(eventList.getEventList()).willReturn(List.of(event));
 
-        given(objectMapper.writeValueAsString(event))
-                .willThrow(exception);
+        given(objectMapper.writeValueAsString(event)).willThrow(exception);
 
-        // when & then
-        assertThatThrownBy(() -> sut.handleOutboxEventList(eventList))
-                .isInstanceOf(OutboxPersistenceException.class)
-                .hasMessageContaining("failed to serialize outbox events")
-                .hasCause(exception);
+        try (MockedStatic<JpaOutbox> jpaOutbox = mockStatic(JpaOutbox.class)) {
+            // when & then
+            assertThatThrownBy(() -> sut.handleOutboxEventList(eventList))
+                    .isInstanceOf(OutboxPersistenceException.class)
+                    .hasMessageContaining("failed to serialize outbox events")
+                    .hasCause(exception);
 
-        verify(objectMapper).writeValueAsString(event);
-        verify(event, never()).toOutbox(anyString(), anyString());
+            verify(objectMapper).writeValueAsString(event);
+            jpaOutbox.verifyNoInteractions();
+        }
+
         verify(outboxService, never()).saveAll(anyList());
     }
 
@@ -161,21 +146,23 @@ class OutboxEventListListenerUnitTest {
         given(eventList.getEventList()).willReturn(List.of(event));
 
         given(objectMapper.writeValueAsString(event)).willReturn("payload");
-        given(event.toOutbox(txId, "payload")).willReturn(outbox);
 
-        doThrow(exception)
-                .when(outboxService)
-                .saveAll(anyList());
+        doThrow(exception).when(outboxService).saveAll(anyList());
 
-        // when & then
-        assertThatThrownBy(() -> sut.handleOutboxEventList(eventList))
-                .isInstanceOf(OutboxPersistenceException.class)
-                .isNotInstanceOf(TemporaryOutboxPersistenceException.class)
-                .hasMessageContaining("failed to save outbox events")
-                .hasCause(exception);
+        try (MockedStatic<JpaOutbox> jpaOutbox = mockStatic(JpaOutbox.class)) {
+            jpaOutbox.when(() -> JpaOutbox.from(event, txId, "payload")).thenReturn(outbox);
+
+            // when & then
+            assertThatThrownBy(() -> sut.handleOutboxEventList(eventList))
+                    .isInstanceOf(OutboxPersistenceException.class)
+                    .isNotInstanceOf(TemporaryOutboxPersistenceException.class)
+                    .hasMessageContaining("failed to save outbox events")
+                    .hasCause(exception);
+
+            jpaOutbox.verify(() -> JpaOutbox.from(event, txId, "payload"));
+        }
 
         verify(objectMapper).writeValueAsString(event);
-        verify(event).toOutbox(txId, "payload");
         verify(outboxService).saveAll(anyList());
     }
 
@@ -194,20 +181,20 @@ class OutboxEventListListenerUnitTest {
         given(eventList.getEventList()).willReturn(List.of(event));
 
         given(objectMapper.writeValueAsString(event)).willReturn("payload");
-        given(event.toOutbox(txId, "payload")).willReturn(outbox);
 
-        doThrow(exception)
-                .when(outboxService)
-                .saveAll(anyList());
+        doThrow(exception).when(outboxService).saveAll(anyList());
 
-        // when & then
-        assertThatThrownBy(() -> sut.handleOutboxEventList(eventList))
-                .isInstanceOf(TemporaryOutboxPersistenceException.class)
-                .hasMessageContaining("failed to save outbox events")
-                .hasCause(exception);
+        try (MockedStatic<JpaOutbox> jpaOutbox = mockStatic(JpaOutbox.class)) {
+            jpaOutbox.when(() -> JpaOutbox.from(event, txId, "payload")).thenReturn(outbox);
+
+            // when & then
+            assertThatThrownBy(() -> sut.handleOutboxEventList(eventList))
+                    .isInstanceOf(TemporaryOutboxPersistenceException.class)
+                    .hasMessageContaining("failed to save outbox events")
+                    .hasCause(exception);
+        }
 
         verify(objectMapper).writeValueAsString(event);
-        verify(event).toOutbox(txId, "payload");
         verify(outboxService).saveAll(anyList());
     }
 
@@ -224,16 +211,20 @@ class OutboxEventListListenerUnitTest {
         given(eventList.getEventList()).willReturn(List.of(event));
 
         given(objectMapper.writeValueAsString(event)).willReturn("payload");
-        given(event.toOutbox(txId, "payload")).willThrow(exception);
 
-        // when & then
-        assertThatThrownBy(() -> sut.handleOutboxEventList(eventList))
-                .isInstanceOf(OutboxPersistenceException.class)
-                .hasMessageContaining("failed to handle outbox event list")
-                .hasCause(exception);
+        try (MockedStatic<JpaOutbox> jpaOutbox = mockStatic(JpaOutbox.class)) {
+            jpaOutbox.when(() -> JpaOutbox.from(event, txId, "payload")).thenThrow(exception);
+
+            // when & then
+            assertThatThrownBy(() -> sut.handleOutboxEventList(eventList))
+                    .isInstanceOf(OutboxPersistenceException.class)
+                    .hasMessageContaining("failed to handle outbox event list")
+                    .hasCause(exception);
+
+            jpaOutbox.verify(() -> JpaOutbox.from(event, txId, "payload"));
+        }
 
         verify(objectMapper).writeValueAsString(event);
-        verify(event).toOutbox(txId, "payload");
         verify(outboxService, never()).saveAll(anyList());
     }
 }

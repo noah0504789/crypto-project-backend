@@ -34,7 +34,7 @@ public class OutboxEventListListener {
 
             for (AbstractOutboxEvent event : eventList.getEventList()) {
                 String payload = objectMapper.writeValueAsString(event);
-                outboxes.add(event.toOutbox(txId, payload));
+                outboxes.add(JpaOutbox.from(event, txId, payload));
             }
 
             outboxService.saveAll(outboxes);

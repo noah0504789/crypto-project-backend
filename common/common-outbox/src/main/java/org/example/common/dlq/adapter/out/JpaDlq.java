@@ -3,6 +3,7 @@ package org.example.common.dlq.adapter.out;
 import jakarta.persistence.*;
 import lombok.*;
 import org.example.common.dlq.domain.DlqStatus;
+import org.example.common.dlq.domain.event.AbstractDlqEvent;
 import org.example.common.jpa.BaseEntity;
 import org.example.common.outbox.domain.OutboxDomainType;
 
@@ -55,6 +56,21 @@ public class JpaDlq extends BaseEntity {
                 .domainType(domainType)
                 .status(DlqStatus.PENDING)
                 .errorMessage(errorMessage)
+                .payload(payload)
+                .build();
+    }
+
+    public static JpaDlq from(AbstractDlqEvent event, String transactionId, String payload) {
+        return JpaDlq.builder()
+                .id(event.generateId())
+                .sourceId(event.getSourceId())
+                .eventType(event.getClass().getName())
+                .aggregateId(event.getAggregateId())
+                .aggregateType(event.getAggregateType())
+                .transactionId(transactionId)
+                .domainType(event.getDomainType())
+                .status(DlqStatus.PENDING)
+                .errorMessage(event.getErrorMessage())
                 .payload(payload)
                 .build();
     }

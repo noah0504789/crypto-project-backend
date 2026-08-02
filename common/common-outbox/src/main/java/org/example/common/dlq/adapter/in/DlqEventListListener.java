@@ -38,7 +38,7 @@ public class DlqEventListListener {
 
             for (AbstractDlqEvent event : eventList.getEventList()) {
                 String payload = objectMapper.writeValueAsString(event);
-                dlqList.add(event.toDlq(txId, payload));
+                dlqList.add(JpaDlq.from(event, txId, payload));
             }
 
             dlqService.saveAll(dlqList);

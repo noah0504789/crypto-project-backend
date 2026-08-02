@@ -6,6 +6,7 @@ import org.example.common.jpa.BaseEntity;
 import org.example.common.outbox.domain.OutboxDispatchType;
 import org.example.common.outbox.domain.OutboxDomainType;
 import org.example.common.outbox.domain.OutboxStatus;
+import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 
 @Entity
 @Table(name = "outbox")
@@ -61,6 +62,22 @@ public class JpaOutbox extends BaseEntity {
                 .eventType(eventType)
                 .domainType(domainType)
                 .dispatchType(dispatchType)
+                .status(OutboxStatus.PENDING)
+                .retryCnt(0)
+                .build();
+    }
+
+    public static JpaOutbox from(AbstractOutboxEvent event, String transactionId, String payload) {
+        return JpaOutbox.builder()
+                .id(event.generateId())
+                .transactionId(transactionId)
+                .aggregateId(event.getAggregateId())
+                .aggregateType(event.getAggregateType())
+                .partitionKey(event.getPartitionKey())
+                .payload(payload)
+                .eventType(event.messageType())
+                .domainType(event.domainType())
+                .dispatchType(event.dispatchType())
                 .status(OutboxStatus.PENDING)
                 .retryCnt(0)
                 .build();
