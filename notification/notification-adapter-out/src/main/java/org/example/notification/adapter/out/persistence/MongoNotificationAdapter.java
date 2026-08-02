@@ -95,6 +95,72 @@ public class MongoNotificationAdapter implements NotificationPersistencePort {
         return modifiedCount > 0;
     }
 
+    @Override
+    public List<NotificationRecipient> listLatestRecipients(UUID receiverId, int limit) {
+        if (receiverId == null || limit <= 0) {
+            return List.of();
+        }
+
+        return toDomainRecipients(notificationRecipientRepository.listLatest(receiverId, limit));
+    }
+
+    @Override
+    public List<NotificationRecipient> listRecipientsBefore(
+            UUID receiverId,
+            String lastRecipientId,
+            Long lastDeliveredAtMs,
+            int limit
+    ) {
+        if (receiverId == null
+                || lastRecipientId == null
+                || lastRecipientId.isBlank()
+                || !ObjectId.isValid(lastRecipientId)
+                || lastDeliveredAtMs == null
+                || limit <= 0
+        ) {
+            return List.of();
+        }
+
+        ObjectId lastRecipientObjectId = new ObjectId(lastRecipientId);
+        Instant lastDeliveredAt = Instant.ofEpochMilli(lastDeliveredAtMs);
+
+        return toDomainRecipients(
+                notificationRecipientRepository.listHistoricalBefore(receiverId, lastRecipientObjectId, lastDeliveredAt, limit)
+        );
+    }
+
+    @Override
+    public List<Notification> findMastersByIds(Set<String> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+
+        Set<ObjectId> objectIds = ids.stream()
+                .filter(Objects::nonNull)
+                .filter(ObjectId::isValid)
+                .map(ObjectId::new)
+                .collect(Collectors.toSet());
+
+        if (objectIds.isEmpty()) {
+            return List.of();
+        }
+
+        return notificationRepository.findByIdInAndDeletedFalse(objectIds)
+                .stream()
+                .map(MongoNotification::toDomain)
+                .toList();
+    }
+
+    private List<NotificationRecipient> toDomainRecipients(List<MongoNotificationRecipient> mongoRecipients) {
+        if (mongoRecipients == null || mongoRecipients.isEmpty()) {
+            return List.of();
+        }
+
+        return mongoRecipients.stream()
+                .map(MongoNotificationRecipient::toDomain)
+                .toList();
+    }
+
     private List<NotificationInboxItem> findInboxItemsByRecipientsFromPrimary(List<MongoNotificationRecipient> mongoRecipients) {
         return findInboxItemsByRecipients(mongoRecipients, notificationRepository::findByIdInAndDeletedFalse);
     }

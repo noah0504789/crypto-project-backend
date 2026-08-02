@@ -5,6 +5,7 @@ import org.example.notification.domain.model.Notification;
 import org.example.notification.domain.model.NotificationRecipient;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 public interface NotificationPersistencePort {
@@ -17,6 +18,17 @@ public interface NotificationPersistencePort {
             Long lastDeliveredAtMs,
             int limit
     );
+
+    List<NotificationRecipient> listLatestRecipients(UUID receiverId, int limit);
+
+    List<NotificationRecipient> listRecipientsBefore(
+            UUID receiverId,
+            String lastRecipientId,
+            Long lastDeliveredAtMs,
+            int limit
+    );
+
+    List<Notification> findMastersByIds(Set<String> ids);
 
     Notification save(Notification notification);
 
