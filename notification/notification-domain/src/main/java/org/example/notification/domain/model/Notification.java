@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.example.common.time.ServiceZoneUtils;
+import org.example.common.time.ServiceTimeConverter;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -96,13 +96,6 @@ public class Notification {
     }
 
     public long getCreatedAtMs() {
-        if (createdAt == null) {
-            return 0L;
-        }
-
-        return createdAt
-                .atZone(ServiceZoneUtils.ZONE_ID)
-                .toInstant()
-                .toEpochMilli();
+        return ServiceTimeConverter.toEpochMillis(createdAt);
     }
 }

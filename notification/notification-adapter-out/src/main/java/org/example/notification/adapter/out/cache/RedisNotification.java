@@ -6,13 +6,12 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
-import org.example.common.time.ServiceZoneUtils;
+import org.example.common.time.ServiceTimeConverter;
 import org.example.notification.domain.model.Notification;
 import org.example.notification.domain.model.NotificationMessagePart;
 import org.example.notification.domain.model.NotificationType;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -50,7 +49,7 @@ public class RedisNotification {
                 .messageParts(domain.getMessageParts())
                 .link(domain.getLink())
                 .payload(domain.getPayload())
-                .createdAt(toInstant(domain.getCreatedAt()))
+                .createdAt(ServiceTimeConverter.toInstant(domain.getCreatedAt()))
                 .build();
     }
 
@@ -68,23 +67,7 @@ public class RedisNotification {
                 payload,
                 false,
                 null,
-                createdAtToLocalDateTime()
+                ServiceTimeConverter.toLocalDateTime(createdAt)
         );
-    }
-
-    private static Instant toInstant(LocalDateTime dateTime) {
-        if (dateTime == null) {
-            return null;
-        }
-
-        return dateTime.atZone(ServiceZoneUtils.ZONE_ID).toInstant();
-    }
-
-    private LocalDateTime createdAtToLocalDateTime() {
-        if (createdAt == null) {
-            return null;
-        }
-
-        return LocalDateTime.ofInstant(createdAt, ServiceZoneUtils.ZONE_ID);
     }
 }

@@ -3,7 +3,7 @@ package org.example.chat.chatroom.domain.model;
 import org.example.chat.chatroom.domain.exception.ChatRoomAccessDeniedException;
 import org.example.chat.chatroom.domain.exception.ChatRoomHostMismatchException;
 import org.example.chat.chatroom.domain.exception.ChatRoomMembershipNotFoundException;
-import org.example.common.time.ServiceZoneUtils;
+import org.example.common.time.ServiceTimeConverter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -374,7 +374,7 @@ class ChatRoomUnitTest {
 
             // then
             assertThat(result).isEqualTo(
-                    createdAt.atZone(ServiceZoneUtils.ZONE_ID).toInstant()
+                    ServiceTimeConverter.toInstant(createdAt)
             );
         }
     }

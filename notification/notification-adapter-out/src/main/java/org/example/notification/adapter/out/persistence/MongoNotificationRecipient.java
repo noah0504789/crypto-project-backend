@@ -16,7 +16,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-import static org.example.common.time.ServiceZoneUtils.ZONE_ID;
+import org.example.common.time.ServiceTimeConverter;
 
 @Document(collection = "notification_recipient")
 @CompoundIndexes({
@@ -61,8 +61,8 @@ public class MongoNotificationRecipient {
                 .notificationId(toObjectId(recipient.getNotificationId()))
                 .receiverId(recipient.getReceiverId())
                 .read(recipient.isRead())
-                .readAt(toInstant(recipient.getReadAt()))
-                .deliveredAt(toInstant(recipient.getDeliveredAt()))
+                .readAt(ServiceTimeConverter.toInstant(recipient.getReadAt()))
+                .deliveredAt(ServiceTimeConverter.toInstant(recipient.getDeliveredAt()))
                 .build();
     }
 
@@ -72,8 +72,8 @@ public class MongoNotificationRecipient {
                 toStringId(notificationId),
                 receiverId,
                 read,
-                toLocalDateTime(readAt),
-                toLocalDateTime(deliveredAt)
+                ServiceTimeConverter.toLocalDateTime(readAt),
+                ServiceTimeConverter.toLocalDateTime(deliveredAt)
         );
     }
 
@@ -85,13 +85,6 @@ public class MongoNotificationRecipient {
         return id.toHexString();
     }
 
-    private static LocalDateTime toLocalDateTime(Instant instant) {
-        if (instant == null) {
-            return null;
-        }
-
-        return LocalDateTime.ofInstant(instant, ZONE_ID);
-    }
 
     private static ObjectId toObjectId(String id) {
         if (id == null || id.isBlank()) {
@@ -101,11 +94,4 @@ public class MongoNotificationRecipient {
         return new ObjectId(id);
     }
 
-    private static Instant toInstant(LocalDateTime dateTime) {
-        if (dateTime == null) {
-            return null;
-        }
-
-        return dateTime.atZone(ZONE_ID).toInstant();
-    }
 }

@@ -11,7 +11,5 @@ dependencies {
     implementation project(':market:market-client')
     implementation project(':notification:notification-application')
 
-    implementation(libs.jackson.databind)
-
     testImplementation project(':common:common-test')
 }

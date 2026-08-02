@@ -1,7 +1,7 @@
 package org.example.user.account.domain.model;
 
 import lombok.*;
-import org.example.common.time.ServiceZoneUtils;
+import org.example.common.time.ServiceTimeConverter;
 import org.example.user.account.domain.exception.UserAccessDeniedException;
 import org.example.user.role.domain.model.Role;
 import org.example.user.role.domain.model.RoleEnum;
@@ -123,6 +123,6 @@ public class User {
     }
 
     public Instant toInstant() {
-        return createdAt.atZone(ServiceZoneUtils.ZONE_ID).toInstant();
+        return ServiceTimeConverter.toInstant(createdAt);
     }
 }

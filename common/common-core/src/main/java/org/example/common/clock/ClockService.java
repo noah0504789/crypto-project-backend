@@ -5,7 +5,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.LocalDateTime;
 
-import static org.example.common.time.ServiceZoneUtils.ZONE_ID;
+import static org.example.common.time.ServiceTimeConverter.ZONE_ID;
 
 @Service
 public class ClockService implements Clock {

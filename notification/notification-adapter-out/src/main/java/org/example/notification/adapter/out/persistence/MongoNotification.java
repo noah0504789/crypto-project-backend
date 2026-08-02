@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-import static org.example.common.time.ServiceZoneUtils.ZONE_ID;
+import org.example.common.time.ServiceTimeConverter;
 
 @Document(collection = "notification")
 @CompoundIndexes({
@@ -63,8 +63,8 @@ public class MongoNotification {
                 .link(notification.getLink())
                 .payload(copyPayload(notification.getPayload()))
                 .deleted(notification.isDeleted())
-                .deletedAt(toInstant(notification.getDeletedAt()))
-                .createdAt(toInstant(notification.getCreatedAt()))
+                .deletedAt(ServiceTimeConverter.toInstant(notification.getDeletedAt()))
+                .createdAt(ServiceTimeConverter.toInstant(notification.getCreatedAt()))
                 .build();
     }
 
@@ -78,8 +78,8 @@ public class MongoNotification {
                 link,
                 copyPayload(payload),
                 deleted,
-                toLocalDateTime(deletedAt),
-                toLocalDateTime(createdAt)
+                ServiceTimeConverter.toLocalDateTime(deletedAt),
+                ServiceTimeConverter.toLocalDateTime(createdAt)
         );
     }
 
@@ -119,21 +119,7 @@ public class MongoNotification {
         return id.toHexString();
     }
 
-    private static Instant toInstant(LocalDateTime dateTime) {
-        if (dateTime == null) {
-            return null;
-        }
 
-        return dateTime.atZone(ZONE_ID).toInstant();
-    }
-
-    private static LocalDateTime toLocalDateTime(Instant instant) {
-        if (instant == null) {
-            return null;
-        }
-
-        return LocalDateTime.ofInstant(instant, ZONE_ID);
-    }
 
     private static Map<String, Object> copyPayload(Map<String, Object> payload) {
         if (payload == null) {
