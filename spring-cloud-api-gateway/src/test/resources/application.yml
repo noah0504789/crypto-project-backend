@@ -18,6 +18,10 @@ spring:
         enabled: false
     discovery:
       enabled: false
+    # 스모크는 외부 인프라(Kafka) 없이 컨텍스트 부팅만 검증한다. spring-cloud-bus(Kafka)를 끄지 않으면
+    # springCloudBus 컨슈머 바인딩이 브로커를 찾다 타임아웃하며 ERROR 로그를 반복 출력한다(부팅은 성공).
+    bus:
+      enabled: false
 
 eureka:
   client:
