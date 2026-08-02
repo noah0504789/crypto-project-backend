@@ -4,7 +4,7 @@ import config.TestMongoConfig;
 import org.bson.types.ObjectId;
 import org.example.common.test.config.TestBootApplication;
 import org.example.common.test.testcontainer.MongoDBTestContainerInitializer;
-import org.example.common.time.ServiceZoneUtils;
+import org.example.common.time.ServiceTimeConverter;
 import org.example.notification.domain.model.NotificationRecipient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -437,19 +437,11 @@ class MongoNotificationRecipientRepositoryImplIntegrationTest {
                 notificationId.toHexString(),
                 receiverId,
                 read,
-                toLocalDateTime(readAt),
-                toLocalDateTime(deliveredAt)
+                ServiceTimeConverter.toLocalDateTime(readAt),
+                ServiceTimeConverter.toLocalDateTime(deliveredAt)
         );
 
         return MongoNotificationRecipient.fromDomain(recipient);
-    }
-
-    private LocalDateTime toLocalDateTime(Instant instant) {
-        if (instant == null) {
-            return null;
-        }
-
-        return LocalDateTime.ofInstant(instant, ServiceZoneUtils.ZONE_ID);
     }
 
     private void assertRecipientIds(

@@ -1,12 +1,12 @@
 package org.example.notification.adapter.in.web.dto;
 
+import org.example.common.time.ServiceTimeConverter;
 import org.example.notification.domain.model.NotificationMessagePart;
 import org.example.notification.application.service.result.NotificationInboxItem;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
-
-import static org.example.common.time.ServiceZoneUtils.ZONE_ID;
 
 public record NotificationResponse(
         String id,
@@ -39,13 +39,10 @@ public record NotificationResponse(
     }
 
     // 커서 페이지네이션 계약: 다음 페이지 요청의 lastDeliveredAtMs로 그대로 되돌려 보낸다.
-    // 저장 시 deliveredAt.atZone(ZONE_ID).toInstant()로 Instant가 되므로 동일 ZONE_ID로 정확히 복원된다.
+    // 저장 시 동일 서비스 존 기준 Instant가 되므로 ServiceTimeConverter로 정확히 복원된다(null은 null 유지).
     private static Long toEpochMillis(LocalDateTime dateTime) {
-        if (dateTime == null) {
-            return null;
-        }
-
-        return dateTime.atZone(ZONE_ID).toInstant().toEpochMilli();
+        Instant instant = ServiceTimeConverter.toInstant(dateTime);
+        return instant == null ? null : instant.toEpochMilli();
     }
 
     private static List<NotificationMessagePartResponse> toMessagePartResponses(List<NotificationMessagePart> messageParts) {

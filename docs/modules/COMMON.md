@@ -27,7 +27,7 @@
 
 | 모듈 | 역할 | 핵심 산출물 | 주요 의존 |
 |---|---|---|---|
-| `common-core` | 계약 상수·공통 예외·프로퍼티·검증·시계 | enums(`RedisKey`·`KafkaTopic`·`KafkaHeaderKey`·`StompDestination`·`JwtClaimKey`·`JwtHeaderKey`·`HttpHeaderKey`·`AuthTokenKey`·`RoleKey`·`PriceAlertChangeRateThreshold`), 예외(`InfrastructureException`·`InvalidRequestException`·`ResourceNotFoundException` 등), 프로퍼티(`JwtProperties`·`ApiPathProperties`·`AppRedisProperties`·`FrontendProperties`), `ValidationResult`·`@NotBlankIfPresent`, `Clock`/`ClockService`, 시간(`ServiceZoneUtils`(ZONE_ID)·`ServiceTimeConverter`(LocalDateTime↔Instant 변환)) | validation starter |
+| `common-core` | 계약 상수·공통 예외·프로퍼티·검증·시계 | enums(`RedisKey`·`KafkaTopic`·`KafkaHeaderKey`·`StompDestination`·`JwtClaimKey`·`JwtHeaderKey`·`HttpHeaderKey`·`AuthTokenKey`·`RoleKey`·`PriceAlertChangeRateThreshold`), 예외(`InfrastructureException`·`InvalidRequestException`·`ResourceNotFoundException` 등), 프로퍼티(`JwtProperties`·`ApiPathProperties`·`AppRedisProperties`·`FrontendProperties`), `ValidationResult`·`@NotBlankIfPresent`, `Clock`/`ClockService`, `ServiceTimeConverter`(서비스 존 `ZONE_ID` 상수 + LocalDateTime↔Instant 변환) | validation starter |
 | `common-jpa` | JPA + Read Replica 라우팅 | `BaseEntity`, `@ReadReplica`, `ReadReplicaAspect`, `DataSourceContextHolder`, `DataSourceType`, `ReplicationRoutingDataSource` | data-jpa, aop, mysql(runtime) |
 | `common-event` | Kafka 이벤트 계약·메시지 생성·발행 유틸 | `KafkaEvent`, `KafkaEventFactory`, `EventUtils`, `EventsInitializer`, `HandleableEvent`, `ProducibleEvent`, `RecoverableEvent`, `TypedKey`/`TypedPayload` | common-core, stream-kafka |
 | `common-inbox` | Consumer Inbox 멱등 처리 | `AbstractInboxEvent`, `InboxEvent`/`InboxEventService`, `InboxException` 계층 | common-jpa, common-core, common-util, spring-messaging |

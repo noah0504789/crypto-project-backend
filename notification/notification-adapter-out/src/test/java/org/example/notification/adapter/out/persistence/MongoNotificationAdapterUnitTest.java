@@ -2,7 +2,7 @@ package org.example.notification.adapter.out.persistence;
 
 import org.bson.types.ObjectId;
 import org.example.common.clock.Clock;
-import org.example.common.time.ServiceZoneUtils;
+import org.example.common.time.ServiceTimeConverter;
 import org.example.notification.application.service.result.NotificationInboxItem;
 import org.example.notification.domain.model.Notification;
 import org.example.notification.domain.model.NotificationRecipient;
@@ -514,9 +514,6 @@ class MongoNotificationAdapterUnitTest {
     }
 
     private long getCreatedAtMs(LocalDateTime dateTime) {
-        return dateTime
-                .atZone(ServiceZoneUtils.ZONE_ID)
-                .toInstant()
-                .toEpochMilli();
+        return ServiceTimeConverter.toEpochMillis(dateTime);
     }
 }

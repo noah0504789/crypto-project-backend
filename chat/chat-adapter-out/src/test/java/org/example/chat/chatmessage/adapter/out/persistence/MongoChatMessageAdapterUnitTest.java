@@ -9,7 +9,7 @@ import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.exception.ChatPersistenceException;
 import org.example.chat.exception.InvalidResourceRequestException;
 import org.example.chat.exception.TemporaryChatPersistenceException;
-import org.example.common.time.ServiceZoneUtils;
+import org.example.common.time.ServiceTimeConverter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -63,9 +63,9 @@ class MongoChatMessageAdapterUnitTest {
     private final Instant time2 = Instant.parse("2026-01-01T02:00:00Z"); // KST 11:00
     private final Instant time3 = Instant.parse("2026-01-01T03:00:00Z"); // KST 12:00
 
-    private final LocalDateTime domainTime1 = LocalDateTime.ofInstant(time1, ServiceZoneUtils.ZONE_ID);
-    private final LocalDateTime domainTime2 = LocalDateTime.ofInstant(time2, ServiceZoneUtils.ZONE_ID);
-    private final LocalDateTime domainTime3 = LocalDateTime.ofInstant(time3, ServiceZoneUtils.ZONE_ID);
+    private final LocalDateTime domainTime1 = ServiceTimeConverter.toLocalDateTime(time1);
+    private final LocalDateTime domainTime2 = ServiceTimeConverter.toLocalDateTime(time2);
+    private final LocalDateTime domainTime3 = ServiceTimeConverter.toLocalDateTime(time3);
 
     @Nested
     @DisplayName("listLatest")

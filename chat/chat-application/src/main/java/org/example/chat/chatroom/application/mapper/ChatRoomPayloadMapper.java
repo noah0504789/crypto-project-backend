@@ -2,10 +2,7 @@ package org.example.chat.chatroom.application.mapper;
 
 import org.example.chat.chatroom.application.event.payload.ChatRoomPersistPayload;
 import org.example.chat.chatroom.domain.model.ChatRoom;
-
-import java.time.LocalDateTime;
-
-import static org.example.common.time.ServiceZoneUtils.ZONE_ID;
+import org.example.common.time.ServiceTimeConverter;
 
 public final class ChatRoomPayloadMapper {
 
@@ -33,7 +30,7 @@ public final class ChatRoomPayloadMapper {
                 payload.category(),
                 payload.memberIds(),
                 0L,
-                LocalDateTime.ofInstant(payload.createdAt(), ZONE_ID)
+                ServiceTimeConverter.toLocalDateTime(payload.createdAt())
         );
     }
 }

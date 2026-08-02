@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.example.common.time.ServiceZoneUtils;
+import org.example.common.time.ServiceTimeConverter;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -37,12 +37,12 @@ public class ChatMessage {
                 .roomId(roomId)
                 .writerId(writerId)
                 .content(content)
-                .createdAt(LocalDateTime.ofInstant(createdAt, ServiceZoneUtils.ZONE_ID))
+                .createdAt(ServiceTimeConverter.toLocalDateTime(createdAt))
                 .build();
     }
 
     public Instant createdAtInstant() {
-        return createdAt.atZone(ServiceZoneUtils.ZONE_ID).toInstant();
+        return ServiceTimeConverter.toInstant(createdAt);
     }
 
     public long toEpochMillis() {

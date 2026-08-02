@@ -1,7 +1,7 @@
 package time;
 
 import org.example.common.time.ServiceTimeConverter;
-import org.example.common.time.ServiceZoneUtils;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -19,7 +19,7 @@ class ServiceTimeConverterUnitTest {
 
         Instant instant = ServiceTimeConverter.toInstant(dateTime);
 
-        assertThat(instant).isEqualTo(dateTime.atZone(ServiceZoneUtils.ZONE_ID).toInstant());
+        assertThat(instant).isEqualTo(dateTime.atZone(ServiceTimeConverter.ZONE_ID).toInstant());
         assertThat(ServiceTimeConverter.toLocalDateTime(instant)).isEqualTo(dateTime);
     }
 
@@ -29,7 +29,7 @@ class ServiceTimeConverterUnitTest {
         LocalDateTime dateTime = LocalDateTime.of(2026, 1, 1, 0, 0);
 
         assertThat(ServiceTimeConverter.toEpochMillis(dateTime))
-                .isEqualTo(dateTime.atZone(ServiceZoneUtils.ZONE_ID).toInstant().toEpochMilli());
+                .isEqualTo(dateTime.atZone(ServiceTimeConverter.ZONE_ID).toInstant().toEpochMilli());
     }
 
     @Test

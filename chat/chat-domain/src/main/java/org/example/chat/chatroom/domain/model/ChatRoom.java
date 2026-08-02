@@ -6,7 +6,7 @@ import org.example.chat.chatroom.domain.exception.ChatRoomAccessDeniedException;
 import org.example.chat.chatroom.domain.exception.ChatRoomHostMismatchException;
 import org.example.chat.chatroom.domain.exception.ChatRoomMembershipNotFoundException;
 import org.example.chat.chatroom.domain.service.ChatRoomPopularityCalculator;
-import org.example.common.time.ServiceZoneUtils;
+import org.example.common.time.ServiceTimeConverter;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -139,7 +139,7 @@ public class ChatRoom {
     }
 
     public Instant createdAtInstant() {
-        return createdAt.atZone(ServiceZoneUtils.ZONE_ID).toInstant();
+        return ServiceTimeConverter.toInstant(createdAt);
     }
 
     public void validateWritable(String writerId) {

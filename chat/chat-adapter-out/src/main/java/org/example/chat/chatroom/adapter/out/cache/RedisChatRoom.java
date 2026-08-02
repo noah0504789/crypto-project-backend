@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
-import org.example.common.time.ServiceZoneUtils;
+import org.example.common.time.ServiceTimeConverter;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -52,6 +52,6 @@ public class RedisChatRoom {
     }
 
     public LocalDateTime toLocalDateTime() {
-        return LocalDateTime.ofInstant(createdAt, ServiceZoneUtils.ZONE_ID);
+        return ServiceTimeConverter.toLocalDateTime(createdAt);
     }
 }

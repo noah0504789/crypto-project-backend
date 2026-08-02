@@ -4,7 +4,7 @@ import io.grpc.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.client.inject.GrpcClient;
-import org.example.common.time.ServiceZoneUtils;
+import org.example.common.time.ServiceTimeConverter;
 import org.example.contract.user.UserResponse;
 import org.example.grpc.user.GrpcFindByEmailRequest;
 import org.example.grpc.user.GrpcFindByEmailResponse;
@@ -15,7 +15,6 @@ import org.example.grpc.user.UserServiceGrpc;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -62,10 +61,8 @@ public class GrpcUserClient implements UserClient {
                 .email(user.getEmail())
                 .roles(user.getRolesList())
                 .createdAt(user.hasCreatedAt()
-                        ? LocalDateTime.ofInstant(
-                                Instant.ofEpochSecond(user.getCreatedAt().getSeconds(), user.getCreatedAt().getNanos()),
-                                ServiceZoneUtils.ZONE_ID
-                        )
+                        ? ServiceTimeConverter.toLocalDateTime(
+                                Instant.ofEpochSecond(user.getCreatedAt().getSeconds(), user.getCreatedAt().getNanos()))
                         : null)
                 .build();
     }
