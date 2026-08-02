@@ -21,7 +21,7 @@
 
 - 명령 서비스는 (a) `OutboxEventListPublishPort.publish`로 Outbox 이벤트 발행, (b) Redis 캐시 동기 반영만 한다. **Mongo write를 명령 서비스에서 직접 하지 않는다**(메시지 `save`·방 create/update/join/leave/activity/delete 모두).
 - 실제 Mongo 영속은 `chatRoomEventConsumer`/`chatMessageEventConsumer`가 받은 이벤트를 `ChatRoomEventService`/`ChatMessageEventService`가 처리하며 일어난다.
-- 읽기는 캐시-우선, 미스 시 `*QueryRepairService`가 분산 락(`DistributedLockExecutor`, `CACHE_WARM_UP`) 하에 Mongo 로드 + 캐시 워밍업.
+- 읽기는 캐시-우선, 미스 시 `*QueryRepairService`가 Mongo 로드 + 캐시 워밍업(둘 다 **동기 대기** — cache-first라 miss 엔 줄 stale 이 없음, SWR 부적합). **미스 폭주 방어는 reload 비용에 따라 다르다: 방(`ChatRoomQueryRepairService`) = `SingleFlight`(싼 point reload → 경량 동기 dedup), 메시지(`ChatMessageQueryRepairService`) = 분산락(`DistributedLockExecutor`, 무거운 range reload → 전역 1회).** 근거는 `../docs/modules/CHAT.md` 캐시 절.
 - 이 흐름(§5 CHAT.md)을 우회해 컨트롤러/서비스에서 Repository·StreamBridge를 직접 부르지 않는다.
 
 ## 주요 변경 규칙
