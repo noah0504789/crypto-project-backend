@@ -121,3 +121,19 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 #### 4.6 `FAILED` Outbox 재처리 경로 추가
 `OutboxService.publishPending`은 `PENDING` 레코드만 조회하고 retry를 소진하면 `FAILED`로 전환한다. 실패 레코드는 DB에 보존되지만, 저장소 코드에는 원인 해결 후 `FAILED`를 다시 `PENDING`으로 전환하거나 선택적으로 재처리하는 API·스케줄러·운영 작업이 확인되지 않는다. at-least-once relay가 운영 복구까지 포함해 최종 수렴하려면 재처리 대상 선택, retry count 초기화 여부, 중복 발행 경고·감사 로그와 접근 통제를 포함한 복구 경로를 설계한다.
 `[출처: docs/modules/OUTBOX_POLLER.md §5 트랜잭션 경계와 보장 수준]`
+
+---
+
+## 5. 성능 · 캐시
+
+### notification · chat (공통 인프라)
+
+#### 5.1 Redis `maxmemory-policy`(LFU 축출) 서버 설정 확인·반영
+notification master 캐시가 **긴 TTL(7일) + 다수 키(알림당 1키)** 전략으로 바뀌면서, 콜드 항목 교체를 **Redis 서버 LFU 축출**에 의존한다. 서버 정책이 `noeviction`(기본)이면 메모리 포화 시 **쓰기 에러(OOM)** 가 난다. **`maxmemory` + `maxmemory-policy volatile-lfu`**(TTL 있는 키만 LFU 축출) 설정이 필요하다.
+- 이 정책은 **해당 Redis 클러스터를 공유하는 전 서비스(auth 토큰·session·chat)에 적용되는 전역 설정**이라 blast radius 가 크다 → 현재 정책 확인 후 반영 여부·값을 결정한다. `volatile-lfu`면 TTL 없는 키는 안 건드려 상대적으로 안전. 클러스터면 노드별 `maxmemory`.
+- 코드는 이미 이 전제로 구현됨(긴 TTL). **인프라 설정 미반영 시 메모리 상한 없음** → 우선 확인 필요.
+`[근거: docs/modules/NOTIFICATION.md §7]`
+
+#### 5.2 chat 스파이크 시 배치 웜업 도입 검토(선택)
+chat 은 **cache-first**(캐시가 Mongo 보다 앞섬)라 miss 엔 줄 stale 이 없어 **SWR 부적합**, 미스 복구는 로드 완료까지 **동기 대기**한다. 방어 도구는 reload 비용에 따라 다르다: **방(`ChatRoomQueryRepairService`)=`SingleFlight`**(싼 point reload → 경량 동기 dedup), **메시지(`ChatMessageQueryRepairService`)=분산락**(무거운 range reload → 전역 1회 보장). 만약 대량 스파이크에서 콜드 miss DB 부하가 실측 병목이 되면, **주기/이벤트 배치 웜업(만료 전 재적재)로 만료 자체를 회피**(인기방 등 hot 대상 한정)를 검토한다.
+`[근거: docs/modules/CHAT.md 캐시 절]`
