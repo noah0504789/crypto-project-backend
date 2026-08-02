@@ -16,6 +16,8 @@ import org.springframework.vault.core.VaultTemplate;
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
                 "spring.cloud.vault.enabled=false",
+                // 스모크는 Kafka 없이 부팅만 검증. bus(Kafka)를 끄지 않으면 springCloudBus 바인딩이 타임아웃하며 ERROR 반복.
+                "spring.cloud.bus.enabled=false",
                 "spring.cloud.config.server.native.search-locations="
                         + "file:${smoke.config.repo},"
                         + "file:${smoke.config.repo}/dynamic,"
