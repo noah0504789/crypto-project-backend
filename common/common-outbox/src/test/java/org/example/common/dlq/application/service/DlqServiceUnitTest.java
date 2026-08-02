@@ -5,7 +5,6 @@ import org.example.common.dlq.adapter.out.JpaDlqRepository;
 import org.example.common.outbox.application.port.out.EventPublisherPort;
 import org.example.common.dlq.adapter.out.JpaDlq;
 import org.example.common.dlq.domain.DlqStatus;
-import org.example.common.dlq.properties.DlqPollerProperties;
 import org.example.common.outbox.domain.OutboxDomainType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -37,17 +36,11 @@ class DlqServiceUnitTest {
     @Mock
     private JpaDlqRepository jpaDlqRepository;
 
-    @Mock
-    private ObjectProvider<DlqPollerProperties> dlqPollerPropertiesProvider;
-
-    @Mock
-    private DlqPollerProperties dlqPollerProperties;
-
     private DlqService sut;
 
     @BeforeEach
     void setUp() {
-        sut = new DlqService(eventPublisherProvider, jpaDlqRepository, dlqPollerPropertiesProvider);
+        sut = new DlqService(eventPublisherProvider, jpaDlqRepository);
     }
 
     @Test
@@ -143,10 +136,6 @@ class DlqServiceUnitTest {
     @DisplayName("PENDING 상태 DLQ를 batchSize만큼 조회한다")
     void publishPending_findsPendingDlqsByBatchSize() {
         // given
-        when(dlqPollerProperties.batchSize())
-                .thenReturn(10);
-        when(dlqPollerPropertiesProvider.getObject())
-                .thenReturn(dlqPollerProperties);
         when(eventPublisherProvider.getObject())
                 .thenReturn(eventPublisher);
 
@@ -159,7 +148,7 @@ class DlqServiceUnitTest {
                 ArgumentCaptor.forClass(Pageable.class);
 
         // when
-        sut.publishPending();
+        sut.publishPending(10);
 
         // then
         verify(jpaDlqRepository).findByStatusOrderByCreatedAtAsc(
@@ -179,10 +168,6 @@ class DlqServiceUnitTest {
         // given
         JpaDlq dlq = createDlq("dlq-1");
 
-        when(dlqPollerProperties.batchSize())
-                .thenReturn(10);
-        when(dlqPollerPropertiesProvider.getObject())
-                .thenReturn(dlqPollerProperties);
         when(eventPublisherProvider.getObject())
                 .thenReturn(eventPublisher);
 
@@ -192,7 +177,7 @@ class DlqServiceUnitTest {
         )).thenReturn(List.of(dlq));
 
         // when
-        sut.publishPending();
+        sut.publishPending(10);
 
         // then
         verify(eventPublisher).publish(dlq);
@@ -207,10 +192,6 @@ class DlqServiceUnitTest {
         // given
         JpaDlq dlq = createDlq("dlq-1");
 
-        when(dlqPollerProperties.batchSize())
-                .thenReturn(10);
-        when(dlqPollerPropertiesProvider.getObject())
-                .thenReturn(dlqPollerProperties);
         when(eventPublisherProvider.getObject())
                 .thenReturn(eventPublisher);
 
@@ -224,7 +205,7 @@ class DlqServiceUnitTest {
                 .publish(dlq);
 
         // when
-        sut.publishPending();
+        sut.publishPending(10);
 
         // then
         verify(eventPublisher).publish(dlq);
@@ -240,10 +221,6 @@ class DlqServiceUnitTest {
         JpaDlq failedDlq = createDlq("dlq-1");
         JpaDlq successDlq = createDlq("dlq-2");
 
-        when(dlqPollerProperties.batchSize())
-                .thenReturn(10);
-        when(dlqPollerPropertiesProvider.getObject())
-                .thenReturn(dlqPollerProperties);
         when(eventPublisherProvider.getObject())
                 .thenReturn(eventPublisher);
 
@@ -257,7 +234,7 @@ class DlqServiceUnitTest {
                 .publish(failedDlq);
 
         // when
-        sut.publishPending();
+        sut.publishPending(10);
 
         // then
         verify(eventPublisher).publish(failedDlq);

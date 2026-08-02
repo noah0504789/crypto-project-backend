@@ -1,4 +1,4 @@
-package org.example.common.redis.lock;
+package org.example.common.redisson.lock;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

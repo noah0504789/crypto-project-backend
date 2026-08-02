@@ -1,4 +1,4 @@
-package org.example.common.redis.lock;
+package org.example.common.redisson.lock;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

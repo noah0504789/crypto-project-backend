@@ -7,7 +7,6 @@ import org.example.common.dlq.domain.DlqStatus;
 import org.example.common.dlq.adapter.out.JpaDlqRepository;
 import org.example.common.dlq.adapter.out.JpaDlq;
 import org.example.common.outbox.application.port.out.EventPublisherPort;
-import org.example.common.dlq.properties.DlqPollerProperties;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
@@ -22,7 +21,6 @@ public class DlqService {
 
     private final ObjectProvider<EventPublisherPort> eventPublisherProvider;
     private final JpaDlqRepository jpaDlqRepository;
-    private final ObjectProvider<DlqPollerProperties> dlqPollerPropertiesProvider;
 
     @Transactional("transactionManager")
     public void save(JpaDlq dlq) {
@@ -51,9 +49,8 @@ public class DlqService {
     }
 
     @Transactional("transactionManager")
-    public void publishPending() {
+    public void publishPending(int batchSize) {
         EventPublisherPort publisher = eventPublisherProvider.getObject();
-        int batchSize = dlqPollerPropertiesProvider.getObject().batchSize();
         List<JpaDlq> pendings = jpaDlqRepository.findByStatusOrderByCreatedAtAsc(DlqStatus.PENDING, PageRequest.of(0, batchSize));
 
         for (JpaDlq dlq : pendings) {
