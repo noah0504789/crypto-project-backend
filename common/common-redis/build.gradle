@@ -6,6 +6,7 @@ dependencies {
     api project(':common:common-core')
 
     api(libs.spring.boot.starter.data.redis)
+    api(libs.jackson.databind)
 
     api(libs.spring.boot.starter.aop)
 
