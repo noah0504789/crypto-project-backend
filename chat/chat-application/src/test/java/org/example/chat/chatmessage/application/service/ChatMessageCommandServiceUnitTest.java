@@ -1,6 +1,5 @@
 package org.example.chat.chatmessage.application.service;
 
-import org.example.chat.chatmessage.application.exception.ChatMessageCacheException;
 import org.example.chat.chatmessage.application.service.command.ChatMessageSaveCommand;
 import org.example.chat.chatmessage.application.service.result.ChatMessageSaveResult;
 import org.example.chat.chatmessage.application.event.ChatMessageEventList;
@@ -241,8 +240,8 @@ class ChatMessageCommandServiceUnitTest {
         }
 
         @Test
-        @DisplayName("캐시 저장 중 예외가 발생하면 ChatMessageCacheException으로 감싸서 전파한다")
-        void save_shouldThrowChatMessageCacheException_whenCacheSaveFails() {
+        @DisplayName("캐시 저장 실패는 로그만 남기고 예외를 전파하지 않으며 저장은 정상 처리된다")
+        void save_shouldSwallowCacheFailure_whenCacheSaveFails() {
             // given
             ChatMessageSaveCommand command = saveCommand();
 
@@ -257,11 +256,9 @@ class ChatMessageCommandServiceUnitTest {
                     .when(chatMessageCachePort)
                     .save(any(ChatMessage.class), eq(chatRoom.getMemberIds()));
 
-            // when & then
-            assertThatThrownBy(() -> sut.save(command))
-                    .isInstanceOf(ChatMessageCacheException.class)
-                    .hasMessageContaining("failed during cache save")
-                    .hasCause(exception);
+            // when & then: 캐시 실패해도 예외 전파 없이 정상 반환(조회 repair 가 흡수)
+            assertThatCode(() -> sut.save(command))
+                    .doesNotThrowAnyException();
 
             InOrder inOrder = inOrder(
                     chatRoomPersistencePort,

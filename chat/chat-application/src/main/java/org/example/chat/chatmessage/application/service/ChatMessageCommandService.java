@@ -6,7 +6,6 @@ import org.example.chat.chatmessage.application.event.ChatMessageEventList;
 import org.example.chat.chatmessage.application.event.ChatMessagePersistEvent;
 import org.example.chat.chatmessage.application.mapper.ChatMessagePayloadMapper;
 import org.example.chat.chatmessage.application.port.in.ChatMessageCommandUseCase;
-import org.example.chat.chatmessage.application.exception.ChatMessageCacheException;
 import org.example.chat.chatmessage.application.service.command.ChatMessageSaveCommand;
 import org.example.chat.chatmessage.application.service.result.ChatMessageSaveResult;
 import org.example.chat.chatmessage.application.port.out.ChatMessageCachePort;
@@ -20,6 +19,7 @@ import org.example.chat.chatmessage.application.exception.ChatMessagePersistExce
 import org.example.chat.exception.TemporaryChatPersistenceException;
 import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
 import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
+import org.example.common.tx.AfterCommitExecutor;
 import org.example.contract.chatmessage.ChatMessageBroadcastEvent;
 import org.example.contract.chatmessage.ChatMessagePayload;
 import org.example.contract.chatroom.MyChatRoomBadgeEvent;
@@ -48,7 +48,7 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
             maxAttempts = 3,
             backoff = @Backoff(delay = 100, multiplier = 2)
     )
-    @Transactional("chatMongoTransactionManager")
+    @Transactional("transactionManager")
     public ChatMessageSaveResult save(ChatMessageSaveCommand command) {
         ChatRoom chatRoom = chatRoomPersistencePort.findById(command.roomId())
                 .orElseThrow(() -> new ChatRoomNotFoundException(command.roomId()));
@@ -146,32 +146,42 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
             ChatMessage message,
             Set<String> memberIds
     ) {
-        try {
-            chatMessageCachePort.save(message, memberIds);
-        } catch (Exception e) {
-            throw new ChatMessageCacheException(
-                    message,
-                    "failed during cache save. chatMessageId=" + message.getId(),
-                    e
-            );
-        }
+        // outbox(영속 이벤트)가 커밋된 뒤에만 캐시에 반영한다. 커밋 전 캐싱 시 롤백되면 Mongo엔 없는데
+        // 캐시엔 있는 유령 메시지가 생긴다. 커밋 후 캐시 실패는 로그만 남기고 조회 repair 가 흡수한다.
+        AfterCommitExecutor.run(() -> {
+            try {
+                chatMessageCachePort.save(message, memberIds);
+            } catch (Exception e) {
+                log.warn(
+                        "[redis] chat message cache save failed after commit (repair will cover). chatMessageId={}, roomId={}",
+                        message.getId(),
+                        message.getRoomId(),
+                        e
+                );
+            }
+        });
     }
+
 
     private void hardDeleteCacheSafely(
             String messageId,
             String roomId,
             List<ChatRoomMembershipScore> chatRoomMembershipScores
     ) {
-        try {
-            chatMessageCachePort.hardDelete(messageId, roomId, chatRoomMembershipScores);
-        } catch (Exception e) {
-            log.warn(
-                    "[redis] chat message hardDelete failed. messageId={}, roomId={}, error={}",
-                    messageId,
-                    roomId,
-                    e.getMessage(),
-                    e
-            );
-        }
+        // Mongo 삭제가 커밋된 뒤에만 캐시에서 제거한다. 커밋 전 제거 시 롤백되면 Mongo엔 남았는데 캐시엔 없어
+        // 조회 repair 로 되살아나는 불일치가 생긴다. 커밋 후 제거 실패는 로그만 남기고 repair/TTL 이 흡수한다.
+        AfterCommitExecutor.run(() -> {
+            try {
+                chatMessageCachePort.hardDelete(messageId, roomId, chatRoomMembershipScores);
+            } catch (Exception e) {
+                log.warn(
+                        "[redis] chat message hardDelete failed after commit. messageId={}, roomId={}, error={}",
+                        messageId,
+                        roomId,
+                        e.getMessage(),
+                        e
+                );
+            }
+        });
     }
 }
