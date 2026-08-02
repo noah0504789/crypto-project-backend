@@ -14,5 +14,6 @@ dependencies {
     api project(':common:common-redis')
     api project(':common:common-redisson')
     api project(':common:common-util')
+    api project(':common:common-tx')
     api project(':common:common-mongo')
 }
