@@ -62,7 +62,13 @@ chat의 쓰기 경로는 **동기적으로 Redis 캐시에 반영하고 영속(M
 4. **보상**: 각 EventService는 `@Retryable`(3회, backoff 100ms×2) 후 `@Recover`로 DLQ 이벤트를 발행한다. DLQ는 `chatRoomDlqEventConsumer`/`chatMessageDlqEventConsumer`가 소비해 `*DlqService`로 처리하고 `DlqService.complete/fail`로 상태를 남긴다.
 5. **캐시 폴백**: 명령 중 캐시 동기 반영이 실패하면(§7 `cache*Safely`) 로그 후 별도 캐시-복구 Outbox 이벤트(`ChatRoomCacheSaveEvent`/`...InvalidateEvent` 등)를 발행해 비동기로 캐시를 재구성/무효화한다.
 
-읽기 경로는 **캐시-우선, 미스 시 Mongo 로드 + 워밍업**이다(§8). 즉 정상 흐름에서 REST 조회는 Redis만 조회하며, 캐시가 비었거나 인덱스가 없으면 `*QueryRepairService`가 분산 락(`DistributedLockExecutor`, `CACHE_WARM_UP`) 아래 Mongo에서 로드해 캐시를 채운 뒤 반환한다.
+읽기 경로는 **캐시-우선, 미스 시 Mongo 로드 + 워밍업**이다(§8). 정상 흐름에서 REST 조회는 Redis만 조회하며, 캐시가 비었거나 인덱스가 없으면 `*QueryRepairService`가 Mongo에서 로드해 캐시를 채운 뒤 반환한다. **미스 폭주 방어 도구는 서브도메인 특성에 따라 다르다: 방 = `SingleFlight`, 메시지 = 분산락.**
+
+> **왜 방 info 는 `SingleFlight`, 메시지는 분산락으로 갈렸나**: chat 은 둘 다 **cache-first**(쓰기가 캐시 먼저, Mongo 는 async consumer)라 **캐시에 값이 있으면 최신, miss(evict/TTL/cold)에서만 Mongo 로드**가 필요하다. 두 도구 모두 **동기 대기**이며(SWR 처럼 즉답 아님 — §아래), 결정 요인은 **miss reload 의 비용**이다.
+> - **방(`ChatRoomQueryRepairService`) → `SingleFlight`**(구 분산락에서 전환): reload 가 방 상세(`findByIdWithLatestMessage`) 중심으로 **싸고** miss 도 드물어 전역 1회 보장(분산락)의 이득이 작다 → 락 획득·대기·타임아웃·복구 왕복 없이 같은 key 동시 로드만 1회로 합치는 **경량 동기 dedup**. 대기는 짧은 로드 시간뿐.
+> - **메시지(`ChatMessageQueryRepairService`) → 분산락 유지**: 메시지 캐시는 **TTL 없이 접근시간 + 시간지역성 스케줄러**로 축출하고 **최신순 접근**이라 최신은 write-through 로 상주(miss 없음), 과거 페이지는 소수 서버만 → **동시 miss 드묾**. 드문 miss 의 reload 가 **range 쿼리(무거움)** 라, **전역 1회 보장(분산락)**(`DistributedLockExecutor`, `CACHE_WARM_UP`)이 중복 range 를 막아 이득이고 대기 비용은 드물어 실질 없음.
+>
+> `SingleFlight`(common-redisson)는 인스턴스 내 중복 로드 제거, 분산락은 클러스터 전역 1회. **SWR(만료값 즉시 반환 + 비동기 갱신)은 쓰지 않는다** — chat 은 cache-first라 캐시가 Mongo 보다 **앞서** 있어(DB=진실 아님), SWR 로 Mongo 재조회해 덮으면 아직 반영 안 된 최신 캐시를 뒤처진 값으로 되돌릴 위험이 있다. 따라서 miss 는 로드 완료까지 **동기 대기**(SingleFlight/락)한다. 데이터 특성별 캐시 전략 대비는 [`NOTIFICATION.md §7.1`](NOTIFICATION.md).
 
 ## 6. 주요 클래스와 책임
 
@@ -74,12 +80,12 @@ chat의 쓰기 경로는 **동기적으로 Redis 캐시에 반영하고 영속(M
 | `KafkaChatRoomBinder` / `KafkaChatMessageBinder` | `chat-adapter-in/.../adapter/in/stream/` | Kafka consumer 함수 빈(이벤트/DLQ) |
 | `ChatRoomCommandService` | `chat-application/.../chatroom/application/service/` | 방 create/update/join/leave/activity/delete — Outbox 발행 + 캐시 동기 반영(§7) |
 | `ChatRoomQueryService` | `chat-application/.../chatroom/application/service/` | 인기방/내 방/방 상세 조회(캐시-우선), lastRead·unread 계산 |
-| `ChatRoomQueryRepairService` | `chat-application/.../chatroom/application/service/` | 캐시 미스 복구(분산 락 하에 Mongo 로드 + 워밍업) |
+| `ChatRoomQueryRepairService` | `chat-application/.../chatroom/application/service/` | 캐시 미스 복구(`SingleFlight` 하에 Mongo 로드 + 워밍업) |
 | `ChatRoomEventService` | `chat-application/.../chatroom/application/service/` | 방 이벤트 비동기 영속 + 캐시 복구, `@Retryable`/`@Recover`→DLQ |
 | `ChatRoomDlqService` | `chat-application/.../chatroom/application/service/` | 방 DLQ 이벤트 재처리 |
 | `ChatMessageCommandService` | `chat-application/.../chatmessage/application/service/` | 메시지 save/hardDelete(§10), Outbox 3종 발행 + 캐시 |
 | `ChatMessageQueryService` | `chat-application/.../chatmessage/application/service/` | 메시지 목록 조회(캐시-우선, 미스 시 repair) |
-| `ChatMessageQueryRepairService` | `chat-application/.../chatmessage/application/service/` | 메시지 캐시 미스 복구 |
+| `ChatMessageQueryRepairService` | `chat-application/.../chatmessage/application/service/` | 메시지 캐시 미스 복구(분산락 하에 range 로드 + 워밍업) |
 | `ChatMessageEventService` | `chat-application/.../chatmessage/application/service/` | 메시지 이벤트 비동기 영속(멱등) + 방 카운터/스코어 갱신, →DLQ |
 | `MyChatRoomScoreCalculator` | `chat-domain/.../chatroom/domain/service/` | 내 방 정렬 스코어(안읽음 가중치) |
 | `MongoChatMessageAdapter` / `MongoChatRoomAdapter` | `chat-adapter-out/.../persistence/` | `*PersistencePort` 구현(MongoDB) |
@@ -113,7 +119,7 @@ chat의 쓰기 경로는 **동기적으로 Redis 캐시에 반영하고 영속(M
 
 ## 8. 조회 흐름 (Query — 캐시-우선 + repair)
 
-- **방 상세**(`getRoom`): `cache.findById` → 미스 시 `queryRepairService.repairRoom`(분산 락, Mongo `findByIdWithLatestMessage` + `warmUp`, 없으면 `ChatRoomNotFoundException`).
+- **방 상세**(`getRoom`): `cache.findById` → 미스 시 `queryRepairService.repairRoom`(`SingleFlight`, Mongo `findByIdWithLatestMessage` + `warmUp`, 없으면 `ChatRoomNotFoundException`).
 - **내 방 상세/목록**(`getMyRoom`/`listMyRooms`): 방 + `lastReadSeq`(캐시 → 미스 시 Mongo)로 `MyChatRoomSummary` 구성. lastRead 캐시 미스면 `refreshActiveCacheSafely`로 캐시 재적재(unread 여부에 따라 스코어 계산).
 - **인기방 목록**(`listPopularRooms`): 카테고리별 zset 인덱스 조회. 커서 유무로 first/next 페이지 분기.
 - **메시지 목록**(`listMessages`): 캐시 zset 조회 → **비면** `queryRepairService.repairLatest`/`repairPrev`(Mongo 로드 + 캐시 워밍업).
