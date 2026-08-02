@@ -1,6 +1,6 @@
 package outbox;
 
-import org.example.common.outbox.properties.OutboxPollerProperties;
+import org.example.outboxpoller.outbox.OutboxPollerProperties;
 import org.example.common.outbox.domain.OutboxDispatchType;
 import org.example.outboxpoller.outbox.OutboxEventScheduler;
 import org.example.common.outbox.application.service.OutboxService;
@@ -12,7 +12,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -44,8 +45,8 @@ class OutboxEventSchedulerUnitTest {
         sut.pollGeneral();
 
         // then
-        verify(outboxPollerService).publishPending(OutboxDispatchType.GENERAL);
-        verify(outboxPollerService, never()).publishPending(OutboxDispatchType.BROADCAST);
+        verify(outboxPollerService).publishPending(OutboxDispatchType.GENERAL, 100, 3);
+        verify(outboxPollerService, never()).publishPending(eq(OutboxDispatchType.BROADCAST), anyInt(), anyInt());
     }
 
     @Test
@@ -61,7 +62,7 @@ class OutboxEventSchedulerUnitTest {
         sut.pollGeneral();
 
         // then
-        verify(outboxPollerService, never()).publishPending(any());
+        verify(outboxPollerService, never()).publishPending(any(), anyInt(), anyInt());
     }
 
     @Test
@@ -77,8 +78,8 @@ class OutboxEventSchedulerUnitTest {
         sut.pollBroadcast();
 
         // then
-        verify(outboxPollerService).publishPending(OutboxDispatchType.BROADCAST);
-        verify(outboxPollerService, never()).publishPending(OutboxDispatchType.GENERAL);
+        verify(outboxPollerService).publishPending(OutboxDispatchType.BROADCAST, 100, 3);
+        verify(outboxPollerService, never()).publishPending(eq(OutboxDispatchType.GENERAL), anyInt(), anyInt());
     }
 
     @Test
@@ -94,7 +95,7 @@ class OutboxEventSchedulerUnitTest {
         sut.pollBroadcast();
 
         // then
-        verify(outboxPollerService, never()).publishPending(any());
+        verify(outboxPollerService, never()).publishPending(any(), anyInt(), anyInt());
     }
 
     private OutboxPollerProperties properties(boolean generalEnabled, boolean broadcastEnabled) {

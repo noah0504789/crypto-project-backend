@@ -1,4 +1,4 @@
-package org.example.common.dlq.properties;
+package org.example.outboxpoller.dlq;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

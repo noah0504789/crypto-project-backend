@@ -1,4 +1,4 @@
-package org.example.common.outbox.properties;
+package org.example.outboxpoller.outbox;
 
 import org.example.common.outbox.domain.OutboxDispatchType;
 import org.springframework.boot.context.properties.ConfigurationProperties;

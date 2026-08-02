@@ -11,11 +11,12 @@ public class DlqEventScheduler {
 
     private final DlqService dlqService;
     private final DlqPollerState dlqPollerState;
+    private final DlqPollerProperties dlqPollerProperties;
 
     @Scheduled(fixedDelayString = "${poller.dlq.fixed-delay-ms}")
     public void poll() {
         if (!dlqPollerState.isEnabled()) return;
 
-        dlqService.publishPending();
+        dlqService.publishPending(dlqPollerProperties.batchSize());
     }
 }

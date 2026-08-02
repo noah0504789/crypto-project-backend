@@ -2,7 +2,6 @@ package org.example.common.outbox.application.service;
 
 import org.example.common.outbox.application.port.out.EventPublisherPort;
 import org.example.common.outbox.adapter.out.JpaOutboxRepository;
-import org.example.common.outbox.properties.OutboxPollerProperties;
 import org.example.common.outbox.adapter.out.JpaOutbox;
 import org.example.common.outbox.domain.OutboxDispatchType;
 import org.example.common.outbox.domain.OutboxDomainType;
@@ -35,17 +34,11 @@ class OutboxServiceUnitTest {
     @Mock
     private EventPublisherPort outboxPublisher;
 
-    @Mock
-    private ObjectProvider<OutboxPollerProperties> outboxPollerPropertiesProvider;
-
-    @Mock
-    private OutboxPollerProperties outboxPollerProperties;
-
     private OutboxService sut;
 
     @BeforeEach
     void setUp() {
-        sut = new OutboxService(jpaOutboxRepository, outboxPublisherProvider, outboxPollerPropertiesProvider);
+        sut = new OutboxService(jpaOutboxRepository, outboxPublisherProvider);
     }
 
     @Test
@@ -81,13 +74,6 @@ class OutboxServiceUnitTest {
     @DisplayName("dispatchType에 맞는 PENDING outbox를 batchSize만큼 조회한다")
     void publishPending_findsPendingOutboxesByDispatchTypeAndBatchSize() {
         // given
-        OutboxPollerProperties.Item props =
-                new OutboxPollerProperties.Item(true, 1000, 10, 3);
-
-        when(outboxPollerProperties.get(OutboxDispatchType.GENERAL))
-                .thenReturn(props);
-        when(outboxPollerPropertiesProvider.getObject())
-                .thenReturn(outboxPollerProperties);
         when(outboxPublisherProvider.getObject())
                 .thenReturn(outboxPublisher);
 
@@ -100,7 +86,7 @@ class OutboxServiceUnitTest {
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
 
         // when
-        sut.publishPending(OutboxDispatchType.GENERAL);
+        sut.publishPending(OutboxDispatchType.GENERAL, 10, 3);
 
         // then
         verify(jpaOutboxRepository).findByDispatchTypeAndStatusOrderByCreatedAtAsc(
@@ -118,15 +104,8 @@ class OutboxServiceUnitTest {
     @DisplayName("publish에 성공하면 outbox를 PUBLISHED 상태로 변경한다")
     void publishPending_whenPublishSucceeds_marksPublished() {
         // given
-        OutboxPollerProperties.Item props =
-                new OutboxPollerProperties.Item(true, 1000, 10, 3);
-
         JpaOutbox outbox = createOutbox("outbox-1", OutboxDispatchType.GENERAL);
 
-        when(outboxPollerProperties.get(OutboxDispatchType.GENERAL))
-                .thenReturn(props);
-        when(outboxPollerPropertiesProvider.getObject())
-                .thenReturn(outboxPollerProperties);
         when(outboxPublisherProvider.getObject())
                 .thenReturn(outboxPublisher);
 
@@ -137,7 +116,7 @@ class OutboxServiceUnitTest {
         )).thenReturn(List.of(outbox));
 
         // when
-        sut.publishPending(OutboxDispatchType.GENERAL);
+        sut.publishPending(OutboxDispatchType.GENERAL, 10, 3);
 
         // then
         verify(outboxPublisher).publish(outbox);
@@ -150,15 +129,8 @@ class OutboxServiceUnitTest {
     @DisplayName("publish에 실패하면 retryCnt를 1 증가시킨다")
     void publishPending_whenPublishFails_increasesRetryCount() {
         // given
-        OutboxPollerProperties.Item props =
-                new OutboxPollerProperties.Item(true, 1000, 10, 3);
-
         JpaOutbox outbox = createOutbox("outbox-1", OutboxDispatchType.GENERAL);
 
-        when(outboxPollerProperties.get(OutboxDispatchType.GENERAL))
-                .thenReturn(props);
-        when(outboxPollerPropertiesProvider.getObject())
-                .thenReturn(outboxPollerProperties);
         when(outboxPublisherProvider.getObject())
                 .thenReturn(outboxPublisher);
 
@@ -173,7 +145,7 @@ class OutboxServiceUnitTest {
                 .publish(outbox);
 
         // when
-        sut.publishPending(OutboxDispatchType.GENERAL);
+        sut.publishPending(OutboxDispatchType.GENERAL, 10, 3);
 
         // then
         assertThat(outbox.getRetryCnt()).isEqualTo(1);
@@ -184,18 +156,11 @@ class OutboxServiceUnitTest {
     @DisplayName("publish 실패 후 retryCnt가 maxRetryCnt 이상이면 FAILED 상태로 변경한다")
     void publishPending_whenRetryExhausted_marksFailed() {
         // given
-        OutboxPollerProperties.Item props =
-                new OutboxPollerProperties.Item(true, 1000, 10, 3);
-
         JpaOutbox outbox = createOutbox("outbox-1", OutboxDispatchType.GENERAL);
 
         outbox.increaseRetryCnt();
         outbox.increaseRetryCnt();
 
-        when(outboxPollerProperties.get(OutboxDispatchType.GENERAL))
-                .thenReturn(props);
-        when(outboxPollerPropertiesProvider.getObject())
-                .thenReturn(outboxPollerProperties);
         when(outboxPublisherProvider.getObject())
                 .thenReturn(outboxPublisher);
 
@@ -210,7 +175,7 @@ class OutboxServiceUnitTest {
                 .publish(outbox);
 
         // when
-        sut.publishPending(OutboxDispatchType.GENERAL);
+        sut.publishPending(OutboxDispatchType.GENERAL, 10, 3);
 
         // then
         assertThat(outbox.getRetryCnt()).isEqualTo(3);
@@ -221,16 +186,9 @@ class OutboxServiceUnitTest {
     @DisplayName("한 outbox publish가 실패해도 다음 outbox 처리를 계속한다")
     void publishPending_whenOneFails_continuesNextOutbox() {
         // given
-        OutboxPollerProperties.Item props =
-                new OutboxPollerProperties.Item(true, 1000, 10, 3);
-
         JpaOutbox failedOutbox = createOutbox("outbox-1", OutboxDispatchType.GENERAL);
         JpaOutbox successOutbox = createOutbox("outbox-2", OutboxDispatchType.GENERAL);
 
-        when(outboxPollerProperties.get(OutboxDispatchType.GENERAL))
-                .thenReturn(props);
-        when(outboxPollerPropertiesProvider.getObject())
-                .thenReturn(outboxPollerProperties);
         when(outboxPublisherProvider.getObject())
                 .thenReturn(outboxPublisher);
 
@@ -245,7 +203,7 @@ class OutboxServiceUnitTest {
                 .publish(failedOutbox);
 
         // when
-        sut.publishPending(OutboxDispatchType.GENERAL);
+        sut.publishPending(OutboxDispatchType.GENERAL, 10, 3);
 
         // then
         verify(outboxPublisher).publish(failedOutbox);
@@ -259,18 +217,11 @@ class OutboxServiceUnitTest {
     }
 
     @Test
-    @DisplayName("BROADCAST 타입이면 BROADCAST 설정과 조회 조건을 사용한다")
+    @DisplayName("BROADCAST 타입이면 BROADCAST 조회 조건과 batchSize를 사용한다")
     void publishPending_withBroadcast_usesBroadcastDispatchType() {
         // given
-        OutboxPollerProperties.Item props =
-                new OutboxPollerProperties.Item(true, 500, 20, 5);
-
         JpaOutbox outbox = createOutbox("outbox-1", OutboxDispatchType.BROADCAST);
 
-        when(outboxPollerProperties.get(OutboxDispatchType.BROADCAST))
-                .thenReturn(props);
-        when(outboxPollerPropertiesProvider.getObject())
-                .thenReturn(outboxPollerProperties);
         when(outboxPublisherProvider.getObject())
                 .thenReturn(outboxPublisher);
 
@@ -281,7 +232,7 @@ class OutboxServiceUnitTest {
         )).thenReturn(List.of(outbox));
 
         // when
-        sut.publishPending(OutboxDispatchType.BROADCAST);
+        sut.publishPending(OutboxDispatchType.BROADCAST, 20, 5);
 
         // then
         verify(jpaOutboxRepository).findByDispatchTypeAndStatusOrderByCreatedAtAsc(
