@@ -35,7 +35,7 @@ public class WebNotificationEvent extends AbstractOutboxEvent {
     }
 
     @Override
-    protected OutboxDomainType getDomainType() {
+    public OutboxDomainType getDomainType() {
         return OutboxDomainType.NOTIFICATION;
     }
 }

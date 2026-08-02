@@ -19,7 +19,7 @@ public class MarketCatalogChangedEvent extends AbstractOutboxEvent implements Ha
     }
 
     @Override
-    protected OutboxDomainType getDomainType() {
+    public OutboxDomainType getDomainType() {
         return OutboxDomainType.MARKET;
     }
 

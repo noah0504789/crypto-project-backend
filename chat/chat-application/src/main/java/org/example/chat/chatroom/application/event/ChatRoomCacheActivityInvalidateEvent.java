@@ -32,7 +32,7 @@ public class ChatRoomCacheActivityInvalidateEvent extends AbstractOutboxEvent im
     }
 
     @Override
-    protected OutboxDomainType getDomainType() {
+    public OutboxDomainType getDomainType() {
         return OutboxDomainType.CHAT;
     }
 }

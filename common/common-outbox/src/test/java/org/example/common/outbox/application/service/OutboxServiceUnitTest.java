@@ -1,9 +1,9 @@
 package org.example.common.outbox.application.service;
 
 import org.example.common.outbox.application.port.out.EventPublisherPort;
-import org.example.common.outbox.adapter.out.OutboxRepository;
+import org.example.common.outbox.adapter.out.JpaOutboxRepository;
 import org.example.common.outbox.properties.OutboxPollerProperties;
-import org.example.common.outbox.domain.Outbox;
+import org.example.common.outbox.adapter.out.JpaOutbox;
 import org.example.common.outbox.domain.OutboxDispatchType;
 import org.example.common.outbox.domain.OutboxDomainType;
 import org.example.common.outbox.domain.OutboxStatus;
@@ -27,7 +27,7 @@ import static org.mockito.Mockito.*;
 class OutboxServiceUnitTest {
 
     @Mock
-    private OutboxRepository outboxRepository;
+    private JpaOutboxRepository jpaOutboxRepository;
 
     @Mock
     private ObjectProvider<EventPublisherPort> outboxPublisherProvider;
@@ -45,27 +45,27 @@ class OutboxServiceUnitTest {
 
     @BeforeEach
     void setUp() {
-        sut = new OutboxService(outboxRepository, outboxPublisherProvider, outboxPollerPropertiesProvider);
+        sut = new OutboxService(jpaOutboxRepository, outboxPublisherProvider, outboxPollerPropertiesProvider);
     }
 
     @Test
     @DisplayName("outbox 단건을 저장한다")
     void save_delegatesToRepository() {
         // given
-        Outbox outbox = createOutbox("outbox-1", OutboxDispatchType.GENERAL);
+        JpaOutbox outbox = createOutbox("outbox-1", OutboxDispatchType.GENERAL);
 
         // when
         sut.save(outbox);
 
         // then
-        verify(outboxRepository).save(outbox);
+        verify(jpaOutboxRepository).save(outbox);
     }
 
     @Test
     @DisplayName("outbox 목록을 저장한다")
     void saveAll_delegatesToRepository() {
         // given
-        List<Outbox> outboxes = List.of(
+        List<JpaOutbox> outboxes = List.of(
                 createOutbox("outbox-1", OutboxDispatchType.GENERAL),
                 createOutbox("outbox-2", OutboxDispatchType.BROADCAST)
         );
@@ -74,7 +74,7 @@ class OutboxServiceUnitTest {
         sut.saveAll(outboxes);
 
         // then
-        verify(outboxRepository).saveAll(outboxes);
+        verify(jpaOutboxRepository).saveAll(outboxes);
     }
 
     @Test
@@ -91,7 +91,7 @@ class OutboxServiceUnitTest {
         when(outboxPublisherProvider.getObject())
                 .thenReturn(outboxPublisher);
 
-        when(outboxRepository.findByDispatchTypeAndStatusOrderByCreatedAtAsc(
+        when(jpaOutboxRepository.findByDispatchTypeAndStatusOrderByCreatedAtAsc(
                 eq(OutboxDispatchType.GENERAL),
                 eq(OutboxStatus.PENDING),
                 any(Pageable.class)
@@ -103,7 +103,7 @@ class OutboxServiceUnitTest {
         sut.publishPending(OutboxDispatchType.GENERAL);
 
         // then
-        verify(outboxRepository).findByDispatchTypeAndStatusOrderByCreatedAtAsc(
+        verify(jpaOutboxRepository).findByDispatchTypeAndStatusOrderByCreatedAtAsc(
                 eq(OutboxDispatchType.GENERAL),
                 eq(OutboxStatus.PENDING),
                 pageableCaptor.capture()
@@ -121,7 +121,7 @@ class OutboxServiceUnitTest {
         OutboxPollerProperties.Item props =
                 new OutboxPollerProperties.Item(true, 1000, 10, 3);
 
-        Outbox outbox = createOutbox("outbox-1", OutboxDispatchType.GENERAL);
+        JpaOutbox outbox = createOutbox("outbox-1", OutboxDispatchType.GENERAL);
 
         when(outboxPollerProperties.get(OutboxDispatchType.GENERAL))
                 .thenReturn(props);
@@ -130,7 +130,7 @@ class OutboxServiceUnitTest {
         when(outboxPublisherProvider.getObject())
                 .thenReturn(outboxPublisher);
 
-        when(outboxRepository.findByDispatchTypeAndStatusOrderByCreatedAtAsc(
+        when(jpaOutboxRepository.findByDispatchTypeAndStatusOrderByCreatedAtAsc(
                 eq(OutboxDispatchType.GENERAL),
                 eq(OutboxStatus.PENDING),
                 any(Pageable.class)
@@ -153,7 +153,7 @@ class OutboxServiceUnitTest {
         OutboxPollerProperties.Item props =
                 new OutboxPollerProperties.Item(true, 1000, 10, 3);
 
-        Outbox outbox = createOutbox("outbox-1", OutboxDispatchType.GENERAL);
+        JpaOutbox outbox = createOutbox("outbox-1", OutboxDispatchType.GENERAL);
 
         when(outboxPollerProperties.get(OutboxDispatchType.GENERAL))
                 .thenReturn(props);
@@ -162,7 +162,7 @@ class OutboxServiceUnitTest {
         when(outboxPublisherProvider.getObject())
                 .thenReturn(outboxPublisher);
 
-        when(outboxRepository.findByDispatchTypeAndStatusOrderByCreatedAtAsc(
+        when(jpaOutboxRepository.findByDispatchTypeAndStatusOrderByCreatedAtAsc(
                 eq(OutboxDispatchType.GENERAL),
                 eq(OutboxStatus.PENDING),
                 any(Pageable.class)
@@ -187,7 +187,7 @@ class OutboxServiceUnitTest {
         OutboxPollerProperties.Item props =
                 new OutboxPollerProperties.Item(true, 1000, 10, 3);
 
-        Outbox outbox = createOutbox("outbox-1", OutboxDispatchType.GENERAL);
+        JpaOutbox outbox = createOutbox("outbox-1", OutboxDispatchType.GENERAL);
 
         outbox.increaseRetryCnt();
         outbox.increaseRetryCnt();
@@ -199,7 +199,7 @@ class OutboxServiceUnitTest {
         when(outboxPublisherProvider.getObject())
                 .thenReturn(outboxPublisher);
 
-        when(outboxRepository.findByDispatchTypeAndStatusOrderByCreatedAtAsc(
+        when(jpaOutboxRepository.findByDispatchTypeAndStatusOrderByCreatedAtAsc(
                 eq(OutboxDispatchType.GENERAL),
                 eq(OutboxStatus.PENDING),
                 any(Pageable.class)
@@ -224,8 +224,8 @@ class OutboxServiceUnitTest {
         OutboxPollerProperties.Item props =
                 new OutboxPollerProperties.Item(true, 1000, 10, 3);
 
-        Outbox failedOutbox = createOutbox("outbox-1", OutboxDispatchType.GENERAL);
-        Outbox successOutbox = createOutbox("outbox-2", OutboxDispatchType.GENERAL);
+        JpaOutbox failedOutbox = createOutbox("outbox-1", OutboxDispatchType.GENERAL);
+        JpaOutbox successOutbox = createOutbox("outbox-2", OutboxDispatchType.GENERAL);
 
         when(outboxPollerProperties.get(OutboxDispatchType.GENERAL))
                 .thenReturn(props);
@@ -234,7 +234,7 @@ class OutboxServiceUnitTest {
         when(outboxPublisherProvider.getObject())
                 .thenReturn(outboxPublisher);
 
-        when(outboxRepository.findByDispatchTypeAndStatusOrderByCreatedAtAsc(
+        when(jpaOutboxRepository.findByDispatchTypeAndStatusOrderByCreatedAtAsc(
                 eq(OutboxDispatchType.GENERAL),
                 eq(OutboxStatus.PENDING),
                 any(Pageable.class)
@@ -265,7 +265,7 @@ class OutboxServiceUnitTest {
         OutboxPollerProperties.Item props =
                 new OutboxPollerProperties.Item(true, 500, 20, 5);
 
-        Outbox outbox = createOutbox("outbox-1", OutboxDispatchType.BROADCAST);
+        JpaOutbox outbox = createOutbox("outbox-1", OutboxDispatchType.BROADCAST);
 
         when(outboxPollerProperties.get(OutboxDispatchType.BROADCAST))
                 .thenReturn(props);
@@ -274,7 +274,7 @@ class OutboxServiceUnitTest {
         when(outboxPublisherProvider.getObject())
                 .thenReturn(outboxPublisher);
 
-        when(outboxRepository.findByDispatchTypeAndStatusOrderByCreatedAtAsc(
+        when(jpaOutboxRepository.findByDispatchTypeAndStatusOrderByCreatedAtAsc(
                 eq(OutboxDispatchType.BROADCAST),
                 eq(OutboxStatus.PENDING),
                 any(Pageable.class)
@@ -284,7 +284,7 @@ class OutboxServiceUnitTest {
         sut.publishPending(OutboxDispatchType.BROADCAST);
 
         // then
-        verify(outboxRepository).findByDispatchTypeAndStatusOrderByCreatedAtAsc(
+        verify(jpaOutboxRepository).findByDispatchTypeAndStatusOrderByCreatedAtAsc(
                 eq(OutboxDispatchType.BROADCAST),
                 eq(OutboxStatus.PENDING),
                 eq(PageRequest.of(0, 20))
@@ -295,8 +295,8 @@ class OutboxServiceUnitTest {
         assertThat(outbox.getStatus()).isEqualTo(OutboxStatus.PUBLISHED);
     }
 
-    private Outbox createOutbox(String id, OutboxDispatchType dispatchType) {
-        return Outbox.ofPending(
+    private JpaOutbox createOutbox(String id, OutboxDispatchType dispatchType) {
+        return JpaOutbox.ofPending(
                 id,
                 "tx-" + id,
                 "aggregate-" + id,

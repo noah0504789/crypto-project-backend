@@ -3,7 +3,7 @@ package org.example.common.dlq.adapter.in;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.common.dlq.application.service.DlqService;
-import org.example.common.dlq.domain.Dlq;
+import org.example.common.dlq.adapter.out.JpaDlq;
 import org.example.common.dlq.domain.event.AbstractDlqEvent;
 import org.example.common.dlq.domain.event.AbstractDlqEventList;
 import org.example.common.dlq.exception.DlqPersistenceException;
@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Nested;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataRetrievalFailureException;
@@ -26,10 +27,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -52,7 +53,7 @@ class DlqEventListListenerUnitTest {
     class HandleDlqEventListTest {
 
         @Test
-        @DisplayName("DLQ 이벤트 리스트를 받으면 이벤트를 직렬화하고 Dlq로 변환하여 저장한다")
+        @DisplayName("DLQ 이벤트 리스트를 받으면 이벤트를 직렬화하고 JpaDlq로 변환하여 저장한다")
         void handleDlqEventList() throws Exception {
             // given
             AbstractDlqEventList eventList = mock(AbstractDlqEventList.class);
@@ -60,43 +61,37 @@ class DlqEventListListenerUnitTest {
             AbstractDlqEvent event1 = mock(AbstractDlqEvent.class);
             AbstractDlqEvent event2 = mock(AbstractDlqEvent.class);
 
-            Dlq dlq1 = mock(Dlq.class);
-            Dlq dlq2 = mock(Dlq.class);
+            JpaDlq dlq1 = mock(JpaDlq.class);
+            JpaDlq dlq2 = mock(JpaDlq.class);
 
             given(eventList.getTxId()).willReturn(txId);
             given(eventList.getEventList()).willReturn(List.of(event1, event2));
 
-            given(objectMapper.writeValueAsString(event1))
-                    .willReturn("payload-1");
-            given(objectMapper.writeValueAsString(event2))
-                    .willReturn("payload-2");
+            given(objectMapper.writeValueAsString(event1)).willReturn("payload-1");
+            given(objectMapper.writeValueAsString(event2)).willReturn("payload-2");
 
-            given(event1.toDlq(txId, "payload-1"))
-                    .willReturn(dlq1);
-            given(event2.toDlq(txId, "payload-2"))
-                    .willReturn(dlq2);
+            try (MockedStatic<JpaDlq> jpaDlq = mockStatic(JpaDlq.class)) {
+                jpaDlq.when(() -> JpaDlq.from(event1, txId, "payload-1")).thenReturn(dlq1);
+                jpaDlq.when(() -> JpaDlq.from(event2, txId, "payload-2")).thenReturn(dlq2);
 
-            // when
-            sut.handleDlqEventList(eventList);
+                // when
+                sut.handleDlqEventList(eventList);
 
-            // then
-            ArgumentCaptor<List<Dlq>> captor =
-                    ArgumentCaptor.forClass(List.class);
+                // then
+                jpaDlq.verify(() -> JpaDlq.from(event1, txId, "payload-1"));
+                jpaDlq.verify(() -> JpaDlq.from(event2, txId, "payload-2"));
+            }
 
+            ArgumentCaptor<List<JpaDlq>> captor = ArgumentCaptor.forClass(List.class);
             verify(dlqService).saveAll(captor.capture());
-
-            assertThat(captor.getValue())
-                    .containsExactly(dlq1, dlq2);
+            assertThat(captor.getValue()).containsExactly(dlq1, dlq2);
 
             verify(objectMapper).writeValueAsString(event1);
             verify(objectMapper).writeValueAsString(event2);
-
-            verify(event1).toDlq(txId, "payload-1");
-            verify(event2).toDlq(txId, "payload-2");
         }
 
         @Test
-        @DisplayName("DLQ 이벤트 리스트가 비어 있어도 빈 Dlq 목록을 저장한다")
+        @DisplayName("DLQ 이벤트 리스트가 비어 있어도 빈 JpaDlq 목록을 저장한다")
         void handleDlqEventListWithEmptyEventList() throws JsonProcessingException {
             // given
             AbstractDlqEventList eventList = mock(AbstractDlqEventList.class);
@@ -108,13 +103,9 @@ class DlqEventListListenerUnitTest {
             sut.handleDlqEventList(eventList);
 
             // then
-            ArgumentCaptor<List<Dlq>> captor =
-                    ArgumentCaptor.forClass(List.class);
-
+            ArgumentCaptor<List<JpaDlq>> captor = ArgumentCaptor.forClass(List.class);
             verify(dlqService).saveAll(captor.capture());
-
             assertThat(captor.getValue()).isEmpty();
-
             verify(objectMapper, never()).writeValueAsString(any());
         }
 
@@ -130,19 +121,21 @@ class DlqEventListListenerUnitTest {
             given(eventList.getTxId()).willReturn(txId);
             given(eventList.getEventList()).willReturn(List.of(event));
 
-            given(objectMapper.writeValueAsString(event))
-                    .willThrow(exception);
+            given(objectMapper.writeValueAsString(event)).willThrow(exception);
 
-            // when & then
-            assertThatThrownBy(() -> sut.handleDlqEventList(eventList))
-                    .isInstanceOf(DlqPersistenceException.class)
-                    .isNotInstanceOf(TemporaryDlqPersistenceException.class)
-                    .hasMessageContaining("failed to serialize dlq events")
-                    .hasMessageContaining(txId)
-                    .hasCause(exception);
+            try (MockedStatic<JpaDlq> jpaDlq = mockStatic(JpaDlq.class)) {
+                // when & then
+                assertThatThrownBy(() -> sut.handleDlqEventList(eventList))
+                        .isInstanceOf(DlqPersistenceException.class)
+                        .isNotInstanceOf(TemporaryDlqPersistenceException.class)
+                        .hasMessageContaining("failed to serialize dlq events")
+                        .hasMessageContaining(txId)
+                        .hasCause(exception);
+
+                jpaDlq.verifyNoInteractions();
+            }
 
             verify(objectMapper).writeValueAsString(event);
-            verify(event, never()).toDlq(anyString(), anyString());
             verify(dlqService, never()).saveAll(anyList());
         }
 
@@ -152,7 +145,7 @@ class DlqEventListListenerUnitTest {
             // given
             AbstractDlqEventList eventList = mock(AbstractDlqEventList.class);
             AbstractDlqEvent event = mock(AbstractDlqEvent.class);
-            Dlq dlq = mock(Dlq.class);
+            JpaDlq dlq = mock(JpaDlq.class);
 
             DataAccessException exception =
                     new DataRetrievalFailureException("dlq save failed");
@@ -160,26 +153,25 @@ class DlqEventListListenerUnitTest {
             given(eventList.getTxId()).willReturn(txId);
             given(eventList.getEventList()).willReturn(List.of(event));
 
-            given(objectMapper.writeValueAsString(event))
-                    .willReturn("payload");
+            given(objectMapper.writeValueAsString(event)).willReturn("payload");
 
-            given(event.toDlq(txId, "payload"))
-                    .willReturn(dlq);
+            doThrow(exception).when(dlqService).saveAll(anyList());
 
-            doThrow(exception)
-                    .when(dlqService)
-                    .saveAll(anyList());
+            try (MockedStatic<JpaDlq> jpaDlq = mockStatic(JpaDlq.class)) {
+                jpaDlq.when(() -> JpaDlq.from(event, txId, "payload")).thenReturn(dlq);
 
-            // when & then
-            assertThatThrownBy(() -> sut.handleDlqEventList(eventList))
-                    .isInstanceOf(DlqPersistenceException.class)
-                    .isNotInstanceOf(TemporaryDlqPersistenceException.class)
-                    .hasMessageContaining("failed to save dlq events")
-                    .hasMessageContaining(txId)
-                    .hasCause(exception);
+                // when & then
+                assertThatThrownBy(() -> sut.handleDlqEventList(eventList))
+                        .isInstanceOf(DlqPersistenceException.class)
+                        .isNotInstanceOf(TemporaryDlqPersistenceException.class)
+                        .hasMessageContaining("failed to save dlq events")
+                        .hasMessageContaining(txId)
+                        .hasCause(exception);
+
+                jpaDlq.verify(() -> JpaDlq.from(event, txId, "payload"));
+            }
 
             verify(objectMapper).writeValueAsString(event);
-            verify(event).toDlq(txId, "payload");
             verify(dlqService).saveAll(anyList());
         }
 
@@ -189,7 +181,7 @@ class DlqEventListListenerUnitTest {
             // given
             AbstractDlqEventList eventList = mock(AbstractDlqEventList.class);
             AbstractDlqEvent event = mock(AbstractDlqEvent.class);
-            Dlq dlq = mock(Dlq.class);
+            JpaDlq dlq = mock(JpaDlq.class);
 
             DataAccessException exception =
                     new TransientDataAccessResourceException("temporary dlq save failed");
@@ -197,25 +189,22 @@ class DlqEventListListenerUnitTest {
             given(eventList.getTxId()).willReturn(txId);
             given(eventList.getEventList()).willReturn(List.of(event));
 
-            given(objectMapper.writeValueAsString(event))
-                    .willReturn("payload");
+            given(objectMapper.writeValueAsString(event)).willReturn("payload");
 
-            given(event.toDlq(txId, "payload"))
-                    .willReturn(dlq);
+            doThrow(exception).when(dlqService).saveAll(anyList());
 
-            doThrow(exception)
-                    .when(dlqService)
-                    .saveAll(anyList());
+            try (MockedStatic<JpaDlq> jpaDlq = mockStatic(JpaDlq.class)) {
+                jpaDlq.when(() -> JpaDlq.from(event, txId, "payload")).thenReturn(dlq);
 
-            // when & then
-            assertThatThrownBy(() -> sut.handleDlqEventList(eventList))
-                    .isInstanceOf(TemporaryDlqPersistenceException.class)
-                    .hasMessageContaining("failed to save dlq events")
-                    .hasMessageContaining(txId)
-                    .hasCause(exception);
+                // when & then
+                assertThatThrownBy(() -> sut.handleDlqEventList(eventList))
+                        .isInstanceOf(TemporaryDlqPersistenceException.class)
+                        .hasMessageContaining("failed to save dlq events")
+                        .hasMessageContaining(txId)
+                        .hasCause(exception);
+            }
 
             verify(objectMapper).writeValueAsString(event);
-            verify(event).toDlq(txId, "payload");
             verify(dlqService).saveAll(anyList());
         }
 
@@ -226,28 +215,28 @@ class DlqEventListListenerUnitTest {
             AbstractDlqEventList eventList = mock(AbstractDlqEventList.class);
             AbstractDlqEvent event = mock(AbstractDlqEvent.class);
 
-            RuntimeException exception =
-                    new RuntimeException("unexpected failure");
+            RuntimeException exception = new RuntimeException("unexpected failure");
 
             given(eventList.getTxId()).willReturn(txId);
             given(eventList.getEventList()).willReturn(List.of(event));
 
-            given(objectMapper.writeValueAsString(event))
-                    .willReturn("payload");
+            given(objectMapper.writeValueAsString(event)).willReturn("payload");
 
-            given(event.toDlq(txId, "payload"))
-                    .willThrow(exception);
+            try (MockedStatic<JpaDlq> jpaDlq = mockStatic(JpaDlq.class)) {
+                jpaDlq.when(() -> JpaDlq.from(event, txId, "payload")).thenThrow(exception);
 
-            // when & then
-            assertThatThrownBy(() -> sut.handleDlqEventList(eventList))
-                    .isInstanceOf(DlqPersistenceException.class)
-                    .isNotInstanceOf(TemporaryDlqPersistenceException.class)
-                    .hasMessageContaining("failed to handle dlq event list")
-                    .hasMessageContaining(txId)
-                    .hasCause(exception);
+                // when & then
+                assertThatThrownBy(() -> sut.handleDlqEventList(eventList))
+                        .isInstanceOf(DlqPersistenceException.class)
+                        .isNotInstanceOf(TemporaryDlqPersistenceException.class)
+                        .hasMessageContaining("failed to handle dlq event list")
+                        .hasMessageContaining(txId)
+                        .hasCause(exception);
+
+                jpaDlq.verify(() -> JpaDlq.from(event, txId, "payload"));
+            }
 
             verify(objectMapper).writeValueAsString(event);
-            verify(event).toDlq(txId, "payload");
             verify(dlqService, never()).saveAll(anyList());
         }
 
@@ -266,21 +255,22 @@ class DlqEventListListenerUnitTest {
             given(eventList.getTxId()).willReturn(txId);
             given(eventList.getEventList()).willReturn(List.of(event));
 
-            given(objectMapper.writeValueAsString(event))
-                    .willReturn("payload");
+            given(objectMapper.writeValueAsString(event)).willReturn("payload");
 
-            given(event.toDlq(txId, "payload"))
-                    .willThrow(exception);
+            try (MockedStatic<JpaDlq> jpaDlq = mockStatic(JpaDlq.class)) {
+                jpaDlq.when(() -> JpaDlq.from(event, txId, "payload")).thenThrow(exception);
 
-            // when & then
-            assertThatThrownBy(() -> sut.handleDlqEventList(eventList))
-                    .isInstanceOf(TemporaryDlqPersistenceException.class)
-                    .hasMessageContaining("failed to handle dlq event list")
-                    .hasMessageContaining(txId)
-                    .hasCause(exception);
+                // when & then
+                assertThatThrownBy(() -> sut.handleDlqEventList(eventList))
+                        .isInstanceOf(TemporaryDlqPersistenceException.class)
+                        .hasMessageContaining("failed to handle dlq event list")
+                        .hasMessageContaining(txId)
+                        .hasCause(exception);
+
+                jpaDlq.verify(() -> JpaDlq.from(event, txId, "payload"));
+            }
 
             verify(objectMapper).writeValueAsString(event);
-            verify(event).toDlq(txId, "payload");
             verify(dlqService, never()).saveAll(anyList());
         }
     }

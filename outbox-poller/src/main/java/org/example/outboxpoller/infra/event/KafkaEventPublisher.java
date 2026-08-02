@@ -2,9 +2,9 @@ package org.example.outboxpoller.infra.event;
 
 import lombok.RequiredArgsConstructor;
 import org.example.common.outbox.application.port.out.EventPublisherPort;
-import org.example.common.dlq.domain.Dlq;
+import org.example.common.dlq.adapter.out.JpaDlq;
 import org.example.common.event.KafkaEventFactory;
-import org.example.common.outbox.domain.Outbox;
+import org.example.common.outbox.adapter.out.JpaOutbox;
 import org.example.outboxpoller.infra.exception.OutboxPollerInfrastructureException;
 import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.messaging.Message;
@@ -16,7 +16,7 @@ public class KafkaEventPublisher implements EventPublisherPort {
 
     private final StreamBridge streamBridge;
 
-    public void publish(Outbox outbox) {
+    public void publish(JpaOutbox outbox) {
         Message<String> message = KafkaEventFactory.createOutboxEventMessage(
                 outbox.getPayload(),
                 outbox.getPartitionKey(),
@@ -28,7 +28,7 @@ public class KafkaEventPublisher implements EventPublisherPort {
         send(outbox.getDestination(), message, "outbox");
     }
 
-    public void publish(Dlq dlq) {
+    public void publish(JpaDlq dlq) {
         Message<String> message = KafkaEventFactory.createDlqEventMessage(
                 dlq.getPayload(),
                 dlq.getAggregateId(),

@@ -28,7 +28,7 @@ public class ChatRoomCacheSaveEvent extends AbstractOutboxEvent implements Handl
     }
 
     @Override
-    protected OutboxDomainType getDomainType() {
+    public OutboxDomainType getDomainType() {
         return OutboxDomainType.CHAT;
     }
 }

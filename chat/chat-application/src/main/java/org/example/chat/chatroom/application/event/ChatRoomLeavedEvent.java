@@ -32,7 +32,7 @@ public class ChatRoomLeavedEvent extends AbstractOutboxEvent implements Handleab
     }
 
     @Override
-    protected OutboxDomainType getDomainType() {
+    public OutboxDomainType getDomainType() {
         return OutboxDomainType.CHAT;
     }
 }

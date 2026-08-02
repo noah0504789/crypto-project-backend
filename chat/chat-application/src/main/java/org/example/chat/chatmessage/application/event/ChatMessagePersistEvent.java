@@ -36,7 +36,7 @@ public class ChatMessagePersistEvent extends AbstractOutboxEvent implements Hand
     }
 
     @Override
-    protected OutboxDomainType getDomainType() {
+    public OutboxDomainType getDomainType() {
         return OutboxDomainType.CHAT;
     }
 }

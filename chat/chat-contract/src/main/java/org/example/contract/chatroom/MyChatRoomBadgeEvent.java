@@ -22,17 +22,17 @@ public class MyChatRoomBadgeEvent extends AbstractOutboxEvent {
     }
 
     @Override
-    protected OutboxDispatchType getDispatchType() {
+    public OutboxDispatchType getDispatchType() {
         return OutboxDispatchType.BROADCAST;
     }
 
     @Override
-    protected String getMessageType() {
+    public String getMessageType() {
         return MyChatRoomBadgeEvent.class.getName();
     }
 
     @Override
-    protected OutboxDomainType getDomainType() {
+    public OutboxDomainType getDomainType() {
         return OutboxDomainType.CHAT;
     }
 }
