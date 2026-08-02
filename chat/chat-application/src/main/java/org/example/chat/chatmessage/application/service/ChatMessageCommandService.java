@@ -168,16 +168,20 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
             String roomId,
             List<ChatRoomMembershipScore> chatRoomMembershipScores
     ) {
-        try {
-            chatMessageCachePort.hardDelete(messageId, roomId, chatRoomMembershipScores);
-        } catch (Exception e) {
-            log.warn(
-                    "[redis] chat message hardDelete failed. messageId={}, roomId={}, error={}",
-                    messageId,
-                    roomId,
-                    e.getMessage(),
-                    e
-            );
-        }
+        // Mongo 삭제가 커밋된 뒤에만 캐시에서 제거한다. 커밋 전 제거 시 롤백되면 Mongo엔 남았는데 캐시엔 없어
+        // 조회 repair 로 되살아나는 불일치가 생긴다. 커밋 후 제거 실패는 로그만 남기고 repair/TTL 이 흡수한다.
+        AfterCommitExecutor.run(() -> {
+            try {
+                chatMessageCachePort.hardDelete(messageId, roomId, chatRoomMembershipScores);
+            } catch (Exception e) {
+                log.warn(
+                        "[redis] chat message hardDelete failed after commit. messageId={}, roomId={}, error={}",
+                        messageId,
+                        roomId,
+                        e.getMessage(),
+                        e
+                );
+            }
+        });
     }
 }
