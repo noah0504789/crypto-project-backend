@@ -3,5 +3,5 @@ spring:
   config.import: configserver:http://crypto-spring-cloud-config:8888
   cloud:
     config:
-      name: notification-service,eureka-client,mysql,mongo,kafka,monitoring
+      name: notification-service,eureka-client,mysql,mongo,redis,kafka,monitoring
       label: main

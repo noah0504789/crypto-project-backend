@@ -8,6 +8,7 @@ spring:
       - optional:file:${smoke.config.repo}/infrastructure/eureka-client.yml
       - optional:file:${smoke.config.repo}/infrastructure/mysql.yml
       - optional:file:${smoke.config.repo}/infrastructure/mongo.yml
+      - optional:file:${smoke.config.repo}/infrastructure/redis.yml
       - optional:file:${smoke.config.repo}/infrastructure/kafka.yml
       - optional:file:${smoke.config.repo}/infrastructure/monitoring.yml
       - optional:file:${smoke.config.repo}/dynamic/notification-service.yml

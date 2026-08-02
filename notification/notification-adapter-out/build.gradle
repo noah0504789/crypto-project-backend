@@ -7,8 +7,11 @@ dependencies {
     implementation project(':common:common-id')
     implementation project(':common:common-jpa')
     implementation project(':common:common-mongo')
+    implementation project(':common:common-redis')
     implementation project(':market:market-client')
     implementation project(':notification:notification-application')
+
+    implementation(libs.jackson.databind)
 
     testImplementation project(':common:common-test')
 }

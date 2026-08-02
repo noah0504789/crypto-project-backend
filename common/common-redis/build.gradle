@@ -7,7 +7,7 @@ dependencies {
 
     api(libs.spring.boot.starter.data.redis)
 
-    implementation(libs.spring.boot.starter.aop)
+    api(libs.spring.boot.starter.aop)
 
     testImplementation project(':common:common-test')
 }

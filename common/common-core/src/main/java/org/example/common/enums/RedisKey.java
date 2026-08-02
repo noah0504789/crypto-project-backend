@@ -17,6 +17,9 @@ public enum RedisKey {
     CHAT_MESSAGE_INFO("{chat}:message:%s", 1),
     CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX("{chat}:room:%s:message-access", 1),
 
+    // Notification (master info only, PER cache)
+    NOTIFICATION_MASTER("{noti}:master:%s", 1),
+
     // Auth
     ACCESS_TOKEN("{auth}:accesstoken:%s:%s", 2),
     ACCESS_CLAIMS("{auth}:claims:%s", 1),
