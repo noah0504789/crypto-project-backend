@@ -8,6 +8,7 @@ import org.example.chat.chatroom.application.mapper.ChatRoomPayloadMapper;
 import org.example.chat.chatroom.application.service.command.ChatRoomActivityCommand;
 import org.example.chat.chatroom.application.service.command.ChatRoomUpdateCommand;
 import org.example.chat.chatroom.application.port.in.ChatRoomCommandUseCase;
+import org.example.chat.chatroom.application.port.in.ChatRoomQueryUseCase;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomIdGeneratorPort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
@@ -30,6 +31,7 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
 
     private final ChatRoomCachePort cache;
     private final ChatRoomPersistencePort persistence;
+    private final ChatRoomQueryUseCase chatRoomQueryUseCase;
     private final ChatRoomIdGeneratorPort idGenerator;
     private final OutboxEventListPublishPort outboxEventListPublishPort;
     private final Clock clock;
@@ -116,8 +118,7 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
 
     @Override
     public void leave(String id, String memberId) {
-        ChatRoom domain = persistence.findById(id)
-                .orElseThrow(() -> new ChatRoomNotFoundException(id));
+        ChatRoom domain = chatRoomQueryUseCase.getRoom(id);
 
         if (domain.isLastMember(memberId)) {
             delete(domain);
