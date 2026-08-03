@@ -8,7 +8,6 @@ import org.example.market.application.port.out.MarketPersistencePort;
 import org.example.market.domain.model.Market;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
