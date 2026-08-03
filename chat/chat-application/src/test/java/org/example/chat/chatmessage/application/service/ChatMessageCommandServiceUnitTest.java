@@ -14,9 +14,11 @@ import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.chat.chatmessage.application.exception.ChatMessagePersistException;
 import org.example.chat.exception.TemporaryChatPersistenceException;
+import org.example.common.clock.Clock;
 import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
 import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,6 +54,9 @@ class ChatMessageCommandServiceUnitTest {
     @Mock
     private OutboxEventListPublishPort outboxEventListPublishPort;
 
+    @Mock
+    private Clock clock;
+
     @InjectMocks
     private ChatMessageCommandService sut;
 
@@ -68,6 +73,12 @@ class ChatMessageCommandServiceUnitTest {
     private final String memberId2 = "member-2";
 
     private final ChatRoomCategory category = ChatRoomCategory.FREE;
+    private final LocalDateTime createdAt = LocalDateTime.of(2026, 8, 3, 20, 52);
+
+    @BeforeEach
+    void stubClock() {
+        lenient().when(clock.nowLocalDateTime()).thenReturn(createdAt);
+    }
 
     @Nested
     @DisplayName("save")
@@ -111,6 +122,7 @@ class ChatMessageCommandServiceUnitTest {
                                             && message.getRoomId().equals(roomId)
                                             && message.getWriterId().equals(writerId)
                                             && message.getContent().equals(content)
+                                            && message.getCreatedAt().equals(createdAt)
                             ),
                             eq(chatRoom.getMemberIds())
                     );

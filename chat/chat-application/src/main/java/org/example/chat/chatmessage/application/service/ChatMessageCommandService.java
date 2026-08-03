@@ -17,6 +17,7 @@ import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatmessage.application.exception.ChatMessagePersistException;
 import org.example.chat.exception.TemporaryChatPersistenceException;
+import org.example.common.clock.Clock;
 import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
 import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
 import org.example.common.tx.AfterCommitExecutor;
@@ -42,6 +43,7 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
     private final ChatMessageCachePort chatMessageCachePort;
     private final ChatRoomPersistencePort chatRoomPersistencePort;
     private final OutboxEventListPublishPort outboxEventListPublishPort;
+    private final Clock clock;
 
     @Retryable(
             retryFor = TemporaryOutboxPersistenceException.class,
@@ -59,7 +61,8 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
                 command.messageId(),
                 command.roomId(),
                 command.writerId(),
-                command.content()
+                command.content(),
+                clock.nowLocalDateTime()
         );
 
         Set<String> memberIds = chatRoom.getMemberIds();

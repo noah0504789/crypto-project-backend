@@ -49,7 +49,13 @@ public class MongoChatRoom {
     private LocalDateTime deletedAt;
 
     @PersistenceCreator
-    public MongoChatRoom(String hostId, String title, String description, ChatRoomCategory category) {
+    public MongoChatRoom(
+            String hostId,
+            String title,
+            String description,
+            ChatRoomCategory category,
+            LocalDateTime createdAt
+    ) {
         this.hostId = hostId;
         this.title = title;
         this.description = description;
@@ -57,7 +63,7 @@ public class MongoChatRoom {
         this.memberIds = new HashSet<>(Set.of(hostId));
         this.msgCnt = 0L;
         this.popularity = 0L;
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = createdAt;
     }
 
     public static MongoChatRoom fromDomain(ChatRoom domain) {

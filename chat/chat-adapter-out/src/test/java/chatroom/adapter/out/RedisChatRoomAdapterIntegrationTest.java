@@ -708,7 +708,8 @@ class RedisChatRoomAdapterIntegrationTest {
                 hostId,
                 title,
                 "테스트 설명",
-                category
+                category,
+                java.time.LocalDateTime.of(2026, 1, 1, 12, 0)
         );
     }
 }

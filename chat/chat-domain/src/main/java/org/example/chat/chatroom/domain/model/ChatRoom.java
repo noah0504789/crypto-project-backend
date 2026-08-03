@@ -32,7 +32,14 @@ public class ChatRoom {
     private Instant lastMsgCreatedAt;
     private LocalDateTime createdAt;
 
-    public static ChatRoom create(String id, String hostId, String title, String description, ChatRoomCategory category) {
+    public static ChatRoom create(
+            String id,
+            String hostId,
+            String title,
+            String description,
+            ChatRoomCategory category,
+            LocalDateTime createdAt
+    ) {
         return ChatRoom.builder()
                 .id(id)
                 .hostId(hostId)
@@ -41,16 +48,16 @@ public class ChatRoom {
                 .category(category)
                 .msgCnt(0L)
                 .memberIds(new HashSet<>(Set.of(hostId)))
-                .createdAt(LocalDateTime.now())
+                .createdAt(createdAt)
                 .build();
     }
 
-    public static ChatRoom rehydrate(String id, ChatRoomCategory category) {
+    public static ChatRoom rehydrate(String id, ChatRoomCategory category, LocalDateTime createdAt) {
         return ChatRoom.builder()
                 .id(id)
                 .msgCnt(0L)
                 .category(category)
-                .createdAt(LocalDateTime.now())
+                .createdAt(createdAt)
                 .build();
     }
 

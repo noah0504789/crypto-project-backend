@@ -5,6 +5,8 @@ import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessageRepo
 import org.example.chat.chatroom.adapter.out.persistence.MongoChatRoomAdapter;
 import org.example.chat.chatroom.adapter.out.persistence.MongoChatRoomMembershipRepository;
 import org.example.chat.chatroom.adapter.out.persistence.MongoChatRoomRepository;
+import org.example.common.clock.Clock;
+import org.example.common.time.ServiceTimeConverter;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
@@ -12,6 +14,9 @@ import org.springframework.data.mongodb.MongoDatabaseFactory;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
+
+import java.time.Instant;
+import java.time.LocalDateTime;
 
 @TestConfiguration
 @EnableMongoRepositories(
@@ -23,6 +28,28 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
         mongoTemplateRef = "primaryMongoTemplate"
 )
 public class TestMongoConfig {
+
+    private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 20, 52);
+
+    @Bean
+    public Clock clock() {
+        return new Clock() {
+            @Override
+            public long nowMs() {
+                return now().toEpochMilli();
+            }
+
+            @Override
+            public Instant now() {
+                return ServiceTimeConverter.toInstant(NOW);
+            }
+
+            @Override
+            public LocalDateTime nowLocalDateTime() {
+                return NOW;
+            }
+        };
+    }
 
     @Primary
     @Bean("primaryMongoTemplate")
