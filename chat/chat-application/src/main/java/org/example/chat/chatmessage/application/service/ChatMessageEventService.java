@@ -92,7 +92,7 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
             recoverAction.run();
         } catch (Exception recoverEx) {
             log.error(
-                    "[RECOVER-FALLBACK] {} failed. txId={}, originalError={}, recoverError={}, details={}",
+                    "[recover-fallback] {} failed. txId={}, originalError={}, recoverError={}, details={}",
                     "chatmessage persist recover",
                     txId,
                     original.getMessage(),

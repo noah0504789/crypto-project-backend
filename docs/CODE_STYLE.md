@@ -427,6 +427,7 @@ assertThat(result.<String>getAttribute("id")).isEqualTo(userId);
 | `[redis]` | Redis 저장소 연산 |
 | `[outbox]` | Transactional Outbox 발행 |
 | `[dlq]` | DLQ 전이·재처리 |
+| `[recover-fallback]` | `@Recover` 보상 자체 실패(최후 방어선) |
 | `[inbox]` | Inbox 멱등 소비(중복 skip) |
 | `[event]` | 도메인 이벤트 비동기 영속(consumer persist) |
 | `[grpc]` | gRPC 서버/클라이언트·예외 매핑 |

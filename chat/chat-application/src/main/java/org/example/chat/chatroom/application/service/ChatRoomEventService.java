@@ -490,7 +490,7 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
             recoverAction.run();
         } catch (Exception recoverEx) {
             log.error(
-                    "[RECOVER-FALLBACK] {} failed. txId={}, originalError={}, recoverError={}, details={}",
+                    "[recover-fallback] {} failed. txId={}, originalError={}, recoverError={}, details={}",
                     context,
                     txId,
                     original.getMessage(),
