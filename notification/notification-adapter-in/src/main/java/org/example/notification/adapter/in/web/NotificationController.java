@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Function;
 
 import static org.example.common.enums.HttpHeaderKey.USER_ID_VALUE;
 
