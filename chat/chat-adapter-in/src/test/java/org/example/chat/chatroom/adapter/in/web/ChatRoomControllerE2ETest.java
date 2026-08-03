@@ -131,7 +131,7 @@ class ChatRoomControllerE2ETest {
         }
 
         @Test
-        @DisplayName("조회 결과가 비어 있으면 items=null, hasNext=false를 반환한다")
+        @DisplayName("조회 결과가 비어 있으면 items=빈 배열, hasNext=false를 반환한다")
         void popularChatRoomsEmpty() throws Exception {
             // given
             ListPopularChatRoomsQuery query = ListPopularChatRoomsQuery.firstPage(category, 11);
@@ -143,7 +143,8 @@ class ChatRoomControllerE2ETest {
             mockMvc.perform(get("/chat/rooms/popular")
                             .param("category", category.name()))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.items").doesNotExist())
+                    .andExpect(jsonPath("$.items").isArray())
+                    .andExpect(jsonPath("$.items").isEmpty())
                     .andExpect(jsonPath("$.hasNext").value(false));
 
             verify(chatRoomQueryUseCase).listPopularRooms(query);
@@ -234,7 +235,7 @@ class ChatRoomControllerE2ETest {
         }
 
         @Test
-        @DisplayName("조회 결과가 비어 있으면 items=null, hasNext=false를 반환한다")
+        @DisplayName("조회 결과가 비어 있으면 items=빈 배열, hasNext=false를 반환한다")
         void myChatRoomsEmpty() throws Exception {
             // given
             ListMyChatRoomsQuery query = ListMyChatRoomsQuery.firstPage(USER_ID, 11);
@@ -246,7 +247,8 @@ class ChatRoomControllerE2ETest {
             mockMvc.perform(get("/chat/rooms/me")
                             .header("X-User-Id", USER_ID))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.items").doesNotExist())
+                    .andExpect(jsonPath("$.items").isArray())
+                    .andExpect(jsonPath("$.items").isEmpty())
                     .andExpect(jsonPath("$.hasNext").value(false));
 
             verify(chatRoomQueryUseCase).listMyRooms(query);

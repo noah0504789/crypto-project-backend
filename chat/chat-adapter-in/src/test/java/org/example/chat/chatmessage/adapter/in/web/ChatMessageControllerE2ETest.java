@@ -136,7 +136,7 @@ class ChatMessageControllerE2ETest {
         }
 
         @Test
-        @DisplayName("조회 결과가 비어 있으면 items=null, hasNext=false를 반환한다")
+        @DisplayName("조회 결과가 비어 있으면 items=빈 배열, hasNext=false를 반환한다")
         void emptyMessages() throws Exception {
             // given
             ListChatMessagesQuery query = ListChatMessagesQuery.firstPage(ROOM_ID, ACTOR_ID, 21);
@@ -148,7 +148,8 @@ class ChatMessageControllerE2ETest {
             mockMvc.perform(get("/chat/room/{roomId}/messages", ROOM_ID)
                             .header("X-User-Id", ACTOR_ID))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.items").doesNotExist())
+                    .andExpect(jsonPath("$.items").isArray())
+                    .andExpect(jsonPath("$.items").isEmpty())
                     .andExpect(jsonPath("$.hasNext").value(false));
 
             verify(chatMessageQueryService).listMessages(query);

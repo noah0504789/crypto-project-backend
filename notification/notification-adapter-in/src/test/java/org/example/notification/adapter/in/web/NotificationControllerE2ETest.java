@@ -169,7 +169,7 @@ class NotificationControllerE2ETest {
         }
 
         @Test
-        @DisplayName("조회 결과가 없으면 items null, hasNext false를 반환한다")
+        @DisplayName("조회 결과가 없으면 items 빈 배열, hasNext false를 반환한다")
         void myNotifications_shouldReturnEmptyCursorPageWhenItemsIsEmpty() throws Exception {
             // given
             ListNotificationInboxItemsQuery query = ListNotificationInboxItemsQuery.firstPage(receiverId, 11);
@@ -182,7 +182,8 @@ class NotificationControllerE2ETest {
                             .header(USER_ID_VALUE, receiverId.toString())
                             .param("limit", "10"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.items").doesNotExist())
+                    .andExpect(jsonPath("$.items").isArray())
+                    .andExpect(jsonPath("$.items").isEmpty())
                     .andExpect(jsonPath("$.hasNext").value(false));
 
             verify(notificationQueryUseCase).listInboxItems(query);
