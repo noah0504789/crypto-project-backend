@@ -51,7 +51,7 @@ public class RedisChatRoom {
                 .build();
     }
 
-    public LocalDateTime toLocalDateTime() {
+    public LocalDateTime createdAtLocalDateTime() {
         return ServiceTimeConverter.toLocalDateTime(createdAt);
     }
 }

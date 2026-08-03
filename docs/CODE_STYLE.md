@@ -88,6 +88,30 @@
 - OAuth2 internal user id와 email principal을 혼동하지 않는다.
 - 로그에는 추적 가능한 식별자 하나 이상을 포함한다.
 
+### 3.4 시간 변환 메서드
+
+`toInstant()`처럼 **어떤 필드를 변환하는지 이름에 드러나지 않는** 무인자 변환 메서드를 금지한다. 어떤 필드가 어떤 타입으로 나가는지 이름만으로 알 수 있어야 한다.
+
+- **필드 접근 변환기**(무인자 인스턴스 메서드, 자기 필드 하나를 시간 타입으로 변환): **`<필드명><타입토큰>()`**, `to`/`get` prefix 없음.
+  - 예: `createdAtInstant()`, `createdAtEpochMillis()`, `createdAtLocalDateTime()`, `updatedAtInstant()`.
+- **범용 변환기**(변환 대상을 인자로 받음 → 필드 모호성 없음): **`to<타입토큰>(source)`** 유지.
+  - 예: `ServiceTimeConverter.toInstant(dateTime)`, `ServiceTimeConverter.toEpochMillis(dateTime)`.
+- **현재 시각**: **`now<타입토큰>()`**.
+  - 예: `ClockService.nowLocalDateTime()`.
+
+타입 토큰(반환 타입과 1:1):
+
+| 반환 타입 | 토큰 |
+| --- | --- |
+| `Instant` | `Instant` |
+| `LocalDateTime` | `LocalDateTime` |
+| `LocalDate` | `LocalDate` |
+| `long`(epoch milli) | `EpochMillis` |
+| `long`(epoch second) | `EpochSeconds` |
+
+- 도메인 시각 변환은 존(`Asia/Seoul`) 처리를 직접 하지 말고 `common-core`의 `ServiceTimeConverter`를 거친다.
+- Redis 복제 노드의 `master`/`ReadFrom.MASTER` 등 **다른 도메인의 동음이의어**는 이 규칙과 무관하다(시간 변환이 아님).
+
 ## 4. DTO/record 기준
 
 request/response/command/result/payload는 record를 우선 검토한다.

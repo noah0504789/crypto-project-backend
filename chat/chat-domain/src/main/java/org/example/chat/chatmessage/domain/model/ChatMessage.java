@@ -45,7 +45,7 @@ public class ChatMessage {
         return ServiceTimeConverter.toInstant(createdAt);
     }
 
-    public long toEpochMillis() {
+    public long createdAtEpochMillis() {
         return createdAtInstant().toEpochMilli();
     }
 
