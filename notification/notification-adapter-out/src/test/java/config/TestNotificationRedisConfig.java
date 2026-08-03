@@ -19,7 +19,7 @@ import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
- * notification master 캐시 어댑터 통합 테스트용 wiring.
+ * notification 캐시 어댑터 통합 테스트용 wiring.
  * 운영 {@code RedisConfig}는 cluster 커넥션이라, 단일 노드 Testcontainer(redis:7.2.0)에 맞춰
  * 커넥션/템플릿/스크립트/코덱/어댑터를 수동 구성한다.
  */

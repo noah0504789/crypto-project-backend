@@ -55,7 +55,7 @@ public class RedisNotificationCodec implements RedisHashCodec<RedisNotification>
 
     @Override
     public Map<String, String> writePartial(Map<String, Object> updated) {
-        // master 정보는 불변이라 부분 갱신 경로가 없다. 계약 충족용 최소 구현.
+        // 알림 정보는 불변이라 부분 갱신 경로가 없다. 계약 충족용 최소 구현.
         Map<String, String> map = new LinkedHashMap<>();
         updated.forEach((k, v) -> map.put(k, RedisCodecSupport.str(v)));
         return map;
