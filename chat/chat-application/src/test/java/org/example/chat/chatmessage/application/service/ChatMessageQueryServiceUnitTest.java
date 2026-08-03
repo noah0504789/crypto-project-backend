@@ -3,7 +3,8 @@ package org.example.chat.chatmessage.application.service;
 import org.example.chat.chatmessage.application.service.query.ListChatMessagesQuery;
 import org.example.chat.chatmessage.application.port.out.ChatMessageCachePort;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
-import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
+import org.example.chat.chatroom.application.port.in.ChatRoomQueryUseCase;
+import org.example.chat.chatroom.domain.exception.ChatRoomAccessDeniedException;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -17,10 +18,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -36,7 +37,7 @@ class ChatMessageQueryServiceUnitTest {
     private ChatMessageQueryRepairService queryRepairService;
 
     @Mock
-    private ChatRoomPersistencePort chatRoomPersistencePort;
+    private ChatRoomQueryUseCase chatRoomQueryUseCase;
 
     @InjectMocks
     private ChatMessageQueryService sut;
@@ -56,11 +57,53 @@ class ChatMessageQueryServiceUnitTest {
                 .memberIds(new HashSet<>(Set.of(myUserId)))
                 .build();
 
-        given(chatRoomPersistencePort.findById(roomId)).willReturn(Optional.of(room));
+        given(chatRoomQueryUseCase.getRoom(roomId)).willReturn(room);
     }
 
     private final Instant time1 = Instant.parse("2026-01-01T01:00:00Z");
     private final Instant time2 = Instant.parse("2026-01-01T02:00:00Z");
+
+    @Nested
+    @DisplayName("listMessages - authorization")
+    class ListMessagesAuthorizationTest {
+
+        @Test
+        @DisplayName("채팅방 조회 서비스를 통해 멤버십을 검증한다")
+        void listMessagesValidatesMembershipThroughChatRoomQueryService() {
+            // given
+            ListChatMessagesQuery query = firstPageQuery();
+            given(cache.listLatestMessages(roomId, limit)).willReturn(List.of());
+            given(queryRepairService.repairLatest(roomId, limit)).willReturn(List.of());
+
+            // when
+            sut.listMessages(query);
+
+            // then
+            verify(chatRoomQueryUseCase).getRoom(roomId);
+        }
+
+        @Test
+        @DisplayName("조회된 채팅방의 멤버가 아니면 메시지를 조회하지 않는다")
+        void listMessagesRejectsNonMemberBeforeLoadingMessages() {
+            // given
+            ListChatMessagesQuery query = firstPageQuery();
+            ChatRoom room = ChatRoom.builder()
+                    .id(roomId)
+                    .memberIds(new HashSet<>(Set.of("other-member")))
+                    .build();
+
+            given(chatRoomQueryUseCase.getRoom(roomId)).willReturn(room);
+
+            // when & then
+            assertThatThrownBy(() -> sut.listMessages(query))
+                    .isInstanceOf(ChatRoomAccessDeniedException.class);
+
+            verify(cache, never()).listLatestMessages(anyString(), anyInt());
+            verify(cache, never()).listMessagesBefore(anyString(), anyString(), anyLong(), anyInt());
+            verify(queryRepairService, never()).repairLatest(anyString(), anyInt());
+            verify(queryRepairService, never()).repairPrev(any());
+        }
+    }
 
     @Nested
     @DisplayName("listMessages - firstPage")
