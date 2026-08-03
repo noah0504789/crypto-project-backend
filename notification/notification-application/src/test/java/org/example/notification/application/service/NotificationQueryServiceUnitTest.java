@@ -84,8 +84,8 @@ class NotificationQueryServiceUnitTest {
     }
 
     @Nested
-    @DisplayName("master 캐시 해석")
-    class ResolveMasters {
+    @DisplayName("알림 정보 캐시 해석")
+    class ResolveNotifications {
 
         @Test
         @DisplayName("recipient가 없으면 캐시/DB를 호출하지 않고 빈 목록을 반환한다")
@@ -97,16 +97,16 @@ class NotificationQueryServiceUnitTest {
 
             assertThat(result).isEmpty();
             verify(cache, never()).findByIds(any());
-            verify(persistence, never()).findMastersByIds(any());
+            verify(persistence, never()).findByIds(any());
         }
 
         @Test
-        @DisplayName("캐시 hit이면 DB 재조회/warmUp 없이 캐시 master로 조립한다")
+        @DisplayName("캐시 hit이면 DB 재조회/warmUp 없이 캐시로 조립한다")
         void cacheHit_usesCacheWithoutReload() {
             ListNotificationInboxItemsQuery query = ListNotificationInboxItemsQuery.firstPage(receiverId, limit);
 
             given(persistence.listLatestRecipients(receiverId, limit)).willReturn(List.of(recipient("r1", "n1")));
-            given(cache.findByIds(any())).willReturn(Map.of("n1", master("n1", "제목1")));
+            given(cache.findByIds(any())).willReturn(Map.of("n1", notification("n1", "제목1")));
 
             List<NotificationInboxItem> result = sut.listInboxItems(query);
 
@@ -115,25 +115,25 @@ class NotificationQueryServiceUnitTest {
             assertThat(result.get(0).title()).isEqualTo("제목1");
             assertThat(result.get(0).recipientId()).isEqualTo("r1");
 
-            verify(persistence, never()).findMastersByIds(any());
+            verify(persistence, never()).findByIds(any());
             verify(cache, never()).warmUpAll(any());
         }
 
         @Test
-        @DisplayName("캐시 미스는 DB에서 master를 재조회하고 warm-up 한다")
+        @DisplayName("캐시 미스는 DB에서 재조회하고 warm-up 한다")
         void miss_reloadsAndWarmsUp() {
             ListNotificationInboxItemsQuery query = ListNotificationInboxItemsQuery.firstPage(receiverId, limit);
 
             given(persistence.listLatestRecipients(receiverId, limit)).willReturn(List.of(recipient("r1", "n1")));
             given(cache.findByIds(any())).willReturn(Map.of());
-            given(persistence.findMastersByIds(any())).willReturn(List.of(master("n1", "제목1")));
+            given(persistence.findByIds(any())).willReturn(List.of(notification("n1", "제목1")));
 
             List<NotificationInboxItem> result = sut.listInboxItems(query);
 
             assertThat(result).hasSize(1);
             assertThat(result.get(0).title()).isEqualTo("제목1");
 
-            verify(persistence).findMastersByIds(eq(Set.of("n1")));
+            verify(persistence).findByIds(eq(Set.of("n1")));
             verify(cache).warmUpAll(warmUpCaptor.capture());
             assertThat(warmUpCaptor.getValue()).extracting(Notification::getId).containsExactly("n1");
         }
@@ -145,24 +145,24 @@ class NotificationQueryServiceUnitTest {
 
             given(persistence.listLatestRecipients(receiverId, limit))
                     .willReturn(List.of(recipient("r1", "n1"), recipient("r2", "n2")));
-            given(cache.findByIds(any())).willReturn(Map.of("n1", master("n1", "제목1")));
-            given(persistence.findMastersByIds(any())).willReturn(List.of(master("n2", "제목2")));
+            given(cache.findByIds(any())).willReturn(Map.of("n1", notification("n1", "제목1")));
+            given(persistence.findByIds(any())).willReturn(List.of(notification("n2", "제목2")));
 
             List<NotificationInboxItem> result = sut.listInboxItems(query);
 
             assertThat(result).extracting(NotificationInboxItem::notificationId).containsExactly("n1", "n2");
-            verify(persistence).findMastersByIds(eq(Set.of("n2")));
+            verify(persistence).findByIds(eq(Set.of("n2")));
         }
 
         @Test
-        @DisplayName("캐시·DB 모두에 master가 없으면 해당 recipient는 결과에서 제외한다")
-        void skip_whenMasterMissingEverywhere() {
+        @DisplayName("캐시·DB 모두에 알림이 없으면 해당 recipient는 결과에서 제외한다")
+        void skip_whenNotificationMissingEverywhere() {
             ListNotificationInboxItemsQuery query = ListNotificationInboxItemsQuery.firstPage(receiverId, limit);
 
             given(persistence.listLatestRecipients(receiverId, limit))
                     .willReturn(List.of(recipient("r1", "n1"), recipient("r2", "n2")));
-            given(cache.findByIds(any())).willReturn(Map.of("n2", master("n2", "제목2")));
-            given(persistence.findMastersByIds(any())).willReturn(List.of());
+            given(cache.findByIds(any())).willReturn(Map.of("n2", notification("n2", "제목2")));
+            given(persistence.findByIds(any())).willReturn(List.of());
 
             List<NotificationInboxItem> result = sut.listInboxItems(query);
 
@@ -181,7 +181,7 @@ class NotificationQueryServiceUnitTest {
         );
     }
 
-    private Notification master(String id, String title) {
+    private Notification notification(String id, String title) {
         return Notification.rehydrate(
                 id,
                 NotificationType.PRICE_ALERT,

@@ -17,7 +17,7 @@ import org.springframework.data.redis.core.script.RedisScript;
 /**
  * notification 서비스 Redis 설정.
  *
- * <p>master 정보만 캐싱하므로 replica 라우팅 없이 master 커넥션만 사용한다.
+ * <p>알림 정보만 캐싱하므로 replica 라우팅 없이 master 커넥션만 사용한다.
  * cluster 커넥션/템플릿 생성은 {@link RedisConnectionFactorySupport} 공통 로직을 재사용한다.
  */
 @Configuration

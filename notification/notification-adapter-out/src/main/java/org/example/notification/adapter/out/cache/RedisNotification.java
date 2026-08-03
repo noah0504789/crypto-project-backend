@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Notification master 캐시 표현. 조회에 필요한 불변 master 정보만 담는다.
+ * Notification 캐시 표현. 조회에 필요한 불변 알림 정보만 담는다.
  * recipient(읽음 상태)는 캐싱 대상이 아니다.
  */
 @ToString
@@ -54,7 +54,7 @@ public class RedisNotification {
     }
 
     /**
-     * 캐시에는 삭제되지 않은 master 만 적재하므로 deleted=false 로 rehydrate 한다.
+     * 캐시에는 삭제되지 않은 알림만 적재하므로 deleted=false 로 rehydrate 한다.
      */
     public Notification toDomain() {
         return Notification.rehydrate(

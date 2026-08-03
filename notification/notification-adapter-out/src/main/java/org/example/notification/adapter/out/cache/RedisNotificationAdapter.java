@@ -18,14 +18,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.example.common.enums.RedisKey.NOTIFICATION_MASTER;
+import static org.example.common.enums.RedisKey.NOTIFICATION_INFO;
 
 /**
- * Notification master 정보의 Redis 1차 캐시 어댑터.
+ * Notification 정보의 Redis 1차 캐시 어댑터.
  *
- * <p>master 는 <b>불변</b>이라 stale 이 없다 → PER·SWR·락 없이 <b>선적재 + 긴 TTL</b>로만 운영한다.
+ * <p>알림 정보는 <b>불변</b>이라 stale 이 없다 → PER·SWR·락 없이 <b>선적재 + 긴 TTL</b>로만 운영한다.
  * 콜드 항목은 Redis <b>LFU 축출</b>(서버 {@code maxmemory-policy}, 인프라 설정)로 자동 교체된다.
- * 인덱스는 캐싱하지 않고 master(id→hash) 만 캐싱한다. 조회 경로는 {@code @CacheFailOpen} 으로 fail-open.
+ * 인덱스는 캐싱하지 않고 알림 정보(id→hash) 만 캐싱한다. 조회 경로는 {@code @CacheFailOpen} 으로 fail-open.
  */
 @Repository
 public class RedisNotificationAdapter implements NotificationCachePort {
@@ -67,7 +67,7 @@ public class RedisNotificationAdapter implements NotificationCachePort {
                 continue;
             }
 
-            Map<String, String> source = hash.find(NOTIFICATION_MASTER.keyFor(id));
+            Map<String, String> source = hash.find(NOTIFICATION_INFO.keyFor(id));
 
             if (source == null || source.isEmpty()) {
                 continue;
@@ -100,15 +100,15 @@ public class RedisNotificationAdapter implements NotificationCachePort {
             return;
         }
 
-        String masterKey = NOTIFICATION_MASTER.keyFor(id);
+        String infoKey = NOTIFICATION_INFO.keyFor(id);
 
-        if (!masterHashRedisTemplate.execute(invalidateNotification_lua, List.of(masterKey), id)) {
+        if (!masterHashRedisTemplate.execute(invalidateNotification_lua, List.of(infoKey), id)) {
             throw new NotificationCacheException("[redis] notification invalidate() failed!");
         }
     }
 
     private void warmUp(Notification notification) {
-        String masterKey = NOTIFICATION_MASTER.keyFor(notification.getId());
+        String infoKey = NOTIFICATION_INFO.keyFor(notification.getId());
 
         Map<String, String> fields = codec.write(RedisNotification.fromDomain(notification));
 
@@ -120,7 +120,7 @@ public class RedisNotificationAdapter implements NotificationCachePort {
         });
         args.add(CACHE_TTL_SECONDS);
 
-        if (!masterHashRedisTemplate.execute(warmUpNotification_lua, List.of(masterKey), args.toArray())) {
+        if (!masterHashRedisTemplate.execute(warmUpNotification_lua, List.of(infoKey), args.toArray())) {
             throw new NotificationCacheException("[redis] notification warmUp() failed! id=" + notification.getId());
         }
     }

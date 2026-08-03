@@ -56,13 +56,13 @@ class RedisNotificationAdapterIntegrationTest {
     class WarmUpFindTest {
 
         @Test
-        @DisplayName("warmUpAll 후 findByIds로 master를 조회한다(값 라운드트립)")
+        @DisplayName("warmUpAll 후 findByIds로 알림 정보를 조회한다(값 라운드트립)")
         void warmUpThenFind() {
             // given
-            Notification master = master("n1", "가격 알림");
+            Notification notification = notification("n1", "가격 알림");
 
             // when
-            sut.warmUpAll(List.of(master));
+            sut.warmUpAll(List.of(notification));
 
             // then
             Map<String, Notification> result = sut.findByIds(Set.of("n1"));
@@ -87,7 +87,7 @@ class RedisNotificationAdapterIntegrationTest {
         @Test
         @DisplayName("캐시에 없는 id는 결과 맵에서 제외된다")
         void findByIdsMissExcluded() {
-            sut.warmUpAll(List.of(master("n1", "제목1")));
+            sut.warmUpAll(List.of(notification("n1", "제목1")));
 
             Map<String, Notification> result = sut.findByIds(Set.of("n1", "n2", "n3"));
 
@@ -101,9 +101,9 @@ class RedisNotificationAdapterIntegrationTest {
         }
 
         @Test
-        @DisplayName("warmUpAll은 여러 master를 한 번에 적재한다")
+        @DisplayName("warmUpAll은 여러 알림을 한 번에 적재한다")
         void warmUpAllMultiple() {
-            sut.warmUpAll(List.of(master("n1", "제목1"), master("n2", "제목2")));
+            sut.warmUpAll(List.of(notification("n1", "제목1"), notification("n2", "제목2")));
 
             Map<String, Notification> result = sut.findByIds(Set.of("n1", "n2"));
 
@@ -115,9 +115,9 @@ class RedisNotificationAdapterIntegrationTest {
         @Test
         @DisplayName("warmUpAll은 긴 TTL(<= 7일)을 설정한다")
         void warmUpAllSetsLongTtl() {
-            sut.warmUpAll(List.of(master("n1", "제목1")));
+            sut.warmUpAll(List.of(notification("n1", "제목1")));
 
-            Long ttlSeconds = redisTemplate.getExpire(RedisKey.NOTIFICATION_MASTER.keyFor("n1"), TimeUnit.SECONDS);
+            Long ttlSeconds = redisTemplate.getExpire(RedisKey.NOTIFICATION_INFO.keyFor("n1"), TimeUnit.SECONDS);
 
             assertThat(ttlSeconds).isNotNull();
             assertThat(ttlSeconds).isGreaterThan(0L);
@@ -130,9 +130,9 @@ class RedisNotificationAdapterIntegrationTest {
     class InvalidateTest {
 
         @Test
-        @DisplayName("invalidate는 master 캐시를 제거한다")
-        void invalidateRemovesMaster() {
-            sut.warmUpAll(List.of(master("n1", "제목1")));
+        @DisplayName("invalidate는 알림 캐시를 제거한다")
+        void invalidateRemovesNotification() {
+            sut.warmUpAll(List.of(notification("n1", "제목1")));
             assertThat(sut.findByIds(Set.of("n1"))).containsKey("n1");
 
             sut.invalidate("n1");
@@ -141,7 +141,7 @@ class RedisNotificationAdapterIntegrationTest {
         }
     }
 
-    private Notification master(String id, String title) {
+    private Notification notification(String id, String title) {
         return Notification.rehydrate(
                 id,
                 NotificationType.PRICE_ALERT,

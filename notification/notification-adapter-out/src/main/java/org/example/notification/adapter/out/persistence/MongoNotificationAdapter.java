@@ -130,7 +130,7 @@ public class MongoNotificationAdapter implements NotificationPersistencePort {
     }
 
     @Override
-    public List<Notification> findMastersByIds(Set<String> ids) {
+    public List<Notification> findByIds(Set<String> ids) {
         if (ids == null || ids.isEmpty()) {
             return List.of();
         }

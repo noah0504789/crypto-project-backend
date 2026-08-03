@@ -28,7 +28,7 @@ public interface NotificationPersistencePort {
             int limit
     );
 
-    List<Notification> findMastersByIds(Set<String> ids);
+    List<Notification> findByIds(Set<String> ids);
 
     Notification save(Notification notification);
 
