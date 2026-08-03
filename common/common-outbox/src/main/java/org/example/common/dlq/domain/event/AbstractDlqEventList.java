@@ -2,8 +2,6 @@ package org.example.common.dlq.domain.event;
 
 import lombok.Getter;
 import org.example.common.event.EventUtils;
-import org.example.common.outbox.domain.event.AbstractOutboxEvent;
-import org.example.common.outbox.domain.event.AbstractOutboxEventList;
 import org.example.common.util.EventIdUtils;
 
 import java.util.ArrayList;

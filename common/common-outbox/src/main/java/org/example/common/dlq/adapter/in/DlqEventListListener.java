@@ -10,8 +10,6 @@ import org.example.common.dlq.domain.event.AbstractDlqEventList;
 import org.example.common.dlq.adapter.out.JpaDlq;
 import org.example.common.dlq.application.service.DlqService;
 import org.example.common.dlq.exception.DlqPersistenceException;
-import org.example.common.outbox.adapter.out.OutboxPersistenceExceptionTranslator;
-import org.example.common.outbox.exception.OutboxPersistenceException;
 import org.springframework.context.event.EventListener;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
