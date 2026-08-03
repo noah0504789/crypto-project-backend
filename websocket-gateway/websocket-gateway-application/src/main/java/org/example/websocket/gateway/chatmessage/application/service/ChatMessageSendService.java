@@ -75,7 +75,7 @@ public class ChatMessageSendService implements ChatMessageSendUseCase {
             }
 
             log.warn(
-                    "chat body hardDelete failed. messageId={}, roomId={}, code={}",
+                    "[grpc] chat body hardDelete failed. messageId={}, roomId={}, code={}",
                     command.messageId(),
                     command.roomId(),
                     code,

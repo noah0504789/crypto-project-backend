@@ -35,7 +35,7 @@ public class AuthController {
         try {
             tokenResponse = refreshTokenService.reissue(refreshToken);
         } catch (Exception e) {
-            log.warn("Token reissue failed: {}", e.getMessage());
+            log.warn("[auth] Token reissue failed: {}", e.getMessage());
             return unauthorized("invalid token");
         }
 

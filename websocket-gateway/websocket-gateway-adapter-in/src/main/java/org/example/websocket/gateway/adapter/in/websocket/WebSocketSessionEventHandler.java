@@ -43,7 +43,7 @@ public class WebSocketSessionEventHandler {
         String userId = accessor.getUser() != null ? accessor.getUser().getName() : null;
 
         if (sessionId == null || userId == null) {
-            log.warn("ws connect ignored. instance-index={}, userId={}, sessionId={}", instanceId, userId, sessionId);
+            log.warn("[ws] connect ignored. instance-index={}, userId={}, sessionId={}", instanceId, userId, sessionId);
             return;
         }
 
@@ -56,7 +56,7 @@ public class WebSocketSessionEventHandler {
             activeSessions.incrementAndGet();
         }
 
-        log.info("ws connected instance-index={}, userId={}, sessionId={}, newSession={}, activeSessions={}", instanceId, userId, sessionId, isNewSession, activeSessions.get());
+        log.info("[ws] connected instance-index={}, userId={}, sessionId={}, newSession={}, activeSessions={}", instanceId, userId, sessionId, isNewSession, activeSessions.get());
     }
 
     @EventListener
@@ -71,7 +71,7 @@ public class WebSocketSessionEventHandler {
 
         sessionLocationPort.refreshTtl(userId);
 
-        log.debug("ws ttl refreshed by subscribe. instance-index={}, userId={}, sessionId={}", instanceId, userId, sessionId);
+        log.debug("[ws] ttl refreshed by subscribe. instance-index={}, userId={}, sessionId={}", instanceId, userId, sessionId);
     }
 
     @EventListener
@@ -80,7 +80,7 @@ public class WebSocketSessionEventHandler {
 
         String sessionId = accessor.getSessionId();
         if (sessionId == null) {
-            log.warn("ws disconnect ignored. instance-index={}, reason=sessionId-null", instanceId);
+            log.warn("[ws] disconnect ignored. instance-index={}, reason=sessionId-null", instanceId);
             return;
         }
 
@@ -92,6 +92,6 @@ public class WebSocketSessionEventHandler {
             activeSessions.updateAndGet(v -> Math.max(0, v - 1));
         }
 
-        log.info("ws disconnected instance-index={}, userId={}, sessionId={}, activeSessions={}", instanceId, userId != null ? userId : "unknown", sessionId, activeSessions.get());
+        log.info("[ws] disconnected instance-index={}, userId={}, sessionId={}, activeSessions={}", instanceId, userId != null ? userId : "unknown", sessionId, activeSessions.get());
     }
 }

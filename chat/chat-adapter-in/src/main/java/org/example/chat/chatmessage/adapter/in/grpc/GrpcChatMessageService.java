@@ -46,7 +46,7 @@ public class GrpcChatMessageService extends ChatMessageServiceGrpc.ChatMessageSe
 
     private void throwIfCancelled(String phase) {
         if (Context.current().isCancelled()) {
-            log.warn("request cancelled: phase={}", phase);
+            log.warn("[grpc] request cancelled: phase={}", phase);
 
             throw new ChatMessageGrpcCancelledException(null, "client cancelled or deadline exceeded: " + phase);
         }

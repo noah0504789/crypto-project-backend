@@ -33,7 +33,7 @@ public class WebNotificationSendService implements WebNotificationSendUseCase {
         }
 
         log.debug(
-                "STOMP notification skip. no local session. txId={}, receiverId={}, serverId={}",
+                "[stomp] notification skip. no local session. txId={}, receiverId={}, serverId={}",
                 txId,
                 command.receiverId(),
                 instanceId

@@ -33,7 +33,7 @@ public class ChatMessageBroadcastService implements ChatMessageBroadcastUseCase 
         }
 
         log.debug(
-                "STOMP skip. no local member session. txId={}, roomId={}, serverId={}",
+                "[stomp] skip. no local member session. txId={}, roomId={}, serverId={}",
                 txId,
                 command.roomId(),
                 instanceId

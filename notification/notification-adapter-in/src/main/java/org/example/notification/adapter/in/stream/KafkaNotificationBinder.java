@@ -48,7 +48,7 @@ public class KafkaNotificationBinder {
                 priceAlertNotificationCommandUseCase.create(command);
             } catch (DuplicateInboxEventException e) {
                 log.info(
-                        "Duplicate price alert event skipped. eventId={}",
+                        "[inbox] Duplicate price alert event skipped. eventId={}",
                         eventId
                 );
             }

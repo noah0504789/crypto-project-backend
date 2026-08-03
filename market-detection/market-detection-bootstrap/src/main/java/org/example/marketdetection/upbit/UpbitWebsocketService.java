@@ -45,7 +45,7 @@ public class UpbitWebsocketService {
 
         session.send(serializeRequest(request));
 
-        log.info("subscribed upbit ticker websocket. codes={}", codes);
+        log.info("[upbit] subscribed upbit ticker websocket. codes={}", codes);
     }
 
     public KafkaEvent deserialize(ByteString bytes) {
@@ -56,7 +56,7 @@ public class UpbitWebsocketService {
             return objectMapper.convertValue(payload, UpbitTickerEvent.class);
         }
 
-        log.debug("unsupported upbit websocket message type. type={}", type);
+        log.debug("[upbit] unsupported upbit websocket message type. type={}", type);
         return null;
     }
 
@@ -83,7 +83,7 @@ public class UpbitWebsocketService {
         Object type = payload.get(TYPE_FIELD);
 
         if (!(type instanceof String)) {
-            log.warn("upbit websocket message type is missing or invalid. payload={}", payload);
+            log.warn("[upbit] upbit websocket message type is missing or invalid. payload={}", payload);
             return null;
         }
 

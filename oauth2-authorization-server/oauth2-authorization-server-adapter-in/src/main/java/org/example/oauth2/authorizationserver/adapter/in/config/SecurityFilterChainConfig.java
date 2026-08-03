@@ -49,7 +49,7 @@ public class SecurityFilterChainConfig {
 
     private AuthenticationFailureHandler clientAuthenticationFailureHandler() {
         return (request, response, exception) -> {
-            log.warn("client authentication failed. reason={}", exception.getMessage());
+            log.warn("[auth] client authentication failed. reason={}", exception.getMessage());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         };
     }
