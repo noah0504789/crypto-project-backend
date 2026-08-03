@@ -89,7 +89,7 @@ class ChatMessageEventServiceUnitTest {
                     .updateMembershipScores(
                             eq(roomId),
                             eq(memberIds),
-                            eq(message.toEpochMillis())
+                            eq(message.createdAtEpochMillis())
                     );
         }
 

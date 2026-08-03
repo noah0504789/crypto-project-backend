@@ -84,7 +84,7 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
                 .filter(Objects::nonNull)
                 .map(redisChatMessageCodec::read)
                 .filter(message -> {
-                    long ts = message.toEpochMillis();
+                    long ts = message.createdAtEpochMillis();
                     if (ts < lastCreatedAtMs) return true;
                     if (ts > lastCreatedAtMs) return false;
                     return message.getId().compareTo(lastMsgId) < 0;
@@ -99,7 +99,7 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
         String id = message.getId();
         String roomId = message.getRoomId();
         Instant createdAt = message.createdAtInstant();
-        long createdMs = message.toEpochMillis();
+        long createdMs = message.createdAtEpochMillis();
         String content = message.getContent();
         String writerId = message.getWriterId();
 
@@ -140,7 +140,7 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
         args.add(messages.size()+"");
 
         for (ChatMessage msg : messages) {
-            args.add(String.valueOf(msg.toEpochMillis()));
+            args.add(String.valueOf(msg.createdAtEpochMillis()));
             args.add(redisChatMessageCodec.write(msg));
         }
 

@@ -40,6 +40,6 @@ public class GrpcUserMapper {
     }
 
     private Timestamp toProtoTimestamp(User user) {
-        return Timestamps.fromMillis(user.toInstant().toEpochMilli());
+        return Timestamps.fromMillis(user.createdAtInstant().toEpochMilli());
     }
 }

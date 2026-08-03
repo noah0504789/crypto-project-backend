@@ -16,7 +16,7 @@ public record UserResponse(
                 entity.getPublicId(),
                 entity.getNickname(),
                 entity.getEmail(),
-                entity.toInstant()
+                entity.createdAtInstant()
         );
     }
 }

@@ -122,7 +122,7 @@ public class User {
         this.nickname = nickname;
     }
 
-    public Instant toInstant() {
+    public Instant createdAtInstant() {
         return ServiceTimeConverter.toInstant(createdAt);
     }
 }

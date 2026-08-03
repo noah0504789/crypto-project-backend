@@ -8,6 +8,6 @@ public record ChatMessageSaveResult(
 ) {
 
     public static ChatMessageSaveResult from(ChatMessage message) {
-        return new ChatMessageSaveResult(message.getId(), message.toEpochMillis());
+        return new ChatMessageSaveResult(message.getId(), message.createdAtEpochMillis());
     }
 }

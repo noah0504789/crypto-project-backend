@@ -195,7 +195,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
                             redisRoom.getMemberIds(),
                             redisRoom.getMsgCnt(),
                             latest,
-                            redisRoom.toLocalDateTime()
+                            redisRoom.createdAtLocalDateTime()
                     );
                 });
     }

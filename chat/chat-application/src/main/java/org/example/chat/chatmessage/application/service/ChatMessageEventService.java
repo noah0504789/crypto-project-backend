@@ -56,7 +56,7 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
         }
 
         chatRoomPersistencePort.incrementMessageCount(roomId);
-        chatRoomPersistencePort.updateMembershipScores(roomId, event.getMemberIds(), domain.toEpochMillis());
+        chatRoomPersistencePort.updateMembershipScores(roomId, event.getMemberIds(), domain.createdAtEpochMillis());
     }
 
     @Recover
