@@ -1,6 +1,7 @@
 package org.example.chat.chatmessage.adapter.in.web;
 
 import org.example.chat.chatmessage.application.service.query.ListChatMessagesQuery;
+import org.example.common.config.MessageConverterConfig;
 import org.example.common.test.config.TestBootApplication;
 import org.example.chat.chatmessage.application.port.in.ChatMessageQueryUseCase;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
@@ -23,7 +24,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ChatMessageController.class)
-@ContextConfiguration(classes = {TestBootApplication.class, ChatMessageController.class})
+@ContextConfiguration(classes = {TestBootApplication.class, MessageConverterConfig.class, ChatMessageController.class})
 class ChatMessageControllerE2ETest {
 
     @Autowired

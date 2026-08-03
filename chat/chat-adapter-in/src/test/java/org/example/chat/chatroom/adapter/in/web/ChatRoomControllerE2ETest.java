@@ -7,6 +7,7 @@ import org.example.chat.chatroom.application.service.query.ListMyChatRoomsQuery;
 import org.example.chat.chatroom.application.service.query.ListPopularChatRoomsQuery;
 import org.example.chat.chatroom.application.service.result.MyChatRoomSummary;
 import org.example.chat.chatroom.application.service.command.ChatRoomCreateCommand;
+import org.example.common.config.MessageConverterConfig;
 import org.example.common.test.config.TestBootApplication;
 import org.bson.types.ObjectId;
 import org.example.chat.chatroom.application.port.in.ChatRoomCommandUseCase;
@@ -43,6 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(ChatRoomController.class)
 @ContextConfiguration(classes = {
         TestBootApplication.class,
+        MessageConverterConfig.class,
         ChatRoomController.class,
         UniqueChatRoomTitleValidator.class,
         NotBlankIfPresentValidator.class,

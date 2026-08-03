@@ -1,5 +1,6 @@
 package org.example.notification.adapter.in.web;
 
+import org.example.common.config.MessageConverterConfig;
 import org.example.common.test.config.TestBootApplication;
 import org.example.notification.application.port.in.NotificationCommandUseCase;
 import org.example.notification.application.port.in.NotificationQueryUseCase;
@@ -33,6 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(NotificationController.class)
 @ContextConfiguration(classes = {
         TestBootApplication.class,
+        MessageConverterConfig.class,
         NotificationController.class
 })
 class NotificationControllerE2ETest {
