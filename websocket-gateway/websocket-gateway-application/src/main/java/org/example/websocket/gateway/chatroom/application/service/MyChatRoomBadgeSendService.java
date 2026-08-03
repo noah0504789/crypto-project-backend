@@ -23,7 +23,7 @@ public class MyChatRoomBadgeSendService implements MyChatRoomBadgeSendUseCase {
         boolean sent = myChatRoomBadgePort.send(command, txId);
 
         if (sent) {
-            log.debug("✅ STOMP 처리 완료: txId={}, serverId={}", txId, instanceId);
+            log.debug("STOMP 처리 완료: txId={}, serverId={}", txId, instanceId);
             return;
         }
 

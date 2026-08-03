@@ -58,14 +58,14 @@ public class DlqService {
                 publisher.publish(dlq);
                 dlq.markPublished();
 
-                log.info("✅ [dlq] publish success: dlqId={}, txId={}, eventType={}",
+                log.info("[dlq] publish success: dlqId={}, txId={}, eventType={}",
                         dlq.getId(),
                         dlq.getTransactionId(),
                         dlq.getEventType()
                 );
             } catch (Exception e) {
                 dlq.markPublishFailed();
-                log.error("❌ [dlq] publish failed: dlqId={}, txId={}, eventType={}, error={}",
+                log.error("[dlq] publish failed: dlqId={}, txId={}, eventType={}, error={}",
                         dlq.getId(),
                         dlq.getTransactionId(),
                         dlq.getEventType(),

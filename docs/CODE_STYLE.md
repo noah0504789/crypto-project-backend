@@ -402,3 +402,38 @@ assertThat(result.<String>getAttribute("id")).isEqualTo(userId);
 - 복잡한 장애 대응, 트랜잭션 정책, 외부 계약은 docs에 남긴다.
 - 아직 구현되지 않은 목표는 `목표` 또는 `후보`로 표시한다.
 - 문서는 코드보다 앞서가면 안 된다.
+
+## 19. 로깅 기준
+
+로그는 장애 대응·추적의 1차 자료다. 포맷을 맞춰 grep·집계·알림을 쉽게 한다.
+
+### 19.1 선언·포맷
+
+- 로거는 **`@Slf4j`** 로만 선언한다(수동 `LoggerFactory` 금지).
+- 메시지는 **파라미터화 `{}`** 만 쓴다. 문자열 `+` 연결·`String.format` 금지.
+- 메시지 **본문은 영어**로 쓴다(검색·국제화·툴링 용이). 도메인 고유명사·식별자 값은 예외.
+- **이모지·장식 문자 금지**(`✅`/`❌` 등 — 터미널 인코딩·grep 방해).
+
+### 19.2 태그와 식별자
+
+- 하위 영역 태그는 **`[lower-kebab]`** 소문자 고정: `[cache]`, `[redis]`, `[outbox]`, `[dlq]`, `[grpc]`, `[single-flight]`, `[lock]`. 대문자·혼용 금지.
+- 추적 식별자를 **하나 이상** `key=value` 로 포함한다: `txId`, `roomId`, `messageId`, `dlqId`, `id` 등. 메시지는 `[tag] what happened. key=value, key=value` 순서.
+
+```java
+log.warn("[cache] chat message save failed after commit (repair will cover). messageId={}, roomId={}", messageId, roomId, e);
+```
+
+### 19.3 레벨 의미
+
+| 레벨 | 사용 | 예외 인자 |
+| --- | --- | --- |
+| `error` | 복구 불가·데이터 무결성 위협·재시도 소진(DLQ 전이 등) | **필수**(마지막 인자 `e`, 스택 보존) |
+| `warn` | 자동 복구·재시도·fallback·fail-open, 처리된 클라이언트 오류(4xx) | 인프라성은 `e` 포함, 예상된 4xx는 `e.getMessage()` 허용 |
+| `info` | 상태 전이·기동·주요 비즈니스 이벤트(과다 금지) | — |
+| `debug` | 진단·상세 추적(운영 기본 off) | — |
+| `trace` | 사용하지 않음 | — |
+
+- **스택트레이스**: `error` 및 인프라 실패 `warn` 은 예외 객체 `e` 를 **마지막 인자**로 넘긴다(`log.error("...", ..., e)`). `e.getMessage()` 만 넘겨 스택을 버리지 않는다. 단, 예상된 검증 실패(4xx)는 `getMessage()` 로 충분하다.
+- **이중 로깅 금지**: 같은 예외를 하위에서 로깅하고 다시 던져 상위에서 또 로깅하지 않는다. 처리하는 계층 한 곳에서만 남긴다.
+- **삼킴 금지**: `catch` 에서 예외를 삼키면 최소 `warn` 이상으로 이유를 남긴다(fail-open 포함).
+- **민감정보 금지**: 토큰·비밀번호·Secret·전체 payload 등을 로그에 남기지 않는다(→ `.claude/rules/git-safety.md`).
