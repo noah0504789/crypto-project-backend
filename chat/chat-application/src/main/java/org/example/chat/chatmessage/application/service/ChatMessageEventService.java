@@ -66,9 +66,8 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
             String txId
     ) {
         log.error(
-                "❌ chat message persist retry exhausted. txId={}, error={}",
+                "[dlq] chat message persist retry exhausted. txId={}",
                 txId,
-                e.getMessage(),
                 e
         );
 

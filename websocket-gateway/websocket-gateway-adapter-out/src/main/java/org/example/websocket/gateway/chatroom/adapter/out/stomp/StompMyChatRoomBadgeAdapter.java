@@ -68,12 +68,11 @@ public class StompMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
             return true;
         } catch (Exception e) {
             log.error(
-                    "❌ STOMP 실패: txId={}, memberId={}, destination={}, serverId={}, error={}",
+                    "[stomp] badge send failed. txId={}, memberId={}, destination={}, serverId={}",
                     txId,
                     memberId,
                     destination,
                     instanceId,
-                    e.getMessage(),
                     e
             );
 

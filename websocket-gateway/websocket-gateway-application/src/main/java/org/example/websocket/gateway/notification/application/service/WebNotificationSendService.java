@@ -24,7 +24,7 @@ public class WebNotificationSendService implements WebNotificationSendUseCase {
 
         if (sent) {
             log.debug(
-                    "✅ STOMP notification sent. txId={}, receiverId={}, serverId={}",
+                    "[stomp] notification sent. txId={}, receiverId={}, serverId={}",
                     txId,
                     command.receiverId(),
                     instanceId

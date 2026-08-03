@@ -24,7 +24,7 @@ public class ChatMessageBroadcastService implements ChatMessageBroadcastUseCase 
 
         if (sent) {
             log.debug(
-                    "✅ STOMP 성공: txId={}, roomId={}, serverId={}",
+                    "[stomp] broadcast sent. txId={}, roomId={}, serverId={}",
                     txId,
                     command.roomId(),
                     instanceId

@@ -26,7 +26,7 @@ public class AuthController {
         String refreshToken = refreshTokenService.extractRefreshToken(request);
 
         if (!StringUtils.hasText(refreshToken)) {
-            log.warn("refresh token 없음");
+            log.warn("[auth] refresh token missing");
             return unauthorized("Refresh Token not exists");
         }
 

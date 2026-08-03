@@ -59,12 +59,11 @@ public class StompWebNotificationAdapter implements WebNotificationPort {
             return true;
         } catch (Exception e) {
             log.error(
-                    "❌ STOMP notification failed. txId={}, receiverId={}, destination={}, serverId={}, error={}",
+                    "[stomp] notification failed. txId={}, receiverId={}, destination={}, serverId={}",
                     txId,
                     receiverId,
                     destination,
                     instanceId,
-                    e.getMessage(),
                     e
             );
 

@@ -66,12 +66,11 @@ public class StompChatMessageBroadcastAdapter implements ChatMessageBroadcastPor
             return true;
         } catch (Exception e) {
             log.error(
-                    "❌ STOMP 실패: txId={}, roomId={}, destination={}, serverId={}, error={}",
+                    "[stomp] broadcast failed. txId={}, roomId={}, destination={}, serverId={}",
                     txId,
                     command.roomId(),
                     destination,
                     instanceId,
-                    e.getMessage(),
                     e
             );
 

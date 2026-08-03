@@ -22,7 +22,7 @@ public class LoggingInterceptor implements ChannelInterceptor {
         Object payload = message.getPayload();
         String body = payload instanceof byte[] bytes ? new String(bytes, StandardCharsets.UTF_8) : payload.toString();
 
-        log.debug("[전송 후] 채널={}, txid={}, 바디={}", getChannelName(channel), correlactionId, body);
+        log.debug("[stomp] after send. channel={}, txId={}, body={}", getChannelName(channel), correlactionId, body);
     }
 
     private String getChannelName(MessageChannel channel) {

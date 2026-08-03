@@ -23,10 +23,10 @@ public class MyChatRoomBadgeSendService implements MyChatRoomBadgeSendUseCase {
         boolean sent = myChatRoomBadgePort.send(command, txId);
 
         if (sent) {
-            log.debug("STOMP 처리 완료: txId={}, serverId={}", txId, instanceId);
+            log.debug("[stomp] badge sent. txId={}, serverId={}", txId, instanceId);
             return;
         }
 
-        log.debug("STOMP 전체 skip: txId={}, serverId={}", txId, instanceId);
+        log.debug("[stomp] badge skipped (no targets). txId={}, serverId={}", txId, instanceId);
     }
 }
