@@ -8,7 +8,7 @@ public record CursorPage<T>(
 ) {
 
     public static <T> CursorPage<T> empty() {
-        return new CursorPage<>(null, false);
+        return new CursorPage<>(List.of(), false);
     }
 
     public static <T> CursorPage<T> of(List<T> items, boolean hasNext) {
