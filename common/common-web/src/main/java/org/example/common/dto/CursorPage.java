@@ -1,7 +1,10 @@
 package org.example.common.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import java.util.List;
 
+@JsonInclude(JsonInclude.Include.ALWAYS)
 public record CursorPage<T>(
     List<T> items,
     boolean hasNext
