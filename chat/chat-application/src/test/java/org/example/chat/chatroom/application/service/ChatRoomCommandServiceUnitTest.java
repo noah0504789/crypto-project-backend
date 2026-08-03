@@ -6,6 +6,7 @@ import org.example.chat.chatroom.application.service.command.ChatRoomUpdateComma
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomIdGeneratorPort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
+import org.example.chat.chatroom.application.port.in.ChatRoomQueryUseCase;
 import org.example.chat.chatroom.application.service.command.ChatRoomCreateCommand;
 import org.example.chat.chatroom.application.event.ChatRoomEventList;
 import org.example.chat.chatroom.application.event.payload.ChatRoomUpdatedPayload;
@@ -44,6 +45,9 @@ class ChatRoomCommandServiceUnitTest {
 
     @Mock
     private ChatRoomPersistencePort persistence;
+
+    @Mock
+    private ChatRoomQueryUseCase chatRoomQueryUseCase;
 
     @Mock
     private ChatRoomIdGeneratorPort idGenerator;
@@ -478,20 +482,20 @@ class ChatRoomCommandServiceUnitTest {
                     LocalDateTime.now()
             );
 
-            given(persistence.findById(id)).willReturn(Optional.of(domain));
+            given(chatRoomQueryUseCase.getRoom(id)).willReturn(domain);
 
             // when
             sut.leave(id, memberId);
 
             // then
             InOrder inOrder = inOrder(
-                    persistence,
+                    chatRoomQueryUseCase,
                     outboxEventListPublishPort,
                     cache
             );
 
-            inOrder.verify(persistence)
-                    .findById(id);
+            inOrder.verify(chatRoomQueryUseCase)
+                    .getRoom(id);
             inOrder.verify(outboxEventListPublishPort)
                     .publish(any(ChatRoomEventList.class));
             inOrder.verify(cache)
@@ -513,7 +517,7 @@ class ChatRoomCommandServiceUnitTest {
                     LocalDateTime.now()
             );
 
-            given(persistence.findById(id)).willReturn(Optional.of(domain));
+            given(chatRoomQueryUseCase.getRoom(id)).willReturn(domain);
 
             // when
             sut.leave(id, memberId);
@@ -522,13 +526,13 @@ class ChatRoomCommandServiceUnitTest {
             assertThat(domain.getMemberIds()).doesNotContain(memberId);
 
             InOrder inOrder = inOrder(
-                    persistence,
+                    chatRoomQueryUseCase,
                     outboxEventListPublishPort,
                     cache
             );
 
-            inOrder.verify(persistence)
-                    .findById(id);
+            inOrder.verify(chatRoomQueryUseCase)
+                    .getRoom(id);
             inOrder.verify(outboxEventListPublishPort)
                     .publish(any(ChatRoomEventList.class));
             inOrder.verify(cache)
@@ -550,15 +554,15 @@ class ChatRoomCommandServiceUnitTest {
                     LocalDateTime.now()
             );
 
-            given(persistence.findById(id)).willReturn(Optional.of(domain));
+            given(chatRoomQueryUseCase.getRoom(id)).willReturn(domain);
 
             // when
             sut.leave(id, memberId);
 
             // then
-            then(persistence)
+            then(chatRoomQueryUseCase)
                     .should()
-                    .findById(id);
+                    .getRoom(id);
 
             then(outboxEventListPublishPort)
                     .shouldHaveNoInteractions();
@@ -571,7 +575,8 @@ class ChatRoomCommandServiceUnitTest {
         @DisplayName("채팅방이 없으면 ChatRoomNotFoundException이 발생한다")
         void leave_shouldThrow_whenChatRoomNotFound() {
             // given
-            given(persistence.findById(id)).willReturn(Optional.empty());
+            given(chatRoomQueryUseCase.getRoom(id))
+                    .willThrow(new ChatRoomNotFoundException(id));
 
             // when & then
             assertThatThrownBy(() -> sut.leave(id, memberId))
@@ -599,7 +604,7 @@ class ChatRoomCommandServiceUnitTest {
                     LocalDateTime.now()
             );
 
-            given(persistence.findById(id)).willReturn(Optional.of(domain));
+            given(chatRoomQueryUseCase.getRoom(id)).willReturn(domain);
 
             doThrow(new RuntimeException("cache leave failed"))
                     .when(cache)
@@ -610,13 +615,13 @@ class ChatRoomCommandServiceUnitTest {
 
             // then
             InOrder inOrder = inOrder(
-                    persistence,
+                    chatRoomQueryUseCase,
                     outboxEventListPublishPort,
                     cache
             );
 
-            inOrder.verify(persistence)
-                    .findById(id);
+            inOrder.verify(chatRoomQueryUseCase)
+                    .getRoom(id);
             inOrder.verify(outboxEventListPublishPort)
                     .publish(any(ChatRoomEventList.class));
             inOrder.verify(cache)
