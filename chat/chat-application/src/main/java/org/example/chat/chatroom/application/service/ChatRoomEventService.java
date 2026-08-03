@@ -144,9 +144,8 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
             String txId
     ) {
         log.error(
-                "❌ chatroom persist retry exhausted. txId={}, error={}",
+                "[dlq] chatroom persist retry exhausted. txId={}",
                 txId,
-                e.getMessage(),
                 e
         );
 
@@ -175,7 +174,7 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
         String errorMessage = e.getMessage();
 
         log.error(
-                "❌ chatroom update retry exhausted. roomId={}, txId={}, error={}",
+                "[dlq] chatroom update retry exhausted. roomId={}, txId={}",
                 id,
                 txId,
                 errorMessage,
@@ -205,7 +204,7 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
         String errorMessage = e.getMessage();
 
         log.error(
-                "❌ chatroom join retry exhausted. roomId={}, memberId={}, txId={}, error={}",
+                "[dlq] chatroom join retry exhausted. roomId={}, memberId={}, txId={}",
                 id,
                 memberId,
                 txId,
@@ -236,7 +235,7 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
         String errorMessage = e.getMessage();
 
         log.error(
-                "❌ chatroom leave retry exhausted. roomId={}, memberId={}, txId={}, error={}",
+                "[dlq] chatroom leave retry exhausted. roomId={}, memberId={}, txId={}",
                 id,
                 memberId,
                 txId,
@@ -267,7 +266,7 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
         String errorMessage = e.getMessage();
 
         log.error(
-                "❌ chatroom delete retry exhausted. roomId={}, txId={}, error={}",
+                "[dlq] chatroom delete retry exhausted. roomId={}, txId={}",
                 id,
                 txId,
                 errorMessage,
@@ -299,7 +298,7 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
         String errorMessage = e.getMessage();
 
         log.error(
-                "❌ chatroom active retry exhausted. roomId={}, memberId={}, txId={}, error={}",
+                "[dlq] chatroom active retry exhausted. roomId={}, memberId={}, txId={}",
                 id,
                 memberId,
                 txId,
@@ -331,7 +330,7 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
         String errorMessage = e.getMessage();
 
         log.error(
-                "❌ chatroom cache save retry exhausted. roomId={}, txId={}, error={}",
+                "[dlq] chatroom cache save retry exhausted. roomId={}, txId={}",
                 id,
                 txId,
                 errorMessage,
@@ -360,7 +359,7 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
         String errorMessage = e.getMessage();
 
         log.error(
-                "❌ chatroom cache update retry exhausted. roomId={}, txId={}, error={}",
+                "[dlq] chatroom cache update retry exhausted. roomId={}, txId={}",
                 id,
                 txId,
                 errorMessage,
@@ -392,7 +391,7 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
         String errorMessage = e.getMessage();
 
         log.error(
-                "❌ chatroom cache delete retry exhausted. roomId={}, txId={}, error={}",
+                "[dlq] chatroom cache delete retry exhausted. roomId={}, txId={}",
                 id,
                 txId,
                 errorMessage,
@@ -424,7 +423,7 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
         String errorMessage = e.getMessage();
 
         log.error(
-                "❌ chatroom cache invalidate activity retry exhausted. roomId={}, memberId={}, txId={}, error={}",
+                "[dlq] chatroom cache invalidate activity retry exhausted. roomId={}, memberId={}, txId={}",
                 id,
                 memberId,
                 txId,
@@ -458,7 +457,7 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
         String errorMessage = e.getMessage();
 
         log.error(
-                "❌ chatroom cache invalidate info retry exhausted. roomId={}, txId={}, error={}",
+                "[dlq] chatroom cache invalidate info retry exhausted. roomId={}, txId={}",
                 id,
                 txId,
                 errorMessage,
@@ -491,7 +490,7 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
             recoverAction.run();
         } catch (Exception recoverEx) {
             log.error(
-                    "[RECOVER-FALLBACK] {} failed. txId={}, originalError={}, recoverError={}, details={}",
+                    "[recover-fallback] {} failed. txId={}, originalError={}, recoverError={}, details={}",
                     context,
                     txId,
                     original.getMessage(),

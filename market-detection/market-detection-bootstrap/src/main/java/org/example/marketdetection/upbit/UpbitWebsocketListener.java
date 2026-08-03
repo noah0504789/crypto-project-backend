@@ -77,7 +77,7 @@ public class UpbitWebsocketListener extends WebSocketListener {
             throw new IllegalStateException("No enabled markets found for Upbit websocket subscription.");
         }
 
-        log.info("resolved upbit subscribe codes. codes={}", subscribeCodes);
+        log.info("[upbit] resolved upbit subscribe codes. codes={}", subscribeCodes);
 
         return subscribeCodes;
     }
@@ -86,7 +86,7 @@ public class UpbitWebsocketListener extends WebSocketListener {
         String code = tickerEvent.code();
 
         if (code == null || code.isBlank()) {
-            log.warn("ticker event code is blank. event={}", tickerEvent);
+            log.warn("[upbit] ticker event code is blank. event={}", tickerEvent);
             return false;
         }
 
@@ -107,7 +107,7 @@ public class UpbitWebsocketListener extends WebSocketListener {
         boolean offered = tickerQueue.offer(event);
 
         if (!offered) {
-            log.warn("ticker queue is full. droppedEvent={}", event.getClass().getSimpleName());
+            log.warn("[upbit] ticker queue is full. droppedEvent={}", event.getClass().getSimpleName());
         }
     }
 }

@@ -17,21 +17,21 @@ public class StompChatMessageExceptionHandler {
     @MessageExceptionHandler(MethodArgumentNotValidException.class)
     @SendToUser("/queue/chat/ack")
     public StompChatMessageAckResponse handleValidationException(MethodArgumentNotValidException e) {
-        log.warn("STOMP validation error occurred: {}", e.getMessage());
+        log.warn("[stomp] validation error occurred: {}", e.getMessage());
         return StompChatMessageAckResponse.ofFailure(null, "VALIDATION_ERROR");
     }
 
     @MessageExceptionHandler(HandlerMethodValidationException.class)
     @SendToUser("/queue/chat/ack")
     public StompChatMessageAckResponse handleHandlerMethodValidationException(HandlerMethodValidationException e) {
-        log.warn("STOMP handler method validation error occurred: {}", e.getMessage());
+        log.warn("[stomp] handler method validation error occurred: {}", e.getMessage());
         return StompChatMessageAckResponse.ofFailure(null, "VALIDATION_ERROR");
     }
 
     @MessageExceptionHandler(Exception.class)
     @SendToUser("/queue/chat/ack")
     public StompChatMessageAckResponse handleException(Exception e) {
-        log.error("STOMP unexpected error occurred: {}", e.getMessage(), e);
+        log.error("[stomp] unexpected error occurred: {}", e.getMessage(), e);
         return StompChatMessageAckResponse.ofFailure(null, "SERVER_ERROR");
     }
 }

@@ -24,7 +24,7 @@ public class ChatMessageBroadcastService implements ChatMessageBroadcastUseCase 
 
         if (sent) {
             log.debug(
-                    "✅ STOMP 성공: txId={}, roomId={}, serverId={}",
+                    "[stomp] broadcast sent. txId={}, roomId={}, serverId={}",
                     txId,
                     command.roomId(),
                     instanceId
@@ -33,7 +33,7 @@ public class ChatMessageBroadcastService implements ChatMessageBroadcastUseCase 
         }
 
         log.debug(
-                "STOMP skip. no local member session. txId={}, roomId={}, serverId={}",
+                "[stomp] skip. no local member session. txId={}, roomId={}, serverId={}",
                 txId,
                 command.roomId(),
                 instanceId

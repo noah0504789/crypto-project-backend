@@ -21,7 +21,7 @@ public class CacheFailOpenAspect {
         try {
             return pjp.proceed();
         } catch (Throwable e) {
-            log.warn("[CACHE] fail-open on {}.{}",
+            log.warn("[cache] fail-open on {}.{}",
                     pjp.getSignature().getDeclaringTypeName(),
                     pjp.getSignature().getName(),
                     e);

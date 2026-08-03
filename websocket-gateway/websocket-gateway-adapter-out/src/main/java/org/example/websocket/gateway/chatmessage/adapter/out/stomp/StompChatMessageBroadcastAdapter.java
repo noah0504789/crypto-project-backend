@@ -28,7 +28,7 @@ public class StompChatMessageBroadcastAdapter implements ChatMessageBroadcastPor
     public boolean broadcast(ChatMessageBroadcastCommand command, String txId) {
         if (!hasAnyLocalMember(command.memberIds())) {
             log.debug(
-                    "STOMP skip. no local member session. txId={}, roomId={}, serverId={}",
+                    "[stomp] skip. no local member session. txId={}, roomId={}, serverId={}",
                     txId,
                     command.roomId(),
                     instanceId
@@ -55,7 +55,7 @@ public class StompChatMessageBroadcastAdapter implements ChatMessageBroadcastPor
             stompTemplate.convertAndSend(destination, payload);
 
             log.debug(
-                    "STOMP chat body sent. txId={}, roomId={}, messageId={}, destination={}, serverId={}",
+                    "[stomp] chat body sent. txId={}, roomId={}, messageId={}, destination={}, serverId={}",
                     txId,
                     command.roomId(),
                     command.messageId(),
@@ -66,12 +66,11 @@ public class StompChatMessageBroadcastAdapter implements ChatMessageBroadcastPor
             return true;
         } catch (Exception e) {
             log.error(
-                    "❌ STOMP 실패: txId={}, roomId={}, destination={}, serverId={}, error={}",
+                    "[stomp] broadcast failed. txId={}, roomId={}, destination={}, serverId={}",
                     txId,
                     command.roomId(),
                     destination,
                     instanceId,
-                    e.getMessage(),
                     e
             );
 

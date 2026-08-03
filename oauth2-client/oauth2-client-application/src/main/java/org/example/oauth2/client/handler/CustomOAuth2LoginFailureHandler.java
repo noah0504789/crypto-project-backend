@@ -25,7 +25,7 @@ public class CustomOAuth2LoginFailureHandler implements AuthenticationFailureHan
 
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response, AuthenticationException exception) throws IOException {
-        log.warn("OAuth2 login failed. message={}", exception.getMessage());
+        log.warn("[auth] OAuth2 login failed. message={}", exception.getMessage());
 
         String redirectUri = UriComponentsBuilder
                 .fromUriString(frontendProperties.failureRedirectUri())

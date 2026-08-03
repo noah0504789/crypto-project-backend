@@ -32,7 +32,7 @@ public class StompMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
         for (String memberId : command.memberIds()) {
             if (!localSessionCache.hasUser(memberId)) {
                 log.debug(
-                        "STOMP skip. no local session. txId={}, memberId={}, serverId={}",
+                        "[stomp] skip. no local session. txId={}, memberId={}, serverId={}",
                         txId,
                         memberId,
                         instanceId
@@ -58,7 +58,7 @@ public class StompMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
             stompTemplate.convertAndSendToUser(memberId, destination, payload);
 
             log.debug(
-                    "STOMP sent. txId={}, memberId={}, destination={}, serverId={}",
+                    "[stomp] sent. txId={}, memberId={}, destination={}, serverId={}",
                     txId,
                     memberId,
                     destination,
@@ -68,12 +68,11 @@ public class StompMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
             return true;
         } catch (Exception e) {
             log.error(
-                    "❌ STOMP 실패: txId={}, memberId={}, destination={}, serverId={}, error={}",
+                    "[stomp] badge send failed. txId={}, memberId={}, destination={}, serverId={}",
                     txId,
                     memberId,
                     destination,
                     instanceId,
-                    e.getMessage(),
                     e
             );
 

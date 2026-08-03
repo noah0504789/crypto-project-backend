@@ -18,11 +18,11 @@ public class LoggingInterceptor implements ChannelInterceptor {
 
     @Override
     public void postSend(Message<?> message, MessageChannel channel, boolean sent) {
-        String correlactionId = message.getHeaders().get(KafkaHeaderKey.TRANSACTION_ID.value())+"";
-        Object payload = message.getPayload();
-        String body = payload instanceof byte[] bytes ? new String(bytes, StandardCharsets.UTF_8) : payload.toString();
-
-        log.debug("✅ [전송 후] 채널={}, txid={}, 바디={}", getChannelName(channel), correlactionId, body);
+        // 임시 비활성: 메시지마다 찍혀 로그가 과다하다. 필요 시 다시 켠다.
+        // String correlactionId = message.getHeaders().get(KafkaHeaderKey.TRANSACTION_ID.value())+"";
+        // Object payload = message.getPayload();
+        // String body = payload instanceof byte[] bytes ? new String(bytes, StandardCharsets.UTF_8) : payload.toString();
+        // log.debug("[stomp] after send. channel={}, txId={}, body={}", getChannelName(channel), correlactionId, body);
     }
 
     private String getChannelName(MessageChannel channel) {

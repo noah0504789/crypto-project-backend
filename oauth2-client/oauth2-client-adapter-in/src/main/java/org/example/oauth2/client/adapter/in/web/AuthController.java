@@ -26,7 +26,7 @@ public class AuthController {
         String refreshToken = refreshTokenService.extractRefreshToken(request);
 
         if (!StringUtils.hasText(refreshToken)) {
-            log.warn("refresh token 없음");
+            log.warn("[auth] refresh token missing");
             return unauthorized("Refresh Token not exists");
         }
 
@@ -35,7 +35,7 @@ public class AuthController {
         try {
             tokenResponse = refreshTokenService.reissue(refreshToken);
         } catch (Exception e) {
-            log.warn("Token reissue failed: {}", e.getMessage());
+            log.warn("[auth] Token reissue failed: {}", e.getMessage());
             return unauthorized("invalid token");
         }
 

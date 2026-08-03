@@ -28,7 +28,7 @@ public class StompWebNotificationAdapter implements WebNotificationPort {
 
         if (!localSessionCache.hasUser(receiverId)) {
             log.debug(
-                    "STOMP notification skip. no local session. txId={}, receiverId={}, serverId={}",
+                    "[stomp] notification skip. no local session. txId={}, receiverId={}, serverId={}",
                     txId,
                     receiverId,
                     instanceId
@@ -49,7 +49,7 @@ public class StompWebNotificationAdapter implements WebNotificationPort {
             stompTemplate.convertAndSendToUser(receiverId, destination, payload);
 
             log.debug(
-                    "STOMP notification sent. txId={}, receiverId={}, destination={}, serverId={}",
+                    "[stomp] notification sent. txId={}, receiverId={}, destination={}, serverId={}",
                     txId,
                     receiverId,
                     destination,
@@ -59,12 +59,11 @@ public class StompWebNotificationAdapter implements WebNotificationPort {
             return true;
         } catch (Exception e) {
             log.error(
-                    "❌ STOMP notification failed. txId={}, receiverId={}, destination={}, serverId={}, error={}",
+                    "[stomp] notification failed. txId={}, receiverId={}, destination={}, serverId={}",
                     txId,
                     receiverId,
                     destination,
                     instanceId,
-                    e.getMessage(),
                     e
             );
 

@@ -36,7 +36,7 @@ public class NotificationEventService implements NotificationEventHandler {
         AfterCommitExecutor.run(() -> warmUpSafely(notification));
 
         log.info(
-                "Notification saved. txId={}, notificationId={}, recipientCount={}",
+                "[notification] Notification saved. txId={}, notificationId={}, recipientCount={}",
                 txId,
                 notification.getId(),
                 recipients.size()

@@ -37,13 +37,13 @@ public class KafkaChatRoomBinder {
             } catch (RuntimeException e) {
                 dlqService.fail(dlqId, e.getMessage());
 
-                log.error("❌ dlq 처리 실패: dlqId={}, txId={}, error={}", dlqId, txId, e.getMessage(), e);
+                log.error("[dlq] handling failed. dlqId={}, txId={}", dlqId, txId, e);
                 return;
             }
 
             dlqService.complete(dlqId);
 
-            log.debug("✅ dlq 완료 처리 성공: dlqId={}, txId={}", dlqId, txId);
+            log.debug("[dlq] mark completed. dlqId={}, txId={}", dlqId, txId);
         };
     }
 }

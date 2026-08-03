@@ -15,6 +15,6 @@ public class InstanceInfoLogger implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        log.info("websocket-gateway instance-id={}", instanceId);
+        log.info("[ws] websocket-gateway instance-id={}", instanceId);
     }
 }
