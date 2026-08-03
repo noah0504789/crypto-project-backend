@@ -11,7 +11,6 @@ import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import org.example.chat.chatroom.domain.service.MyChatRoomScoreCalculator;
 
 @Document("chat_room_membership")
 @CompoundIndexes({

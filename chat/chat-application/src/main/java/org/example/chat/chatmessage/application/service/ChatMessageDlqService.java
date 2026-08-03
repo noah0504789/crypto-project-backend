@@ -8,7 +8,6 @@ import org.example.chat.chatmessage.application.event.dlq.ChatMessagePersistDlqE
 import org.example.chat.chatmessage.application.port.in.ChatMessageDlqHandler;
 import org.example.contract.chatmessage.ChatMessagePayload;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
