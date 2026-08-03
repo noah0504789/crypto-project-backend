@@ -26,6 +26,7 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.test.context.ContextConfiguration;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
@@ -598,7 +599,8 @@ class MongoChatRoomAdapterIntegrationTest {
                 HOST_ID,
                 title,
                 DESCRIPTION,
-                category
+                category,
+                LocalDateTime.of(2026, 1, 1, 12, 0)
         );
     }
 

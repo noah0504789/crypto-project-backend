@@ -26,6 +26,7 @@ class ChatRoomUnitTest {
     private final String ROOM_ID = "room-1";
     private final String HOST_ID = "host-1";
     private final String MEMBER_ID = "member-1";
+    private final LocalDateTime CREATED_AT = LocalDateTime.of(2026, 8, 3, 20, 52);
 
     private final ChatRoomCategory category = ChatRoomCategory.values()[0];
 
@@ -42,7 +43,8 @@ class ChatRoomUnitTest {
                     HOST_ID,
                     "title",
                     "description",
-                    category
+                    category,
+                    CREATED_AT
             );
 
             // then
@@ -53,7 +55,7 @@ class ChatRoomUnitTest {
             assertThat(chatRoom.getCategory()).isEqualTo(category);
             assertThat(chatRoom.getMsgCnt()).isZero();
             assertThat(chatRoom.getMemberIds()).containsExactly(HOST_ID);
-            assertThat(chatRoom.getCreatedAt()).isNotNull();
+            assertThat(chatRoom.getCreatedAt()).isEqualTo(CREATED_AT);
         }
     }
 
@@ -65,13 +67,13 @@ class ChatRoomUnitTest {
         @DisplayName("id와 category만으로 채팅방을 복원하면 msgCnt는 0으로 초기화된다")
         void rehydrate_shouldCreateChatRoomWithIdAndCategory() {
             // when
-            ChatRoom chatRoom = ChatRoom.rehydrate(ROOM_ID, category);
+            ChatRoom chatRoom = ChatRoom.rehydrate(ROOM_ID, category, CREATED_AT);
 
             // then
             assertThat(chatRoom.getId()).isEqualTo(ROOM_ID);
             assertThat(chatRoom.getCategory()).isEqualTo(category);
             assertThat(chatRoom.getMsgCnt()).isZero();
-            assertThat(chatRoom.getCreatedAt()).isNotNull();
+            assertThat(chatRoom.getCreatedAt()).isEqualTo(CREATED_AT);
         }
 
         @Test
@@ -337,7 +339,8 @@ class ChatRoomUnitTest {
                     HOST_ID,
                     "title",
                     "description",
-                    category
+                    category,
+                    CREATED_AT
             );
 
             // when
@@ -641,7 +644,8 @@ class ChatRoomUnitTest {
                     HOST_ID,
                     "title",
                     "description",
-                    category
+                    category,
+                    CREATED_AT
             );
 
             // when
@@ -662,7 +666,8 @@ class ChatRoomUnitTest {
                     HOST_ID,
                     "title",
                     "description",
-                    category
+                    category,
+                    CREATED_AT
             );
 
             // when
@@ -710,7 +715,8 @@ class ChatRoomUnitTest {
                     HOST_ID,
                     "title",
                     "description",
-                    category
+                    category,
+                    CREATED_AT
             );
 
             // when
@@ -773,7 +779,8 @@ class ChatRoomUnitTest {
                     HOST_ID,
                     "title",
                     "description",
-                    category
+                    category,
+                    CREATED_AT
             );
 
             // when
@@ -797,7 +804,8 @@ class ChatRoomUnitTest {
                     HOST_ID,
                     "title",
                     "description",
-                    category
+                    category,
+                    CREATED_AT
             );
 
             // when
@@ -838,7 +846,8 @@ class ChatRoomUnitTest {
                     HOST_ID,
                     "title",
                     "description",
-                    category
+                    category,
+                    CREATED_AT
             );
 
             // when
@@ -1008,7 +1017,8 @@ class ChatRoomUnitTest {
                     HOST_ID,
                     "title",
                     "description",
-                    category
+                    category,
+                    CREATED_AT
             );
 
             ChatRoom chatRoom2 = ChatRoom.create(
@@ -1016,7 +1026,8 @@ class ChatRoomUnitTest {
                     HOST_ID,
                     "title",
                     "description",
-                    category
+                    category,
+                    CREATED_AT
             );
 
             // when & then
@@ -1048,7 +1059,8 @@ class ChatRoomUnitTest {
                     HOST_ID,
                     "title",
                     "description",
-                    category
+                    category,
+                    CREATED_AT
             );
 
             // when & then
@@ -1064,7 +1076,8 @@ class ChatRoomUnitTest {
                     HOST_ID,
                     "title",
                     "description",
-                    category
+                    category,
+                    CREATED_AT
             );
 
             // when & then
@@ -1080,7 +1093,8 @@ class ChatRoomUnitTest {
                     HOST_ID,
                     "title",
                     "description",
-                    category
+                    category,
+                    CREATED_AT
             );
 
             // when & then

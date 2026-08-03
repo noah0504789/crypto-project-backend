@@ -21,13 +21,19 @@ public class ChatMessage {
     private String content;
     private LocalDateTime createdAt;
 
-    public static ChatMessage create(String id, String roomId, String writerId, String content) {
+    public static ChatMessage create(
+            String id,
+            String roomId,
+            String writerId,
+            String content,
+            LocalDateTime createdAt
+    ) {
         return ChatMessage.builder()
                 .id(id)
                 .roomId(roomId)
                 .writerId(writerId)
                 .content(content)
-                .createdAt(LocalDateTime.now())
+                .createdAt(createdAt)
                 .build();
     }
 

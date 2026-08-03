@@ -2,6 +2,7 @@ package org.example.chat.chatroom.adapter.out.persistence;
 
 import org.bson.types.ObjectId;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
+import org.example.common.clock.Clock;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.BulkOperations;
@@ -12,7 +13,6 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -22,13 +22,16 @@ public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCusto
 
     private final MongoTemplate primaryMongoTemplate;
     private final MongoTemplate secondaryMongoTemplate;
+    private final Clock clock;
 
     public MongoChatRoomRepositoryImpl(
             @Qualifier("primaryMongoTemplate") MongoTemplate primaryMongoTemplate,
-            @Qualifier("secondaryMongoTemplate") MongoTemplate secondaryMongoTemplate
+            @Qualifier("secondaryMongoTemplate") MongoTemplate secondaryMongoTemplate,
+            Clock clock
     ) {
         this.primaryMongoTemplate = primaryMongoTemplate;
         this.secondaryMongoTemplate = secondaryMongoTemplate;
+        this.clock = clock;
     }
 
     // TODO: Popularity Spec
@@ -174,7 +177,7 @@ public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCusto
 
         Update update = new Update()
                 .set("deleted", true)
-                .set("deletedAt", LocalDateTime.now());
+                .set("deletedAt", clock.nowLocalDateTime());
 
         primaryMongoTemplate.updateFirst(
                 query,

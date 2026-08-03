@@ -16,6 +16,7 @@ import org.example.chat.chatroom.application.event.payload.ChatRoomUpdatedPayloa
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException;
+import org.example.common.clock.Clock;
 import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
 import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,7 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
     private final ChatRoomPersistencePort persistence;
     private final ChatRoomIdGeneratorPort idGenerator;
     private final OutboxEventListPublishPort outboxEventListPublishPort;
+    private final Clock clock;
 
     @Override
     public void create(ChatRoomCreateCommand command) {
@@ -41,7 +43,8 @@ public class ChatRoomCommandService implements ChatRoomCommandUseCase {
                 command.hostId(),
                 command.title(),
                 command.description(),
-                command.category()
+                command.category(),
+                clock.nowLocalDateTime()
         );
 
         save(domain);

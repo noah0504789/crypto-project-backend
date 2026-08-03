@@ -12,6 +12,7 @@ import org.example.chat.chatroom.application.event.payload.ChatRoomUpdatedPayloa
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException;
+import org.example.common.clock.Clock;
 import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
 import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
 import org.junit.jupiter.api.DisplayName;
@@ -50,6 +51,9 @@ class ChatRoomCommandServiceUnitTest {
     @Mock
     private OutboxEventListPublishPort outboxEventListPublishPort;
 
+    @Mock
+    private Clock clock;
+
     @Spy
     @InjectMocks
     private ChatRoomCommandService sut;
@@ -62,6 +66,7 @@ class ChatRoomCommandServiceUnitTest {
     private final Long lastMsgMs = 100L;
     private final String oldTitle = "old-title";
     private final String newTitle = "new-title";
+    private final LocalDateTime createdAt = LocalDateTime.of(2026, 8, 3, 20, 52);
 
     @Nested
     @DisplayName("create")
@@ -78,6 +83,7 @@ class ChatRoomCommandServiceUnitTest {
             given(command.title()).willReturn("title");
             given(command.description()).willReturn("description");
             given(command.category()).willReturn(category);
+            given(clock.nowLocalDateTime()).willReturn(createdAt);
 
             doNothing()
                     .when(sut)
@@ -101,6 +107,7 @@ class ChatRoomCommandServiceUnitTest {
                                     && domain.getCategory() == category
                                     && domain.getMsgCnt().equals(0L)
                                     && domain.getMemberIds().contains(hostId)
+                                    && domain.getCreatedAt().equals(createdAt)
                     ));
 
             then(outboxEventListPublishPort)
