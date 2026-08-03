@@ -8,7 +8,6 @@ import org.example.market.application.service.result.MyPriceAlertSettingResult;
 import org.example.market.domain.model.Market;
 import org.example.market.domain.model.PriceAlertSetting;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.*;

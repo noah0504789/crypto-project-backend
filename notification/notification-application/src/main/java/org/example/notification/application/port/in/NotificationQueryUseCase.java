@@ -4,7 +4,6 @@ import org.example.notification.application.service.query.ListNotificationInboxI
 import org.example.notification.application.service.result.NotificationInboxItem;
 
 import java.util.List;
-import java.util.UUID;
 
 public interface NotificationQueryUseCase {
 

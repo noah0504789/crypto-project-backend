@@ -2,10 +2,8 @@ package org.example.market.adapter.out.persistence;
 
 import lombok.RequiredArgsConstructor;
 import org.example.market.application.port.out.PriceAlertSettingPersistencePort;
-import org.example.market.application.service.command.ChangePriceAlertSettingsCommand;
 import org.example.market.application.service.command.ChangePriceAlertSettingsCommand.CreatePriceAlertSettingCommand;
 import org.example.market.application.service.command.ChangePriceAlertSettingsCommand.UpdatePriceAlertSettingCommand;
-import org.example.market.application.service.command.ChangePriceAlertSettingsCommand.DeletePriceAlertSettingCommand;
 import org.example.market.domain.model.PriceAlertSetting;
 import org.springframework.stereotype.Repository;
 

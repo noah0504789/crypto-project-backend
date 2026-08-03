@@ -1,9 +1,6 @@
 package org.example.common.dlq.domain.event;
 
 import lombok.Getter;
-import org.example.common.event.EventUtils;
-import org.example.common.outbox.domain.event.AbstractOutboxEvent;
-import org.example.common.outbox.domain.event.AbstractOutboxEventList;
 import org.example.common.util.EventIdUtils;
 
 import java.util.ArrayList;
@@ -35,17 +32,6 @@ public class AbstractDlqEventList {
 
     public void addEvent(AbstractDlqEvent event) {
         this.eventList.add(event);
-    }
-
-    /**
-     * @deprecated 도메인 객체에서 직접 publish하지 말고,
-     * DlqEventListPublishPort를 통해 발행하도록 교체한다.
-     */
-    @Deprecated
-    public void publish() {
-        EventUtils.raise(this);
-
-        eventList.clear();
     }
 
     private String generateTxId() {

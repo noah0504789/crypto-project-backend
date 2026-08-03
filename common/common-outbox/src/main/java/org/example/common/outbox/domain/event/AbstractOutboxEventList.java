@@ -1,7 +1,6 @@
 package org.example.common.outbox.domain.event;
 
 import lombok.Getter;
-import org.example.common.event.EventUtils;
 import org.example.common.util.EventIdUtils;
 
 import java.util.ArrayList;
@@ -33,17 +32,6 @@ public abstract class AbstractOutboxEventList {
 
     public void addEvent(AbstractOutboxEvent event) {
         this.eventList.add(event);
-    }
-
-    /**
-     * @deprecated 도메인 객체에서 직접 publish하지 말고,
-     * OutboxEventListPublishPort를 통해 발행하도록 점진적으로 교체한다.
-     */
-    @Deprecated
-    public void publish() {
-        EventUtils.raise(this);
-
-        eventList.clear();
     }
 
     private String generateTxId() {
