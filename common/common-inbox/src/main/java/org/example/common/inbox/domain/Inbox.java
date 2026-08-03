@@ -12,15 +12,15 @@ import org.example.common.jpa.BaseEntity;
 
 @Entity
 @Table(
-        name = "inbox_event",
+        name = "inbox",
         uniqueConstraints = @UniqueConstraint(
-                name = "uk_inbox_event_consumer_event",
+                name = "uk_inbox_consumer_event",
                 columnNames = {"consumer_name", "event_id"}
         )
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class InboxEvent extends BaseEntity {
+public class Inbox extends BaseEntity {
 
     @Id
     @Column(length = 191)
@@ -32,13 +32,13 @@ public class InboxEvent extends BaseEntity {
     @Column(name = "event_id", nullable = false, length = 64)
     private String eventId;
 
-    private InboxEvent(String consumerName, String eventId) {
+    private Inbox(String consumerName, String eventId) {
         this.id = consumerName + ":" + eventId;
         this.consumerName = consumerName;
         this.eventId = eventId;
     }
 
-    public static InboxEvent of(String consumerName, String eventId) {
+    public static Inbox of(String consumerName, String eventId) {
         if (consumerName == null || consumerName.isBlank()) {
             throw new IllegalArgumentException("consumerName must not be blank");
         }
@@ -46,6 +46,6 @@ public class InboxEvent extends BaseEntity {
             throw new IllegalArgumentException("eventId must not be blank");
         }
 
-        return new InboxEvent(consumerName, eventId);
+        return new Inbox(consumerName, eventId);
     }
 }

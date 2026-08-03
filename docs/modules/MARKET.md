@@ -109,7 +109,7 @@ proto: `protobuf/src/main/proto/market/v1/market-service.proto`. 서버 구현�
 |---|---|---|
 | `MarketCatalogChangedEvent` | 각 market 인스턴스의 활성 마켓 Caffeine 캐시 무효화 | 동일 cache key 반복 eviction을 허용하는 자연 멱등 연산 |
 
-이 consumer는 인스턴스별 고유 Kafka group을 사용하므로 모든 인스턴스가 같은 이벤트를 각각 받아야 한다. 따라서 공유 `inbox_event`를 적용하면 첫 인스턴스 외의 캐시 무효화가 차단될 수 있어 사용하지 않는다. Kafka `event_id`는 추적에만 사용하고, 멱등성은 반복 eviction 자체로 확보한다.
+이 consumer는 인스턴스별 고유 Kafka group을 사용하므로 모든 인스턴스가 같은 이벤트를 각각 받아야 한다. 따라서 공유 `inbox`를 적용하면 첫 인스턴스 외의 캐시 무효화가 차단될 수 있어 사용하지 않는다. Kafka `event_id`는 추적에만 사용하고, 멱등성은 반복 eviction 자체로 확보한다.
 
 ## 9. 도메인 · 영속성 · 스키마
 

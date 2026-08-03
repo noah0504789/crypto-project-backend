@@ -30,7 +30,7 @@ Upbit 실시간 시세를 수집해 **단기 이동평균 대비 변동률**을 
 - 핵심 라이브러리: OkHttp(WebSocket 클라이언트), `spring-cloud-stream-binder-kafka-streams`(Kafka Streams), `market-client`(gRPC), `spring-cloud-starter-bus-kafka`.
 - Config Server 연동: `spring.cloud.config.name: market-detection,eureka-client,kafka,monitoring`.
 - DB가 없는데도 발행 계약(`market-detection-contract`의 `PriceAlertDetectedEvent`가 `AbstractInboxEvent` 상속 → `common-inbox` → `common-jpa`)이 `spring-boot-starter-data-jpa`를 **전이로** classpath에 끌어온다. 그대로 두면 `DataSourceAutoConfiguration`이 강제 활성화돼 datasource url 없이 부팅이 깨진다. 그래서 `market-detection.yml`에서 `spring.autoconfigure.exclude`로 `DataSourceAutoConfiguration`·`HibernateJpaAutoConfiguration`을 제외한다. **이 제외를 지우면 부팅이 실패한다.**
-- 컴포넌트 스캔: `Main`은 `@ComponentScan(basePackages="org.example")` + `@ConfigurationPropertiesScan(basePackages="org.example")`로 common 빈을 넓게 스캔한다. 다만 `common-inbox`의 `InboxEventService`(JPA Repository 요구) 등 영속 서비스 빈은 이 서비스가 쓰지 않으므로 `org.example.common.(outbox|dlq|inbox).*`를 `excludeFilters`로 제외한다. Inbox 멱등 영속은 소비자(notification)의 몫이고, 이 모듈은 이벤트를 발행만 한다. **이 필터를 지우면 스캔된 서비스 빈이 JPA Repository를 요구해 부팅이 실패한다.**
+- 컴포넌트 스캔: `Main`은 `@ComponentScan(basePackages="org.example")` + `@ConfigurationPropertiesScan(basePackages="org.example")`로 common 빈을 넓게 스캔한다. 다만 `common-inbox`의 `InboxService`(JPA Repository 요구) 등 영속 서비스 빈은 이 서비스가 쓰지 않으므로 `org.example.common.(outbox|dlq|inbox).*`를 `excludeFilters`로 제외한다. Inbox 멱등 영속은 소비자(notification)의 몫이고, 이 모듈은 이벤트를 발행만 한다. **이 필터를 지우면 스캔된 서비스 빈이 JPA Repository를 요구해 부팅이 실패한다.**
 - Kafka Streams 처리 보장: `processing.guarantee: exactly_once_v2`. 입력 offset, WindowStore 변경, 탐지 이벤트 출력을 하나의 Kafka 트랜잭션으로 처리한다. 브로커 공통 설정(idempotence, acks=all, `isolation.level: read_committed`, native enc/dec)은 `infrastructure/kafka.yml`.
 
 ## 4. 데이터 흐름

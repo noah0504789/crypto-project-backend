@@ -2,8 +2,8 @@ package org.example.notification.application.service;
 
 import org.example.common.clock.Clock;
 import org.example.common.event.TypedPayload;
-import org.example.common.inbox.application.service.InboxEventService;
-import org.example.common.inbox.exception.DuplicateInboxEventException;
+import org.example.common.inbox.application.service.InboxService;
+import org.example.common.inbox.exception.DuplicateInboxException;
 import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
 import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
 import org.example.notification.application.event.NotificationEventList;
@@ -58,7 +58,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
     private OutboxEventListPublishPort outboxEventListPublishPort;
 
     @Mock
-    private InboxEventService inboxEventService;
+    private InboxService inboxService;
 
     private PriceAlertNotificationCommandService sut;
 
@@ -86,7 +86,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 idGeneratorPort,
                 priceAlertRecipientQueryPort,
                 outboxEventListPublishPort,
-                inboxEventService
+                inboxService
         );
 
     }
@@ -101,17 +101,17 @@ class PriceAlertNotificationCommandServiceUnitTest {
             PriceAlertNotificationCreateCommand command = mock(PriceAlertNotificationCreateCommand.class);
             given(command.eventId()).willReturn(EVENT_ID);
             given(command.consumerName()).willReturn(PriceAlertNotificationCreateCommand.CONSUMER_NAME);
-            doThrow(new DuplicateInboxEventException(
+            doThrow(new DuplicateInboxException(
                     PriceAlertNotificationCreateCommand.CONSUMER_NAME,
                     EVENT_ID,
                     new RuntimeException("duplicate")
-            )).when(inboxEventService).save(
+            )).when(inboxService).save(
                     PriceAlertNotificationCreateCommand.CONSUMER_NAME,
                     EVENT_ID
             );
 
             assertThatThrownBy(() -> sut.create(command))
-                    .isInstanceOf(DuplicateInboxEventException.class);
+                    .isInstanceOf(DuplicateInboxException.class);
 
             verify(idGeneratorPort, never()).generate();
             verify(priceAlertRecipientQueryPort, never()).findReceiverIds(anyString(), anyString());
