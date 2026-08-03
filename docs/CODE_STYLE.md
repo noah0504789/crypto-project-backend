@@ -416,8 +416,29 @@ assertThat(result.<String>getAttribute("id")).isEqualTo(userId);
 
 ### 19.2 태그와 식별자
 
-- 하위 영역 태그는 **`[lower-kebab]`** 소문자 고정: `[cache]`, `[redis]`, `[outbox]`, `[dlq]`, `[grpc]`, `[single-flight]`, `[lock]`. 대문자·혼용 금지.
+- 하위 영역 태그는 **`[lower-kebab]`** 소문자 고정. 대문자·혼용 금지. 아래 레지스트리에서 고르고, 새 하위영역이 생기면 같은 규칙으로 추가한다.
 - 추적 식별자를 **하나 이상** `key=value` 로 포함한다: `txId`, `roomId`, `messageId`, `dlqId`, `id` 등. 메시지는 `[tag] what happened. key=value, key=value` 순서.
+
+**태그 레지스트리**(현행):
+
+| 태그 | 영역 |
+| --- | --- |
+| `[cache]` | 캐시 반영/무효화/fail-open |
+| `[redis]` | Redis 저장소 연산 |
+| `[outbox]` | Transactional Outbox 발행 |
+| `[dlq]` | DLQ 전이·재처리 |
+| `[inbox]` | Inbox 멱등 소비(중복 skip) |
+| `[event]` | 도메인 이벤트 비동기 영속(consumer persist) |
+| `[grpc]` | gRPC 서버/클라이언트·예외 매핑 |
+| `[rest]` | REST 예외 매핑(`GlobalExceptionHandler`) |
+| `[stomp]` | STOMP push/skip/검증 |
+| `[ws]` | WebSocket 세션 lifecycle·인스턴스 |
+| `[auth]` | 인증/토큰(로그인·재발급·인증 실패) |
+| `[lock]` | 분산락 획득/해제 |
+| `[single-flight]` | in-process 중복 로드 dedup |
+| `[popularity]` | 인기방 인덱스 재구축 |
+| `[notification]` | 알림 생성/저장 |
+| `[upbit]` | Upbit 외부 WebSocket |
 
 ```java
 log.warn("[cache] chat message save failed after commit (repair will cover). messageId={}, roomId={}", messageId, roomId, e);
