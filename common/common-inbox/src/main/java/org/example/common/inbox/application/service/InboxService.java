@@ -1,25 +1,25 @@
 package org.example.common.inbox.application.service;
 
 import lombok.RequiredArgsConstructor;
-import org.example.common.inbox.adapter.out.InboxEventRepository;
-import org.example.common.inbox.domain.InboxEvent;
-import org.example.common.inbox.exception.DuplicateInboxEventException;
+import org.example.common.inbox.adapter.out.InboxRepository;
+import org.example.common.inbox.domain.Inbox;
+import org.example.common.inbox.exception.DuplicateInboxException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class InboxEventService {
+public class InboxService {
 
-    private final InboxEventRepository repository;
+    private final InboxRepository repository;
 
     @Transactional("transactionManager")
     public void save(String consumerName, String eventId) {
         try {
-            repository.saveAndFlush(InboxEvent.of(consumerName, eventId));
+            repository.saveAndFlush(Inbox.of(consumerName, eventId));
         } catch (DataIntegrityViolationException e) {
-            throw new DuplicateInboxEventException(consumerName, eventId, e);
+            throw new DuplicateInboxException(consumerName, eventId, e);
         }
     }
 }

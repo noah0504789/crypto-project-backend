@@ -4,8 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.common.clock.Clock;
 import org.example.common.event.TypedPayload;
-import org.example.common.inbox.application.service.InboxEventService;
-import org.example.common.inbox.exception.DuplicateInboxEventException;
+import org.example.common.inbox.application.service.InboxService;
+import org.example.common.inbox.exception.DuplicateInboxException;
 import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
 import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
 import org.example.notification.application.event.NotificationEventList;
@@ -36,15 +36,15 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
     private final PriceAlertNotificationIdGeneratorPort idGeneratorPort;
     private final PriceAlertRecipientQueryPort priceAlertRecipientQueryPort;
     private final OutboxEventListPublishPort outboxEventListPublishPort;
-    private final InboxEventService inboxEventService;
+    private final InboxService inboxService;
 
     @Override
     @Transactional(
             transactionManager = "transactionManager",
-            rollbackFor = DuplicateInboxEventException.class
+            rollbackFor = DuplicateInboxException.class
     )
     public void create(PriceAlertNotificationCreateCommand command) {
-        inboxEventService.save(command.consumerName(), command.eventId());
+        inboxService.save(command.consumerName(), command.eventId());
 
         String id = idGeneratorPort.generate();
         LocalDateTime createdAt = clock.nowLocalDateTime();

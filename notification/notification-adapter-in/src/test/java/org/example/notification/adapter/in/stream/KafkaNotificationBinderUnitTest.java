@@ -1,6 +1,6 @@
 package org.example.notification.adapter.in.stream;
 
-import org.example.common.inbox.exception.DuplicateInboxEventException;
+import org.example.common.inbox.exception.DuplicateInboxException;
 import org.example.marketdetection.contract.event.PriceAlertDetectedEvent;
 import org.example.notification.application.port.in.PriceAlertNotificationCommandUseCase;
 import org.example.notification.application.service.command.PriceAlertNotificationCreateCommand;
@@ -41,7 +41,7 @@ class KafkaNotificationBinderUnitTest {
                 .changeRate(0.1)
                 .threshold("PERCENT_3")
                 .build();
-        doThrow(new DuplicateInboxEventException(
+        doThrow(new DuplicateInboxException(
                 "notification.price-alert-detected",
                 EVENT_ID,
                 new RuntimeException("duplicate")

@@ -97,7 +97,7 @@ DB `event`(`mysql.event.*`), persistence unit `event`, 단일 write 데이터소
 
 - **`outbox`**: `id varchar(36)`, `transaction_id char(36)`, `aggregate_type`, `partition_key`, `payload json`, `event_type`, `domain_type`, `dispatch_type`, `status char(20)`, `retry_cnt`, timestamps. index `idx_outbox_dispatch_type_status_created_at (dispatch_type, status, created_at)` — 폴링 쿼리(`dispatchType+status` 정렬 `createdAt`)에 정합.
 - **`dlq`**: `id varchar(26)`(ULID, `ulid-creator`), `source_id`, `event_type`, `aggregate_id`, `aggregate_type`, `transaction_id varchar(26)`, `domain_type`, `status varchar(30)`, `error_message`, `payload json`. index `idx_dlq_status_created_at (status, created_at)`.
-- **`inbox_event`**: 비멱등 consumer 처리 선점 테이블. `(consumer_name,event_id)` unique로 동일 consumer의 동시·재전달 중복을 막고, 처리 결과 Outbox write와 같은 event DB 트랜잭션에서 commit/rollback한다.
+- **`inbox`**: 비멱등 consumer 처리 선점 테이블. `(consumer_name,event_id)` unique로 동일 consumer의 동시·재전달 중복을 막고, 처리 결과 Outbox write와 같은 event DB 트랜잭션에서 commit/rollback한다.
 - 이 스키마는 모든 서비스의 Outbox/DLQ 기록 대상이자 poller의 폴링 대상이다(공유 계약).
 
 ## 7. 확인 필요 항목

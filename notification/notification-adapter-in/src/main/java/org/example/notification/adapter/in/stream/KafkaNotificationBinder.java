@@ -3,7 +3,7 @@ package org.example.notification.adapter.in.stream;
 import lombok.extern.slf4j.Slf4j;
 import org.example.common.enums.KafkaHeaderKey;
 import org.example.common.event.HandleableEvent;
-import org.example.common.inbox.exception.DuplicateInboxEventException;
+import org.example.common.inbox.exception.DuplicateInboxException;
 import org.example.marketdetection.contract.event.PriceAlertDetectedEvent;
 import org.example.notification.application.port.in.PriceAlertNotificationCommandUseCase;
 import org.example.notification.application.service.command.PriceAlertNotificationCreateCommand;
@@ -46,7 +46,7 @@ public class KafkaNotificationBinder {
 
             try {
                 priceAlertNotificationCommandUseCase.create(command);
-            } catch (DuplicateInboxEventException e) {
+            } catch (DuplicateInboxException e) {
                 log.info(
                         "[inbox] Duplicate price alert event skipped. eventId={}",
                         eventId
