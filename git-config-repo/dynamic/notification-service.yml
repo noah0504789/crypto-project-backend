@@ -44,3 +44,11 @@ notification:
   cache:
     # 알림 정보 hash 의 Redis TTL(콜드 항목 상한. 실제 교체는 서버 LFU 축출)
     ttl: 7d
+  persistence:
+    # 수신자 fan-out bulk write 한 묶음 크기
+    batch-size: 1000
+
+app:
+  grpc:
+    market-client:
+      deadline: 3500ms

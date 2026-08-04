@@ -3,11 +3,12 @@ package org.example.chat.chatroom.application.service;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.domain.model.ChatRoom;
+import org.example.chat.chatroom.application.properties.PopularChatRoomProperties;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -35,8 +36,18 @@ class PopularChatRoomRefreshServiceUnitTest {
     @Mock
     private ChatRoomCachePort cache;
 
-    @InjectMocks
+    private static final int POPULAR_INDEX_SIZE = 100;
+
     private PopularChatRoomRefreshService sut;
+
+    @BeforeEach
+    void setUp() {
+        sut = new PopularChatRoomRefreshService(
+                new PopularChatRoomProperties(POPULAR_INDEX_SIZE),
+                persistence,
+                cache
+        );
+    }
 
     @Test
     @DisplayName("category에 방이 있으면 popularity를 계산해 Mongo bulk 갱신하고 상위순으로 zset을 재구축한다")

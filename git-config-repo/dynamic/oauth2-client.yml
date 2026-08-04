@@ -76,3 +76,10 @@ spring:
 oauth2:
   internal-auth-server:
     client-registration-id: my-authorization-server
+
+app:
+  grpc:
+    user-client:
+      deadline: 3500ms
+    oauth2-authorization-server-client:
+      deadline: 3500ms

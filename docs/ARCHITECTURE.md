@@ -179,7 +179,7 @@ proto 4개(`protobuf/src/main/proto/**`)와 서버/클라이언트 매핑:
 | `user.v1`(FindByEmail, SignUpOauth2) | user-adapter-in | oauth2-authorization-server, oauth2-client |
 | `auth.v1`(Access/Refresh/Blacklist/AuthorizedClient) | oauth2-authorization-server-adapter-in | spring-cloud-api-gateway, oauth2-client |
 
-클라이언트에 deadline 정책 적용 예: `.withDeadlineAfter(3500, MILLISECONDS)`(`user/user-client/.../GrpcUserClient.java`). 예외는 REST가 아닌 `BaseGrpcExceptionAdvice` + 서비스별 `@GrpcAdvice`로 처리.
+클라이언트 deadline은 `*-client` 모듈의 `Grpc*ClientProperties`(prefix `app.grpc.<client-name>.deadline`)로 주입된다. 기본값은 chat-client `10s`, 나머지 `3500ms`이며 소비 서비스 yml에서 조정한다. 예외는 REST가 아닌 `BaseGrpcExceptionAdvice` + 서비스별 `@GrpcAdvice`로 처리.
 
 ### 7.2 Kafka (Spring Cloud Stream / Streams)
 

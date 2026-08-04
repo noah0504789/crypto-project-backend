@@ -97,3 +97,8 @@ api-path:
     chat-api-version: v1
     market-api-version: v1
     notification-api-version: v1
+
+app:
+  grpc:
+    oauth2-authorization-server-client:
+      deadline: 3500ms

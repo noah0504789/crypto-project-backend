@@ -12,6 +12,7 @@ import org.example.grpc.user.GrpcSignUpOauth2Request;
 import org.example.grpc.user.GrpcSignUpOauth2Response;
 import org.example.grpc.user.GrpcUser;
 import org.example.grpc.user.UserServiceGrpc;
+import org.example.user.client.properties.GrpcUserClientProperties;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -25,6 +26,8 @@ public class GrpcUserClient implements UserClient {
 
     @GrpcClient("user-client")
     private Channel channel;
+
+    private final GrpcUserClientProperties grpcUserClientProperties;
 
     @Override
     public Optional<UserResponse> findByEmail(String email) {
@@ -50,7 +53,7 @@ public class GrpcUserClient implements UserClient {
     }
 
     private UserServiceGrpc.UserServiceBlockingStub stub() {
-        return UserServiceGrpc.newBlockingStub(channel).withDeadlineAfter(3500, TimeUnit.MILLISECONDS);
+        return UserServiceGrpc.newBlockingStub(channel).withDeadlineAfter(grpcUserClientProperties.deadlineMillis(), TimeUnit.MILLISECONDS);
     }
 
     private UserResponse toResponse(GrpcUser user) {

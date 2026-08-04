@@ -10,6 +10,7 @@ import org.example.grpc.chatmessage.GrpcChatMessageResponse;
 import org.example.grpc.chatmessage.GrpcChatMessageHardDeleteRequest;
 import org.example.grpc.chatmessage.GrpcChatMessageHardDeleteResponse;
 import org.example.grpc.chatmessage.ChatMessageServiceGrpc;
+import org.example.chat.chatmessage.client.properties.GrpcChatMessageClientProperties;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.TimeUnit;
@@ -22,6 +23,8 @@ public class GrpcChatMessageClient implements ChatMessageClient {
     @GrpcClient("chat-client")
     private Channel channel;
 
+    private final GrpcChatMessageClientProperties grpcChatMessageClientProperties;
+
     @Override
     public void save(GrpcChatMessageRequest request, StreamObserver<GrpcChatMessageResponse> responseObserver) {
         stub().save(request, responseObserver);
@@ -33,6 +36,6 @@ public class GrpcChatMessageClient implements ChatMessageClient {
     }
 
     private ChatMessageServiceGrpc.ChatMessageServiceStub stub() {
-        return ChatMessageServiceGrpc.newStub(channel).withDeadlineAfter(10000, TimeUnit.MILLISECONDS);
+        return ChatMessageServiceGrpc.newStub(channel).withDeadlineAfter(grpcChatMessageClientProperties.deadlineMillis(), TimeUnit.MILLISECONDS);
     }
 }

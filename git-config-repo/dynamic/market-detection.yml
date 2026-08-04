@@ -56,3 +56,8 @@ upbit:
       retention: 3m
       window-size: 3m
       retain-duplicates: false
+
+app:
+  grpc:
+    market-client:
+      deadline: 3500ms
