@@ -2,7 +2,7 @@ package org.example.chat.chatroom.adapter.out.persistence;
 
 import org.bson.types.ObjectId;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
-import org.example.common.clock.Clock;
+import org.example.common.time.Clock;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.BulkOperations;

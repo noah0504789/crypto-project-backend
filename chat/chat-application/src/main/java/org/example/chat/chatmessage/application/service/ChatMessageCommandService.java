@@ -17,7 +17,7 @@ import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatmessage.application.exception.ChatMessagePersistException;
 import org.example.chat.exception.TemporaryChatPersistenceException;
-import org.example.common.clock.Clock;
+import org.example.common.time.Clock;
 import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
 import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
 import org.example.common.tx.AfterCommitExecutor;

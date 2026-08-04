@@ -3,6 +3,7 @@ plugins {
 }
 
 dependencies {
+    implementation project(':common:common-time')
     implementation project(':common:common-core')
     implementation project(':common:common-id')
     implementation project(':common:common-jpa')

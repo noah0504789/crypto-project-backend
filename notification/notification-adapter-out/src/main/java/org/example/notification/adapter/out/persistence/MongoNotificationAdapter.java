@@ -2,7 +2,7 @@ package org.example.notification.adapter.out.persistence;
 
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
-import org.example.common.clock.Clock;
+import org.example.common.time.Clock;
 import org.example.notification.application.port.out.NotificationPersistencePort;
 import org.example.notification.domain.model.Notification;
 import org.example.notification.application.service.result.NotificationInboxItem;

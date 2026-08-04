@@ -6,11 +6,11 @@
 
 ## 모듈군 역할과 적용 범위
 
-`common`(부모)은 15개 모듈(`common-core`·`-exception`·`-validation`·`-jpa`·`-event`·`-web`·`-grpc`·`-id`·`-inbox`·`-outbox`·`-redis`·`-redisson`·`-util`·`-tx`·`-mongo`)을 `api`로 재수출하는 파사드다. 실제 소비는 `common-arch-test`의 `testRuntimeOnly` 하나뿐이라, 재수출 목록은 편의가 아니라 **ArchUnit 커버리지 통로**다. `common-test`·`common-arch-test`·`common-actuator-*`는 파사드에서 제외되어 필요한 곳만 개별 의존한다. 각 모듈 역할은 [`../docs/modules/COMMON.md §3`](../docs/modules/COMMON.md)의 표를 본다. `common/`에 코드 변경이 없는 작업엔 이 파일을 적용하지 않는다.
+`common`(부모)은 16개 모듈(`common-core`·`-exception`·`-validation`·`-time`·`-jpa`·`-event`·`-web`·`-grpc`·`-id`·`-inbox`·`-outbox`·`-redis`·`-redisson`·`-util`·`-tx`·`-mongo`)을 `api`로 재수출하는 파사드다. 실제 소비는 `common-arch-test`의 `testRuntimeOnly` 하나뿐이라, 재수출 목록은 편의가 아니라 **ArchUnit 커버리지 통로**다. `common-test`·`common-arch-test`·`common-actuator-*`는 파사드에서 제외되어 필요한 곳만 개별 의존한다. 각 모듈 역할은 [`../docs/modules/COMMON.md §3`](../docs/modules/COMMON.md)의 표를 본다. `common/`에 코드 변경이 없는 작업엔 이 파일을 적용하지 않는다.
 
 ## 주요 변경 규칙
 
-- **예외는 `common-exception`, 검증은 `common-validation`**: `common-core`는 계약 enum·properties·시간만 갖고 외부 의존은 `spring-boot` 코어뿐이다. 검증 starter를 `common-core`로 되돌리면 전 모듈에 다시 전파된다.
+- **예외는 `common-exception`, 검증은 `common-validation`, 시각은 `common-time`**: `common-core`는 계약 enum·properties만 갖고 외부 의존은 `spring-boot` 코어뿐이다. 검증 starter를 `common-core`로 되돌리면 전 모듈에 다시 전파된다.
 - **계약 문자열은 `common-core`에서만**: `RedisKey`·`KafkaTopic`·`KafkaHeaderKey`·`StompDestination`·`JwtClaimKey`·`HttpHeaderKey`·`AuthTokenKey`·`RoleKey` 등의 이름/값/의미를 별도 설명 없이 바꾸지 않는다. 소비처(전 서비스·프론트·저장된 데이터)에 영향(→ external-contracts). `RedisKey`는 pattern + expectedArgCount, hash tag(`{chat}`/`{auth}`/`{session}`)를 유지한다.
 - **common은 서비스 모듈에 의존 금지**: `common-*`가 서비스(`chat`/`user`/… ) 모듈이나 그 패키지를 import하면 `common-arch-test`가 실패한다. 방향은 항상 서비스 → common.
 - **아키텍처 변경 시 게이트 실행**: 의존/계층/패키지 구조를 건드리면 `./gradlew :common:common-arch-test:test`(ArchUnit)를 반드시 실행한다. 규칙 자체(`ModuleArchitectureTest`/`PackageArchitectureTest`)를 완화해 통과시키지 않는다(→ git-safety).
@@ -28,6 +28,7 @@
 | [`common-core/.../enums/`](common-core/src/main/java/org/example/common/enums/) | 계약 상수(Redis/Kafka/STOMP/JWT/HTTP/Role 키) |
 | [`common-exception/.../exception/`](common-exception/src/main/java/org/example/common/exception/) | 공통 예외 계층·`ErrorResponse`(외부 의존 0) |
 | [`common-validation/.../validation/`](common-validation/src/main/java/org/example/common/validation/) | `ValidationResult`·`NotBlankIfPresent`·메시지 번들. validation starter 보유 |
+| [`common-time/.../time/`](common-time/src/main/java/org/example/common/time/) | `Clock`은 주입 인터페이스라 테스트에서 고정 시각을 넣는다. static 유틸로 바꾸지 않는다 |
 | [`common-jpa/.../aop/ReadReplicaAspect.java`](common-jpa/src/main/java/org/example/common/jpa/aop/ReadReplicaAspect.java) | read 라우팅 트리거 |
 | [`common-event/.../EventUtils.java`](common-event/src/main/java/org/example/common/event/EventUtils.java) | 도메인 이벤트 수집·발행 진입점 |
 | [`common-event/.../KafkaEventFactory.java`](common-event/src/main/java/org/example/common/event/KafkaEventFactory.java) | Kafka `Message`와 공통 헤더 생성 책임 |

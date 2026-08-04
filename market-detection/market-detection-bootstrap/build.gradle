@@ -5,6 +5,7 @@ plugins {
 ext.dockerImageName = "crypto-market-detection"
 
 dependencies {
+    implementation project(':common:common-time')
     implementation project(':common:common-exception')
     implementation project(':common:common-validation')
     implementation project(':common:common-event')

@@ -5,6 +5,7 @@ plugins {
 dependencies {
     api project(':chat:chat-domain')
 
+    implementation project(':common:common-time')
     implementation project(':common:common-exception')
     implementation project(':common:common-validation')
     implementation project(':common:common-core')

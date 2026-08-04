@@ -3,7 +3,8 @@ plugins {
 }
 
 dependencies {
-    implementation project(':common:common-core')
-
     api(libs.spring.boot.starter.data.mongodb)
+
+    implementation project(':common:common-time')
+    implementation project(':common:common-core')
 }
