@@ -26,7 +26,19 @@ Java 17 · Spring Boot 3.4.0 · Spring Cloud 2024.0.2 기반 헥사고날 멀티
 | 테스트 작성·실행·검증 | `.claude/rules/testing.md` | verify-change |
 | 커밋·PR 메시지 작성 | `.claude/rules/commit-pr.md` | — |
 
-skill은 자동 노출된다: `analyze-module`(모듈 분석), `verify-change`(변경 검증), `review-contract-impact`(계약 영향).
+skill은 자동 노출된다: `analyze-module`(모듈 분석), `verify-change`(변경 검증), `review-contract-impact`(계약 영향), `cross-repo-impact`(여러 모듈·저장소·축에 걸친 요청의 병렬 조사/종합 절차).
+
+## 서브에이전트 (`.claude/agents/`)
+컨텍스트를 분리해야 이득인 작업(중간 읽기량이 크고 결론은 작은 작업)만 위임한다. 규칙·절차의 정본은 위 `.claude/rules/`·skill이며 에이전트는 그것을 자기 컨텍스트에서 실행할 뿐이다.
+
+| 에이전트 | 언제 | 비고 |
+| --- | --- | --- |
+| `module-explorer` | 코드 위치·호출 흐름·모듈 구조 조사 | 읽기 전용. 모듈마다 병렬 호출 |
+| `contract-scanner` | 외부 계약 변경 전 영향 조사(프론트·인프라 소비처 포함) | 읽기 전용. 계약 유형마다 병렬 호출 |
+| `build-runner` | Gradle 컴파일·테스트·서비스 CI 실행 | 로그를 압축해 반환. 코드 수정 안 함 |
+| `arch-reviewer` | 헥사고날·Outbox·트랜잭션·Redis Key 규약 감사 | 읽기 전용. ArchUnit이 못 잡는 규약 대상 |
+
+코드 수정은 서브에이전트에 위임하지 않는다(승인 범위가 메인 컨텍스트에만 있다).
 
 ## 의사소통
 - 한국어로 설명한다. `원인 → 수정 → 영향 범위 → 검증` 순서를 따른다.

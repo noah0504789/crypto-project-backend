@@ -62,6 +62,19 @@
 | [testing.md](../.claude/rules/testing.md) | 테스트 작성·실행·검증 |
 | [commit-pr.md](../.claude/rules/commit-pr.md) | 커밋·PR 메시지 작성 |
 
+## 3.1 서브에이전트 (.claude/agents/)
+
+컨텍스트를 분리해야 이득인 작업만 위임한다(중간 읽기량이 크고 결론은 작은 작업). 규칙·절차 정본은 `.claude/rules/`와 skill이고, 에이전트는 그것을 별도 컨텍스트에서 실행한다. 지식을 에이전트 프롬프트에 복제하지 않는다 — 모듈 지식의 정본은 이 문서들과 `<module>/CLAUDE.md`다.
+
+| 에이전트 | 축 | 언제 |
+|---|---|---|
+| [module-explorer](../.claude/agents/module-explorer.md) | 탐색 | 코드 위치·호출 흐름·모듈 구조 조사(읽기 전용) |
+| [contract-scanner](../.claude/agents/contract-scanner.md) | 감사 | 외부 계약 변경 전 영향 조사(frontend·infra 소비처 포함) |
+| [build-runner](../.claude/agents/build-runner.md) | 실행 | Gradle 컴파일·테스트·`<service>Ci` 실행, 로그 압축 |
+| [arch-reviewer](../.claude/agents/arch-reviewer.md) | 감사 | 헥사고날·Outbox·트랜잭션·Redis Key 규약(ArchUnit 밖) |
+
+여러 모듈·저장소·축에 걸친 요청은 [`cross-repo-impact`](../.claude/skills/cross-repo-impact/SKILL.md) skill이 병렬 조사와 종합 순서를 정한다.
+
 ## 4. 커버리지
 
 실행 서비스 12개 전부 + 공통 모듈(`common-*`)에 대해 **상세 문서 + 작업 지침(CLAUDE.md)** 쌍이 존재한다. 새 서비스를 추가하면 `docs/modules/<NAME>.md` + `<module>/CLAUDE.md`를 만들고 이 인덱스와 [`../CLAUDE.md`](../CLAUDE.md) 문서 지도에 반영한다.
