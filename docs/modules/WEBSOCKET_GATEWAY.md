@@ -122,7 +122,7 @@
 
 미해결 확인/결정 항목은 [`../../TODO.md`](../../TODO.md)에서 통합 관리한다. websocket-gateway 관련 항목:
 
-- **TODO 2.6** — `RedisSessionLocationAdapter.SESSION_TTL`이 3분으로 하드코딩(`// TODO: 주입받기`). subscribe마다 갱신되나 값 자체는 Config 주입이 아니다. 주입/조정 여부 확인 필요.
+- 세션 위치 TTL은 `websocket.session.ttl`(기본 `3m`, `git-config-repo/dynamic/websocket-gateway.yml`)로 주입된다. 값 조정은 Config 변경만으로 가능하다.
 - **TODO 1.5**(기존, oauth2-client) — WebSocket 핸드셰이크의 `?access_token=` 쿼리 토큰 전달과 `X-User-Id` 주입 경로. 핸드셰이크 인증 전제와 연결.
 
 ## 10. 테스트 현황

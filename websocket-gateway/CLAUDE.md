@@ -41,7 +41,7 @@ STOMP destination·Kafka 소비·gRPC 계약에 걸친 변경은 `../.claude/rul
 | [`...adapter-out/.../chatmessage/adapter/out/grpc/GrpcChatMessageCommandAdapter.java`](websocket-gateway-adapter-out/src/main/java/org/example/websocket/gateway/chatmessage/adapter/out/grpc/GrpcChatMessageCommandAdapter.java) | chat gRPC save/hardDelete |
 | [`...adapter-out/.../chatmessage/adapter/out/stomp/StompChatMessageBroadcastAdapter.java`](websocket-gateway-adapter-out/src/main/java/org/example/websocket/gateway/chatmessage/adapter/out/stomp/StompChatMessageBroadcastAdapter.java) | `/topic/chat/{roomId}` push |
 | [`...adapter-out/.../session/adapter/out/redis/RedisSessionLocationAdapter.java`](websocket-gateway-adapter-out/src/main/java/org/example/websocket/gateway/session/adapter/out/redis/RedisSessionLocationAdapter.java) | Redis 세션 위치(TTL) |
-| `../git-config-repo/dynamic/websocket-gateway.yml` | STOMP·Kafka 소비·gRPC client 설정(Config Server 원격) |
+| `../git-config-repo/dynamic/websocket-gateway.yml` | STOMP·Kafka 소비·gRPC client·`websocket.session.ttl` 설정(Config Server 원격) |
 
 ## 검증 명령
 
@@ -55,5 +55,4 @@ STOMP destination·Kafka 소비·gRPC 계약에 걸친 변경은 `../.claude/rul
 
 확정된 결함으로 단정하지 않는다. 코드 변경 전 사용자 확인이 필요하다. 상세·근거는 [`../docs/modules/WEBSOCKET_GATEWAY.md §9`](../docs/modules/WEBSOCKET_GATEWAY.md)와 [`../TODO.md`](../TODO.md).
 
-- `RedisSessionLocationAdapter`의 세션 TTL 3분 하드코딩(`// TODO: 주입받기`)
 - WebSocket 핸드셰이크 `?access_token=` 토큰 전달·`X-User-Id` 주입 경로(TODO 1.5)

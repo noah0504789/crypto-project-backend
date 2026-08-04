@@ -6,12 +6,12 @@ import org.example.common.redis.operation.StringRedisHashOperations;
 import org.example.notification.application.port.out.NotificationCachePort;
 import org.example.notification.domain.model.Notification;
 import org.example.notification.exception.NotificationCacheException;
+import org.example.notification.infra.properties.NotificationCacheProperties;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Repository;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,7 +31,7 @@ import static org.example.common.enums.RedisKey.NOTIFICATION_INFO;
 public class RedisNotificationAdapter implements NotificationCachePort {
 
     // 불변 데이터라 TTL 은 "만료 방어"가 아니라 콜드 항목 상한(안전망) 역할. 실제 교체는 LFU 축출이 담당.
-    private static final String CACHE_TTL_SECONDS = String.valueOf(Duration.ofDays(7).toSeconds());
+    private final String cacheTtlSeconds;
 
     private final RedisTemplate<String, String> masterHashRedisTemplate;
     private final StringRedisHashOperations hash;
@@ -44,8 +44,10 @@ public class RedisNotificationAdapter implements NotificationCachePort {
             StringRedisHashOperations hash,
             @Qualifier("redisNotificationCodec") RedisHashCodec<RedisNotification> codec,
             @Qualifier("warmUpNotification_lua") RedisScript<Boolean> warmUpNotification_lua,
-            @Qualifier("invalidateNotification_lua") RedisScript<Boolean> invalidateNotification_lua
+            @Qualifier("invalidateNotification_lua") RedisScript<Boolean> invalidateNotification_lua,
+            NotificationCacheProperties notificationCacheProperties
     ) {
+        this.cacheTtlSeconds = notificationCacheProperties.ttlSeconds();
         this.masterHashRedisTemplate = masterHashRedisTemplate;
         this.hash = hash;
         this.codec = codec;
@@ -118,7 +120,7 @@ public class RedisNotificationAdapter implements NotificationCachePort {
             args.add(field);
             args.add(value == null ? "" : value);
         });
-        args.add(CACHE_TTL_SECONDS);
+        args.add(cacheTtlSeconds);
 
         if (!masterHashRedisTemplate.execute(warmUpNotification_lua, List.of(infoKey), args.toArray())) {
             throw new NotificationCacheException("[redis] notification warmUp() failed! id=" + notification.getId());

@@ -4,11 +4,12 @@ import org.example.common.redis.operation.StringRedisHashOperations;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.example.websocket.gateway.session.adapter.out.properties.SessionProperties;
 import org.springframework.data.redis.core.RedisTemplate;
 
 import java.time.Duration;
@@ -27,8 +28,14 @@ class RedisSessionLocationAdapterUnitTest {
     @Mock
     private RedisTemplate<String, String> redisTemplate;
 
-    @InjectMocks
+    private static final Duration SESSION_TTL = Duration.ofMinutes(3);
+
     private RedisSessionLocationAdapter sut;
+
+    @BeforeEach
+    void setUp() {
+        sut = new RedisSessionLocationAdapter(hash, redisTemplate, new SessionProperties(SESSION_TTL));
+    }
 
     private final String userId = "user-1";
     private final String sessionId = "session-1";
@@ -51,7 +58,7 @@ class RedisSessionLocationAdapterUnitTest {
             InOrder inOrder = inOrder(hash, redisTemplate);
 
             inOrder.verify(hash).update(sessionInfoKey, sessionId, serverId);
-            inOrder.verify(redisTemplate).expire(sessionInfoKey, Duration.ofMinutes(3));
+            inOrder.verify(redisTemplate).expire(sessionInfoKey, SESSION_TTL);
         }
     }
 
@@ -186,7 +193,7 @@ class RedisSessionLocationAdapterUnitTest {
             sut.refreshTtl(userId);
 
             // then
-            verify(redisTemplate).expire(sessionInfoKey, Duration.ofMinutes(3));
+            verify(redisTemplate).expire(sessionInfoKey, SESSION_TTL);
         }
     }
 }

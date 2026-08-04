@@ -7,6 +7,7 @@ import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.chat.chatroom.domain.service.ChatRoomPopularityCalculator;
 import org.example.common.redis.failover.CacheFailOpen;
+import org.example.chat.infra.properties.ChatCacheProperties;
 import org.example.chat.infra.redis.RedisCollectionRegistry;
 import org.example.common.redis.codec.RedisHashCodec;
 import org.example.common.redis.operation.StringRedisHashOperations;
@@ -18,7 +19,6 @@ import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Repository;
 
-import java.time.Duration;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -27,7 +27,7 @@ import static org.example.common.enums.RedisKey.*;
 @Repository
 public class RedisChatRoomAdapter implements ChatRoomCachePort {
 
-    private static final String CHAT_ROOM_CACHE_TTL_SECONDS = String.valueOf(Duration.ofDays(7).toSeconds());
+    private final String chatRoomCacheTtlSeconds;
     private final RedisTemplate<String, String> masterHashRedisTemplate;
     private final RedisTemplate<String, String> replicaHashRedisTemplate;
     private final StringRedisHashOperations hash;
@@ -63,8 +63,10 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
             @Qualifier("recoverUpdateChatRoom_lua") RedisScript<Boolean> recoverUpdateChatRoom_lua,
             @Qualifier("invalidateChatRoomActivity_lua") RedisScript<Boolean> invalidateChatRoomActivity_lua,
             @Qualifier("invalidateChatRoomInfo_lua") RedisScript<Boolean> invalidateChatRoomInfo_lua,
-            @Qualifier("rebuildPopularRoomIndex_lua") RedisScript<Boolean> rebuildPopularRoomIndex_lua
+            @Qualifier("rebuildPopularRoomIndex_lua") RedisScript<Boolean> rebuildPopularRoomIndex_lua,
+            ChatCacheProperties chatCacheProperties
     ) {
+        this.chatRoomCacheTtlSeconds = chatCacheProperties.roomTtlSeconds();
         this.masterHashRedisTemplate = masterHashRedisTemplate;
         this.replicaHashRedisTemplate = replicaHashRedisTemplate;
         this.hash = hash;
@@ -240,7 +242,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
         args.add("0");
         args.add(String.valueOf(domain.getMemberIds().size()));
         args.addAll(domain.getMemberIds());
-        args.add(CHAT_ROOM_CACHE_TTL_SECONDS);
+        args.add(chatRoomCacheTtlSeconds);
 
         if (!masterHashRedisTemplate.execute(storeChatRoom_lua, keys, args.toArray())) {
             throw new ChatCacheException("[redis] chatroom save() failed!");
@@ -265,7 +267,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
         List<String> infoArgs = toRoomInfoArgs(domain);
         args.add(String.valueOf(infoArgs.size() / 2));
         args.addAll(infoArgs);
-        args.add(CHAT_ROOM_CACHE_TTL_SECONDS);
+        args.add(chatRoomCacheTtlSeconds);
 
         if (!masterHashRedisTemplate.execute(warmUpChatRoom_lua, keys, args.toArray())) {
             throw new ChatCacheException("[redis] chatroom warmUp() failed!");
@@ -295,7 +297,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
             List<String> infoArgs = toRoomInfoArgs(domain);
             args.add(String.valueOf(infoArgs.size() / 2));
             args.addAll(infoArgs);
-            args.add(CHAT_ROOM_CACHE_TTL_SECONDS);
+            args.add(chatRoomCacheTtlSeconds);
         }
 
         if (!masterHashRedisTemplate.execute(warmUpChatRoomList_lua, keys, args.toArray())) {
@@ -310,7 +312,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
         List<String> keys = List.of(popularKey);
 
         List<String> args = new ArrayList<>();
-        args.add(CHAT_ROOM_CACHE_TTL_SECONDS);
+        args.add(chatRoomCacheTtlSeconds);
         args.add(String.valueOf(rooms.size()));
 
         for (ChatRoom room : rooms) {
@@ -350,7 +352,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
 
         args.add(String.valueOf(updatedArgs.size() / 2));
         args.addAll(updatedArgs);
-        args.add(CHAT_ROOM_CACHE_TTL_SECONDS);
+        args.add(chatRoomCacheTtlSeconds);
 
         if (!masterHashRedisTemplate.execute(updateChatRoom_lua, keys, args.toArray())) throw new ChatCacheException("[redis] chatroom update() failed!");
     }
@@ -431,7 +433,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
         List<String> infoArgs = toRoomInfoArgs(chatRoom);
         args.add(String.valueOf(infoArgs.size() / 2));
         args.addAll(infoArgs);
-        args.add(CHAT_ROOM_CACHE_TTL_SECONDS);
+        args.add(chatRoomCacheTtlSeconds);
 
         if (!masterHashRedisTemplate.execute(recoverUpdateChatRoom_lua, keys, args.toArray())) {
             throw new ChatCacheException("[redis] chatroom recoverUpdate() failed!");

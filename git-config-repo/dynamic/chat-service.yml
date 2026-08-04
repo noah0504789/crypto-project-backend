@@ -106,3 +106,10 @@ mongo:
   pass: ${mongo.chat.password}
   db: ${mongo.chat.db}
   authSource: chat
+
+chat:
+  cache:
+    # 방 정보 hash 의 Redis TTL
+    room-ttl: 7d
+    # 스케줄러가 메시지 캐시에서 제거할 기준 나이
+    message-retention: 7d

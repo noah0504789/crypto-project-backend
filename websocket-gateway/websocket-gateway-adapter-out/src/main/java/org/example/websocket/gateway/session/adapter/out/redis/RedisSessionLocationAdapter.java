@@ -2,11 +2,10 @@ package org.example.websocket.gateway.session.adapter.out.redis;
 
 import lombok.RequiredArgsConstructor;
 import org.example.common.redis.operation.StringRedisHashOperations;
+import org.example.websocket.gateway.session.adapter.out.properties.SessionProperties;
 import org.example.websocket.gateway.session.application.out.SessionLocationPort;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
-
-import java.time.Duration;
 
 import static org.example.common.enums.RedisKey.SESSION_INFO;
 
@@ -14,10 +13,9 @@ import static org.example.common.enums.RedisKey.SESSION_INFO;
 @RequiredArgsConstructor
 public class RedisSessionLocationAdapter implements SessionLocationPort {
 
-    private static final Duration SESSION_TTL = Duration.ofMinutes(3); // TODO: 주입받기
-
     private final StringRedisHashOperations hash;
     private final RedisTemplate<String, String> redisTemplate;
+    private final SessionProperties sessionProperties;
 
     @Override
     public void save(String userId, String sessionId, String serverId) {
@@ -50,6 +48,6 @@ public class RedisSessionLocationAdapter implements SessionLocationPort {
     public void refreshTtl(String userId) {
         String sessionInfoKey = SESSION_INFO.keyFor(userId);
 
-        redisTemplate.expire(sessionInfoKey, SESSION_TTL);
+        redisTemplate.expire(sessionInfoKey, sessionProperties.ttl());
     }
 }

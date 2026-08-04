@@ -13,6 +13,7 @@ import org.example.chat.chatmessage.adapter.out.cache.RedisChatMessageCodec;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.chatroom.adapter.out.cache.RedisChatRoom;
 import org.example.chat.chatroom.adapter.out.cache.RedisChatRoomAdapter;
+import org.example.chat.infra.properties.ChatCacheProperties;
 import org.example.chat.chatroom.adapter.out.cache.RedisChatRoomCodec;
 import org.example.common.clock.Clock;
 import org.example.common.clock.ClockService;
@@ -255,7 +256,8 @@ public class TestRedisConfig {
                 recoverUpdateChatRoom_lua,
                 invalidateChatRoomActivity_lua,
                 invalidateChatRoomInfo_lua,
-                rebuildPopularRoomIndex_lua
+                rebuildPopularRoomIndex_lua,
+                new ChatCacheProperties(Duration.ofDays(7), Duration.ofDays(7))
         );
     }
 

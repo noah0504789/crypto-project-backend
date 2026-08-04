@@ -6,10 +6,11 @@ import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.common.clock.Clock;
 import org.example.chat.infra.redis.RedisCollectionRegistry;
 import org.example.common.redis.codec.RedisValueCodec;
+import org.example.chat.infra.properties.ChatCacheProperties;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.Cursor;
@@ -51,8 +52,20 @@ class ChatMessageSchedulerUnitTest {
     @Mock
     private RedisZSet<String> messageZSet;
 
-    @InjectMocks
+    private static final Duration MESSAGE_RETENTION = Duration.ofDays(7);
+
     private ChatMessageScheduler sut;
+
+    @BeforeEach
+    void setUp() {
+        sut = new ChatMessageScheduler(
+                registry,
+                redisTemplate,
+                clock,
+                redisChatMessageCodec,
+                new ChatCacheProperties(Duration.ofDays(7), MESSAGE_RETENTION)
+        );
+    }
 
     private final String ROOM_ID = "000000000000000000000001";
 
@@ -79,7 +92,7 @@ class ChatMessageSchedulerUnitTest {
         given(registry.getMasterZSet(messageAccessKey)).willReturn(accessZSet);
         given(registry.getMasterZSet(messageKey)).willReturn(messageZSet);
 
-        long cutoff = NOW.toEpochMilli() - Duration.ofDays(7).toMillis();
+        long cutoff = NOW.toEpochMilli() - MESSAGE_RETENTION.toMillis();
 
         given(accessZSet.rangeByScore(0, cutoff))
                 .willReturn(Set.of(EXPIRED_MESSAGE_ID));
@@ -116,7 +129,7 @@ class ChatMessageSchedulerUnitTest {
 
         given(registry.getMasterZSet(messageAccessKey)).willReturn(accessZSet);
 
-        long cutoff = NOW.toEpochMilli() - Duration.ofDays(7).toMillis();
+        long cutoff = NOW.toEpochMilli() - MESSAGE_RETENTION.toMillis();
 
         given(accessZSet.rangeByScore(0, cutoff))
                 .willReturn(Set.of());
@@ -144,7 +157,7 @@ class ChatMessageSchedulerUnitTest {
         given(registry.getMasterZSet(messageAccessKey)).willReturn(accessZSet);
         given(registry.getMasterZSet(messageKey)).willReturn(messageZSet);
 
-        long cutoff = NOW.toEpochMilli() - Duration.ofDays(7).toMillis();
+        long cutoff = NOW.toEpochMilli() - MESSAGE_RETENTION.toMillis();
 
         given(accessZSet.rangeByScore(0, cutoff))
                 .willReturn(Set.of(EXPIRED_MESSAGE_ID));
