@@ -43,6 +43,7 @@ pytest scripts/ci
 ## 함정
 
 - **집계 task는 빈 task다.** `:chat:test`·`:user:test`는 대부분 테스트가 없다. 서브모듈(`:chat:chat-application:test`) 또는 `<service>Ci`로 실행한다.
+- **`compileTestJava` 통과를 검증으로 착각하지 않는다.** `@InjectMocks`는 리플렉션이라 생성자 인자가 추가돼도 컴파일이 통과하고 런타임 NPE로 터진다. 호출자가 **생성자를 바꿨다고 하면 `--tests` 선택 실행으로 끝내지 말고 해당 서브모듈 test task 전체를 돌린다.** NPE가 나면 `grep -rn "@InjectMocks" <module>/src/test`로 대상을 찾아 보고한다(수정은 하지 않는다).
 - **`BootSmokeTest`는 Docker가 필요하다.** 각 실행 모듈의 부팅 스모크는 Testcontainers + 실제 `git-config-repo` 설정으로 진짜 `Main`을 띄운다. Docker가 없거나 컨테이너 기동에 실패하면 그건 코드 결함이 아니라 **환경 문제**다 — 구분해서 보고한다.
 - 부팅 스모크 단독 실행: `./gradlew :<service>:<service>-bootstrap:test --tests '*BootSmokeTest*'`
 - 컨테이너는 `@Reuse(true)`라 재사용된다. 첫 실행만 느리다.

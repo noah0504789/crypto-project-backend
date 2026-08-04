@@ -11,6 +11,7 @@
 - 테스트 메서드에 한글 `@DisplayName`, `given/when/then` 구조.
 - 단위 테스트에서는 Spring Context를 띄우지 않는다.
 - 외부 시스템·Repository·`StreamBridge`·gRPC Client는 mock 처리한다.
+- **`@InjectMocks` 대신 생성자를 명시적으로 호출한다**(`@BeforeEach`에서 `new Sut(...)`). `@InjectMocks`는 리플렉션이라 **생성자 인자가 추가돼도 컴파일이 통과하고 런타임 NPE로 터진다**. 명시 생성이면 컴파일 에러로 즉시 드러난다. `@ConfigurationProperties` record 같은 값 객체는 mock 하지 말고 실제 인스턴스를 넘긴다.
 - 도메인 상태 변경은 실제 도메인 객체로 검증한다.
 - 통합 테스트는 필요한 경우에만 `@SpringBootTest`/`@DataJpaTest`/`@JdbcTest`/`@WebMvcTest`/`@WebFluxTest`.
 - 실패한 테스트를 통과시키려고 Assertion을 약화하지 않는다(→ `git-safety.md`).
