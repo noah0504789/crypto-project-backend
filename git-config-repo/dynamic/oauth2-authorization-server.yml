@@ -27,3 +27,8 @@ mysql:
 #  level:
 #    org.springframework.security.oauth2.server.authorization: DEBUG
 #    org.springframework.security.oauth2: DEBUG
+
+app:
+  grpc:
+    user-client:
+      deadline: 3500ms

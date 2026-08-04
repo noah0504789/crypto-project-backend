@@ -16,6 +16,19 @@
 
 기존 코드와 충돌하는 경우 새 코드부터 이 기준을 적용하고, 대규모 일괄 정리는 별도 작업으로 분리한다.
 
+### 1.1 작성 형식
+
+- **삼항연산자를 쓸 수 있으면 쓴다.** 단순 분기로 값을 정하는 곳에서 `if/else` 블록보다 짧고 의도가 드러난다. 다만 중첩하거나 부수효과가 섞이면 `if`로 되돌린다.
+  ```java
+  String label = room.isDeleted() ? "삭제됨" : room.getTitle();
+  ```
+- **파라미터가 2개 이하면 시그니처를 한 줄로 쓴다.** 3개 이상일 때만 줄바꿈한다.
+  ```java
+  public record ChatCacheProperties(Duration roomTtl, Duration messageRetention) {}
+  void save(String userId, String sessionId) { ... }
+  ```
+- **주석은 웬만하면 쓰지 않는다.** 코드가 "무엇"을 하는지는 코드가 말한다. 남길 값어치가 있는 것은 **"왜"** 와 **읽는 사람이 코드만 봐선 알 수 없는 맥락**뿐이다(비대칭 설계, 외부 계약, 되돌리면 안 되는 이유). 쓰더라도 핵심만 한두 줄로 줄인다.
+
 ## 2. 패키지와 계층
 
 권장 구조:
@@ -69,6 +82,8 @@
 | `*Properties` | `@ConfigurationProperties` |
 | `*Config` | Spring configuration |
 | `*Response`, `*Request`, `*Command`, `*Result` | DTO |
+
+**gRPC 관련 타입은 `Grpc`를 맨 앞에 붙인다.** 중간에 끼워넣지 않는다 — `GrpcUserClient`·`GrpcChatMessageService`·`GrpcBlacklistTokenClientAdapter`처럼 접두로 통일해야 gRPC 경계에 닿는 타입을 이름만으로 걸러낼 수 있다. 다른 접미 규칙과 겹치면 접두를 우선한다: `GrpcUserClientProperties`(○) / `UserGrpcClientProperties`(×).
 
 ### 3.2 메서드
 

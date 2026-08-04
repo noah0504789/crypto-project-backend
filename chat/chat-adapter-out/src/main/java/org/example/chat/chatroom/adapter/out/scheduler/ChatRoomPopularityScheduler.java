@@ -17,7 +17,7 @@ public class ChatRoomPopularityScheduler {
 
     private final PopularChatRoomRefreshUseCase popularChatRoomRefreshUseCase;
 
-    @Scheduled(cron = "0 0 */3 * * *")
+    @Scheduled(cron = "${chat.scheduler.popularity-refresh.cron:0 0 */3 * * *}")
     public void refreshPopularRooms() {
         log.info("[popularity] scheduled rebuild start");
         popularChatRoomRefreshUseCase.refresh();

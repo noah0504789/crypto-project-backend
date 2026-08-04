@@ -1,8 +1,10 @@
 package org.example.market.client;
 
 import io.grpc.Channel;
+import lombok.RequiredArgsConstructor;
 import net.devh.boot.grpc.client.inject.GrpcClient;
 import org.example.grpc.market.*;
+import org.example.market.client.properties.GrpcMarketClientProperties;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -11,10 +13,13 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Service
+@RequiredArgsConstructor
 public class GrpcPriceAlertSettingClient implements PriceAlertSettingClient {
 
     @GrpcClient("market-client")
     private Channel channel;
+
+    private final GrpcMarketClientProperties grpcMarketClientProperties;
 
     @Override
     public List<UUID> findReceiverIds(String marketCode, BigDecimal targetChangeRate) {
@@ -37,6 +42,6 @@ public class GrpcPriceAlertSettingClient implements PriceAlertSettingClient {
 
     private PriceAlertSettingServiceGrpc.PriceAlertSettingServiceBlockingStub stub() {
         return PriceAlertSettingServiceGrpc.newBlockingStub(channel)
-                .withDeadlineAfter(3500, TimeUnit.MILLISECONDS);
+                .withDeadlineAfter(grpcMarketClientProperties.deadlineMillis(), TimeUnit.MILLISECONDS);
     }
 }

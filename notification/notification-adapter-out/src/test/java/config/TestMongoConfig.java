@@ -4,6 +4,7 @@ import com.mongodb.ReadPreference;
 import org.example.notification.adapter.out.persistence.MongoNotificationRecipientRepository;
 import org.example.notification.adapter.out.persistence.MongoNotificationRecipientRepositoryImpl;
 import org.example.notification.adapter.out.persistence.MongoNotificationRepository;
+import org.example.notification.infra.properties.NotificationPersistenceProperties;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -39,6 +40,7 @@ public class TestMongoConfig {
             @Qualifier("primaryMongoTemplate") MongoTemplate primaryMongoTemplate,
             @Qualifier("secondaryMongoTemplate") MongoTemplate secondaryMongoTemplate
     ) {
-        return new MongoNotificationRecipientRepositoryImpl(primaryMongoTemplate, secondaryMongoTemplate);
+        return new MongoNotificationRecipientRepositoryImpl(
+                primaryMongoTemplate, secondaryMongoTemplate, new NotificationPersistenceProperties(1000));
     }
 }

@@ -75,3 +75,8 @@ websocket:
   session:
     # STOMP 세션 위치 Redis TTL(연결 유휴 만료. subscribe 마다 갱신)
     ttl: 3m
+
+app:
+  grpc:
+    chat-client:
+      deadline: 10s

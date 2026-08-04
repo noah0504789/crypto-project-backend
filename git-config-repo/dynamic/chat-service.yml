@@ -113,3 +113,18 @@ chat:
     room-ttl: 7d
     # 스케줄러가 메시지 캐시에서 제거할 기준 나이
     message-retention: 7d
+  scheduler:
+    # 캐시에서 만료 메시지 제거(매일 03:00)
+    message-cleanup:
+      cron: "0 0 3 * * *"
+    # 인기방 zset 재구축(3시간마다)
+    popularity-refresh:
+      cron: "0 0 */3 * * *"
+  popular-room:
+    # Redis 인기방 zset 에 담는 상위 방 개수
+    index-size: 100
+  retry:
+    # Outbox/Mongo 일시 실패 재시도(@Retryable). 소진 시 DLQ 로 전이
+    max-attempts: 3
+    backoff-delay-ms: 100
+    backoff-multiplier: 2

@@ -47,8 +47,10 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
 
     @Retryable(
             retryFor = TemporaryOutboxPersistenceException.class,
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 100, multiplier = 2)
+            maxAttemptsExpression = "${chat.retry.max-attempts:3}",
+            backoff = @Backoff(
+                    delayExpression = "${chat.retry.backoff-delay-ms:100}",
+                    multiplierExpression = "${chat.retry.backoff-multiplier:2}")
     )
     @Transactional("transactionManager")
     public ChatMessageSaveResult save(ChatMessageSaveCommand command) {
@@ -75,8 +77,10 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
 
     @Retryable(
             retryFor = TemporaryChatPersistenceException.class,
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 100, multiplier = 2)
+            maxAttemptsExpression = "${chat.retry.max-attempts:3}",
+            backoff = @Backoff(
+                    delayExpression = "${chat.retry.backoff-delay-ms:100}",
+                    multiplierExpression = "${chat.retry.backoff-multiplier:2}")
     )
     @Transactional("chatMongoTransactionManager")
     public void hardDelete(String messageId, String roomId) {

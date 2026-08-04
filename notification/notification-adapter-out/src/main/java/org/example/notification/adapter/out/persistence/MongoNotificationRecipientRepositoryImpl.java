@@ -8,6 +8,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
+import org.example.notification.infra.properties.NotificationPersistenceProperties;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
@@ -17,17 +18,19 @@ import java.util.UUID;
 @Repository
 public class MongoNotificationRecipientRepositoryImpl implements MongoNotificationRecipientRepository {
 
-    private static final int BATCH_SIZE = 1_000;
+    private final int batchSize;
 
     private final MongoTemplate primaryMongoTemplate;
     private final MongoTemplate secondaryMongoTemplate;
 
     public MongoNotificationRecipientRepositoryImpl(
             @Qualifier("primaryMongoTemplate") MongoTemplate primaryMongoTemplate,
-            @Qualifier("secondaryMongoTemplate") MongoTemplate secondaryMongoTemplate
+            @Qualifier("secondaryMongoTemplate") MongoTemplate secondaryMongoTemplate,
+            NotificationPersistenceProperties persistenceProperties
     ) {
         this.primaryMongoTemplate = primaryMongoTemplate;
         this.secondaryMongoTemplate = secondaryMongoTemplate;
+        this.batchSize = persistenceProperties.batchSize();
     }
 
     @Override
@@ -85,8 +88,8 @@ public class MongoNotificationRecipientRepositoryImpl implements MongoNotificati
             return;
         }
 
-        for (int i = 0; i < recipients.size(); i += BATCH_SIZE) {
-            int end = Math.min(i + BATCH_SIZE, recipients.size());
+        for (int i = 0; i < recipients.size(); i += batchSize) {
+            int end = Math.min(i + batchSize, recipients.size());
             List<MongoNotificationRecipient> batch = recipients.subList(i, end);
             BulkOperations operations = primaryMongoTemplate.bulkOps(
                     BulkOperations.BulkMode.UNORDERED,

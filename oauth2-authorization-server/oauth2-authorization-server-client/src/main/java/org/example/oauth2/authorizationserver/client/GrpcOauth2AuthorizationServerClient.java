@@ -14,6 +14,7 @@ import org.example.grpc.auth.RefreshTokenServiceGrpc;
 import org.example.grpc.auth.GrpcRegisterBlacklistTokenRequest;
 import org.example.grpc.auth.RemoveAuthorizedClientRequest;
 import org.example.grpc.auth.SaveAuthorizedClientRequest;
+import org.example.oauth2.authorizationserver.client.properties.GrpcOauth2AuthorizationServerClientProperties;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -28,6 +29,8 @@ public class GrpcOauth2AuthorizationServerClient implements Oauth2AuthorizationS
 
     @GrpcClient("oauth2-authorization-server-client")
     private Channel channel;
+
+    private final GrpcOauth2AuthorizationServerClientProperties grpcOauth2AuthorizationServerClientProperties;
 
     @Override
     public String findAccessToken(String clientRegistrationId, String username) {
@@ -96,18 +99,18 @@ public class GrpcOauth2AuthorizationServerClient implements Oauth2AuthorizationS
     }
 
     private AccessTokenServiceGrpc.AccessTokenServiceBlockingStub accessTokenStub() {
-        return AccessTokenServiceGrpc.newBlockingStub(channel).withDeadlineAfter(3500, TimeUnit.MILLISECONDS);
+        return AccessTokenServiceGrpc.newBlockingStub(channel).withDeadlineAfter(grpcOauth2AuthorizationServerClientProperties.deadlineMillis(), TimeUnit.MILLISECONDS);
     }
 
     private RefreshTokenServiceGrpc.RefreshTokenServiceBlockingStub refreshTokenStub() {
-        return RefreshTokenServiceGrpc.newBlockingStub(channel).withDeadlineAfter(3500, TimeUnit.MILLISECONDS);
+        return RefreshTokenServiceGrpc.newBlockingStub(channel).withDeadlineAfter(grpcOauth2AuthorizationServerClientProperties.deadlineMillis(), TimeUnit.MILLISECONDS);
     }
 
     private BlacklistTokenServiceGrpc.BlacklistTokenServiceBlockingStub blacklistTokenStub() {
-        return BlacklistTokenServiceGrpc.newBlockingStub(channel).withDeadlineAfter(3500, TimeUnit.MILLISECONDS);
+        return BlacklistTokenServiceGrpc.newBlockingStub(channel).withDeadlineAfter(grpcOauth2AuthorizationServerClientProperties.deadlineMillis(), TimeUnit.MILLISECONDS);
     }
 
     private AuthorizedClientServiceGrpc.AuthorizedClientServiceBlockingStub authorizedClientStub() {
-        return AuthorizedClientServiceGrpc.newBlockingStub(channel).withDeadlineAfter(3500, TimeUnit.MILLISECONDS);
+        return AuthorizedClientServiceGrpc.newBlockingStub(channel).withDeadlineAfter(grpcOauth2AuthorizationServerClientProperties.deadlineMillis(), TimeUnit.MILLISECONDS);
     }
 }
