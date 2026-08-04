@@ -1,0 +1,67 @@
+name: PR image cleanup
+
+# PR 이 닫히면 CI 가 올린 pr-<번호> 태그를 지운다.
+# DockerHub 무료 플랜은 저장 용량 제한이 있어 방치하면 계속 쌓인다.
+on:
+  pull_request:
+    types: [ closed ]
+
+permissions:
+  contents: read
+
+jobs:
+  delete-pr-tags:
+    name: Delete pr-<number> tags
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Delete PR tags from DockerHub
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -uo pipefail
+
+          TOKEN=$(curl -sf -H "Content-Type: application/json" \
+            -X POST -d "{\"username\":\"${DOCKERHUB_USERNAME}\",\"password\":\"${DOCKERHUB_TOKEN}\"}" \
+            https://hub.docker.com/v2/users/login/ | jq -r .token)
+
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "::warning::DockerHub 로그인 실패. 태그 정리를 건너뛴다."
+            exit 0
+          fi
+
+          # 이미지명 정본: 각 실행 모듈 build.gradle 의 ext.dockerImageName
+          IMAGES=$(grep -rhoE 'ext\.dockerImageName\s*=\s*"[^"]+"' --include=build.gradle . \
+            | sed 's/.*"\(.*\)"/\1/' | sort -u)
+
+          if [ -z "$IMAGES" ]; then
+            echo "::warning::ext.dockerImageName 을 찾지 못했다. 정리를 건너뛴다."
+            exit 0
+          fi
+
+          echo "대상 이미지: $(echo $IMAGES | tr '\n' ' ')"
+
+          FAILED=0
+          for IMAGE_NAME in $IMAGES; do
+            TAG="pr-${PR_NUMBER}"
+            URL="https://hub.docker.com/v2/repositories/${DOCKERHUB_USERNAME}/${IMAGE_NAME}/tags/${TAG}/"
+
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE -H "Authorization: JWT ${TOKEN}" "$URL")
+
+            case "$CODE" in
+              204) echo "삭제: ${IMAGE_NAME}:${TAG}" ;;
+              404) ;;  # 해당 PR 이 이 서비스를 건드리지 않았다 — 정상
+              403) echo "::warning::권한 없음(${IMAGE_NAME}:${TAG}). DOCKERHUB_TOKEN 에 Delete 스코프가 필요하다."; FAILED=1 ;;
+              *)   echo "::warning::예상 못 한 응답 ${CODE} (${IMAGE_NAME}:${TAG})"; FAILED=1 ;;
+            esac
+          done
+
+          # 정리 실패가 머지를 막지 않게 한다. 경고만 남긴다.
+          [ "$FAILED" = "1" ] && echo "::warning::일부 태그를 지우지 못했다. 위 로그를 확인한다."
+          exit 0

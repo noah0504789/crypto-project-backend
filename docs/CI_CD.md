@@ -1,12 +1,13 @@
 # CI / CD
 
-이 문서는 `.github/workflows/`의 GitHub Actions 워크플로우 5개를 사람이 읽기 위해 정리한 것이다. 근거는 각 워크플로우 YAML과 `scripts/ci/`이며, 값·의도를 코드만으로 판단할 수 없는 항목은 §7 `확인 필요`로 분리했다. 빌드/CI Gradle task 개요는 `docs/ARCHITECTURE.md §10`, 배포 스크립트 실체는 이 저장소가 아니라 별도 infra 저장소에 있다.
+이 문서는 `.github/workflows/`의 GitHub Actions 워크플로우 6개를 사람이 읽기 위해 정리한 것이다. 근거는 각 워크플로우 YAML과 `scripts/ci/`이며, 값·의도를 코드만으로 판단할 수 없는 항목은 §7 `확인 필요`로 분리했다. 빌드/CI Gradle task 개요는 `docs/ARCHITECTURE.md §10`, 배포 스크립트 실체는 이 저장소가 아니라 별도 infra 저장소에 있다.
 
 ## 1. 워크플로우 개요
 
 | 이름 | 파일 | 트리거 | 러너 | 목적 |
 |---|---|---|---|---|
-| Backend CI | `ci.yml` | PR→main, push→main, 수동 | `ubuntu-latest` | 변경 영향 모듈만 빌드·테스트·Docker 이미지 |
+| Backend CI | `ci.yml` | PR→main, push→main, 수동 | `ubuntu-latest` | 영향 모듈만 빌드·테스트, 머지 시 PR 이미지 승격 |
+| PR image cleanup | `pr-image-cleanup.yml` | PR closed | `ubuntu-latest` | `pr-<번호>` 태그 삭제 |
 | Backend CD | `cd.yml` | 수동만 | self-hosted `[local, backend]` · env `production` | 서비스별 운영 배포 |
 | Spring Cloud Config Bus Refresh | `spring-cloud-config-bus.yml` | push→main (`git-config-repo/**`) | self-hosted · env `production` | 동적 설정 변경 시 busrefresh |
 | Production Environment Test | `production-environment-test.yml` | 수동 | self-hosted · env `production` | production 승인·환경 스모크 |
@@ -16,32 +17,60 @@
 
 ## 2. Backend CI (`ci.yml`)
 
-**핵심: 변경 영향 모듈만 선별해 빌드/도커한다**(`scripts/ci/affected_modules.py`). 전체를 매번 돌리지 않는다.
+**두 축이다.** ① 변경 영향 모듈만 빌드한다(`scripts/ci/affected_modules.py`). ② **PR 과 머지에서 같은 내용을 두 번 빌드하지 않는다.**
 
-- 트리거: `pull_request`(main), `push`(main), `workflow_dispatch`(입력 `ci_task`=`serviceCi`, `base_ref`=기본 `origin/main`).
-- 러너: `ubuntu-latest`. Java 17(temurin, gradle 캐시) + Python(`.python-version` = 3.12.8).
-- 단계 흐름:
-  1. checkout(`fetch-depth: 0` — diff 계산에 전체 히스토리 필요)
-  2. `pytest scripts/ci` — CI 스크립트 자체 테스트
-  3. diff 범위 결정(아래 표)
-  4. 영향 Gradle task 산출: `affected_modules.py --mode build --include-arch-test` → `./gradlew clean <tasks>` (없으면 skip)
-     - 수동 실행일 때는 대신 `./gradlew clean serviceCi`(전체)
-  5. 영향 Docker 서비스 산출: `affected_modules.py --mode docker` → Buildx 빌드
-  6. 이미지 push(조건부, 아래)
-  7. 테스트 리포트 업로드(`always()`, `**/build/reports/tests/test/`·`**/build/test-results/test/`)
+이벤트마다 job 이 하나씩 대응하며, 공통 셋업(Java·Python·실행 권한·`pytest scripts/ci`)은 `.github/actions/setup-build` composite action 에 있다.
 
-- diff base 결정:
+| job | name | 트리거 | 하는 일 |
+|---|---|---|---|
+| `pull-request-ci` | `Affected module CI` | `pull_request` | affected Gradle CI → Docker 빌드 → `pr-<번호>` 태그로 push |
+| `merge-ci` | `Promote or rebuild` | `push`(main) | tree 비교 후 **승격** 또는 풀빌드 |
+| `full-rebuild` | `Full rebuild (manual)` | `workflow_dispatch` | `serviceCi`(전체) + Docker 빌드·push |
 
-  | 트리거 | base | head |
-  |---|---|---|
-  | pull_request | `origin/<base_ref>` | `github.sha` |
-  | workflow_dispatch | `inputs.base_ref` | `github.sha` |
-  | push | `github.event.before` | `github.sha` |
+> **`pull-request-ci` 의 `name` 을 바꾸지 않는다.** 룰셋 `main-protection` 의 required status check 가 `"Affected module CI"` 를 참조한다. 어긋나면 모든 PR 이 머지 불가가 된다.
 
-- Docker 빌드/푸시:
-  - 이미지 태그: 커밋 short SHA(7자). push 시 추가로 `:latest` 태그도 push.
-  - **DockerHub 로그인·push는 `push`(main) 또는 수동일 때만** 수행 → PR에서는 빌드까지만, 레지스트리 push 안 함.
-  - 시크릿 `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`. Dockerfile은 각 실행 모듈 디렉토리(`<service>/Dockerfile`).
+### 2.1 중복 빌드 제거 (승격)
+
+머지 커밋의 **tree 해시**가 PR head 의 tree 와 같으면 파일 내용이 비트 단위로 동일하다는 뜻이다. PR 에서 이미 검증·빌드했으므로 다시 만들지 않고 이미지 태그만 옮긴다.
+
+```
+merge-ci:
+  PR 번호를 커밋 subject "… (#N)" 에서 추출
+  → GitHub API 로 PR head 의 tree 해시 조회      (브랜치가 삭제돼도 조회된다)
+  → main 의 tree 와 비교
+      같으면  : docker buildx imagetools create 로 :<sha7>·:latest 태그만 추가 (레이어 전송 없음)
+      다르면  : 지금까지처럼 affected Gradle CI + Docker 빌드·push
+```
+
+안전 근거: 룰셋의 `strict_required_status_checks_policy: true`(브랜치 최신 강제) 때문에 squash 후 tree 일치가 거의 항상 성립한다. 중간에 다른 PR 이 머지돼 내용이 달라지면 tree 가 어긋나 **자동으로 풀빌드로 떨어진다.**
+
+### 2.2 Docker 태그 규칙
+
+| 시점 | 태그 | 비고 |
+|---|---|---|
+| PR | `pr-<PR번호>` | `latest` 안 붙임(미머지 코드). push 마다 덮어써 태그가 쌓이지 않는다 |
+| 머지 | `<sha7>`, `latest` | 승격이면 태그만 추가, 아니면 새로 빌드해 push |
+| fork PR | (push 안 함) | 시크릿을 못 받는다. 빌드만 해 Dockerfile 유효성만 확인 |
+
+PR 태그는 PR 이 닫히면 `pr-image-cleanup.yml` 이 지운다(§5). `<sha7>`·`latest` 는 건드리지 않는다.
+
+### 2.3 빌드 캐시
+
+`gradle.properties` 의 `org.gradle.caching=true` 로 task 출력을 재사용한다. `actions/setup-java` 의 `cache: gradle` 이 `~/.gradle` 을 보존하므로 실행 간에 살아남는다. `clean` 을 해도 입력 해시가 같은 task 는 캐시에서 복원되며, `test` task 도 대상이라 안 바뀐 서비스의 Testcontainers 기동이 통째로 사라진다.
+
+**`org.gradle.parallel` 은 켜지 않는다.** 여러 모듈의 `BootSmokeTest` 가 Testcontainers 를 동시에 띄우며 기동 타임아웃으로 CI 가 깨졌고, 전체 시간도 오히려 늘었다(실측 7분 → 13분).
+
+GitHub Actions 캐시는 브랜치 스코프라 **PR 이 만든 캐시를 머지 실행이 읽지는 못한다.** 캐시는 각 실행을 빠르게 할 뿐이고, 중복 제거는 §2.1 이 담당한다.
+
+### 2.4 diff base
+
+| 트리거 | base | head |
+|---|---|---|
+| pull_request | `origin/<base_ref>` | `github.sha` |
+| workflow_dispatch | `inputs.base_ref` | `github.sha` |
+| push | `github.event.before` | `github.sha` |
+
+`fetch-depth: 0` 은 diff 계산에 전체 히스토리가 필요해서다. 시크릿은 `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`(태그 삭제를 위해 **Delete 스코프 필요**). Dockerfile 은 각 실행 모듈 디렉토리(`<service>/Dockerfile`).
 
 ## 3. Backend CD (`cd.yml`)
 
@@ -105,10 +134,13 @@ git-config-repo/dynamic/*.yml 수정 → main push
 
 - `production-environment-test.yml`: 수동, self-hosted + env `production`. 러너/사용자/날짜만 출력 — **production Environment 승인 흐름과 러너 동작을 점검하는 스모크 테스트**.
 - `self-hosted-runner-test.yml`: 수동, self-hosted(환경 게이트 없음). hostname/whoami/uname/docker 버전 출력 — **러너 연결·도구 확인용**.
+- `pr-image-cleanup.yml`: PR 이 닫히면(`pull_request: closed`) CI 가 올린 `pr-<번호>` 태그를 DockerHub 에서 지운다. 대상 이미지는 각 실행 모듈 `build.gradle` 의 `ext.dockerImageName` 에서 읽는다(정본). `<sha7>`·`latest` 는 건드리지 않는다.
+  - **실패해도 job 을 죽이지 않는다**(경고만). 정리 실패가 개발 흐름을 막지 않게 한 것이며, `DOCKERHUB_TOKEN` 에 Delete 스코프가 없으면 403 경고가 남는다.
+  - fork PR 은 대상에서 제외된다(시크릿 없음 → 애초에 push 되지 않았다).
 
 ## 6. 시크릿 · 변수 · 스크립트
 
-- GitHub Secrets: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`, `DEPLOY_TOKEN`, `VAULT_ROLE_ID`, `VAULT_SECRET_ID`.
+- GitHub Secrets: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`(태그 삭제를 위해 **Read/Write/Delete** 스코프), `DEPLOY_TOKEN`, `VAULT_ROLE_ID`, `VAULT_SECRET_ID`.
 - GitHub Variables(vars): `INFRA_REPO_DIR`, `CONFIG_REPO_URI`, `CONFIG_SERVER_URL`.
 - CI 스크립트(`scripts/ci/`): `affected_modules.py`(엔트리), `affected_modules_core.py`(로직), `test_affected_modules.py`(pytest — CI가 매 실행 시 검증). 변경 파일 → 영향 모듈 → gradle task(`--mode build`) 또는 docker 대상(`--mode docker`) 산출.
 - Dockerfile: 각 실행 모듈 디렉토리(`docs/ARCHITECTURE.md §10`, 12개). docker-compose·배포 스크립트는 별도 infra 저장소.
