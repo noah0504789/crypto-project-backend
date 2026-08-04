@@ -66,12 +66,6 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 `MarketCommandUseCase.changeMarkets`(카탈로그 create/update/delete + `market-broadcast-event` 캐시 무효화)가 구현·테스트되어 있으나 **인바운드 어댑터(REST/gRPC/Kafka)에 연결되어 있지 않다**. 현재 마켓 카탈로그는 `market-bootstrap/.../sql/schema.sql`의 시드 INSERT로만 채워진다. 관리 엔드포인트/운영 반영 경로 도입 여부 또는 현재가 의도인지 확인 필요.
 `[출처: docs/modules/MARKET.md §12]`
 
-### websocket-gateway
-
-#### 2.6 세션 위치 TTL 하드코딩
-`websocket-gateway`의 `RedisSessionLocationAdapter.SESSION_TTL`이 `Duration.ofMinutes(3)`으로 하드코딩(`// TODO: 주입받기` 주석). STOMP subscribe마다 `refreshTtl`로 갱신되나 값 자체는 Config 주입이 아니다. 연결 유휴 만료 정책이라 값이 짧으면 활성 세션이 조기 만료될 여지 — Config 주입/값 조정 여부 확인 필요.
-`[출처: docs/modules/WEBSOCKET_GATEWAY.md §7, §9]`
-
 ---
 
 ## 3. 계약 · 직렬화

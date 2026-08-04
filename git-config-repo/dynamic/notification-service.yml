@@ -39,3 +39,8 @@ mongo:
   pass: ${mongo.notification.password}
   db: ${mongo.notification.db}
   authSource: notification
+
+notification:
+  cache:
+    # 알림 정보 hash 의 Redis TTL(콜드 항목 상한. 실제 교체는 서버 LFU 축출)
+    ttl: 7d

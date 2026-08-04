@@ -5,6 +5,9 @@ import org.example.common.redis.codec.RedisHashCodec;
 import org.example.common.redis.operation.StringRedisHashOperations;
 import org.example.notification.adapter.out.cache.RedisNotification;
 import org.example.notification.adapter.out.cache.RedisNotificationAdapter;
+import org.example.notification.infra.properties.NotificationCacheProperties;
+
+import java.time.Duration;
 import org.example.notification.adapter.out.cache.RedisNotificationCodec;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -92,7 +95,8 @@ public class TestNotificationRedisConfig {
                 redisHashOperation,
                 redisNotificationCodec,
                 warmUpNotification_lua,
-                invalidateNotification_lua
+                invalidateNotification_lua,
+                new NotificationCacheProperties(Duration.ofDays(7))
         );
     }
 

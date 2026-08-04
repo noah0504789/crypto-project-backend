@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.exception.ChatCacheException;
 import org.example.common.clock.Clock;
+import org.example.chat.infra.properties.ChatCacheProperties;
 import org.example.chat.infra.redis.RedisCollectionRegistry;
 import org.example.common.redis.codec.RedisValueCodec;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -13,7 +14,6 @@ import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -30,21 +30,24 @@ public class ChatMessageScheduler {
     private final RedisTemplate<String, String> redisTemplate;
     private final Clock clockService;
     private final RedisValueCodec<ChatMessage> redisChatMessageCodec;
+    private final ChatCacheProperties chatCacheProperties;
 
     public ChatMessageScheduler(
             RedisCollectionRegistry registry,
             RedisTemplate<String, String> redisTemplate,
             Clock clockService,
-            @Qualifier("redisChatMessageCodec") RedisValueCodec<ChatMessage> redisChatMessageCodec) {
+            @Qualifier("redisChatMessageCodec") RedisValueCodec<ChatMessage> redisChatMessageCodec,
+            ChatCacheProperties chatCacheProperties) {
         this.registry = registry;
         this.redisTemplate = redisTemplate;
         this.clockService = clockService;
         this.redisChatMessageCodec = redisChatMessageCodec;
+        this.chatCacheProperties = chatCacheProperties;
     }
 
     @Scheduled(cron = "0 0 3 * * *")
     public void removeExpiringMessages() {
-        long ttlMillis = Duration.ofDays(7).toMillis();
+        long ttlMillis = chatCacheProperties.messageRetention().toMillis();
 
         Instant now = clockService.now();
         long cutoff = now.toEpochMilli() - ttlMillis;

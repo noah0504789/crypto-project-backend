@@ -36,7 +36,7 @@
 - **Kafka 토픽/바인딩은 계약**: `common-core/KafkaTopic`의 chat 항목과 `../git-config-repo/dynamic/chat-service.yml`의 `spring.cloud.stream.*`. broadcast 이벤트(`ChatMessageBroadcastEvent`/`MyChatRoomBadgeEvent`, `chat-contract`)는 `websocket-gateway`가 역직렬화하는 payload 계약이다 — 필드/토픽 변경 시 소비자와 함께 본다(→ `../.claude/rules/external-contracts.md`).
 - **gRPC 계약(`chatmessage.v1`) 변경은 external-contracts 절차**: `../protobuf/.../chatmessage/v1/chatmessage-service.proto`를 바꾸면 소비자(`websocket-gateway`)를 함께 재빌드하고 field number 재사용을 금지한다. proto 재생성: `./gradlew :protobuf:build`.
 - **도메인 상태 변경은 도메인 메서드로**: 멤버십은 `ChatRoom.addMember/removeMember`, 쓰기 권한 검증은 `ChatRoom.validateWritable`(멤버 아니면 `ChatRoomMembershipNotFoundException`). 마지막 멤버 퇴장은 `isLastMember` → 방 삭제로 전환되는 규칙을 유지한다.
-- **REST 경로·포트·DB·Kafka 설정은 원격 Config**: `../git-config-repo/dynamic/chat-service.yml`(`api-path.chat.*`, REST 8080/gRPC 18080, `mongo.*`, `mysql.event.*`, stream 바인딩). 경로를 바꾸면 게이트웨이 route/security와 함께 검토한다.
+- **REST 경로·포트·DB·Kafka 설정은 원격 Config**: `../git-config-repo/dynamic/chat-service.yml`(`api-path.chat.*`, REST 8080/gRPC 18080, `mongo.*`, `mysql.event.*`, stream 바인딩, `chat.cache.*` TTL). 경로를 바꾸면 게이트웨이 route/security와 함께 검토한다.
 - **Mongo 인덱스/partial filter는 계약**: `chat_room`(`idx_category_popularity {category:1, popularity:-1, _id:-1}` partial `{deleted:false}` — 인기방 정렬/커서, `title` unique partial), `chat_message`(`idx_room_created_id`), `chat_room_membership`(unique `{room_id,member_id}`, `my_rooms`). 커서 조회 성능·유니크가 걸려 있어 영향 분석 없이 바꾸지 않는다. `autoIndexCreation=true`.
 - 인가/헤더 신뢰 관련 변경은 `../.claude/rules/security.md`도 함께 적용한다(§확인 필요).
 
