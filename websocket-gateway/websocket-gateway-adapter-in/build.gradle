@@ -3,10 +3,10 @@ plugins {
 }
 
 dependencies {
+    implementation project(':common:common-validation')
     implementation project(':websocket-gateway:websocket-gateway-application')
     implementation project(':chat:chat-contract')
     implementation project(':notification:notification-contract')
-
     implementation(libs.spring.boot.starter.websocket)
     implementation(libs.spring.cloud.starter.stream.kafka)
     implementation(libs.micrometer.registry.prometheus)

@@ -5,9 +5,9 @@ plugins {
 ext.dockerImageName = "crypto-outbox-poller"
 
 dependencies {
+    implementation project(':common:common-exception')
     implementation project(':common:common-core')
     implementation project(':common:common-outbox')
-
     implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.spring.cloud.starter.stream.kafka)

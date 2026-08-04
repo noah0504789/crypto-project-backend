@@ -2,10 +2,9 @@ plugins {
     id 'crypto-common-library'
 }
 
-
 dependencies {
     api project(':common:common-core')
-
+    api project(':common:common-exception')
+    api project(':common:common-validation')
     api(libs.spring.boot.starter.web)
-    api(libs.spring.boot.starter.validation)
 }

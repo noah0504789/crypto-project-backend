@@ -5,11 +5,11 @@ plugins {
 dependencies {
     api project(':notification:notification-domain')
 
+    implementation project(':common:common-exception')
     implementation project(':common:common-outbox')
     implementation project(':common:common-inbox')
     implementation project(':common:common-tx')
     implementation project(':notification:notification-contract')
-
     implementation(libs.caffeine)
     implementation(libs.spring.boot.starter.cache)
 }

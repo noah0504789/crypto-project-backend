@@ -27,6 +27,15 @@
   public record ChatCacheProperties(Duration roomTtl, Duration messageRetention) {}
   void save(String userId, String sessionId) { ... }
   ```
+- **`build.gradle`의 `dependencies`는 `api` → 빈 줄 → `implementation` 순으로 쓴다.** 그 뒤에 `compileOnly`·`testImplementation` 등이 온다. `api`는 소비 모듈로 전이 노출되므로 먼저 보여야 판단이 쉽다.
+  ```groovy
+  dependencies {
+      api project(':chat:chat-domain')
+
+      implementation project(':common:common-exception')
+      implementation(libs.caffeine)
+  }
+  ```
 - **주석은 웬만하면 쓰지 않는다.** 코드가 "무엇"을 하는지는 코드가 말한다. 남길 값어치가 있는 것은 **"왜"** 와 **읽는 사람이 코드만 봐선 알 수 없는 맥락**뿐이다(비대칭 설계, 외부 계약, 되돌리면 안 되는 이유). 쓰더라도 핵심만 한두 줄로 줄인다.
 
 ## 2. 패키지와 계층
@@ -83,7 +92,7 @@
 | `*Config` | Spring configuration |
 | `*Response`, `*Request`, `*Command`, `*Result` | DTO |
 
-**gRPC 관련 타입은 `Grpc`를 맨 앞에 붙인다.** 중간에 끼워넣지 않는다 — `GrpcUserClient`·`GrpcChatMessageService`·`GrpcBlacklistTokenClientAdapter`처럼 접두로 통일해야 gRPC 경계에 닿는 타입을 이름만으로 걸러낼 수 있다. 다른 접미 규칙과 겹치면 접두를 우선한다: `GrpcUserClientProperties`(○) / `UserGrpcClientProperties`(×).
+**gRPC 관련 타입은 `Grpc`를 맨 앞에 붙인다.** 중간에 끼워넣지 않는다 — `GrpcUserClient`·`GrpcChatMessageService`·`GrpcBlacklistTokenClientAdapter`처럼 접두로 통일해야 gRPC 경계에 닿는 타입을 이름만으로 걸러낼 수 있다. 다른 접미 규칙과 겹치면 접두를 우선한다: `GrpcUserClientProperties`(○) / `UserGrpcClientProperties`(×). 단 **`Abstract` 접두가 있으면 그쪽이 먼저**다(`AbstractGrpcExceptionAdvice`) — 추상 여부가 사용 방식을 바꾸므로 신호가 더 강하다. 저장소 선례: `AbstractOutboxEvent`·`AbstractInboxEvent`·`AbstractDlqEvent`.
 
 ### 3.2 메서드
 
@@ -307,7 +316,7 @@ enum을 우선 사용할 값:
 
 ### 9.2 gRPC
 
-- gRPC endpoint 예외는 `@GrpcAdvice` 또는 `BaseGrpcExceptionAdvice` 계열에서 처리한다.
+- gRPC endpoint 예외는 `@GrpcAdvice` 또는 `AbstractGrpcExceptionAdvice` 계열에서 처리한다.
 - REST handler에 gRPC 예외를 억지로 태우지 않는다.
 - `CANCELLED`, `DEADLINE_EXCEEDED`, `INTERNAL`, `RESOURCE_EXHAUSTED`는 의미를 구분한다.
 

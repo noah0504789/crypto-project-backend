@@ -131,15 +131,17 @@
 
 ## 5. 공통 모듈(common-*)
 
-`common`(부모)은 11개 common-* 모듈을 `api`로 재수출하는 파사드다(`common/build.gradle`, `common-test`·`common-arch-test`·`common-actuator-*`는 제외). — **상세: `docs/modules/COMMON.md`**
+`common`(부모)은 15개 common-* 모듈을 `api`로 재수출하는 파사드다(`common/build.gradle`, `common-test`·`common-arch-test`·`common-actuator-*`는 제외). — **상세: `docs/modules/COMMON.md`**
 
 | 모듈 | 역할 | 주요 산출물 |
 |---|---|---|
-| common-core | 계약 enum·공통 예외 | `RedisKey`, `KafkaTopic`, `KafkaHeaderKey`, `StompDestination`, `JwtClaimKey`, `InfrastructureException`/`InvalidRequestException`/`ResourceNotFoundException` |
+| common-core | 계약 enum·properties·시간 | `RedisKey`, `KafkaTopic`, `KafkaHeaderKey`, `StompDestination`, `JwtClaimKey`, `Clock`, `ServiceTimeConverter` |
+| common-exception | 공통 예외 계층(외부 의존 0) | `InfrastructureException`/`InvalidRequestException`/`ResourceNotFoundException`/`ForbiddenException`, `ErrorResponse` |
+| common-validation | Bean Validation 공통 | `ValidationResult`, `FieldErrorDetail`, `NotBlankIfPresent`, 메시지 번들 |
 | common-jpa | JPA + Read Replica 라우팅 | `ReadReplica`, `ReadReplicaAspect`, `DataSourceContextHolder`, `ReplicationRoutingDataSource`, `BaseEntity` |
 | common-event | 이벤트 계약/발행 유틸 | `KafkaEvent`, `EventUtils`, `HandleableEvent`, `RecoverableEvent` |
 | common-web | REST 예외 처리 | `GlobalExceptionHandler`(`@RestControllerAdvice`) |
-| common-grpc | gRPC 예외 처리 | `BaseGrpcExceptionAdvice`, `GrpcExceptionTranslator` |
+| common-grpc | gRPC 예외 처리 | `AbstractGrpcExceptionAdvice`, `GrpcExceptionTranslator` |
 | common-outbox | Outbox/DLQ 도메인·서비스 | `Outbox`, `Dlq`, `OutboxService`, `OutboxEventListListener` |
 | common-redis | Redis 코덱·Fail-open | `RedisValueCodec`, `RedisHashCodec`, `CacheFailOpen(Aspect)` |
 | common-redisson | 분산락 | `DistributedLockExecutor`, `RedissonConfig` |
@@ -179,7 +181,7 @@ proto 4개(`protobuf/src/main/proto/**`)와 서버/클라이언트 매핑:
 | `user.v1`(FindByEmail, SignUpOauth2) | user-adapter-in | oauth2-authorization-server, oauth2-client |
 | `auth.v1`(Access/Refresh/Blacklist/AuthorizedClient) | oauth2-authorization-server-adapter-in | spring-cloud-api-gateway, oauth2-client |
 
-클라이언트 deadline은 `*-client` 모듈의 `Grpc*ClientProperties`(prefix `app.grpc.<client-name>.deadline`)로 주입된다. 기본값은 chat-client `10s`, 나머지 `3500ms`이며 소비 서비스 yml에서 조정한다. 예외는 REST가 아닌 `BaseGrpcExceptionAdvice` + 서비스별 `@GrpcAdvice`로 처리.
+클라이언트 deadline은 `*-client` 모듈의 `Grpc*ClientProperties`(prefix `app.grpc.<client-name>.deadline`)로 주입된다. 기본값은 chat-client `10s`, 나머지 `3500ms`이며 소비 서비스 yml에서 조정한다. 예외는 REST가 아닌 `AbstractGrpcExceptionAdvice` + 서비스별 `@GrpcAdvice`로 처리.
 
 ### 7.2 Kafka (Spring Cloud Stream / Streams)
 
@@ -231,7 +233,7 @@ Spring `ApplicationEventPublisher`를 직접 쓰지 않고 `EventUtils.raise(lis
 
 ### 8.8 예외 처리
 - REST: `common-web/GlobalExceptionHandler`(`@RestControllerAdvice`) — 검증 실패→400, ResourceNotFound→204, InvalidRequest→404, Infrastructure→500 등.
-- gRPC: `common-grpc/BaseGrpcExceptionAdvice`(`@GrpcExceptionHandler`) — 도메인 예외를 gRPC Status로 매핑. 서비스별 `@GrpcAdvice` 하위 클래스.
+- gRPC: `common-grpc/AbstractGrpcExceptionAdvice`(`@GrpcExceptionHandler`) — 도메인 예외를 gRPC Status로 매핑. 서비스별 `@GrpcAdvice` 하위 클래스.
 
 ---
 

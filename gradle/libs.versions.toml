@@ -50,6 +50,8 @@ spring-boot-starter-cache = { group = "org.springframework.boot", name = "spring
 spring-boot-gradle-plugin = { group = "org.springframework.boot", name = "spring-boot-gradle-plugin", version.ref = "spring-boot" }
 spring-boot-actuator-autoconfigure = { group = "org.springframework.boot", name = "spring-boot-actuator-autoconfigure" }
 spring-boot-core = { group = "org.springframework.boot", name = "spring-boot" }
+spring-boot-autoconfigure = { group = "org.springframework.boot", name = "spring-boot-autoconfigure" }
+jakarta-annotation-api = { group = "jakarta.annotation", name = "jakarta.annotation-api" }
 redisson-spring-boot-starter = { group = "org.redisson", name = "redisson-spring-boot-starter", version.ref = "redisson" }
 
 spring-security-crypto = { group = "org.springframework.security", name = "spring-security-crypto" }

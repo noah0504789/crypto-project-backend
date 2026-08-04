@@ -3,17 +3,18 @@ plugins {
 }
 
 dependencies {
-    compileOnly (libs.spring.boot.actuator.autoconfigure)
-
+    implementation project(':common:common-validation')
     implementation project(':common:common-core')
     implementation project(':common:common-id')
     implementation project(':common:common-grpc')
     implementation project(':common:common-redis')
     implementation project(':chat:chat-client')
     implementation project(':websocket-gateway:websocket-gateway-application')
-
     implementation(libs.spring.boot.starter.websocket)
+    implementation(libs.micrometer.core)
+
+    compileOnly (libs.spring.boot.actuator.autoconfigure)
+
     runtimeOnly(libs.grpc.netty)
     runtimeOnly(libs.grpc.client.spring.boot.starter)
-    implementation(libs.micrometer.core)
 }

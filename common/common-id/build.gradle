@@ -4,8 +4,12 @@ plugins {
 
 dependencies {
     api project(':common:common-core')
-
     api(libs.mongodb.bson)
+
+    implementation(libs.spring.boot.autoconfigure)
+    implementation(libs.jakarta.annotation.api)
+
     compileOnly(libs.hibernate.core)
+
     testImplementation(libs.hibernate.core)
 }

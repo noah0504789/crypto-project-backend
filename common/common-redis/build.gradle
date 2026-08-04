@@ -4,10 +4,9 @@ plugins {
 
 dependencies {
     api project(':common:common-core')
-
+    api project(':common:common-exception')
     api(libs.spring.boot.starter.data.redis)
     api(libs.jackson.databind)
-
     api(libs.spring.boot.starter.aop)
 
     testImplementation project(':common:common-test')

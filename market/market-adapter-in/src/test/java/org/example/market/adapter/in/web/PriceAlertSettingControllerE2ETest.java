@@ -2,7 +2,7 @@ package org.example.market.adapter.in.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.common.enums.HttpHeaderKey;
-import org.example.common.exception.GlobalExceptionHandler;
+import org.example.common.web.exception.GlobalExceptionHandler;
 import org.example.common.test.config.TestBootApplication;
 import org.example.market.adapter.in.web.dto.PriceAlertSettingChangeRequest;
 import org.example.market.application.port.in.PriceAlertSettingCommandUseCase;

@@ -9,7 +9,7 @@ import org.example.common.exception.InvalidRequestException;
 import org.example.common.exception.ResourceNotFoundException;
 
 @Slf4j
-public abstract class BaseGrpcExceptionAdvice {
+public abstract class AbstractGrpcExceptionAdvice {
 
     @GrpcExceptionHandler(ResourceNotFoundException.class)
     public StatusRuntimeException handleResourceNotFound(ResourceNotFoundException e) {

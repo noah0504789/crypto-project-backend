@@ -14,7 +14,7 @@ import org.example.chat.chatroom.application.port.in.ChatRoomCommandUseCase;
 import org.example.chat.chatroom.application.port.in.ChatRoomQueryUseCase;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
-import org.example.common.exception.GlobalExceptionHandler;
+import org.example.common.web.exception.GlobalExceptionHandler;
 import org.example.common.validation.NotBlankIfPresentValidator;
 import org.example.chat.chatroom.application.validation.UniqueChatRoomTitleValidator;
 import org.junit.jupiter.api.DisplayName;
