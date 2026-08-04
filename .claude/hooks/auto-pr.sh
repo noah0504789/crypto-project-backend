@@ -18,6 +18,12 @@ fi
 
 PR_TITLE=$(gh pr view "$BRANCH" --json title -q .title)
 PR_NUMBER=$(gh pr view "$BRANCH" --json number -q .number)
+
+# squash 커밋 본문은 비우되, 브랜치 커밋들의 Co-authored-by 트레일러만 살린다.
+# (--body "" 로 비우면 공동 저작 표시가 머지 시 사라진다)
+CO_AUTHORS=$(gh pr view "$BRANCH" --json commits -q '.commits[].messageBody' \
+  | grep -iE '^Co-authored-by:' | sort -u)
+
 gh pr merge "$BRANCH" --auto --squash --delete-branch \
   --subject "$PR_TITLE (#$PR_NUMBER)" \
-  --body ""
+  --body "$CO_AUTHORS"
