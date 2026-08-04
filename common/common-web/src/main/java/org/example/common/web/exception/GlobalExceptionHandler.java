@@ -1,4 +1,10 @@
-package org.example.common.exception;
+package org.example.common.web.exception;
+
+import org.example.common.exception.ErrorResponse;
+import org.example.common.exception.ForbiddenException;
+import org.example.common.exception.InfrastructureException;
+import org.example.common.exception.InvalidRequestException;
+import org.example.common.exception.ResourceNotFoundException;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;

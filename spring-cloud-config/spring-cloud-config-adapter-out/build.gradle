@@ -3,6 +3,7 @@ plugins {
 }
 
 dependencies {
+    implementation project(':common:common-exception')
     implementation project(':spring-cloud-config:spring-cloud-config-application')
 
     implementation(libs.spring.vault.core)

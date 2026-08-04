@@ -5,6 +5,8 @@ plugins {
 dependencies {
     api project(':user:user-domain')
 
+    implementation project(':common:common-exception')
+    implementation project(':common:common-validation')
     implementation project(':common:common-jpa')
     implementation(libs.spring.security.crypto)
 }

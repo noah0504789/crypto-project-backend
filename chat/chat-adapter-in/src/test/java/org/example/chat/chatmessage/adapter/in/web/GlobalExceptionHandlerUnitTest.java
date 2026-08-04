@@ -12,7 +12,7 @@ import org.example.common.validation.ValidationResult;
 import org.example.common.exception.DistributedLockAcquireFailedException;
 import org.example.common.exception.DlqNotFoundException;
 import org.example.common.exception.ErrorResponse;
-import org.example.common.exception.GlobalExceptionHandler;
+import org.example.common.web.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

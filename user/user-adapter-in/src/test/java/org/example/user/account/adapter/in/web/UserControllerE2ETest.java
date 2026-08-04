@@ -2,7 +2,7 @@ package org.example.user.account.adapter.in.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.common.enums.HttpHeaderKey;
-import org.example.common.exception.GlobalExceptionHandler;
+import org.example.common.web.exception.GlobalExceptionHandler;
 import org.example.common.test.config.TestBootApplication;
 import org.example.common.validation.NotBlankIfPresentValidator;
 import org.example.user.account.adapter.in.web.dto.UserCreateRequest;

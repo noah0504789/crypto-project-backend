@@ -58,4 +58,4 @@ contract · client · common 은 계약/공통
 
 ### 예외 처리
 - REST: `common-web/GlobalExceptionHandler`(`@RestControllerAdvice`) 기준을 따른다. 응답 형식(`ErrorResponse`/`ValidationResult`)을 흔들지 않는다.
-- gRPC: `common-grpc/BaseGrpcExceptionAdvice` + 서비스별 `@GrpcAdvice`에서 처리한다. gRPC 예외를 REST 핸들러에 태우지 않는다. `CANCELLED`/`DEADLINE_EXCEEDED`/`INTERNAL`을 구분한다.
+- gRPC: `common-grpc/AbstractGrpcExceptionAdvice` + 서비스별 `@GrpcAdvice`에서 처리한다. gRPC 예외를 REST 핸들러에 태우지 않는다. `CANCELLED`/`DEADLINE_EXCEEDED`/`INTERNAL`을 구분한다.

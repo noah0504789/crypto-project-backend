@@ -2,10 +2,9 @@ plugins {
     id 'crypto-common-library'
 }
 
-
 dependencies {
     api project(':common:common-core')
-
+    api project(':common:common-exception')
     api platform(libs.grpc.bom)
     api(libs.grpc.stub)
     api(libs.grpc.server.spring.boot.starter)

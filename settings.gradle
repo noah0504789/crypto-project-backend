@@ -6,6 +6,8 @@ rootProject.name = 'crypto-project-backend'
 
 include 'common'
 include 'common:common-core'
+include 'common:common-exception'
+include 'common:common-validation'
 include 'common:common-jpa'
 include 'common:common-event'
 include 'common:common-web'

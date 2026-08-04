@@ -3,5 +3,7 @@ plugins {
 }
 
 dependencies {
-    api(libs.spring.boot.starter.validation)
+    api(libs.spring.boot.core)
+
+    implementation project(':common:common-exception')
 }

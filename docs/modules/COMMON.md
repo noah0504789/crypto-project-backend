@@ -18,7 +18,8 @@
 
 ## 2. 파사드 구조
 
-- `common`(부모)은 **11개 모듈을 `api`로 재수출하는 파사드**다(`common/build.gradle`): `common-core`, `common-jpa`, `common-event`, `common-web`, `common-grpc`, `common-id`, `common-outbox`, `common-redis`, `common-redisson`, `common-util`, `common-mongo`.
+- `common`(부모)은 **15개 모듈을 `api`로 재수출하는 파사드**다(`common/build.gradle`): `common-core`, `common-exception`, `common-validation`, `common-jpa`, `common-event`, `common-web`, `common-grpc`, `common-id`, `common-inbox`, `common-outbox`, `common-redis`, `common-redisson`, `common-util`, `common-tx`, `common-mongo`.
+- 파사드를 compile 의존으로 쓰는 모듈은 없다. 유일한 소비처가 `common-arch-test`의 `testRuntimeOnly`라 실질 역할은 **ArchUnit 커버리지 통로**다 — 새 common 모듈은 여기에 등록해야 검사 대상이 된다.
 - 서비스는 보통 `implementation project(':common')` 하나로 위 11개를 전이 확보한다.
 - **파사드에서 제외**되어 필요한 모듈만 개별 의존하는 것: `common-test`(테스트), `common-arch-test`(CI 게이트), `common-actuator-core/webmvc/webflux`(모니터링). 예: 실행 모듈은 web/webflux에 맞춰 `common-actuator-webmvc` 또는 `-webflux`를 골라 의존한다.
 - 모든 모듈은 `crypto-common-library` convention plugin으로 빌드된다.
@@ -32,7 +33,9 @@
 | `common-event` | Kafka 이벤트 계약·메시지 생성·발행 유틸 | `KafkaEvent`, `KafkaEventFactory`, `EventUtils`, `EventsInitializer`, `HandleableEvent`, `ProducibleEvent`, `RecoverableEvent`, `TypedKey`/`TypedPayload` | common-core, stream-kafka |
 | `common-inbox` | Consumer Inbox 멱등 처리 | `AbstractInboxEvent`, `Inbox`/`InboxService`, `InboxException` 계층 | common-jpa, common-core, common-util, spring-messaging |
 | `common-web` | REST(MVC) 공통 | `GlobalExceptionHandler`(`@RestControllerAdvice`), `CursorPage`/`CursorPages`, `MessageConverterConfig` | common-core, web, validation |
-| `common-grpc` | gRPC 예외 처리 | `BaseGrpcExceptionAdvice`, `GrpcExceptionTranslator`, `GrpcClientException`, `GrpcFailureCode` | common-core, grpc(bom/stub/server-starter) |
+| `common-exception` | 공통 예외 계층·`ErrorResponse` | `InfrastructureException`, `InvalidRequestException`, `ResourceNotFoundException`, `ForbiddenException`, `ErrorResponse` 등 8종 | 없음(외부 의존 0) |
+| `common-validation` | Bean Validation 공통 | `ValidationResult`, `FieldErrorDetail`, `NotBlankIfPresent(+Validator)`, `common-validation-messages.properties` | spring-boot-starter-validation |
+| `common-grpc` | gRPC 예외 처리 | `AbstractGrpcExceptionAdvice`, `GrpcExceptionTranslator`, `GrpcClientException`, `GrpcFailureCode` | common-core, grpc(bom/stub/server-starter) |
 | `common-outbox` | Outbox/DLQ 도메인·서비스(헥사고날) | `Outbox`/`OutboxStatus`/`OutboxService`/`OutboxEventListListener`, `Dlq`/`DlqStatus`/`DlqService`, `Abstract*OutboxEvent(List)`, `*PublishPort` | common-jpa, common-event, common-util, jackson |
 | `common-redis` | Redis 코덱·Fail-open·연산 | `RedisValueCodec`, `RedisHashCodec`, `RedisCodecSupport`/`RedisCodecException`(codec 공통 헬퍼: str/parse/toJson/fromJson), `CacheFailOpen`(+`Aspect`), `StringRedisHashOperations`, `RedisConnectionFactorySupport` | common-core, data-redis, aop, jackson |
 | `common-redisson` | 분산락 | `DistributedLockExecutor`, `DistributedLockPolicy`, `RedissonConfig` | common-core, redisson starter |

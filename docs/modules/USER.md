@@ -94,7 +94,7 @@ proto: `protobuf/src/main/proto/user/v1/user-service.proto`. 서버 구현 `Grpc
 | `SignUpOauth2` | `GrpcSignUpOauth2Request{sub,email,nickname}` | `GrpcSignUpOauth2Response{GrpcUser}` | OAuth2 가입(기본 role 부여). 로그인 시 find-or-create의 create 부분 |
 
 - `GrpcUser`: `{ sub, nickname, email, roles[], created_at(Timestamp), id }`. `id`는 `publicId` 문자열.
-- 클라이언트(`GrpcUserClient`) deadline `3500ms`. 예외는 `GlobalGrpcExceptionAdvice`(→ `common-grpc/BaseGrpcExceptionAdvice`).
+- 클라이언트(`GrpcUserClient`) deadline `3500ms`. 예외는 `GrpcUserExceptionAdvice`(→ `common-grpc/AbstractGrpcExceptionAdvice`).
 - **계약 주의**: 이 proto는 외부 계약이다. field number 재사용 금지, 변경 시 server(user)·client(oauth2-*) 재빌드. 상세 절차는 루트 `.claude/rules/external-contracts.md`.
 
 ## 8. 도메인 모델
@@ -133,7 +133,7 @@ proto: `protobuf/src/main/proto/user/v1/user-service.proto`. 서버 구현 `Grpc
 ## 11. 검증 · 예외
 
 - 커스텀 제약 `@UniqueUserNickname` → `UniqueUserNicknameValidator`가 `UserPersistencePort.existsByNickname`로 중복 확인. null/blank는 통과(존재할 때만 검사).
-- 예외: `UserNotFoundException`(publicId), `RoleNotFoundException`(RoleEnum) — 모두 `common/ResourceNotFoundException` 상속. REST 응답 형식은 모듈이 아니라 `common-web/GlobalExceptionHandler`가 관장. gRPC는 `GlobalGrpcExceptionAdvice`.
+- 예외: `UserNotFoundException`(publicId), `RoleNotFoundException`(RoleEnum) — 모두 `common-exception/ResourceNotFoundException` 상속. REST 응답 형식은 모듈이 아니라 `common-web/GlobalExceptionHandler`가 관장. gRPC는 `GrpcUserExceptionAdvice`.
 
 ## 12. 설정 (Config Server: `user-service.yml`)
 

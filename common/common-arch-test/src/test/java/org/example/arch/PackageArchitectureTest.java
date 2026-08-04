@@ -6,10 +6,12 @@ import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -120,23 +122,7 @@ class PackageArchitectureTest {
                         "org.example.contract.."
                 );
 
-        checkAllowingEmpty(rule, importMainClasses(List.of(
-                "common/common-core",
-                "common/common-jpa",
-                "common/common-event",
-                "common/common-web",
-                "common/common-grpc",
-                "common/common-id",
-                "common/common-inbox",
-                "common/common-outbox",
-                "common/common-redis",
-                "common/common-util",
-                "common/common-mongo",
-                "common/common-test",
-                "common/common-actuator-core",
-                "common/common-actuator-webmvc",
-                "common/common-actuator-webflux"
-        )));
+        checkAllowingEmpty(rule, importMainClasses(commonModuleDirectories()));
     }
 
     @ArchTest
@@ -248,6 +234,23 @@ class PackageArchitectureTest {
 
     private static void checkAllowingEmpty(ArchRule rule, JavaClasses classes) {
         rule.allowEmptyShould(true).check(classes);
+    }
+
+    /** common/ 하위 모듈 디렉토리를 스캔한다. 하드코딩하면 새 모듈이 조용히 검사에서 빠진다. */
+    private static List<String> commonModuleDirectories() {
+        Path commonRoot = findRoot().resolve("common");
+
+        try (Stream<Path> dirs = Files.list(commonRoot)) {
+            return dirs.filter(Files::isDirectory)
+                    .map(path -> path.getFileName().toString())
+                    .filter(name -> name.startsWith("common-"))
+                    .filter(name -> !name.equals("common-arch-test"))
+                    .sorted()
+                    .map(name -> "common/" + name)
+                    .toList();
+        } catch (IOException e) {
+            throw new IllegalStateException("common 모듈 디렉토리를 읽지 못했다: " + commonRoot, e);
+        }
     }
 
     private static JavaClasses importMainClasses(List<String> projectDirectories) {

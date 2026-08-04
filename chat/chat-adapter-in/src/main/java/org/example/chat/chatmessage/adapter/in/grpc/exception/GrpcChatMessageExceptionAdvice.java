@@ -11,12 +11,12 @@ import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException;
 import org.example.chat.chatmessage.application.exception.ChatMessageCacheException;
 import org.example.chat.chatmessage.application.exception.ChatMessagePersistException;
-import org.example.common.grpc.exception.BaseGrpcExceptionAdvice;
+import org.example.common.grpc.exception.AbstractGrpcExceptionAdvice;
 
 @Slf4j
 @GrpcAdvice
 @RequiredArgsConstructor
-public class GrpcChatMessageExceptionAdvice extends BaseGrpcExceptionAdvice {
+public class GrpcChatMessageExceptionAdvice extends AbstractGrpcExceptionAdvice {
 
     private final ChatMessageCommandService chatMessageCommandService;
 

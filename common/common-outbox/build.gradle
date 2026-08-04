@@ -4,9 +4,10 @@ plugins {
 
 dependencies {
     api project(':common:common-jpa')
+    api project(':common:common-exception')
     api project(':common:common-event')
     api project(':common:common-util')
-
     api(libs.jackson.annotations)
+
     implementation(libs.jackson.databind)
 }
