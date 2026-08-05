@@ -5,18 +5,19 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.ToString;
 import org.example.common.enums.KafkaTopic;
+import org.example.common.outbox.domain.OutboxDispatchType;
 import org.example.common.outbox.domain.OutboxDomainType;
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 
 @Getter
 @ToString
-public class WebNotificationEvent extends AbstractOutboxEvent {
+public class WebNotificationBroadcastEvent extends AbstractOutboxEvent {
 
     private final WebNotificationPayload payload;
     private final String notificationId;
 
     @JsonCreator
-    public WebNotificationEvent(
+    public WebNotificationBroadcastEvent(
             @JsonProperty("payload") WebNotificationPayload payload,
             @JsonProperty("notificationId") String notificationId,
             @JsonProperty("partitionKey") String partitionKey
@@ -26,12 +27,17 @@ public class WebNotificationEvent extends AbstractOutboxEvent {
         this.notificationId = notificationId;
     }
 
-    public static WebNotificationEvent of(
+    public static WebNotificationBroadcastEvent of(
             WebNotificationPayload payload,
             String notificationId,
             String partitionKey
     ) {
-        return new WebNotificationEvent(payload, notificationId, partitionKey);
+        return new WebNotificationBroadcastEvent(payload, notificationId, partitionKey);
+    }
+
+    @Override
+    public OutboxDispatchType getDispatchType() {
+        return OutboxDispatchType.BROADCAST;
     }
 
     @Override

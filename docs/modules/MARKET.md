@@ -56,7 +56,7 @@
 | `PriceAlertSettingController` | `market-adapter-in/.../web/PriceAlertSettingController.java` | 내 설정 조회/변경(§6) |
 | `GrpcMarketService` | `market-adapter-in/.../grpc/GrpcMarketService.java` | gRPC `GetEnabledMarkets`(§7) |
 | `GrpcPriceAlertSettingService` | `market-adapter-in/.../grpc/GrpcPriceAlertSettingService.java` | gRPC `FindReceiverIds`(§7) |
-| `KafkaMarketBinder` | `market-adapter-in/.../stream/KafkaMarketBinder.java` | `marketEventConsumer`(카탈로그 변경 브로드캐스트 소비) |
+| `KafkaMarketBinder` | `market-adapter-in/.../stream/KafkaMarketBinder.java` | `marketCatalogChangedBroadcastEventConsumer`(카탈로그 변경 브로드캐스트 소비) |
 | `MarketQueryService` | `market-application/.../service/MarketQueryService.java` | 활성 마켓 조회(`@ReadReplica`+`@Cacheable`) |
 | `MarketCommandService` | `market-application/.../service/MarketCommandService.java` | 카탈로그 변경(`@Transactional`) + Outbox 발행 |
 | `MarketEventService` | `market-application/.../service/MarketEventService.java` | 카탈로그 변경 이벤트 수신 → `@CacheEvict`(§8) |
@@ -100,14 +100,14 @@ proto: `protobuf/src/main/proto/market/v1/market-service.proto`. 서버 구현�
 활성 마켓 목록은 자주 읽히고 거의 안 바뀌므로 **로컬 Caffeine 캐시**로 서빙하고, 카탈로그가 바뀌면 **Kafka 브로드캐스트로 전 인스턴스의 로컬 캐시를 evict**한다.
 
 - **캐시 적재**: `MarketQueryService.getMarkets()` — `@Cacheable(cacheNames="markets", key="'enabled'")`. Caffeine `maximumSize=200`, `expireAfterWrite=30일`(`CacheConfig`). 캐시 이름은 `MarketCacheNames.MARKETS` 상수.
-- **무효화 발행**: `MarketCommandService.changeMarkets()`가 DB 반영 후 `MarketCatalogChangedEvent`를 Outbox로 발행(`OutboxEventListPublishPort` → `outbox-poller` → Kafka `market-broadcast-event`). 이벤트는 `getDomainType()=MARKET`을 override(공용 기본값 `CHAT`을 올바르게 덮어씀 — TODO 3.2 참조).
-- **무효화 수신**: 각 market 인스턴스가 `marketEventConsumer`로 `market-broadcast-event`를 소비한다. consumer group이 **`market-broadcast-${app.instance-id}`(인스턴스마다 고유)** 라서 모든 인스턴스가 같은 메시지를 각자 받아 `MarketEventService.handle` → `@CacheEvict(cacheNames="markets", key="'enabled'")`로 자기 로컬 캐시를 비운다. → 로컬 캐시의 클러스터 정합성 확보.
+- **무효화 발행**: `MarketCommandService.changeMarkets()`가 DB 반영 후 `MarketCatalogChangedBroadcastEvent`를 Outbox로 발행(`OutboxEventListPublishPort` → `outbox-poller` → Kafka `market-broadcast-event`). 이벤트는 `getDomainType()=MARKET`, `getDispatchType()=BROADCAST`를 override한다.
+- **무효화 수신**: 각 market 인스턴스가 `marketCatalogChangedBroadcastEventConsumer`로 `market-broadcast-event`를 소비한다. consumer group이 **`market-broadcast-${app.instance-id}`(인스턴스마다 고유)** 라서 모든 인스턴스가 같은 메시지를 각자 받아 `MarketEventService.handle` → `@CacheEvict(cacheNames="markets", key="'enabled'")`로 자기 로컬 캐시를 비운다. → 로컬 캐시의 클러스터 정합성 확보.
 
 ### 컨슈머 멱등 전략
 
 | 컨슈머 이벤트 | 하는 일 | 사용한 전략 |
 |---|---|---|
-| `MarketCatalogChangedEvent` | 각 market 인스턴스의 활성 마켓 Caffeine 캐시 무효화 | 동일 cache key 반복 eviction을 허용하는 자연 멱등 연산 |
+| `MarketCatalogChangedBroadcastEvent` | 각 market 인스턴스의 활성 마켓 Caffeine 캐시 무효화 | 동일 cache key 반복 eviction을 허용하는 자연 멱등 연산 |
 
 이 consumer는 인스턴스별 고유 Kafka group을 사용하므로 모든 인스턴스가 같은 이벤트를 각각 받아야 한다. 따라서 공유 `inbox`를 적용하면 첫 인스턴스 외의 캐시 무효화가 차단될 수 있어 사용하지 않는다. Kafka `event_id`는 추적에만 사용하고, 멱등성은 반복 eviction 자체로 확보한다.
 
@@ -164,7 +164,7 @@ proto: `protobuf/src/main/proto/market/v1/market-service.proto`. 서버 구현�
 | 파일 | 이유 |
 |---|---|
 | `protobuf/.../market/v1/market-service.proto` | gRPC 외부 계약. 변경 시 market-detection·notification 재빌드 |
-| `common-core/KafkaTopic`(`MARKET_CHANGED_BROADCAST`) · `market-service.yml` stream 바인딩 | 캐시 무효화 브로드캐스트 계약 |
+| `common-core/KafkaTopic`(`MARKET_CATALOG_CHANGED_BROADCAST`) · `market-service.yml` stream 바인딩 | 캐시 무효화 브로드캐스트 계약 |
 | `schema.sql` | DB 스키마·unique(`uk_markets_market_code`, price_alert 복합 unique)·FK·시드 |
 | `JpaMarket`/`JpaPriceAlertSetting` 매핑 | 인덱스·FK·precision(DECIMAL(5,4)) |
 | `MarketQueryService`/`CacheConfig`/`MarketEventService` | 캐시 적재·무효화 정합성 |

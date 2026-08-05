@@ -38,10 +38,10 @@ spring:
         bootstrap-mode: deferred
   cloud:
     function:
-      definition: marketEventConsumer
+      definition: marketCatalogChangedBroadcastEventConsumer
     stream:
       bindings:
-        marketEventConsumer-in-0:
+        marketCatalogChangedBroadcastEventConsumer-in-0:
           destination: market-broadcast-event
           contentType: application/json
           group: market-broadcast-${app.instance-id}
@@ -50,7 +50,7 @@ spring:
           consumer-properties:
             spring.json.trusted.packages: "*"
         bindings:
-          marketEventConsumer-in-0:
+          marketCatalogChangedBroadcastEventConsumer-in-0:
             consumer:
               reset-offsets: false
               start-offset: latest

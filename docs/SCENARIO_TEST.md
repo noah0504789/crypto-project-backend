@@ -112,7 +112,7 @@
 | TC | 사전조건 | 스텝 | 기대결과 |
 | --- | --- | --- | --- |
 | TC-NOTI-01 구독 성립 | 로그인, 앱 접속 유지 | 로그인 직후 WS 프레임 관찰 | ☐ `App`이 STOMP `/user/topic/notification/` 구독(`subscribeWebNotifications`)<br>※ user-destination은 `/user` prefix 유의 |
-| TC-NOTI-02 실시간 수신 표시 | TC-PA-07로 알림 on, 해당 코인 변화율 초과(실장 트리거 또는 백엔드 테스트 발행) | 조건 충족 대기 | ☐ `/user/topic/notification/`로 `WebNotificationEvent {type,title,body,createdAtMs,link,data?}` 수신<br>&emsp;☐ `notifications` **맨 앞** 추가<br>&emsp;☐ Header 벨에 빨간 점(안읽음)<br>&emsp;☐ `title`/`body`는 서버 완성값 그대로 |
+| TC-NOTI-02 실시간 수신 표시 | TC-PA-07로 알림 on, 해당 코인 변화율 초과(실장 트리거 또는 백엔드 테스트 발행) | 조건 충족 대기 | ☐ `/user/topic/notification/`로 알림 payload `{notificationId,type,title,body,createdAtMs,link,data?}` 수신<br>&emsp;☐ `notifications` **맨 앞** 추가<br>&emsp;☐ Header 벨에 빨간 점(안읽음)<br>&emsp;☐ `title`/`body`는 서버 완성값 그대로 |
 | TC-NOTI-03 드롭다운 읽음/이동 | — | 1. 벨 클릭<br>2. 항목 클릭 | ☐ `handleReadNotification(id)`로 `read:true`, 안읽음 점 사라짐<br>&emsp;☐ `link` 있으면 드롭다운 닫고 `navigate(link)`<br>&emsp;☐ 바깥 클릭 시 닫힘 |
 | TC-NOTI-04 세션/로그아웃 초기화 | — | 로그아웃 또는 세션 만료 | ☐ STOMP `deactivate`<br>&emsp;☐ `setNotifications([])` |
 | TC-NOTI-05 비영속 한계(설계 확인) | — | 알림 받은 뒤 새로고침 | ☐ 알림 **사라짐**(메모리 전용, 서버 read 저장 없음)<br>※ 버그 아님 — 개선 여지(TODO 항목으로 기록) |

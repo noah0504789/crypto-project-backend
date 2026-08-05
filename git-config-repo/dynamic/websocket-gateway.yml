@@ -29,10 +29,10 @@ spring:
       - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
   cloud:
     function:
-      definition: myChatRoomBadgeEventConsumer;chatMessageBroadcastEventConsumer;webNotificationEventConsumer
+      definition: myChatRoomBadgeBroadcastEventConsumer;chatMessageBroadcastEventConsumer;webNotificationBroadcastEventConsumer
     stream:
       bindings:
-        myChatRoomBadgeEventConsumer-in-0:
+        myChatRoomBadgeBroadcastEventConsumer-in-0:
           destination: chatroom-broadcast-event
           contentType: application/json
           group: chatroom-broadcast-event-${app.instance-id}
@@ -44,7 +44,7 @@ spring:
           group: chatmessage-broadcast-${app.instance-id}
           consumer:
             concurrency: 2
-        webNotificationEventConsumer-in-0:
+        webNotificationBroadcastEventConsumer-in-0:
           destination: web-notification-broadcast-event
           contentType: application/json
           group: web-notification-broadcast-${app.instance-id}
@@ -55,7 +55,7 @@ spring:
           consumer-properties:
             spring.json.trusted.packages: "*"
         bindings:
-          myChatRoomBadgeEventConsumer-in-0:
+          myChatRoomBadgeBroadcastEventConsumer-in-0:
             consumer:
               reset-offsets: false
               start-offset: latest
@@ -65,7 +65,7 @@ spring:
               reset-offsets: false
               start-offset: latest
               ack-mode: record
-          webNotificationEventConsumer-in-0:
+          webNotificationBroadcastEventConsumer-in-0:
             consumer:
               reset-offsets: false
               start-offset: latest

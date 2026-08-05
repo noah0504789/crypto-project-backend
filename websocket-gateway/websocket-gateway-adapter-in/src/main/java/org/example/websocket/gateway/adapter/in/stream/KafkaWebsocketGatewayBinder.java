@@ -3,11 +3,11 @@ package org.example.websocket.gateway.adapter.in.stream;
 import lombok.extern.slf4j.Slf4j;
 import org.example.common.enums.KafkaHeaderKey;
 import org.example.contract.chatmessage.ChatMessageBroadcastEvent;
-import org.example.contract.chatroom.MyChatRoomBadgeEvent;
-import org.example.notification.contract.event.WebNotificationEvent;
+import org.example.contract.chatroom.MyChatRoomBadgeBroadcastEvent;
+import org.example.notification.contract.event.WebNotificationBroadcastEvent;
 import org.example.websocket.gateway.adapter.in.stream.mapper.ChatMessageBroadcastEventMapper;
-import org.example.websocket.gateway.adapter.in.stream.mapper.MyChatRoomBadgeEventMapper;
-import org.example.websocket.gateway.adapter.in.stream.mapper.WebNotificationEventMapper;
+import org.example.websocket.gateway.adapter.in.stream.mapper.MyChatRoomBadgeBroadcastEventMapper;
+import org.example.websocket.gateway.adapter.in.stream.mapper.WebNotificationBroadcastEventMapper;
 import org.example.websocket.gateway.chatmessage.application.port.in.ChatMessageBroadcastUseCase;
 import org.example.websocket.gateway.chatroom.application.port.in.MyChatRoomBadgeSendUseCase;
 import org.example.websocket.gateway.notification.application.port.in.WebNotificationSendUseCase;
@@ -30,7 +30,7 @@ public class KafkaWebsocketGatewayBinder {
     }
 
     @Bean
-    public Consumer<Message<MyChatRoomBadgeEvent>> myChatRoomBadgeEventConsumer(MyChatRoomBadgeSendUseCase myChatRoomBadgeSendUseCase, MyChatRoomBadgeEventMapper mapper) {
+    public Consumer<Message<MyChatRoomBadgeBroadcastEvent>> myChatRoomBadgeBroadcastEventConsumer(MyChatRoomBadgeSendUseCase myChatRoomBadgeSendUseCase, MyChatRoomBadgeBroadcastEventMapper mapper) {
         return message -> myChatRoomBadgeSendUseCase.send(
                 mapper.toCommand(message.getPayload()),
                 message.getHeaders().get(KafkaHeaderKey.TRANSACTION_ID.value()) + ""
@@ -38,7 +38,7 @@ public class KafkaWebsocketGatewayBinder {
     }
 
     @Bean
-    public Consumer<Message<WebNotificationEvent>> webNotificationEventConsumer(WebNotificationSendUseCase webNotificationSendUseCase, WebNotificationEventMapper mapper) {
+    public Consumer<Message<WebNotificationBroadcastEvent>> webNotificationBroadcastEventConsumer(WebNotificationSendUseCase webNotificationSendUseCase, WebNotificationBroadcastEventMapper mapper) {
         return message -> webNotificationSendUseCase.send(
                 mapper.toCommand(message.getPayload()),
                 message.getHeaders().get(KafkaHeaderKey.TRANSACTION_ID.value()) + ""

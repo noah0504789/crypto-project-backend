@@ -15,7 +15,7 @@ import java.util.function.Consumer;
 public class KafkaMarketBinder {
 
     @Bean
-    public Consumer<Message<HandleableEvent<MarketEventHandler>>> marketEventConsumer(MarketEventHandler handler) {
+    public Consumer<Message<HandleableEvent<MarketEventHandler>>> marketCatalogChangedBroadcastEventConsumer(MarketEventHandler handler) {
         return message -> message.getPayload().handle(handler, message.getHeaders().get(KafkaHeaderKey.TRANSACTION_ID.value())+"");
     }
 }
