@@ -6,7 +6,11 @@ import org.example.common.test.testcontainer.ReadWriteMysqlTestContainerInitiali
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.test.context.ContextConfiguration;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 부팅 스모크: Config Server 없이 실제 git-config-repo 설정 + Testcontainers(mysql R/W, mongo, kafka)로
@@ -28,8 +32,14 @@ import org.springframework.test.context.ContextConfiguration;
 })
 class BootSmokeTest {
 
+    @Autowired
+    Environment environment;
+
     @Test
-    @DisplayName("ApplicationContext가 정상 부팅된다")
+    @DisplayName("ApplicationContext가 정상 부팅되고 Kafka JSON 이벤트 패키지를 신뢰한다")
     void contextLoads() {
+        assertThat(environment.getProperty(
+                "spring.cloud.stream.kafka.binder.consumer-properties.spring.json.trusted.packages"
+        )).isEqualTo("*");
     }
 }
