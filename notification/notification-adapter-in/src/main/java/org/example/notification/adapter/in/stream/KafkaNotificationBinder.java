@@ -35,7 +35,7 @@ public class KafkaNotificationBinder {
                             .eventId(eventId)
                             .code(event.getCode())
                             .price(event.getPrice())
-                            .timestamp(event.getTimestamp())
+                            .occurredAtMs(event.getTimestamp())
                             .avgInterval(event.getAvgInterval())
                             .avgPrice(event.getAvgPrice())
                             .changeRate(event.getChangeRate())
