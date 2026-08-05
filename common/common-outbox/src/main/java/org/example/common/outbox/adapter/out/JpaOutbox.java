@@ -9,7 +9,7 @@ import org.example.common.outbox.domain.OutboxStatus;
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 
 @Entity
-@Table(name = "outbox")
+@Table(name = "outbox", catalog = "event")
 @Getter
 @Builder
 @NoArgsConstructor
