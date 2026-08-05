@@ -1,5 +1,5 @@
 name: Setup build environment
-description: Java·Python 준비, 실행 권한 부여, CI 스크립트 테스트까지 공통 셋업
+description: Java·Gradle·Python 준비, 실행 권한 부여, CI 스크립트 테스트까지 공통 셋업
 
 runs:
   using: composite
@@ -9,7 +9,16 @@ runs:
       with:
         distribution: temurin
         java-version: '17'
-        cache: gradle
+
+    # actions/setup-java 의 cache: gradle 대신 이 액션을 쓴다.
+    # 전자는 ~/.gradle 을 통째로 한 키로 다루는 의존성 캐시라, 키(=gradle 파일 해시)가 그대로면
+    # 저장을 건너뛴다 → 그 실행에서 만든 build cache 항목이 유실된다.
+    # 이 액션은 Gradle 전용이라 build cache 항목을 증분 저장하고 stale 항목을 정리한다.
+    #
+    # cache-read-only 는 기본값(기본 브랜치가 아니면 읽기 전용)을 쓴다.
+    # PR 브랜치마다 수백 MB 캐시가 쌓이는 것을 막고, PR 은 main 캐시를 읽기만 한다.
+    - name: Set up Gradle
+      uses: gradle/actions/setup-gradle@v6
 
     - name: Set up Python
       uses: actions/setup-python@v5

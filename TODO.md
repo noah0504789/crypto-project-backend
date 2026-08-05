@@ -86,6 +86,18 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 `cd.yml` 배포 대상 드롭다운에 `notification-service`, `market-detection` 없음(둘 다 Dockerfile/이미지 존재). 배포 갭 확인 필요.
 `[출처: SERVICE_FLOWS.md #7, ARCHITECTURE.md #5, docs/CI_CD.md §3]`
 
+#### 4.7 fork PR 은 이미지 승격 경로를 못 탄다
+`ci.yml` 의 머지 승격은 PR 실행이 `pr-<번호>` 이미지를 레지스트리에 push 해둔 것을 전제로 한다. **fork PR 은 GitHub 이 시크릿을 주지 않아 push 가 불가능**하므로(보안 설계) 빌드만 하고 끝나며, 머지 시 승격 대상이 없어 풀빌드로 떨어진다. 현재는 모든 PR 이 같은 저장소 브랜치에서 오므로 실사용 영향이 없다.
+
+외부 기여를 받게 되면 표준 2단계 분리가 필요하다: PR 워크플로(시크릿 없음)가 이미지를 artifact 로 올리고, `workflow_run` 으로 트리거되는 별도 워크플로(base 브랜치 코드로 실행되어 시크릿 보유)가 그 artifact 를 내려받아 push 한다. PR 코드를 실행하지 않으므로 시크릿이 새지 않는다. **`pull_request_target` 은 쓰지 않는다** — 시크릿을 받지만 PR 코드를 체크아웃해 실행하면 그대로 탈취된다.
+`[출처: docs/CI_CD.md §2.2 / #207 설계 논의]`
+
+#### 4.8 Merge Queue 도입 검토
+현재는 PR 에서 한 번, 머지 후 또 한 번 CI 가 도는 구조를 **tree 해시 비교 + 이미지 승격**으로 우회하고 있다(`docs/CI_CD.md §2.1`). GitHub **Merge Queue** 는 머지 직전에 "머지된 결과" 를 만들어 CI 를 돌리고 통과해야 머지하므로, 머지 후 CI 가 **구조적으로 불필요**해진다. 우리가 우회한 문제의 정식 해법이다.
+
+도입하려면 룰셋에 merge queue 를 설정하고 `auto-pr.sh` 훅의 auto-merge 흐름(`gh pr merge --auto --squash`)과 맞물리는 부분을 함께 손봐야 한다. 승격 로직(`merge-ci` 의 `Resolve promotion source`)을 제거할 수 있는지도 함께 판단한다. 지금 구조가 동작하고 있으므로 급하지 않다.
+`[출처: docs/CI_CD.md §2.1 / #207 설계 논의]`
+
 ### oauth2-authorization-server
 
 #### 4.2 미사용 mysql 설정
