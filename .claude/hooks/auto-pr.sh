@@ -7,10 +7,13 @@ BRANCH=$(git branch --show-current)
 if ! gh pr view "$BRANCH" &>/dev/null; then
   if [ -f "$CLAUDE_PROJECT_DIR/.claude/pr-draft.md" ]; then
     PR_TITLE=$(sed -n '1p' "$CLAUDE_PROJECT_DIR/.claude/pr-draft.md")
-    gh pr create --title "$PR_TITLE" \
-                 --body-file "$CLAUDE_PROJECT_DIR/.claude/pr-draft.md" \
-                 --base main --head "$BRANCH"
-    rm "$CLAUDE_PROJECT_DIR/.claude/pr-draft.md"
+    # 생성 성공 시에만 원고를 소비한다.
+    # (원격 브랜치가 아직 없어 실패하면 원고를 남겨 다음 push에서 재사용)
+    if gh pr create --title "$PR_TITLE" \
+                    --body-file "$CLAUDE_PROJECT_DIR/.claude/pr-draft.md" \
+                    --base main --head "$BRANCH"; then
+      rm "$CLAUDE_PROJECT_DIR/.claude/pr-draft.md"
+    fi
   else
     gh pr create --fill --base main --head "$BRANCH"
   fi
