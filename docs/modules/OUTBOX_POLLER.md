@@ -34,6 +34,8 @@ Transactional Outbox 패턴의 **공용 릴레이**. 모든 서비스가 자기 
 
 `@EnableScheduling` + `@Scheduled(fixedDelayString=...)`. 정책은 `outbox-poller.yml`의 `poller.*`.
 
+`OutboxPollerProperties`는 `@Validated`로 바인딩하며 `general`/`broadcast` 중첩 객체는 `@Valid @NotNull`, 각 숫자 정책은 박싱 타입 + `@Positive`로 검증한다. 코드 기본값은 두지 않으므로 dispatch 설정 전체·일부가 누락되거나 0/음수이면 ApplicationContext 생성이 실패해 폴러가 잘못된 값으로 기동하지 않는다.
+
 | 스케줄러 · 메서드 | 대상 | fixed-delay | batch | max-retry | 게이트 |
 |---|---|---|---|---|---|
 | `OutboxEventScheduler.pollGeneral` | Outbox `GENERAL` | 2500ms | 1000 | 3 | `poller.outbox.general.enabled` |

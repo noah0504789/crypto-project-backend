@@ -1,13 +1,17 @@
 package org.example.outboxpoller.outbox;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import org.example.common.outbox.domain.OutboxDispatchType;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.context.properties.bind.DefaultValue;
+import org.springframework.validation.annotation.Validated;
 
+@Validated
 @ConfigurationProperties(prefix = "poller.outbox")
 public record OutboxPollerProperties(
-        @DefaultValue Item general,
-        @DefaultValue Item broadcast
+        @Valid @NotNull Item general,
+        @Valid @NotNull Item broadcast
 ) {
 
     public Item get(OutboxDispatchType dispatchType) {
@@ -18,10 +22,10 @@ public record OutboxPollerProperties(
     }
 
     public record Item(
-            boolean enabled,
-            int fixedDelayMs,
-            int batchSize,
-            int maxRetryCnt
+            @NotNull Boolean enabled,
+            @Positive Integer fixedDelayMs,
+            @Positive Integer batchSize,
+            @Positive Integer maxRetryCnt
     ) {
     }
 }

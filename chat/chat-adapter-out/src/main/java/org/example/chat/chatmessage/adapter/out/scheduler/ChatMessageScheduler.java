@@ -45,7 +45,7 @@ public class ChatMessageScheduler {
         this.chatCacheProperties = chatCacheProperties;
     }
 
-    @Scheduled(cron = "${chat.scheduler.message-cleanup.cron:0 0 3 * * *}")
+    @Scheduled(cron = "${chat.scheduler.message-cleanup.cron}")
     public void removeExpiringMessages() {
         long ttlMillis = chatCacheProperties.messageRetention().toMillis();
 

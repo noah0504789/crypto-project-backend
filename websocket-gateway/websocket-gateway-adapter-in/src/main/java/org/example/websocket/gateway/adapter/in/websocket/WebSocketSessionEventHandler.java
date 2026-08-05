@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Component
 public class WebSocketSessionEventHandler {
 
-    @Value("${app.instance-id:unknown}")
+    @Value("${app.instance-id}")
     private String instanceId;
 
     private final AtomicInteger activeSessions = new AtomicInteger(0);

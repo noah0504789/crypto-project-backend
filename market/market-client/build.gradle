@@ -6,5 +6,6 @@ dependencies {
     api project(':protobuf')
     api project(':market:market-contract')
 
+    implementation project(':common:common-validation')
     implementation(libs.grpc.client.spring.boot.starter)
 }

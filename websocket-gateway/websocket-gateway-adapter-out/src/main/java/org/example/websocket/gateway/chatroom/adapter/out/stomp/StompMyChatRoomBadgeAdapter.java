@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class StompMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
 
-    @Value("${app.instance-id:unknown}")
+    @Value("${app.instance-id}")
     private String instanceId;
 
     private final SimpMessagingTemplate stompTemplate;

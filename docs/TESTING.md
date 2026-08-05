@@ -18,6 +18,7 @@
 핵심 구분:
 - **통합/E2E는 `@SpringBootTest(classes = {...})`로 필요한 빈만 올린다** — 전체 컴포넌트 스캔/자동설정을 타지 않으므로 빠르지만, 자동설정·컴포넌트 스캔·`@Conditional`·빈 와이어링 오류는 **잡지 못한다**.
 - **부팅 스모크만 진짜 `Main`을 올린다** — 그래서 위 오류(예: DB 없는 서비스의 `DataSourceAutoConfiguration`, 스캔된 `OutboxService`/`DlqService`/`SnowflakeIdProvider`)를 CI가 잡는 유일한 층이다.
+- `@Validated @ConfigurationProperties` 바인딩과 필수 `${key}` placeholder 해석도 ApplicationContext 기동 시 수행된다. 제약 위반은 ApplicationContext 생성을 중단하므로 설정 누락·오타를 fail-fast로 검출한다. 컴파일·단위 테스트 성공만으로 설정 키 존재를 확인할 수 없으므로, 설정 변경은 관련 서비스의 부팅 스모크까지 통과해야 완료다.
 
 ## 2. 작성 스타일 (공통)
 
@@ -123,7 +124,16 @@
 - 서비스 부팅 스모크(예): `./gradlew :websocket-gateway:websocket-gateway-bootstrap:test --tests '*BootSmokeTest*'`
 - 서비스 CI(부팅 스모크 포함): `./gradlew <service>Ci` (예: `websocketGatewayCi`)
 - 전체: `./gradlew serviceCi` — Testcontainers를 다수 기동하므로 시간이 오래 걸린다. 요청·승인 없이 상시 실행하지 않는다.
+- **`serviceCi` 동시 실행 금지**: 여러 실행이 동일한 reusable Kafka/MySQL/Mongo와 Docker 자원을 함께 초기화·종료하면 Gradle test worker가 실패 로그 없이 대기하는 경합이 생길 수 있다. 실행 전 기존 `GradleWrapperMain serviceCi` 프로세스를 확인하고 반드시 한 번에 하나만 실행한다.
 - Docker가 필요하다(Testcontainers). 컨테이너는 `@Reuse(true)`로 재사용된다.
+
+### 5.1 재사용 컨테이너의 수명
+
+이 저장소는 `common-test` 컨테이너의 `.withReuse(true)`와 `testcontainers.properties`의 `testcontainers.reuse.enable=true`를 함께 사용한다. 따라서 reusable 컨테이너는 테스트 JVM 종료 후 자동 제거되지 않고 다음 실행을 위해 남는다. 이는 Testcontainers 기본 동작과 다른 의도된 정책이다.
+
+- 컨테이너 재기동 시간을 줄이는 대신 Docker 자원과 테스트 데이터가 실행 사이에 유지된다.
+- Ryuk이나 `Gradle Test Executor`까지 장시간 남아 있으면 정상적인 reuse가 아니라 이전 테스트 프로세스가 종료되지 않은 상태인지 확인한다.
+- 정리가 필요할 때는 Testcontainers 라벨과 session ID로 테스트 컨테이너만 식별한다. 개발용 Docker Compose 스택을 함께 제거하지 않는다.
 
 ## 7. 모듈별 테스트 커버리지
 

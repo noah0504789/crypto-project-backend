@@ -21,7 +21,7 @@ public class AuthController {
 
     private final RefreshTokenService refreshTokenService;
 
-    @PostMapping("${api-path.auth.refresh:/auth/refresh}")
+    @PostMapping("${api-path.auth.refresh}")
     public ResponseEntity<String> myAuthRefresh(HttpServletRequest request) {
         String refreshToken = refreshTokenService.extractRefreshToken(request);
 
