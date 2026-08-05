@@ -34,6 +34,16 @@ spring:
 #          transaction:
 #            transaction-id-prefix: tx-notification-${app.instance-id}
 
+mysql:
+  username: ${mysql.event.username}
+  password: ${mysql.event.password}
+  db: ${mysql.event.db}
+  write:
+    pool:
+      max-size: 15
+      min-idle: 15
+      connection-timeout: 3500
+
 mongo:
   user: ${mongo.notification.username}
   pass: ${mongo.notification.password}
