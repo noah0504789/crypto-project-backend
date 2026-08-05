@@ -41,6 +41,17 @@ spring:
         binder:
           consumer-properties:
             spring.json.trusted.packages: "*"
+        bindings:
+          priceAlertDetectedEventConsumer-in-0:
+            consumer:
+              reset-offsets: false
+              start-offset: latest
+              ack-mode: record
+          notificationEventConsumer-in-0:
+            consumer:
+              reset-offsets: false
+              start-offset: latest
+              ack-mode: record
 #      kafka:
 #        binder:
 #          transaction:
