@@ -1,5 +1,8 @@
 name: Backend CI
 
+# PR 과 머지에서 같은 내용을 두 번 빌드하지 않는다.
+#   pull_request : 검증 + 이미지를 pr-<번호> 태그로 push
+#   push(머지)   : tree 해시가 PR 과 같으면 그 이미지를 승격(빌드 스킵), 다르면 풀빌드
 on:
   workflow_dispatch:
     inputs:
@@ -24,130 +27,63 @@ permissions:
   pull-requests: read
 
 jobs:
-  affected-ci:
+  # name 을 바꾸지 않는다. 룰셋 main-protection 의 required status check 가 이 이름을 참조하며,
+  # 이름이 어긋나면 모든 PR 이 머지 불가가 된다.
+  pull-request-ci:
     name: Affected module CI
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-          cache: gradle
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version-file: '.python-version'
-
-      - name: Grant execute permission
-        run: |
-          chmod +x ./gradlew
-          chmod +x ./scripts/ci/affected_modules.py
-
-      - name: Test CI scripts
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pytest
-          pytest scripts/ci
-
-      - name: Resolve diff range
-        id: diff
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BASE="origin/${{ github.base_ref }}"
-          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            BASE="${{ inputs.base_ref }}"
-          else
-            BASE="${{ github.event.before }}"
-          fi
-
-          HEAD="${{ github.sha }}"
-
-          echo "base=$BASE" >> "$GITHUB_OUTPUT"
-          echo "head=$HEAD" >> "$GITHUB_OUTPUT"
-
-          echo "Diff base: $BASE"
-          echo "Diff head: $HEAD"
+      - uses: ./.github/actions/setup-build
 
       - name: Calculate affected Gradle tasks
-        if: github.event_name != 'workflow_dispatch'
         id: affected
         run: |
           TASKS=$(./scripts/ci/affected_modules.py \
-            --base "${{ steps.diff.outputs.base }}" \
-            --head "${{ steps.diff.outputs.head }}" \
-            --mode build \
-            --include-arch-test)
-
+            --base "origin/${{ github.base_ref }}" --head "${{ github.sha }}" \
+            --mode build --include-arch-test)
           echo "tasks=$TASKS" >> "$GITHUB_OUTPUT"
           echo "Affected tasks: $TASKS"
 
-      - name: Run manual service CI
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          case "${{ inputs.ci_task }}" in
-            serviceCi)
-              ./gradlew clean serviceCi
-              ;;
-            *)
-              echo "Unsupported ci_task: ${{ inputs.ci_task }}"
-              exit 1
-              ;;
-          esac
-
       - name: Run affected module CI
-        if: github.event_name != 'workflow_dispatch' && steps.affected.outputs.tasks != ''
+        if: steps.affected.outputs.tasks != ''
         run: ./gradlew clean ${{ steps.affected.outputs.tasks }}
-
-      - name: Skip backend CI
-        if: github.event_name != 'workflow_dispatch' && steps.affected.outputs.tasks == ''
-        run: echo "No affected backend modules."
 
       - name: Calculate affected Docker services
         id: docker
         run: |
           SERVICES=$(./scripts/ci/affected_modules.py \
-            --base "${{ steps.diff.outputs.base }}" \
-            --head "${{ steps.diff.outputs.head }}" \
-            --mode docker)
-
+            --base "origin/${{ github.base_ref }}" --head "${{ github.sha }}" --mode docker)
           echo "services=$SERVICES" >> "$GITHUB_OUTPUT"
           echo "Affected Docker services: $SERVICES"
 
-      - name: Set Docker metadata
-        id: docker_meta
+      - uses: docker/setup-buildx-action@v3
         if: steps.docker.outputs.services != ''
-        run: |
-          SHORT_SHA="${GITHUB_SHA::7}"
-          echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
 
-      - name: Set up Docker Buildx
-        if: steps.docker.outputs.services != ''
-        uses: docker/setup-buildx-action@v3
-
+      # fork PR 은 시크릿을 못 받는다. 로그인 없이 빌드만 해 Dockerfile 유효성만 확인한다.
       - name: Login to DockerHub
-        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && steps.docker.outputs.services != ''
+        if: steps.docker.outputs.services != '' && github.event.pull_request.head.repo.full_name == github.repository
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build Docker images
+      # latest 는 붙이지 않는다. 아직 머지되지 않은 코드다.
+      - name: Build and push PR image
         if: steps.docker.outputs.services != ''
+        env:
+          CAN_PUSH: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
           set -euo pipefail
 
           for ITEM in ${{ steps.docker.outputs.services }}; do
             SERVICE_PATH="${ITEM%%=*}"
             IMAGE_NAME="${ITEM#*=}"
-
             DOCKERFILE="$SERVICE_PATH/Dockerfile"
 
             if [ ! -f "$DOCKERFILE" ]; then
@@ -155,50 +91,202 @@ jobs:
               exit 1
             fi
 
-            IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME"
-            SHA_TAG="${IMAGE}:${{ steps.docker_meta.outputs.short_sha }}"
+            if [ "$CAN_PUSH" = "true" ]; then
+              TAG="${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME:pr-${{ github.event.pull_request.number }}"
+            else
+              TAG="local/$IMAGE_NAME:pr"
+            fi
 
-            echo "Building Docker image: $SHA_TAG"
-            echo "Dockerfile: $DOCKERFILE"
-            echo "Build context: $SERVICE_PATH"
+            echo "Building $TAG"
+            docker build -f "$DOCKERFILE" -t "$TAG" "$SERVICE_PATH"
 
-            docker build \
-              -f "$DOCKERFILE" \
-              -t "$SHA_TAG" \
-              "$SERVICE_PATH"
+            if [ "$CAN_PUSH" = "true" ]; then
+              docker push "$TAG"
+            else
+              echo "fork PR 이라 push 를 건너뛴다."
+            fi
           done
-
-      - name: Push Docker images
-        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && steps.docker.outputs.services != ''
-        run: |
-          set -euo pipefail
-
-          for ITEM in ${{ steps.docker.outputs.services }}; do
-            IMAGE_NAME="${ITEM#*=}"
-
-            IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME"
-            SHA_TAG="${IMAGE}:${{ steps.docker_meta.outputs.short_sha }}"
-            LATEST_TAG="${IMAGE}:latest"
-
-            echo "Tagging $SHA_TAG as $LATEST_TAG"
-            docker tag "$SHA_TAG" "$LATEST_TAG"
-
-            echo "Pushing $SHA_TAG"
-            docker push "$SHA_TAG"
-
-            echo "Pushing $LATEST_TAG"
-            docker push "$LATEST_TAG"
-          done
-
-      - name: Skip Docker build
-        if: steps.docker.outputs.services == ''
-        run: echo "No affected Docker services."
 
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports-affected-ci
+          name: test-reports-pr
           path: |
             **/build/reports/tests/test/
             **/build/test-results/test/
+
+  # PR 에서 검증된 이미지를 승격하거나, 내용이 달라졌으면 다시 빌드한다.
+  merge-ci:
+    name: Promote or rebuild
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-build
+
+      # 머지 커밋의 tree 가 PR head 의 tree 와 같으면 내용이 비트 단위로 동일하다.
+      # PR 에서 이미 검증·빌드했으므로 다시 만들지 않고 이미지 태그만 옮긴다.
+      - name: Resolve promotion source
+        id: promote
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          PR_NUM=$(git log -1 --pretty=%s | grep -oE '#[0-9]+' | head -1 | tr -d '#' || true)
+
+          if [ -z "$PR_NUM" ]; then
+            echo "PR 번호 없음(직접 push). 풀빌드한다."
+            echo "reuse=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          PR_HEAD=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUM" --jq .head.sha)
+          PR_TREE=$(gh api "repos/${{ github.repository }}/commits/$PR_HEAD" --jq .commit.tree.sha)
+          MAIN_TREE=$(git rev-parse "HEAD^{tree}")
+
+          echo "PR #$PR_NUM head=$PR_HEAD"
+          echo "PR tree  : $PR_TREE"
+          echo "main tree: $MAIN_TREE"
+
+          if [ "$PR_TREE" = "$MAIN_TREE" ]; then
+            echo "tree 동일 — PR 이미지를 승격한다(빌드 스킵)."
+            echo "reuse=true" >> "$GITHUB_OUTPUT"
+            echo "pr_number=$PR_NUM" >> "$GITHUB_OUTPUT"
+          else
+            echo "tree 불일치 — 머지 과정에서 내용이 바뀌었다. 풀빌드한다."
+            echo "reuse=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Calculate affected Docker services
+        id: docker
+        run: |
+          SERVICES=$(./scripts/ci/affected_modules.py \
+            --base "${{ github.event.before }}" --head "${{ github.sha }}" --mode docker)
+          echo "services=$SERVICES" >> "$GITHUB_OUTPUT"
+          echo "Affected Docker services: $SERVICES"
+
+      - uses: docker/setup-buildx-action@v3
+        if: steps.docker.outputs.services != ''
+
+      - name: Login to DockerHub
+        if: steps.docker.outputs.services != ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # ---------- 승격 경로: 레이어 전송 없이 매니페스트에 태그만 추가 ----------
+      - name: Promote PR image
+        if: steps.promote.outputs.reuse == 'true' && steps.docker.outputs.services != ''
+        run: |
+          set -euo pipefail
+
+          for ITEM in ${{ steps.docker.outputs.services }}; do
+            IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/${ITEM#*=}"
+
+            echo "Promoting ${IMAGE}:pr-${{ steps.promote.outputs.pr_number }}"
+            docker buildx imagetools create \
+              -t "${IMAGE}:${GITHUB_SHA::7}" \
+              -t "${IMAGE}:latest" \
+              "${IMAGE}:pr-${{ steps.promote.outputs.pr_number }}"
+          done
+
+      # ---------- 풀빌드 경로: tree 가 달라 승격할 수 없을 때만 ----------
+      - name: Calculate affected Gradle tasks
+        id: affected
+        if: steps.promote.outputs.reuse != 'true'
+        run: |
+          TASKS=$(./scripts/ci/affected_modules.py \
+            --base "${{ github.event.before }}" --head "${{ github.sha }}" \
+            --mode build --include-arch-test)
+          echo "tasks=$TASKS" >> "$GITHUB_OUTPUT"
+          echo "Affected tasks: $TASKS"
+
+      - name: Run affected module CI
+        if: steps.promote.outputs.reuse != 'true' && steps.affected.outputs.tasks != ''
+        run: ./gradlew clean ${{ steps.affected.outputs.tasks }}
+
+      - name: Build and push Docker images
+        if: steps.promote.outputs.reuse != 'true' && steps.docker.outputs.services != ''
+        run: |
+          set -euo pipefail
+
+          for ITEM in ${{ steps.docker.outputs.services }}; do
+            SERVICE_PATH="${ITEM%%=*}"
+            IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/${ITEM#*=}"
+            DOCKERFILE="$SERVICE_PATH/Dockerfile"
+
+            if [ ! -f "$DOCKERFILE" ]; then
+              echo "Dockerfile not found: $DOCKERFILE"
+              exit 1
+            fi
+
+            docker build -f "$DOCKERFILE" \
+              -t "${IMAGE}:${GITHUB_SHA::7}" -t "${IMAGE}:latest" "$SERVICE_PATH"
+            docker push "${IMAGE}:${GITHUB_SHA::7}"
+            docker push "${IMAGE}:latest"
+          done
+
+      - name: Upload test reports
+        if: always() && steps.promote.outputs.reuse != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-merge
+          path: |
+            **/build/reports/tests/test/
+            **/build/test-results/test/
+
+  # 전체 서비스를 강제로 다시 빌드한다. affected 계산을 신뢰할 수 없을 때의 탈출구.
+  full-rebuild:
+    name: Full rebuild (manual)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-build
+
+      - name: Run service CI
+        run: ./gradlew clean ${{ inputs.ci_task }}
+
+      - name: Calculate affected Docker services
+        id: docker
+        run: |
+          SERVICES=$(./scripts/ci/affected_modules.py \
+            --base "${{ inputs.base_ref }}" --head "${{ github.sha }}" --mode docker)
+          echo "services=$SERVICES" >> "$GITHUB_OUTPUT"
+          echo "Affected Docker services: $SERVICES"
+
+      - uses: docker/setup-buildx-action@v3
+        if: steps.docker.outputs.services != ''
+
+      - name: Login to DockerHub
+        if: steps.docker.outputs.services != ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker images
+        if: steps.docker.outputs.services != ''
+        run: |
+          set -euo pipefail
+
+          for ITEM in ${{ steps.docker.outputs.services }}; do
+            SERVICE_PATH="${ITEM%%=*}"
+            IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/${ITEM#*=}"
+
+            docker build -f "$SERVICE_PATH/Dockerfile" \
+              -t "${IMAGE}:${GITHUB_SHA::7}" -t "${IMAGE}:latest" "$SERVICE_PATH"
+            docker push "${IMAGE}:${GITHUB_SHA::7}"
+            docker push "${IMAGE}:latest"
+          done
