@@ -17,7 +17,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
         webEnvironment = SpringBootTest.WebEnvironment.NONE,
         properties = {
                 "spring.cloud.bus.enabled=false",
-                "eureka.client.enabled=false",
                 "eureka.client.register-with-eureka=false",
                 "eureka.client.fetch-registry=false",
                 "grpc.server.port=0",
