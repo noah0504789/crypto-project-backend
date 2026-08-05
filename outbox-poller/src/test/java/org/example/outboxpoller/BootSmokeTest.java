@@ -4,8 +4,15 @@ import org.example.common.test.testcontainer.KafkaTestContainerInitializer;
 import org.example.common.test.testcontainer.ReadWriteMysqlTestContainerInitializer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.context.ContextConfiguration;
+
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 부팅 스모크: Config Server 없이 실제 git-config-repo 설정 + Testcontainers(mysql R/W, kafka)로
@@ -23,8 +30,15 @@ import org.springframework.test.context.ContextConfiguration;
 })
 class BootSmokeTest {
 
+    @Autowired
+    private TestRestTemplate restTemplate;
+
     @Test
     @DisplayName("ApplicationContext가 정상 부팅된다")
     void contextLoads() {
+        var response = restTemplate.getForEntity("/actuator/health/liveness", Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsEntry("status", "UP");
     }
 }
