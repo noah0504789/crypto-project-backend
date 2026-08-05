@@ -42,7 +42,7 @@ upbit:
   websocket:
     url: ${uri.provider.upbit.websocket}
     ticket: test
-    ticker-publish-interval: 3s
+    ticker-publish-interval: 10s
     ticker-queue-capacity: 100
 
   ticker:
