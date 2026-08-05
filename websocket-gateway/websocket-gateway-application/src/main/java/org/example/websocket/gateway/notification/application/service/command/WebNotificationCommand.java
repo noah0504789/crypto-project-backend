@@ -4,6 +4,7 @@ import java.util.Map;
 
 public record WebNotificationCommand(
         String receiverId,
+        String notificationId,
         String type,
         String title,
         String body,
