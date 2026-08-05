@@ -14,7 +14,7 @@ import org.example.notification.application.exception.NotificationPersistExcepti
 import org.example.notification.application.port.out.PriceAlertNotificationIdGeneratorPort;
 import org.example.notification.application.port.out.PriceAlertRecipientQueryPort;
 import org.example.notification.application.service.command.PriceAlertNotificationCreateCommand;
-import org.example.notification.contract.event.WebNotificationEvent;
+import org.example.notification.contract.event.WebNotificationBroadcastEvent;
 import org.example.notification.contract.event.WebNotificationPayload;
 import org.example.notification.domain.model.Notification;
 import org.example.notification.domain.model.NotificationType;
@@ -130,7 +130,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
 
             NotificationPayload notificationPayload = mock(NotificationPayload.class);
             NotificationSaveEvent saveEvent = mock(NotificationSaveEvent.class);
-            WebNotificationEvent webEvent = mock(WebNotificationEvent.class);
+            WebNotificationBroadcastEvent webEvent = mock(WebNotificationBroadcastEvent.class);
             NotificationEventList eventList = mock(NotificationEventList.class);
 
             givenCommon();
@@ -142,7 +142,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
                     MockedStatic<Notification> notificationStatic = mockStatic(Notification.class);
                     MockedStatic<NotificationPayload> notificationPayloadStatic = mockStatic(NotificationPayload.class);
                     MockedStatic<NotificationSaveEvent> saveEventStatic = mockStatic(NotificationSaveEvent.class);
-                    MockedStatic<WebNotificationEvent> webEventStatic = mockStatic(WebNotificationEvent.class);
+                    MockedStatic<WebNotificationBroadcastEvent> webEventStatic = mockStatic(WebNotificationBroadcastEvent.class);
                     MockedStatic<NotificationEventList> eventListStatic = mockStatic(NotificationEventList.class)
             ) {
                 notificationStatic.when(() -> Notification.createPriceAlert(
@@ -159,7 +159,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 saveEventStatic.when(() -> NotificationSaveEvent.from(eq(notificationPayload), any()))
                         .thenReturn(saveEvent);
 
-                webEventStatic.when(() -> WebNotificationEvent.of(
+                webEventStatic.when(() -> WebNotificationBroadcastEvent.of(
                         any(WebNotificationPayload.class),
                         eq(NOTIFICATION_ID),
                         eq(PARTITION_KEY)
@@ -209,7 +209,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 ArgumentCaptor<WebNotificationPayload> webPayloadCaptor =
                         ArgumentCaptor.forClass(WebNotificationPayload.class);
 
-                webEventStatic.verify(() -> WebNotificationEvent.of(
+                webEventStatic.verify(() -> WebNotificationBroadcastEvent.of(
                         webPayloadCaptor.capture(),
                         eq(NOTIFICATION_ID),
                         eq(PARTITION_KEY)
@@ -242,7 +242,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
 
             NotificationPayload notificationPayload = mock(NotificationPayload.class);
             NotificationSaveEvent saveEvent = mock(NotificationSaveEvent.class);
-            WebNotificationEvent webEvent = mock(WebNotificationEvent.class);
+            WebNotificationBroadcastEvent webEvent = mock(WebNotificationBroadcastEvent.class);
             NotificationEventList eventList = mock(NotificationEventList.class);
 
             givenCommon();
@@ -254,7 +254,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
                     MockedStatic<Notification> notificationStatic = mockStatic(Notification.class);
                     MockedStatic<NotificationPayload> notificationPayloadStatic = mockStatic(NotificationPayload.class);
                     MockedStatic<NotificationSaveEvent> saveEventStatic = mockStatic(NotificationSaveEvent.class);
-                    MockedStatic<WebNotificationEvent> webEventStatic = mockStatic(WebNotificationEvent.class);
+                    MockedStatic<WebNotificationBroadcastEvent> webEventStatic = mockStatic(WebNotificationBroadcastEvent.class);
                     MockedStatic<NotificationEventList> eventListStatic = mockStatic(NotificationEventList.class)
             ) {
                 notificationStatic.when(() -> Notification.createPriceAlert(
@@ -271,7 +271,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 saveEventStatic.when(() -> NotificationSaveEvent.from(eq(notificationPayload), any()))
                         .thenReturn(saveEvent);
 
-                webEventStatic.when(() -> WebNotificationEvent.of(
+                webEventStatic.when(() -> WebNotificationBroadcastEvent.of(
                         any(WebNotificationPayload.class),
                         eq(NOTIFICATION_ID),
                         eq(PARTITION_KEY)
@@ -316,7 +316,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
                     MockedStatic<Notification> notificationStatic = mockStatic(Notification.class);
                     MockedStatic<NotificationPayload> notificationPayloadStatic = mockStatic(NotificationPayload.class);
                     MockedStatic<NotificationSaveEvent> saveEventStatic = mockStatic(NotificationSaveEvent.class);
-                    MockedStatic<WebNotificationEvent> webEventStatic = mockStatic(WebNotificationEvent.class);
+                    MockedStatic<WebNotificationBroadcastEvent> webEventStatic = mockStatic(WebNotificationBroadcastEvent.class);
                     MockedStatic<NotificationEventList> eventListStatic = mockStatic(NotificationEventList.class)
             ) {
                 notificationStatic.when(() -> Notification.createPriceAlert(
@@ -353,7 +353,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
 
             NotificationPayload notificationPayload = mock(NotificationPayload.class);
             NotificationSaveEvent saveEvent = mock(NotificationSaveEvent.class);
-            WebNotificationEvent webEvent = mock(WebNotificationEvent.class);
+            WebNotificationBroadcastEvent webEvent = mock(WebNotificationBroadcastEvent.class);
             NotificationEventList eventList = mock(NotificationEventList.class);
 
             TemporaryOutboxPersistenceException exception =
@@ -375,7 +375,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
                     MockedStatic<Notification> notificationStatic = mockStatic(Notification.class);
                     MockedStatic<NotificationPayload> notificationPayloadStatic = mockStatic(NotificationPayload.class);
                     MockedStatic<NotificationSaveEvent> saveEventStatic = mockStatic(NotificationSaveEvent.class);
-                    MockedStatic<WebNotificationEvent> webEventStatic = mockStatic(WebNotificationEvent.class);
+                    MockedStatic<WebNotificationBroadcastEvent> webEventStatic = mockStatic(WebNotificationBroadcastEvent.class);
                     MockedStatic<NotificationEventList> eventListStatic = mockStatic(NotificationEventList.class)
             ) {
                 notificationStatic.when(() -> Notification.createPriceAlert(
@@ -392,7 +392,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 saveEventStatic.when(() -> NotificationSaveEvent.from(eq(notificationPayload), any()))
                         .thenReturn(saveEvent);
 
-                webEventStatic.when(() -> WebNotificationEvent.of(
+                webEventStatic.when(() -> WebNotificationBroadcastEvent.of(
                         any(WebNotificationPayload.class),
                         eq(NOTIFICATION_ID),
                         eq(PARTITION_KEY)
@@ -421,7 +421,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
 
             NotificationPayload notificationPayload = mock(NotificationPayload.class);
             NotificationSaveEvent saveEvent = mock(NotificationSaveEvent.class);
-            WebNotificationEvent webEvent = mock(WebNotificationEvent.class);
+            WebNotificationBroadcastEvent webEvent = mock(WebNotificationBroadcastEvent.class);
             NotificationEventList eventList = mock(NotificationEventList.class);
 
             RuntimeException exception = new RuntimeException("outbox publish failed");
@@ -439,7 +439,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
                     MockedStatic<Notification> notificationStatic = mockStatic(Notification.class);
                     MockedStatic<NotificationPayload> notificationPayloadStatic = mockStatic(NotificationPayload.class);
                     MockedStatic<NotificationSaveEvent> saveEventStatic = mockStatic(NotificationSaveEvent.class);
-                    MockedStatic<WebNotificationEvent> webEventStatic = mockStatic(WebNotificationEvent.class);
+                    MockedStatic<WebNotificationBroadcastEvent> webEventStatic = mockStatic(WebNotificationBroadcastEvent.class);
                     MockedStatic<NotificationEventList> eventListStatic = mockStatic(NotificationEventList.class)
             ) {
                 notificationStatic.when(() -> Notification.createPriceAlert(
@@ -456,7 +456,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 saveEventStatic.when(() -> NotificationSaveEvent.from(eq(notificationPayload), any()))
                         .thenReturn(saveEvent);
 
-                webEventStatic.when(() -> WebNotificationEvent.of(
+                webEventStatic.when(() -> WebNotificationBroadcastEvent.of(
                         any(WebNotificationPayload.class),
                         eq(NOTIFICATION_ID),
                         eq(PARTITION_KEY)
@@ -498,7 +498,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
                     MockedStatic<Notification> notificationStatic = mockStatic(Notification.class);
                     MockedStatic<NotificationPayload> notificationPayloadStatic = mockStatic(NotificationPayload.class);
                     MockedStatic<NotificationSaveEvent> saveEventStatic = mockStatic(NotificationSaveEvent.class);
-                    MockedStatic<WebNotificationEvent> webEventStatic = mockStatic(WebNotificationEvent.class);
+                    MockedStatic<WebNotificationBroadcastEvent> webEventStatic = mockStatic(WebNotificationBroadcastEvent.class);
                     MockedStatic<NotificationEventList> eventListStatic = mockStatic(NotificationEventList.class)
             ) {
                 notificationStatic.when(() -> Notification.createPriceAlert(

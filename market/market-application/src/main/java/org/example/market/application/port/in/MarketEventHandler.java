@@ -1,8 +1,8 @@
 package org.example.market.application.port.in;
 
-import org.example.market.application.event.MarketCatalogChangedEvent;
+import org.example.market.application.event.MarketCatalogChangedBroadcastEvent;
 
 public interface MarketEventHandler {
 
-    void handle(MarketCatalogChangedEvent event, String txId);
+    void handle(MarketCatalogChangedBroadcastEvent event, String txId);
 }

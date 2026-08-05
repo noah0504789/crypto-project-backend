@@ -105,14 +105,20 @@
 | cache | `warmUp`, `invalidate`, `recover`, `refresh` |
 | event | `publish`, `handle`, `toPayload`, `toEvent` |
 
-### 3.3 변수
+### 3.3 Kafka 브로드캐스트 이벤트
+
+- consumer group이 `${app.instance-id}`를 포함해 인스턴스마다 고유하고, 같은 레코드를 모든 서비스 인스턴스가 소비하는 이벤트는 `*BroadcastEvent`로 명명한다.
+- 브로드캐스트 계약은 이벤트 클래스명, `*-broadcast-event` 토픽, `*BroadcastEventConsumer` 함수명, 인스턴스별 consumer group, `OutboxDispatchType.BROADCAST`를 함께 맞춘다.
+- payload에 여러 수신자가 들어 있어도 공유 consumer group의 한 인스턴스만 처리한다면 브로드캐스트가 아니다. 수신자 수와 Kafka 전달 토폴로지를 혼동해 `*BroadcastEvent`로 명명하지 않는다.
+
+### 3.4 변수
 
 - 식별자는 `id`만 쓰기보다 `roomId`, `messageId`, `userId`, `publicId`, `txId`, `dlqId`처럼 맥락을 드러낸다.
 - 외부 provider의 subject는 `providerSub` 또는 `sub`를 명확히 구분한다.
 - OAuth2 internal user id와 email principal을 혼동하지 않는다.
 - 로그에는 추적 가능한 식별자 하나 이상을 포함한다.
 
-### 3.4 시간 변환 메서드
+### 3.5 시간 변환 메서드
 
 `toInstant()`처럼 **어떤 필드를 변환하는지 이름에 드러나지 않는** 무인자 변환 메서드를 금지한다. 어떤 필드가 어떤 타입으로 나가는지 이름만으로 알 수 있어야 한다.
 

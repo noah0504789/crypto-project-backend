@@ -7,7 +7,7 @@
 > - **재검증 조건**: 아래 중 하나라도 변경되면 이 문서를 다시 검증한다.
 >   - REST 경로(`NotificationController`) 변경
 >   - Kafka 바인딩(`notification-service.yml`의 `spring.cloud.stream.*`) 또는 `common-core/KafkaTopic`의 notification 항목 변경
->   - 소비 계약(`market-detection-contract`의 `PriceAlertDetectedEvent`), 생산 계약(`WebNotificationEvent`) 변경
+>   - 소비 계약(`market-detection-contract`의 `PriceAlertDetectedEvent`), 생산 계약(`WebNotificationBroadcastEvent`) 변경
 >   - market gRPC 클라이언트(`PriceAlertRecipientQueryAdapter`, `market.v1 FindReceiverIds`) 또는 임계값 매핑(`PriceAlertChangeRateThreshold`) 변경
 >   - 도메인/Mongo 모델(`Notification`, `NotificationRecipient`, `MongoNotification*`) 또는 인덱스 변경
 
@@ -45,7 +45,7 @@
 | `notification-adapter-in` | adapter-in | REST(`NotificationController`), Kafka 바인더(`KafkaNotificationBinder`) | `common-web`, `market-detection-contract`, `notification-application` |
 | `notification-adapter-out` | adapter-out | Mongo 영속(`MongoNotification*`), market gRPC 클라이언트 어댑터, ObjectId 생성기, config | `common-id`, `common-mongo`, `market-client`, `notification-application` |
 | `notification-bootstrap` | 실행 | `Main`, `application.yml` | 위 4개 + actuator/config/eureka/bus/prometheus |
-| `notification-contract` | 계약 | 생산 이벤트(`WebNotificationEvent`, `WebNotificationPayload`) | `common-core`, `common-outbox` |
+| `notification-contract` | 계약 | 생산 이벤트(`WebNotificationBroadcastEvent`, `WebNotificationPayload`) | `common-core`, `common-outbox` |
 
 - 의존 방향: adapter-in/out → application → domain. adapter-in은 `market-detection-contract`(소비 이벤트 타입), adapter-out은 `market-client`(gRPC 소비)에 의존.
 - **관찰**: `notification-application`·`-adapter-in`·`-adapter-out`이 모두 Gradle 플러그인 `crypto-domain`을 쓴다(타 서비스는 각각 `crypto-application`/`crypto-adapter` 사용). 동작에는 문제없어 보이나 컨벤션 상 이질적 → §11, TODO.
@@ -58,18 +58,18 @@ market-detection: PriceAlertDetectedEvent  →  Kafka: price-alert-detected-even
       → PriceAlertNotificationCommandService.create
           1) Notification.createPriceAlert(...)  (제목/본문/messageParts 포맷)
           2) market gRPC FindReceiverIds(code, threshold)  → 수신자 UUID 목록
-          3) NotificationEventList = NotificationSaveEvent(영속) + WebNotificationEvent(push)
+          3) NotificationEventList = NotificationSaveEvent(영속) + WebNotificationBroadcastEvent(push)
           4) OutboxEventListPublishPort.publish → (MySQL Outbox) → outbox-poller → Kafka
   → [notification] notificationEventConsumer (Kafka: notification-event)
       → NotificationEventService.handle  @Transactional("notificationMongoTransactionManager")
           → MongoDB: notification + notification_recipient(bulk) 저장
-  → WebNotificationEvent (Kafka: web-notification-broadcast-event)
+  → WebNotificationBroadcastEvent (Kafka: web-notification-broadcast-event)
       → [websocket-gateway] 온라인 사용자에게 STOMP push
 ```
 
-- 쓰기는 **Outbox 경유**(chat/market과 동일 패턴, `../modules/COMMON.md §5.1` 참조). 영속(`NotificationSaveEvent`)과 push(`WebNotificationEvent`)를 하나의 `NotificationEventList`로 묶어 발행한다.
+- 쓰기는 **Outbox 경유**(chat/market과 동일 패턴, `../modules/COMMON.md §5.1` 참조). 영속(`NotificationSaveEvent`)과 push(`WebNotificationBroadcastEvent`)를 하나의 `NotificationEventList`로 묶어 발행한다.
 - 수신자 조회는 `PriceAlertRecipientQueryAdapter` → `market-client`의 `PriceAlertSettingClient.findReceiverIds(marketCode, targetChangeRate)`. 임계값 문자열(`PERCENT_0/3/5/7`)은 `PriceAlertChangeRateThreshold.toBigDecimal`로 `0.0000/0.0300/0.0500/0.0700`(scale 4)로 변환해 market의 **정확 일치** 조회에 쓴다(→ `MARKET.md §7`).
-- `NotificationSaveEvent`/`WebNotificationEvent`는 `@JsonCreator`/`@JsonProperty` 직렬화 계약(Outbox payload). `NotificationSaveEvent`는 `notification-event`(+`.dlq`), `WebNotificationEvent`는 `web-notification-broadcast-event`.
+- `NotificationSaveEvent`/`WebNotificationBroadcastEvent`는 `@JsonCreator`/`@JsonProperty` 직렬화 계약(Outbox payload). `NotificationSaveEvent`는 `notification-event`(+`.dlq`), `WebNotificationBroadcastEvent`는 `web-notification-broadcast-event`이며 `OutboxDispatchType.BROADCAST`로 빠른 폴링 레인을 사용한다.
 
 ## 6. REST API 계약
 
@@ -175,7 +175,7 @@ DB `notification`(authSource `notification`). `MongoConfig`가 커넥션 풀(min
 
 | 컨슈머 이벤트 | 하는 일 | 사용한 전략 |
 |---|---|---|
-| `PriceAlertDetectedEvent` | 새 알림 ID를 생성하고 `NotificationSaveEvent`·`WebNotificationEvent`를 Outbox에 기록 | `(consumer_name,event_id)` unique Inbox를 Outbox 저장과 같은 event DB 트랜잭션에서 선점; 중복이면 알림 생성 전에 성공 종료 |
+| `PriceAlertDetectedEvent` | 새 알림 ID를 생성하고 `NotificationSaveEvent`·`WebNotificationBroadcastEvent`를 Outbox에 기록 | `(consumer_name,event_id)` unique Inbox를 Outbox 저장과 같은 event DB 트랜잭션에서 선점; 중복이면 알림 생성 전에 성공 종료 |
 | `NotificationSaveEvent` | 알림 본문과 사용자별 수신자 레코드를 MongoDB에 저장 | `notificationId` 문서 저장 + `(notificationId,receiverId)` 자연 키 bulk upsert; 같은 Mongo 트랜잭션에서 반복 저장을 동일 결과로 수렴 |
 
 market-detection은 최초 이벤트 생성 시 무작위 UUID를 만들어 Kafka `event_id` 헤더에 기록하고, notification Binder는 payload가 아니라 이 헤더를 Command에 전달한다. Inbox INSERT가 성공한 consumer만 알림 ID 생성과 Outbox fan-out을 수행하며, 처리 중 실패하면 Inbox row와 Outbox row가 함께 롤백된다. `NotificationSaveEvent`는 event DB와 MongoDB를 하나의 트랜잭션으로 묶지 않고 도메인 자연 키로 재전달을 흡수한다. 기존 수신자 레코드는 `$setOnInsert` upsert로 보존하므로 이미 읽은 알림의 상태를 중복 이벤트가 되돌리지 않는다.
@@ -188,7 +188,7 @@ market-detection은 최초 이벤트 생성 시 무작위 UUID를 만들어 Kafk
 |---|---|---|---|
 | `price-alert-detected-event` | 소비(group `notification`) | `PriceAlertDetectedEvent`(market-detection 생산) | `priceAlertDetectedEventConsumer` → 알림 생성·fan-out |
 | `notification-event` (`.dlq`) | 소비(group `notification`) | `NotificationSaveEvent` | `notificationEventConsumer` → Mongo 영속 |
-| `web-notification-broadcast-event` | 생산(Outbox) | `WebNotificationEvent{payload, notificationId}` | **websocket-gateway** 소비 → STOMP push |
+| `web-notification-broadcast-event` | 생산(Outbox) | `WebNotificationBroadcastEvent{payload, notificationId}` | **websocket-gateway** 소비 → STOMP push |
 
 - consumer 함수: `priceAlertDetectedEventConsumer`, `notificationEventConsumer`(둘 다 `ack-mode: record`, `start-offset: latest`).
 - `WebNotificationPayload`: `{ type, title, body, createdAtMs, link, typedPayload }`. `TypedPayload`는 탐지 원본(가격·평균·변동률 등)을 키-값으로 실어 프론트에 전달.
@@ -221,7 +221,7 @@ market-detection은 최초 이벤트 생성 시 무작위 UUID를 만들어 Kafk
 | 파일 | 이유 |
 |---|---|
 | `market-detection-contract`(`PriceAlertDetectedEvent`) · `common-core/KafkaTopic` | 소비 이벤트/토픽 계약. market-detection과 함께 |
-| `notification-contract/.../WebNotificationEvent`·`WebNotificationPayload` | websocket-gateway가 역직렬화하는 push 계약 |
+| `notification-contract/.../WebNotificationBroadcastEvent`·`WebNotificationPayload` | websocket-gateway가 역직렬화하는 push 계약 |
 | `common-core/PriceAlertChangeRateThreshold` | 임계값 enum. market `FindReceiverIds` 정확 일치와 맞물림 |
 | `MongoNotification`/`MongoNotificationRecipient` 인덱스 | 인박스 커서·unique·읽음 필터 |
 | `RedisNotificationAdapter`·`warmUpNotification.lua`·`common-core/RedisKey`(`NOTIFICATION_MASTER`)·`NotificationEventService`(생성 시 선적재) | master 1차 캐시·선적재. key pattern/hash tag `{noti}`·TTL·LFU 축출 전제는 계약 |

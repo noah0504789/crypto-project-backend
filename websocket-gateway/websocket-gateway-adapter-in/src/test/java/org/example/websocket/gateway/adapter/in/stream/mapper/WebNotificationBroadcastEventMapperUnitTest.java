@@ -1,7 +1,7 @@
 package org.example.websocket.gateway.adapter.in.stream.mapper;
 
 import org.example.common.event.TypedPayload;
-import org.example.notification.contract.event.WebNotificationEvent;
+import org.example.notification.contract.event.WebNotificationBroadcastEvent;
 import org.example.notification.contract.event.WebNotificationPayload;
 import org.example.websocket.gateway.notification.application.service.command.WebNotificationCommand;
 import org.junit.jupiter.api.DisplayName;
@@ -9,9 +9,9 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class WebNotificationEventMapperUnitTest {
+class WebNotificationBroadcastEventMapperUnitTest {
 
-    private final WebNotificationEventMapper sut = new WebNotificationEventMapper();
+    private final WebNotificationBroadcastEventMapper sut = new WebNotificationBroadcastEventMapper();
 
     @Test
     @DisplayName("웹 알림 이벤트의 notificationId를 전송 command에 매핑한다")
@@ -25,7 +25,7 @@ class WebNotificationEventMapperUnitTest {
                 "/price-alerts",
                 TypedPayload.empty()
         );
-        WebNotificationEvent event = WebNotificationEvent.of(payload, "notification-id", "receiver-id");
+        WebNotificationBroadcastEvent event = WebNotificationBroadcastEvent.of(payload, "notification-id", "receiver-id");
 
         // when
         WebNotificationCommand result = sut.toCommand(event);

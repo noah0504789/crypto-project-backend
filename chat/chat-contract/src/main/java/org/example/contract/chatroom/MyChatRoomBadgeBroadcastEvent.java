@@ -11,12 +11,12 @@ import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 
 @ToString
 @Getter
-public class MyChatRoomBadgeEvent extends AbstractOutboxEvent {
+public class MyChatRoomBadgeBroadcastEvent extends AbstractOutboxEvent {
 
     private final MyChatRoomBadgePayload payload;
 
     @JsonCreator
-    public MyChatRoomBadgeEvent(@JsonProperty("payload") MyChatRoomBadgePayload payload) {
+    public MyChatRoomBadgeBroadcastEvent(@JsonProperty("payload") MyChatRoomBadgePayload payload) {
         super(KafkaTopic.CHAT_ROOM_BROADCAST.getTopicName(), payload.id(), payload.id());
         this.payload = payload;
     }
@@ -28,7 +28,7 @@ public class MyChatRoomBadgeEvent extends AbstractOutboxEvent {
 
     @Override
     public String getMessageType() {
-        return MyChatRoomBadgeEvent.class.getName();
+        return MyChatRoomBadgeBroadcastEvent.class.getName();
     }
 
     @Override

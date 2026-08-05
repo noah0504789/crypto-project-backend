@@ -17,7 +17,7 @@ import org.example.notification.application.port.out.PriceAlertNotificationIdGen
 import org.example.notification.application.port.out.PriceAlertRecipientQueryPort;
 import org.example.notification.application.service.command.PriceAlertNotificationCreateCommand;
 import org.example.notification.application.exception.NotificationPersistException;
-import org.example.notification.contract.event.WebNotificationEvent;
+import org.example.notification.contract.event.WebNotificationBroadcastEvent;
 import org.example.notification.contract.event.WebNotificationPayload;
 import org.example.notification.domain.model.Notification;
 import org.springframework.stereotype.Service;
@@ -98,7 +98,7 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
                 recipientPayloads
         );
 
-        WebNotificationEvent webEvent = WebNotificationEvent.of(
+        WebNotificationBroadcastEvent webEvent = WebNotificationBroadcastEvent.of(
                 createWebNotificationPayload(notification, typedPayload),
                 notification.getId(),
                 partitionKey

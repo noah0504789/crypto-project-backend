@@ -206,7 +206,7 @@ UpbitTickerProcessor
 
 근거: `market-detection/.../upbit/UpbitTickerProcessor.java`, `market-detection/market-detection-contract/.../PriceAlertDetectedEvent.java`.
 
-> 참고: 기존 문서는 이 출력 이벤트를 `UpbitTickerAlertEvent`/`WebNotificationEvent`로 기술했으나, 실제 발행 계약은 `PriceAlertDetectedEvent`이며 notification 서비스가 이를 소비해 후속 이벤트를 만든다(§14).
+> 참고: 기존 문서는 이 출력 이벤트를 `UpbitTickerAlertEvent`/`WebNotificationBroadcastEvent`로 기술했으나, 실제 발행 계약은 `PriceAlertDetectedEvent`이며 notification 서비스가 이를 소비해 후속 이벤트를 만든다(§14).
 
 ---
 
@@ -217,14 +217,14 @@ notification KafkaNotificationBinder.priceAlertDetectedEventConsumer (price-aler
  → PriceAlertNotificationCommandService.create
      수신자 조회: PriceAlertRecipientQueryPort → PriceAlertRecipientQueryAdapter
                 → (gRPC market.v1) PriceAlertSettingClient.findReceiverIds(marketCode, changeRate)
- → Outbox 기록(NotificationSaveEvent + WebNotificationEvent)
+ → Outbox 기록(NotificationSaveEvent + WebNotificationBroadcastEvent)
 
 저장:
  notificationEventConsumer → NotificationEventService → MongoNotificationAdapter (MongoDB)
 
 웹 전달:
  Outbox → outbox-poller → Kafka(web-notification-broadcast-event)
- → websocket-gateway KafkaWebsocketGatewayBinder.webNotificationEventConsumer
+ → websocket-gateway KafkaWebsocketGatewayBinder.webNotificationBroadcastEventConsumer
  → STOMP push (/topic/notification/…)
 ```
 

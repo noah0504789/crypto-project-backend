@@ -23,7 +23,7 @@ import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
 import org.example.common.tx.AfterCommitExecutor;
 import org.example.contract.chatmessage.ChatMessageBroadcastEvent;
 import org.example.contract.chatmessage.ChatMessagePayload;
-import org.example.contract.chatroom.MyChatRoomBadgeEvent;
+import org.example.contract.chatroom.MyChatRoomBadgeBroadcastEvent;
 import org.example.contract.chatroom.MyChatRoomBadgePayload;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
@@ -134,7 +134,7 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
                     ChatMessageEventList.of(
                             new ChatMessagePersistEvent(chatMessagePayload, memberIds),
                             new ChatMessageBroadcastEvent(chatMessagePayload, memberIds, clientMessageId),
-                            new MyChatRoomBadgeEvent(myChatRoomBadgePayload)
+                            new MyChatRoomBadgeBroadcastEvent(myChatRoomBadgePayload)
                     );
 
             outboxEventListPublishPort.publish(chatMessageEventList);

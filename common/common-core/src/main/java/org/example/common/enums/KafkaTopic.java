@@ -15,7 +15,7 @@ public enum KafkaTopic {
     NOTIFICATION("notification-event", "notification-event.dlq", null),
     WEB_NOTIFICATION_BROADCAST("web-notification-broadcast-event", "web-notification-broadcast-event.dlq", "web-notification-broadcast-event-out"),
 
-    MARKET_CHANGED_BROADCAST("market-broadcast-event", null, null),
+    MARKET_CATALOG_CHANGED_BROADCAST("market-broadcast-event", null, null),
     PRICE_ALERT_DETECTED(null, null, "price-alert-detected-event-out");
 
     private final String topicName;

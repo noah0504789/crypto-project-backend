@@ -6,7 +6,7 @@
 > - **검증 기준**: 실제 애플리케이션 코드 및 Config Repository(`git-config-repo/`)
 > - **재검증 조건**: 아래 중 하나라도 변경되면 이 문서를 다시 검증한다.
 >   - STOMP 엔드포인트·prefix·destination(`StompConfig`, `common-core/StompDestination`, `websocket-gateway.yml`) 변경
->   - Kafka 소비 바인딩(`websocket-gateway.yml`의 `spring.cloud.stream.*`) 또는 소비 계약(`ChatMessageBroadcastEvent`, `MyChatRoomBadgeEvent`, `WebNotificationEvent`) 변경
+>   - Kafka 소비 바인딩(`websocket-gateway.yml`의 `spring.cloud.stream.*`) 또는 소비 계약(`ChatMessageBroadcastEvent`, `MyChatRoomBadgeBroadcastEvent`, `WebNotificationBroadcastEvent`) 변경
 >   - gRPC 소비 계약(`chatmessage.v1`, `GrpcChatMessageCommandAdapter`) 변경
 >   - STOMP wire payload(`StompChatMessagePayload`, `*AckPayload`, `*BadgePayload`, `*WebNotificationPayload`) 변경
 >   - 세션 위치(`LocalSessionCache`, `RedisSessionLocationAdapter`, `WebSocketSessionEventHandler`) 변경
@@ -46,7 +46,7 @@
 | `websocket-gateway-bootstrap` | 실행 | `Main`, `application.yml`, OTEL agent | 위 3개 + actuator/config/eureka/bus/prometheus |
 
 - 서브도메인: `chatmessage`(송신·브로드캐스트), `chatroom`(뱃지), `notification`(push), `session`(위치).
-- 소비 계약을 위해 adapter-in이 `chat-contract`(`ChatMessageBroadcastEvent`, `MyChatRoomBadgeEvent`)·`notification-contract`(`WebNotificationEvent`)에, adapter-out이 `chat-client`(gRPC)에 의존한다.
+- 소비 계약을 위해 adapter-in이 `chat-contract`(`ChatMessageBroadcastEvent`, `MyChatRoomBadgeBroadcastEvent`)·`notification-contract`(`WebNotificationBroadcastEvent`)에, adapter-out이 `chat-client`(gRPC)에 의존한다.
 
 ## 5. 인바운드 — 메시지 송신 (STOMP → gRPC → ACK)
 
@@ -77,16 +77,16 @@
 | 컨슈머 이벤트 | 하는 일 | 사용한 전략 |
 |---|---|---|
 | `ChatMessageBroadcastEvent` | 로컬 세션의 채팅방 구독자에게 STOMP 메시지 push | 각 클라이언트가 안정적인 `messageId`로 중복 제거; 서버 push는 best-effort |
-| `MyChatRoomBadgeEvent` | 로컬 사용자 세션에 방 배지 상태 push | 최신 상태를 다시 적용할 수 있는 payload와 클라이언트 상태 갱신으로 수렴 |
-| `WebNotificationEvent` | 로컬 사용자 세션에 알림 push | 안정적인 `notificationId`로 클라이언트 중복 제거; 영속 알림함 REST 조회로 reconciliation |
+| `MyChatRoomBadgeBroadcastEvent` | 로컬 사용자 세션에 방 배지 상태 push | 최신 상태를 다시 적용할 수 있는 payload와 클라이언트 상태 갱신으로 수렴 |
+| `WebNotificationBroadcastEvent` | 로컬 사용자 세션에 알림 push | 안정적인 `notificationId`로 클라이언트 중복 제거; 영속 알림함 REST 조회로 reconciliation |
 
 세 consumer는 인스턴스별 group으로 모든 gateway 인스턴스가 처리해야 한다. 공유 `(consumer_name,event_id)` Inbox를 적용하면 한 인스턴스의 선점이 다른 인스턴스의 로컬 세션 전송을 차단하므로 사용하지 않는다. Kafka `event_id`는 로그·추적에 사용하며, 서버 측 중복 억제가 필요해지면 공유 키가 아니라 `(instanceId,eventId)` 범위의 짧은 best-effort 기록만 고려한다. STOMP 전송은 DB 트랜잭션으로 원자화할 수 없으므로 exactly-once로 간주하지 않는다.
 
 | consumer | 소비 토픽 | 이벤트 | push 대상(로컬 세션 보유 시) |
 |---|---|---|---|
 | `chatMessageBroadcastEventConsumer` | `chatmessage-broadcast-event` | `ChatMessageBroadcastEvent{payload, memberIds, clientMessageId}` | `/topic/chat/{roomId}`(방 공유 토픽), memberIds에 로컬 세션 있으면 전송 |
-| `myChatRoomBadgeEventConsumer` | `chatroom-broadcast-event` | `MyChatRoomBadgeEvent` | 멤버별 `/user/queue/chat/badge` |
-| `webNotificationEventConsumer` | `web-notification-broadcast-event` | `WebNotificationEvent` | 수신자 `/user/topic/notification/` |
+| `myChatRoomBadgeBroadcastEventConsumer` | `chatroom-broadcast-event` | `MyChatRoomBadgeBroadcastEvent` | 멤버별 `/user/queue/chat/badge` |
+| `webNotificationBroadcastEventConsumer` | `web-notification-broadcast-event` | `WebNotificationBroadcastEvent` | 수신자 `/user/topic/notification/` |
 
 - **로컬 세션 필터링**: 각 push 어댑터가 `LocalSessionCache.hasUser(...)`로 이 인스턴스에 연결된 사용자만 전송한다. 없으면 skip(로그). 사용자가 붙어 있는 인스턴스가 실제 전달을 담당한다.
 - **memberIds는 로컬 라우팅용**(wire에 싣지 않음): `ChatMessageBroadcastEvent`는 nested `payload`+`memberIds`지만, `/topic/chat/{roomId}`로 나가는 wire는 flat `StompChatMessagePayload{ messageId, roomId, writerId, content, timestamp(long), clientMessageId }`다(§8). 변환은 `ChatMessageBroadcastEventMapper` → `StompChatMessagePayload.from`.
