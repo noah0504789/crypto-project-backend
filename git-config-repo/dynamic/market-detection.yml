@@ -22,6 +22,7 @@ spring:
           destination: upbit-ticker-event
           content-type: application/json
           producer:
+            use-native-encoding: false
             poller:
               fixed-delay:
                 nanos: 500_000_000 # 0.5s

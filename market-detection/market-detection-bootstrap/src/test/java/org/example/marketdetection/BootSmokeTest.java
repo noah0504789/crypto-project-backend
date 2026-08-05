@@ -4,9 +4,13 @@ import org.example.common.test.testcontainer.KafkaTestContainerInitializer;
 import org.example.marketdetection.upbit.UpbitWebsocketClientStarter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.env.Environment;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 부팅 스모크: Config Server 없이 실제 git-config-repo 설정 + Testcontainers(kafka)로
@@ -31,11 +35,18 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 @ContextConfiguration(initializers = KafkaTestContainerInitializer.class)
 class BootSmokeTest {
 
+    @Autowired
+    Environment environment;
+
     @MockitoBean
     UpbitWebsocketClientStarter upbitWebsocketClientStarter;
 
     @Test
-    @DisplayName("ApplicationContext가 정상 부팅된다")
+    @DisplayName("ApplicationContext가 정상 부팅되고 Upbit ticker 출력은 JSON 메시지 변환을 사용한다")
     void contextLoads() {
+        assertThat(environment.getProperty(
+                "spring.cloud.stream.bindings.upbitTickerEventSupplier-out-0.producer.use-native-encoding",
+                Boolean.class
+        )).isFalse();
     }
 }
