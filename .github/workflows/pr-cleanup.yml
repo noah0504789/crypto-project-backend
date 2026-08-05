@@ -1,4 +1,4 @@
-name: PR image cleanup
+name: PR cleanup
 
 # 머지되지 않고 닫힌 PR 의 pr-<번호> 태그를 지운다.
 #
@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  actions: write   # 캐시 삭제에 필요
 
 jobs:
   delete-pr-tags:
@@ -70,3 +71,38 @@ jobs:
           # 정리 실패가 머지를 막지 않게 한다. 경고만 남긴다.
           [ "$FAILED" = "1" ] && echo "::warning::일부 태그를 지우지 못했다. 위 로그를 확인한다."
           exit 0
+
+  # 브랜치 스코프 캐시는 PR 이 닫히면 쓸 곳이 없다. 저장소 한도(10GB)를 갉아먹으므로 지운다.
+  # setup-gradle 기본값(비-기본브랜치는 read-only) 덕에 새로 생기는 양은 적지만,
+  # read-only 가 아닌 실행이나 과거 캐시가 남을 수 있어 닫힐 때마다 정리한다.
+  delete-pr-caches:
+    name: Delete PR caches
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Delete caches of this PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_REF: refs/pull/${{ github.event.pull_request.number }}/merge
+        run: |
+          set -uo pipefail
+
+          IDS=$(gh api "repos/${REPO}/actions/caches?ref=${PR_REF}&per_page=100" \
+            --jq '.actions_caches[].id' 2>/dev/null || true)
+
+          if [ -z "$IDS" ]; then
+            echo "삭제할 캐시 없음: ${PR_REF}"
+            exit 0
+          fi
+
+          for ID in $IDS; do
+            if gh api -X DELETE "repos/${REPO}/actions/caches/${ID}" >/dev/null 2>&1; then
+              echo "삭제: cache id=${ID}"
+            else
+              echo "::warning::cache id=${ID} 삭제 실패"
+            fi
+          done
+
+          gh api "repos/${REPO}/actions/cache/usage" \
+            --jq '"남은 사용량: \(.active_caches_size_in_bytes/1024/1024/1024*100|round/100)GB / \(.active_caches_count)개"'

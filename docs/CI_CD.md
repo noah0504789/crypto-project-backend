@@ -7,7 +7,7 @@
 | 이름 | 파일 | 트리거 | 러너 | 목적 |
 |---|---|---|---|---|
 | Backend CI | `ci.yml` | PR→main, push→main, 수동 | `ubuntu-latest` | 영향 모듈만 빌드·테스트, 머지 시 PR 이미지 승격 |
-| PR image cleanup | `pr-image-cleanup.yml` | PR closed | `ubuntu-latest` | `pr-<번호>` 태그 삭제 |
+| PR cleanup | `pr-cleanup.yml` | PR closed | `ubuntu-latest` | `pr-<번호>` 태그·브랜치 캐시 삭제 |
 | Backend CD | `cd.yml` | 수동만 | self-hosted `[local, backend]` · env `production` | 서비스별 운영 배포 |
 | Spring Cloud Config Bus Refresh | `spring-cloud-config-bus.yml` | push→main (`git-config-repo/**`) | self-hosted · env `production` | 동적 설정 변경 시 busrefresh |
 | Production Environment Test | `production-environment-test.yml` | 수동 | self-hosted · env `production` | production 승인·환경 스모크 |
@@ -67,11 +67,39 @@ PR 태그 정리는 경로가 둘로 나뉜다. **머지는 `push`(main)와 `pul
 
 ### 2.3 빌드 캐시
 
-`gradle.properties` 의 `org.gradle.caching=true` 로 task 출력을 재사용한다. `actions/setup-java` 의 `cache: gradle` 이 `~/.gradle` 을 보존하므로 실행 간에 살아남는다. `clean` 을 해도 입력 해시가 같은 task 는 캐시에서 복원되며, `test` task 도 대상이라 안 바뀐 서비스의 Testcontainers 기동이 통째로 사라진다.
+`gradle.properties` 의 `org.gradle.caching=true` 로 task 출력을 재사용하고, `gradle/actions/setup-gradle` 이 그 캐시를 GitHub Actions 캐시에 보존한다.
+
+`actions/setup-java` 의 `cache: gradle` 은 쓰지 않는다 — `~/.gradle` 전체를 한 키(gradle 파일 해시)로 다루는 **의존성 캐시**라, 키가 그대로면 저장을 건너뛰어 그 실행에서 만든 build cache 항목이 유실된다. `setup-gradle` 은 Gradle 전용이라 항목을 증분 저장하고 stale 항목을 정리한다.
+
+`cache-read-only` 는 기본값(기본 브랜치가 아니면 읽기 전용)을 쓴다. PR 브랜치마다 수백 MB 가 쌓이는 것을 막고 PR 은 main 캐시를 읽기만 한다. 저장소 캐시 한도는 10GB 이며 초과 시 LRU 로 축출된다. `clean` 을 해도 입력 해시가 같은 task 는 캐시에서 복원되며, `test` task 도 대상이라 안 바뀐 서비스의 Testcontainers 기동이 통째로 사라진다.
 
 **`org.gradle.parallel` 은 켜지 않는다.** 여러 모듈의 `BootSmokeTest` 가 Testcontainers 를 동시에 띄우며 기동 타임아웃으로 CI 가 깨졌고, 전체 시간도 오히려 늘었다(실측 7분 → 13분).
 
 GitHub Actions 캐시는 브랜치 스코프라 **PR 이 만든 캐시를 머지 실행이 읽지는 못한다.** 캐시는 각 실행을 빠르게 할 뿐이고, 중복 제거는 §2.1 이 담당한다.
+
+### 2.3.1 캐시 종류 정리
+
+여러 캐시가 얽혀 있어 혼동하기 쉽다. **①②는 "무엇을 담나", ③은 "어떻게 실행 간에 살아남나"** 로 층이 다르다.
+
+| # | 이름 | 담는 것 | 위치 | 판정 기준 | 이 저장소 설정 |
+|---|---|---|---|---|---|
+| ① | Gradle **build cache** | task **출력**(class·테스트 결과) | `~/.gradle/caches/build-cache-1` | **task 입력 해시**(소스·클래스패스·옵션) | `gradle.properties` 의 `org.gradle.caching=true` |
+| ② | Gradle **의존성 캐시** | 내려받은 jar | `~/.gradle/caches/modules-2` | 좌표+버전 | Gradle 기본(항상) |
+| ③ | **GitHub Actions 캐시** | ①②를 압축해 보관 | GitHub 별도 저장소(**10GB**) | 액션이 정한 키 | `gradle/actions/setup-gradle` |
+| ④ | Gradle up-to-date | (캐시 아님) `build/` 산출물 | 작업 디렉토리 | 입력·출력 변경 여부 | 자동. **CI 는 매번 새 머신이라 항상 없음** |
+| ⑤ | Docker 레이어 캐시 | 이미지 레이어 | buildx | Dockerfile 명령·컨텍스트 | **사용 안 함** |
+
+```
+러너 VM (실행마다 생성, 끝나면 파괴)
+ └─ ~/.gradle/caches/
+      ├─ build-cache-1/   ①
+      └─ modules-2/       ②
+            ↑ 시작 시 복원 / 끝날 때 저장
+            ↓
+      GitHub Actions 캐시 저장소 ③   ← 유일하게 실행 간 살아남는다
+```
+
+**브랜치 스코프**는 ③의 접근 규칙이다. `main` 캐시는 PR 실행이 읽을 수 있지만 그 반대는 안 되고, PR 끼리도 서로 못 읽는다. 그래서 `cache-read-only` 기본값으로 PR 브랜치는 캐시를 만들지 않게 두고, 닫힌 PR 의 잔여 캐시는 `pr-cleanup.yml` 이 지운다(§5). 한도 초과 시 LRU 로 축출되므로 방치하면 유용한 `main` 캐시가 밀려난다.
 
 ### 2.4 diff base
 
@@ -145,7 +173,9 @@ git-config-repo/dynamic/*.yml 수정 → main push
 
 - `production-environment-test.yml`: 수동, self-hosted + env `production`. 러너/사용자/날짜만 출력 — **production Environment 승인 흐름과 러너 동작을 점검하는 스모크 테스트**.
 - `self-hosted-runner-test.yml`: 수동, self-hosted(환경 게이트 없음). hostname/whoami/uname/docker 버전 출력 — **러너 연결·도구 확인용**.
-- `pr-image-cleanup.yml`: **머지되지 않고** 닫힌 PR(`pull_request: closed` + `merged == false`)의 `pr-<번호>` 태그를 지운다. 머지된 PR 은 `ci.yml` `merge-ci` 가 승격 직후 처리한다(§2.2). 대상 이미지는 각 실행 모듈 `build.gradle` 의 `ext.dockerImageName` 에서 읽는다(정본). `<sha7>`·`latest` 는 건드리지 않는다.
+- `pr-cleanup.yml`: PR 이 닫히면 두 가지를 정리한다.
+  - `delete-pr-tags`: **머지되지 않은** PR(`merged == false`)의 `pr-<번호>` 이미지 태그. 머지된 PR 은 `ci.yml` `merge-ci` 가 승격 직후 처리한다(§2.2).
+  - `delete-pr-caches`: 그 PR 의 브랜치 스코프 GitHub Actions 캐시(`refs/pull/<N>/merge`). 머지 여부와 무관하게 실행한다. `actions: write` 권한이 필요하다. 대상 이미지는 각 실행 모듈 `build.gradle` 의 `ext.dockerImageName` 에서 읽는다(정본). `<sha7>`·`latest` 는 건드리지 않는다.
   - **실패해도 job 을 죽이지 않는다**(경고만). 정리 실패가 개발 흐름을 막지 않게 한 것이며, `DOCKERHUB_TOKEN` 에 Delete 스코프가 없으면 403 경고가 남는다.
   - fork PR 은 대상에서 제외된다(시크릿 없음 → 애초에 push 되지 않았다).
 
