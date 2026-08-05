@@ -7,6 +7,7 @@ import org.example.common.event.TypedPayload;
 import org.example.common.inbox.application.service.InboxService;
 import org.example.common.inbox.exception.DuplicateInboxException;
 import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
+import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
 import org.example.notification.application.event.NotificationEventList;
 import org.example.notification.application.event.NotificationSaveEvent;
@@ -24,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -67,8 +69,7 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
         NotificationEventList eventList = createPriceAlertNotificationEvents(
                 notification,
                 recipientPayloads,
-                command.typedPayload(),
-                command.partitionKey()
+                command.typedPayload()
         );
 
         publishNotificationEvents(eventList);
@@ -90,21 +91,27 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
     private NotificationEventList createPriceAlertNotificationEvents(
             Notification notification,
             List<NotificationRecipientPayload> recipientPayloads,
-            TypedPayload typedPayload,
-            String partitionKey
+            TypedPayload typedPayload
     ) {
         NotificationSaveEvent saveEvent = NotificationSaveEvent.from(
                 NotificationPayload.from(notification),
                 recipientPayloads
         );
 
-        WebNotificationBroadcastEvent webEvent = WebNotificationBroadcastEvent.of(
-                createWebNotificationPayload(notification, typedPayload),
-                notification.getId(),
-                partitionKey
-        );
+        WebNotificationPayload webNotificationPayload = createWebNotificationPayload(notification, typedPayload);
 
-        return NotificationEventList.of(saveEvent, webEvent);
+        List<AbstractOutboxEvent> events = new ArrayList<>();
+        events.add(saveEvent);
+        recipientPayloads.stream()
+                .map(NotificationRecipientPayload::receiverId)
+                .map(receiverId -> WebNotificationBroadcastEvent.of(
+                        webNotificationPayload,
+                        notification.getId(),
+                        receiverId.toString()
+                ))
+                .forEach(events::add);
+
+        return NotificationEventList.of(events.toArray(AbstractOutboxEvent[]::new));
     }
 
     private WebNotificationPayload createWebNotificationPayload(Notification notification, TypedPayload typedPayload) {

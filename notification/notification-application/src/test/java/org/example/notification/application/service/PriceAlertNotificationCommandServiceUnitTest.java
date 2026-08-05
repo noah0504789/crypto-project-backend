@@ -67,7 +67,6 @@ class PriceAlertNotificationCommandServiceUnitTest {
     private static final String CODE = "KRW-BTC";
     private static final Double CHANGE_RATE = 0.05;
     private static final String THRESHOLD = "3";
-    private static final String PARTITION_KEY = "KRW-BTC";
     private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, 1, 1, 10, 0);
     private static final long CREATED_AT_MS = 1767229200000L;
 
@@ -130,7 +129,8 @@ class PriceAlertNotificationCommandServiceUnitTest {
 
             NotificationPayload notificationPayload = mock(NotificationPayload.class);
             NotificationSaveEvent saveEvent = mock(NotificationSaveEvent.class);
-            WebNotificationBroadcastEvent webEvent = mock(WebNotificationBroadcastEvent.class);
+            WebNotificationBroadcastEvent webEvent1 = mock(WebNotificationBroadcastEvent.class);
+            WebNotificationBroadcastEvent webEvent2 = mock(WebNotificationBroadcastEvent.class);
             NotificationEventList eventList = mock(NotificationEventList.class);
 
             givenCommon();
@@ -162,10 +162,15 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 webEventStatic.when(() -> WebNotificationBroadcastEvent.of(
                         any(WebNotificationPayload.class),
                         eq(NOTIFICATION_ID),
-                        eq(PARTITION_KEY)
-                )).thenReturn(webEvent);
+                        eq(receiverId1.toString())
+                )).thenReturn(webEvent1);
+                webEventStatic.when(() -> WebNotificationBroadcastEvent.of(
+                        any(WebNotificationPayload.class),
+                        eq(NOTIFICATION_ID),
+                        eq(receiverId2.toString())
+                )).thenReturn(webEvent2);
 
-                eventListStatic.when(() -> NotificationEventList.of(saveEvent, webEvent))
+                eventListStatic.when(() -> NotificationEventList.of(saveEvent, webEvent1, webEvent2))
                         .thenReturn(eventList);
 
                 // when
@@ -212,10 +217,15 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 webEventStatic.verify(() -> WebNotificationBroadcastEvent.of(
                         webPayloadCaptor.capture(),
                         eq(NOTIFICATION_ID),
-                        eq(PARTITION_KEY)
+                        eq(receiverId1.toString())
+                ));
+                webEventStatic.verify(() -> WebNotificationBroadcastEvent.of(
+                        webPayloadCaptor.capture(),
+                        eq(NOTIFICATION_ID),
+                        eq(receiverId2.toString())
                 ));
 
-                WebNotificationPayload webPayload = webPayloadCaptor.getValue();
+                WebNotificationPayload webPayload = webPayloadCaptor.getAllValues().get(0);
 
                 assertThat(webPayload.type()).isEqualTo(NotificationType.PRICE_ALERT.name());
                 assertThat(webPayload.title()).isEqualTo("가격 알림");
@@ -224,14 +234,16 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 assertThat(webPayload.link()).isNull();
                 assertThat(webPayload.typedPayload()).isSameAs(typedPayload);
 
-                eventListStatic.verify(() -> NotificationEventList.of(saveEvent, webEvent));
+                assertThat(webPayloadCaptor.getAllValues()).containsOnly(webPayload);
+
+                eventListStatic.verify(() -> NotificationEventList.of(saveEvent, webEvent1, webEvent2));
 
                 verify(outboxEventListPublishPort).publish(eventList);
             }
         }
 
         @Test
-        @DisplayName("수신자가 없어도 빈 recipient 목록으로 Notification 이벤트를 발행한다")
+        @DisplayName("수신자가 없으면 빈 recipient 목록의 저장 이벤트만 발행한다")
         void create_should_publish_notification_event_even_if_receivers_are_empty() {
             // given
             PriceAlertNotificationCreateCommand command = mockCommand();
@@ -242,7 +254,6 @@ class PriceAlertNotificationCommandServiceUnitTest {
 
             NotificationPayload notificationPayload = mock(NotificationPayload.class);
             NotificationSaveEvent saveEvent = mock(NotificationSaveEvent.class);
-            WebNotificationBroadcastEvent webEvent = mock(WebNotificationBroadcastEvent.class);
             NotificationEventList eventList = mock(NotificationEventList.class);
 
             givenCommon();
@@ -271,13 +282,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 saveEventStatic.when(() -> NotificationSaveEvent.from(eq(notificationPayload), any()))
                         .thenReturn(saveEvent);
 
-                webEventStatic.when(() -> WebNotificationBroadcastEvent.of(
-                        any(WebNotificationPayload.class),
-                        eq(NOTIFICATION_ID),
-                        eq(PARTITION_KEY)
-                )).thenReturn(webEvent);
-
-                eventListStatic.when(() -> NotificationEventList.of(saveEvent, webEvent))
+                eventListStatic.when(() -> NotificationEventList.of(saveEvent))
                         .thenReturn(eventList);
 
                 // when
@@ -294,6 +299,8 @@ class PriceAlertNotificationCommandServiceUnitTest {
 
                 assertThat(recipientsCaptor.getValue()).isEmpty();
 
+                webEventStatic.verifyNoInteractions();
+                eventListStatic.verify(() -> NotificationEventList.of(saveEvent));
                 verify(outboxEventListPublishPort).publish(eventList);
             }
         }
@@ -395,7 +402,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 webEventStatic.when(() -> WebNotificationBroadcastEvent.of(
                         any(WebNotificationPayload.class),
                         eq(NOTIFICATION_ID),
-                        eq(PARTITION_KEY)
+                        eq(receiverId1.toString())
                 )).thenReturn(webEvent);
 
                 eventListStatic.when(() -> NotificationEventList.of(saveEvent, webEvent))
@@ -459,7 +466,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 webEventStatic.when(() -> WebNotificationBroadcastEvent.of(
                         any(WebNotificationPayload.class),
                         eq(NOTIFICATION_ID),
-                        eq(PARTITION_KEY)
+                        eq(receiverId1.toString())
                 )).thenReturn(webEvent);
 
                 eventListStatic.when(() -> NotificationEventList.of(saveEvent, webEvent))
@@ -544,7 +551,6 @@ class PriceAlertNotificationCommandServiceUnitTest {
         TypedPayload typedPayload = mock(TypedPayload.class);
 
         given(command.typedPayload()).willReturn(typedPayload);
-        given(command.partitionKey()).willReturn(PARTITION_KEY);
 
         return typedPayload;
     }
