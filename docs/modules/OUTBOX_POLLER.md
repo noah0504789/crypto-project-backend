@@ -38,11 +38,11 @@ Transactional Outbox 패턴의 **공용 릴레이**. 모든 서비스가 자기 
 
 | 스케줄러 · 메서드 | 대상 | fixed-delay | batch | max-retry | 게이트 |
 |---|---|---|---|---|---|
-| `OutboxEventScheduler.pollGeneral` | Outbox `GENERAL` | 2500ms | 1000 | 3 | `poller.outbox.general.enabled` |
-| `OutboxEventScheduler.pollBroadcast` | Outbox `BROADCAST` | 100ms | 1000 | 3 | `poller.outbox.broadcast.enabled` |
+| `OutboxEventScheduler.pollGeneral` | Outbox `GENERAL` | 5000ms | 1000 | 3 | `poller.outbox.general.enabled` |
+| `OutboxEventScheduler.pollBroadcast` | Outbox `BROADCAST` | 300ms | 1000 | 3 | `poller.outbox.broadcast.enabled` |
 | `DlqEventScheduler.poll` | DLQ | 10000ms | 100 | — | `DlqPollerState.isEnabled()` |
 
-- **dispatchType 분리**: 실시간성이 중요한 `BROADCAST`(chat/notification push 등)는 100ms로 빠르게, 일반 `GENERAL`은 2.5s로 폴링한다. `OutboxService.publishPending(dispatchType)`가 `findByDispatchTypeAndStatusOrderByCreatedAtAsc(dispatchType, PENDING, batchSize)`로 오래된 것부터 조회.
+- **dispatchType 분리**: 실시간성이 중요한 `BROADCAST`(chat/notification push 등)는 300ms로 빠르게, 일반 `GENERAL`은 5s로 폴링한다. `OutboxService.publishPending(dispatchType)`가 `findByDispatchTypeAndStatusOrderByCreatedAtAsc(dispatchType, PENDING, batchSize)`로 오래된 것부터 조회.
 - **Outbox 발행 결과**(`OutboxService.publishPending`, `@Transactional("transactionManager")`): 성공 → `markPublished()`; 실패 → `increaseRetryCnt()`, `retryCnt >= maxRetryCnt`면 `markFailed()`. 상태 전이는 같은 트랜잭션에서 영속된다.
 - **DLQ 발행 결과**(`DlqService.publishPending`): 성공 → `markPublished()`; 실패 → `markPublishFailed()`(재시도 카운트 개념 없음). PENDING을 `createdAt asc`로 batch 조회.
 
@@ -56,7 +56,7 @@ Transactional Outbox 패턴의 **공용 릴레이**. 모든 서비스가 자기 
 
 ### DLQ 런타임 제어 (REST)
 - `DlqPollerController`: `PUT /dlq-poller/start`, `PUT /dlq-poller/stop`(경로는 `api-path.dlq-poller.*`). `DlqPollerState`(`AtomicBoolean`)를 토글해 DLQ 폴링을 런타임에 켜고 끈다.
-- 초기 상태는 `DlqPollerStateInitializer`(`@PostConstruct`)가 `poller.dlq.enabled`로 설정.
+- `DlqPollerState` 자체와 `poller.dlq.enabled`의 초기값은 모두 `false`다. 재기동 후 DLQ 재발행은 자동으로 시작하지 않으며, 운영자가 `PUT /dlq-poller/start`를 호출한 경우에만 실행된다.
 - **관찰**: 이 제어 엔드포인트에 모듈 계층 인증이 확인되지 않는다(스타터는 `web`, security 없음). 정지 시 DLQ 재처리가 멈추므로 접근 통제 전제 확인 필요 → §7, TODO.
 
 ### 트랜잭션 경계와 보장 수준

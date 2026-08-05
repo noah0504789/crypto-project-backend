@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Component
 public class DlqPollerState {
 
-    private final AtomicBoolean enabled = new AtomicBoolean(true);
+    private final AtomicBoolean enabled = new AtomicBoolean(false);
 
     public boolean isEnabled() {
         return enabled.get();

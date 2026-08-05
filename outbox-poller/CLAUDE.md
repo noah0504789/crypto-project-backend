@@ -16,10 +16,10 @@ Transactional Outbox 패턴의 **공용 릴레이**(단일 모듈, `crypto-boots
 ## 주요 변경 규칙
 
 - **발행 헤더·목적지 계약 보존**: `KafkaEventFactory`가 생성하는 헤더(`KafkaHeaders.KEY`, `event_id`, `transaction_id`, `dlq_id`, `__TypeId__`)와 `KafkaEventPublisher`가 선택하는 목적지(`Outbox.getDestination()`=`aggregateType`=토픽)는 모든 소비자가 의존하는 계약이다. `event_id`는 Outbox/DLQ 레코드 ID를 사용해 재발행에도 동일하게 유지한다. 임의 변경 금지(→ `../.claude/rules/external-contracts.md`).
-- **폴링 정책은 Config**: 주기/배치/재시도는 `../git-config-repo/dynamic/outbox-poller.yml`의 `poller.*`. `BROADCAST`(100ms)와 `GENERAL`(2500ms) 분리, DLQ(10000ms)를 유지한다. 스케줄 상수를 코드에 하드코딩하지 않는다.
+- **폴링 정책은 Config**: 주기/배치/재시도는 `../git-config-repo/dynamic/outbox-poller.yml`의 `poller.*`. `BROADCAST`(300ms)와 `GENERAL`(5000ms) 분리, DLQ(10000ms)를 유지한다. 스케줄 상수를 코드에 하드코딩하지 않는다.
 - **상태 전이는 도메인 메서드로**: 폴링 성공/실패 처리는 common-outbox의 `OutboxService.publishPending`/`DlqService.publishPending`가 담당한다. 여기서 직접 SQL로 상태를 바꾸지 않는다. 실패 시 재시도/`FAILED` 전이 로직(retryCnt, maxRetryCnt)을 우회하지 않는다.
 - **at-least-once 전제 유지**: Kafka 트랜잭션이 비활성(주석)이라 send 성공 후 `markPublished` 반영 전 크래시 시 중복 발행이 가능하다. 소비자 멱등성 전제를 깨는 변경(트랜잭션 on/off, 발행 순서)은 전 소비자 영향을 함께 본다.
-- **DLQ 제어 상태**: `DlqPollerState`(AtomicBoolean)는 `DlqEventScheduler`의 게이트다. `DlqPollerController`(`PUT /dlq-poller/start|stop`)로 토글, 초기값은 `DlqPollerStateInitializer`가 `poller.dlq.enabled`로 설정. 이 제어 엔드포인트는 인증이 확인되지 않으니(§확인 필요) 노출/통제 변경은 게이트웨이·네트워크 격리와 함께 본다(→ `../.claude/rules/security.md`).
+- **DLQ 제어 상태**: `DlqPollerState`(AtomicBoolean)는 `DlqEventScheduler`의 게이트이며 fail-safe 초기값은 `false`다. `DlqPollerController`(`PUT /dlq-poller/start|stop`)로 토글하고, 기동 시 `DlqPollerStateInitializer`가 `poller.dlq.enabled`(운영 기본 `false`)로 설정한다. 이 제어 엔드포인트는 인증이 확인되지 않으니(§확인 필요) 노출/통제 변경은 게이트웨이·네트워크 격리와 함께 본다(→ `../.claude/rules/security.md`).
 - **event 스키마는 공유 계약**: `outbox-poller/src/main/resources/sql/schema.sql`의 `outbox`/`dlq` 테이블·인덱스는 **모든 서비스가 기록하는 대상**이다. 컬럼/인덱스 변경은 common-outbox 엔티티(`Outbox`/`Dlq`)·생산 서비스 전체와 함께 본다.
 
 ## 주요 파일 안내
