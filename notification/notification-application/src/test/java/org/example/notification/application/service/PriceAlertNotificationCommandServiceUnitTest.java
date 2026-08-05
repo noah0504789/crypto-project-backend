@@ -146,6 +146,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
         void create_should_create_notification_events_and_publish() {
             // given
             PriceAlertNotificationCreateCommand command = mockCommand();
+            givenNotificationCommandFields(command);
             TypedPayload typedPayload = givenWebNotificationCommandFields(command);
 
             Notification notification = mockNotification();
@@ -267,65 +268,32 @@ class PriceAlertNotificationCommandServiceUnitTest {
         }
 
         @Test
-        @DisplayName("수신자가 없으면 빈 recipient 목록의 저장 이벤트만 발행한다")
-        void create_should_publish_notification_event_even_if_receivers_are_empty() {
+        @DisplayName("수신자가 없으면 알림 이벤트를 발행하지 않는다")
+        void create_should_skip_notification_when_receivers_are_empty() {
             // given
             PriceAlertNotificationCreateCommand command = mockCommand();
-            givenWebNotificationCommandFields(command);
-
-            Notification notification = mockNotification();
-            givenWebNotificationFields(notification);
-
-            NotificationPayload notificationPayload = mock(NotificationPayload.class);
-            NotificationSaveEvent saveEvent = mock(NotificationSaveEvent.class);
-            NotificationEventList eventList = mock(NotificationEventList.class);
-
-            givenCommon();
 
             given(priceAlertRecipientQueryPort.findReceiverIds(CODE, THRESHOLD))
                     .willReturn(List.of());
 
             try (
                     MockedStatic<Notification> notificationStatic = mockStatic(Notification.class);
-                    MockedStatic<NotificationPayload> notificationPayloadStatic = mockStatic(NotificationPayload.class);
                     MockedStatic<NotificationSaveEvent> saveEventStatic = mockStatic(NotificationSaveEvent.class);
                     MockedStatic<WebNotificationBroadcastEvent> webEventStatic = mockStatic(WebNotificationBroadcastEvent.class);
                     MockedStatic<NotificationEventList> eventListStatic = mockStatic(NotificationEventList.class)
             ) {
-                notificationStatic.when(() -> Notification.createPriceAlert(
-                        NOTIFICATION_ID,
-                        CODE,
-                        CHANGE_RATE,
-                        PAYLOAD,
-                        CREATED_AT
-                )).thenReturn(notification);
-
-                notificationPayloadStatic.when(() -> NotificationPayload.from(notification))
-                        .thenReturn(notificationPayload);
-
-                saveEventStatic.when(() -> NotificationSaveEvent.from(eq(notificationPayload), any()))
-                        .thenReturn(saveEvent);
-
-                eventListStatic.when(() -> NotificationEventList.of(saveEvent))
-                        .thenReturn(eventList);
-
                 // when
                 sut.create(command);
 
                 // then
-                ArgumentCaptor<List<NotificationRecipientPayload>> recipientsCaptor =
-                        ArgumentCaptor.forClass(List.class);
-
-                saveEventStatic.verify(() -> NotificationSaveEvent.from(
-                        eq(notificationPayload),
-                        recipientsCaptor.capture()
-                ));
-
-                assertThat(recipientsCaptor.getValue()).isEmpty();
-
+                verify(priceAlertRecipientQueryPort).findReceiverIds(CODE, THRESHOLD);
+                verify(idGeneratorPort, never()).generate();
+                verify(clock, never()).nowLocalDateTime();
+                notificationStatic.verifyNoInteractions();
+                saveEventStatic.verifyNoInteractions();
                 webEventStatic.verifyNoInteractions();
-                eventListStatic.verify(() -> NotificationEventList.of(saveEvent));
-                verify(outboxEventListPublishPort).publish(eventList);
+                eventListStatic.verifyNoInteractions();
+                verify(outboxEventListPublishPort, never()).publish(any());
             }
         }
 
@@ -334,30 +302,18 @@ class PriceAlertNotificationCommandServiceUnitTest {
         void create_should_not_publish_when_find_receivers_fails() {
             // given
             PriceAlertNotificationCreateCommand command = mockCommand();
-            Notification notification = mockNotification();
 
             RuntimeException exception = new RuntimeException("receiver query failed");
-
-            givenCommon();
 
             given(priceAlertRecipientQueryPort.findReceiverIds(CODE, THRESHOLD))
                     .willThrow(exception);
 
             try (
-                    MockedStatic<Notification> notificationStatic = mockStatic(Notification.class);
                     MockedStatic<NotificationPayload> notificationPayloadStatic = mockStatic(NotificationPayload.class);
                     MockedStatic<NotificationSaveEvent> saveEventStatic = mockStatic(NotificationSaveEvent.class);
                     MockedStatic<WebNotificationBroadcastEvent> webEventStatic = mockStatic(WebNotificationBroadcastEvent.class);
                     MockedStatic<NotificationEventList> eventListStatic = mockStatic(NotificationEventList.class)
             ) {
-                notificationStatic.when(() -> Notification.createPriceAlert(
-                        NOTIFICATION_ID,
-                        CODE,
-                        CHANGE_RATE,
-                        PAYLOAD,
-                        CREATED_AT
-                )).thenReturn(notification);
-
                 // when & then
                 assertThatThrownBy(() -> sut.create(command))
                         .isSameAs(exception);
@@ -377,6 +333,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
         void create_should_rethrow_temporary_outbox_exception() {
             // given
             PriceAlertNotificationCreateCommand command = mockCommand();
+            givenNotificationCommandFields(command);
             givenWebNotificationCommandFields(command);
 
             Notification notification = mockNotification();
@@ -445,6 +402,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
         void create_should_wrap_unexpected_outbox_exception() {
             // given
             PriceAlertNotificationCreateCommand command = mockCommand();
+            givenNotificationCommandFields(command);
             givenWebNotificationCommandFields(command);
 
             Notification notification = mockNotification();
@@ -511,6 +469,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
         void create_should_not_publish_when_save_event_creation_fails() {
             // given
             PriceAlertNotificationCreateCommand command = mockCommand();
+            givenNotificationCommandFields(command);
             givenWebNotificationCommandFields(command);
 
             Notification notification = mockNotification();
@@ -565,11 +524,14 @@ class PriceAlertNotificationCommandServiceUnitTest {
         given(command.code()).willReturn(CODE);
         given(command.eventId()).willReturn(EVENT_ID);
         given(command.consumerName()).willReturn(PriceAlertNotificationCreateCommand.CONSUMER_NAME);
-        given(command.changeRate()).willReturn(CHANGE_RATE);
         given(command.threshold()).willReturn(THRESHOLD);
-        given(command.toPayload()).willReturn(PAYLOAD);
 
         return command;
+    }
+
+    private void givenNotificationCommandFields(PriceAlertNotificationCreateCommand command) {
+        given(command.changeRate()).willReturn(CHANGE_RATE);
+        given(command.toPayload()).willReturn(PAYLOAD);
     }
 
     private TypedPayload givenWebNotificationCommandFields(PriceAlertNotificationCreateCommand command) {

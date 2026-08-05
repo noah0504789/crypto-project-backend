@@ -58,6 +58,15 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
             return;
         }
 
+        List<UUID> receiverIds = priceAlertRecipientQueryPort.findReceiverIds(
+                command.code(),
+                command.threshold()
+        );
+        if (receiverIds.isEmpty()) {
+            log.debug("Price alert event skipped because no recipients were found. eventId={}", command.eventId());
+            return;
+        }
+
         String id = idGeneratorPort.generate();
         LocalDateTime createdAt = clock.nowLocalDateTime();
 
@@ -71,8 +80,7 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
 
         List<NotificationRecipientPayload> recipientPayloads = createRecipientPayloads(
                 notification.getId(),
-                command.code(),
-                command.threshold(),
+                receiverIds,
                 createdAt
         );
 
@@ -96,12 +104,9 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
 
     private List<NotificationRecipientPayload> createRecipientPayloads(
             String notificationId,
-            String code,
-            String threshold,
+            List<UUID> receiverIds,
             LocalDateTime deliveredAt
     ) {
-        List<UUID> receiverIds = priceAlertRecipientQueryPort.findReceiverIds(code, threshold);
-
         return receiverIds.stream()
                 .map(receiverId -> NotificationRecipientPayload.of(notificationId, receiverId, deliveredAt))
                 .toList();
