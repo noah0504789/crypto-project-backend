@@ -43,8 +43,9 @@ public class MongoConfig {
     private String mongoDb;
 
     @Bean
-    public MongoMappingContext mongoMappingContext() {
+    public MongoMappingContext mongoMappingContext(MongoCustomConversions conversions) {
         MongoMappingContext context = new MongoMappingContext();
+        context.setSimpleTypeHolder(conversions.getSimpleTypeHolder());
         context.setFieldNamingStrategy(new SnakeCaseFieldNamingStrategy());
         context.setAutoIndexCreation(true);
         return context;
