@@ -13,6 +13,7 @@ public class WebNotificationEventMapper {
 
         return new WebNotificationCommand(
                 event.getPartitionKey(),
+                event.getNotificationId(),
                 payload.type(),
                 payload.title(),
                 payload.body(),

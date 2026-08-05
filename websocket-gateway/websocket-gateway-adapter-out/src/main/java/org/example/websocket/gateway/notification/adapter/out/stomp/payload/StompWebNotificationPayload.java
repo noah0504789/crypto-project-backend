@@ -5,6 +5,7 @@ import org.example.websocket.gateway.notification.application.service.command.We
 import java.util.Map;
 
 public record StompWebNotificationPayload(
+        String notificationId,
         String type,
         String title,
         String body,
@@ -15,6 +16,7 @@ public record StompWebNotificationPayload(
 
     public static StompWebNotificationPayload from(WebNotificationCommand command) {
         return new StompWebNotificationPayload(
+                command.notificationId(),
                 command.type(),
                 command.title(),
                 command.body(),
