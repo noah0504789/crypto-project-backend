@@ -17,6 +17,7 @@
 2. Producer, Consumer, Client, Test, 설정 파일(`git-config-repo/` 포함)을 모두 확인한다.
 3. 호환성과 마이그레이션 영향을 설명한다.
 4. 호환성을 깨는 변경은 구현 전에 승인을 받는다.
+5. **변경 결과를 문서와 PR 양쪽에 남긴다.** 계약 문서(`docs/ARCHITECTURE.md` §6–7, `docs/SERVICE_FLOWS.md`, 해당 `docs/modules/*.md`)를 실제 값에 맞게 갱신하고, PR 본문 `## 참고사항`에 하위 호환 여부·영향받는 소비처·배포 순서를 적는다(→ `commit-pr.md`).
 - 공유 계약의 이름/의미를 별도 설명 없이 변경하지 않는다.
 - 이 절차는 `review-contract-impact` skill로 수행한다.
 
