@@ -31,7 +31,7 @@ public record PriceAlertSettingChangeRequest(
             boolean enabled,
 
             @NotNull(message = "{priceAlertSetting.targetChangeRate.notNull}")
-            @DecimalMin(value = "0.01", message = "{priceAlertSetting.targetChangeRate.min}")
+            @DecimalMin(value = "0.00", message = "{priceAlertSetting.targetChangeRate.min}")
             @DecimalMax(value = "1.00", message = "{priceAlertSetting.targetChangeRate.max}")
             BigDecimal targetChangeRate
     ) {
@@ -48,7 +48,7 @@ public record PriceAlertSettingChangeRequest(
             boolean enabled,
 
             @NotNull(message = "{priceAlertSetting.targetChangeRate.notNull}")
-            @DecimalMin(value = "0.01", message = "{priceAlertSetting.targetChangeRate.min}")
+            @DecimalMin(value = "0.00", message = "{priceAlertSetting.targetChangeRate.min}")
             @DecimalMax(value = "1.00", message = "{priceAlertSetting.targetChangeRate.max}")
             BigDecimal targetChangeRate
     ) {

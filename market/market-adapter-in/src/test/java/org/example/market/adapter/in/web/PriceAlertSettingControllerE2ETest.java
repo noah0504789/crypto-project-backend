@@ -134,8 +134,8 @@ class PriceAlertSettingControllerE2ETest {
     class ChangeMySettingsSuccessTest {
 
         @Test
-        @DisplayName("updates만 있으면 creates와 deletes가 비어 있어도 정상 처리한다")
-        void changeMySettings_shouldWork_whenOnlyUpdatesExist() throws Exception {
+        @DisplayName("0% update만 있으면 creates와 deletes가 비어 있어도 정상 처리한다")
+        void changeMySettings_shouldWork_whenOnlyZeroPercentUpdateExists() throws Exception {
             // given
             UUID userPublicId = UUID.randomUUID();
 
@@ -145,7 +145,7 @@ class PriceAlertSettingControllerE2ETest {
                             new PriceAlertSettingChangeRequest.UpdatePriceAlertSettingRequest(
                                     "KRW-BTC",
                                     true,
-                                    new BigDecimal("0.03")
+                                    new BigDecimal("0.00")
                             )
                     ),
                     List.of()
@@ -171,7 +171,7 @@ class PriceAlertSettingControllerE2ETest {
                                             && command.updates().get(0).code().equals("KRW-BTC")
                                             && command.updates().get(0).enabled()
                                             && command.updates().get(0).targetChangeRate()
-                                            .compareTo(new BigDecimal("0.03")) == 0
+                                            .compareTo(new BigDecimal("0.00")) == 0
                             )
                     );
 
@@ -426,7 +426,7 @@ class PriceAlertSettingControllerE2ETest {
         }
 
         @Test
-        @DisplayName("update targetChangeRate가 0.01보다 작으면 ValidationResult 형식으로 응답한다")
+        @DisplayName("update targetChangeRate가 0.00보다 작으면 ValidationResult 형식으로 응답한다")
         void changeMySettings_shouldReturnValidationResult_whenUpdateTargetChangeRateIsTooSmall() throws Exception {
             // given
             UUID userPublicId = UUID.randomUUID();
@@ -437,7 +437,7 @@ class PriceAlertSettingControllerE2ETest {
                             new PriceAlertSettingChangeRequest.UpdatePriceAlertSettingRequest(
                                     "KRW-BTC",
                                     true,
-                                    new BigDecimal("0.001")
+                                    new BigDecimal("-0.001")
                             )
                     ),
                     List.of()
@@ -454,7 +454,7 @@ class PriceAlertSettingControllerE2ETest {
                     .andExpect(jsonPath("$.errors").isArray())
                     .andExpect(jsonPath("$.errors[0].field").value("targetChangeRate"))
                     .andExpect(jsonPath("$.errors[0].code").value("DecimalMin"))
-                    .andExpect(jsonPath("$.errors[0].message").value("목표 변화율은 0.01 이상이어야 합니다."));
+                    .andExpect(jsonPath("$.errors[0].message").value("목표 변화율은 0.00 이상이어야 합니다."));
 
             then(priceAlertSettingCommandUseCase)
                     .shouldHaveNoInteractions();

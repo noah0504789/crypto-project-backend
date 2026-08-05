@@ -68,7 +68,7 @@ market-detection: PriceAlertDetectedEvent  →  Kafka: price-alert-detected-even
 ```
 
 - 쓰기는 **Outbox 경유**(chat/market과 동일 패턴, `../modules/COMMON.md §5.1` 참조). 영속(`NotificationSaveEvent`)과 push(`WebNotificationEvent`)를 하나의 `NotificationEventList`로 묶어 발행한다.
-- 수신자 조회는 `PriceAlertRecipientQueryAdapter` → `market-client`의 `PriceAlertSettingClient.findReceiverIds(marketCode, targetChangeRate)`. 임계값 문자열(`PERCENT_3/5/7`)은 `PriceAlertChangeRateThreshold.toBigDecimal`로 `0.0300/0.0500/0.0700`(scale 4)로 변환해 market의 **정확 일치** 조회에 쓴다(→ `MARKET.md §7`).
+- 수신자 조회는 `PriceAlertRecipientQueryAdapter` → `market-client`의 `PriceAlertSettingClient.findReceiverIds(marketCode, targetChangeRate)`. 임계값 문자열(`PERCENT_0/3/5/7`)은 `PriceAlertChangeRateThreshold.toBigDecimal`로 `0.0000/0.0300/0.0500/0.0700`(scale 4)로 변환해 market의 **정확 일치** 조회에 쓴다(→ `MARKET.md §7`).
 - `NotificationSaveEvent`/`WebNotificationEvent`는 `@JsonCreator`/`@JsonProperty` 직렬화 계약(Outbox payload). `NotificationSaveEvent`는 `notification-event`(+`.dlq`), `WebNotificationEvent`는 `web-notification-broadcast-event`.
 
 ## 6. REST API 계약

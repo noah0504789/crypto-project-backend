@@ -78,7 +78,7 @@
 
 - `X-User-Id`는 게이트웨이가 검증된 JWT의 `id` claim에서 주입(`common-core/HttpHeaderKey.USER_ID_VALUE`). 컨트롤러는 이 값을 `UUID`(publicId)로 그대로 신뢰한다.
 - **`MarketResponse`**(web, `adapter-in/.../web/dto`): `{ id, marketCode, symbol, koreanName, englishName }`(enabled 미노출 — 애초에 enabled=true만 조회).
-- **`PriceAlertSettingChangeRequest`**: `{ creates[], updates[], deletes[] }` 배치. 각 항목 검증 — `code` `@NotBlank`, `targetChangeRate` `@NotNull`+`@DecimalMin("0.01")`+`@DecimalMax("1.00")`. delete는 `code`만. 메시지는 `messages,common-validation-messages`(한국어).
+- **`PriceAlertSettingChangeRequest`**: `{ creates[], updates[], deletes[] }` 배치. 각 항목 검증 — `code` `@NotBlank`, `targetChangeRate` `@NotNull`+`@DecimalMin("0.00")`+`@DecimalMax("1.00")`. delete는 `code`만. 메시지는 `messages,common-validation-messages`(한국어).
 - 조회(`getMySettings`)는 **활성 마켓에 연결된 설정만** 반환한다(비활성/삭제된 마켓의 설정은 필터링). 변경(`changeMySettings`)도 활성 마켓 코드에 대해서만 create/update하고, 미존재/중복은 skip한다.
 
 ## 7. gRPC 계약 (`market.v1`)

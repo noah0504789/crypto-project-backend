@@ -17,7 +17,7 @@
 
 ## 2. 모듈 역할
 
-Upbit 실시간 시세를 수집해 **단기 이동평균 대비 변동률**을 계산하고, 임계값(3%/5%/7%)을 넘으면 가격 알림 탐지 이벤트(`PriceAlertDetectedEvent`)를 발행하는 스트림 처리 서비스. 발행 이벤트는 `notification`이 소비해 사용자 알림으로 만든다(→ [`NOTIFICATION.md`](NOTIFICATION.md)).
+Upbit 실시간 시세를 수집해 **단기 이동평균 대비 변동률**을 계산하고, 임계값(0%/3%/5%/7%)을 넘으면 가격 알림 탐지 이벤트(`PriceAlertDetectedEvent`)를 발행하는 스트림 처리 서비스. 발행 이벤트는 `notification`이 소비해 사용자 알림으로 만든다(→ [`NOTIFICATION.md`](NOTIFICATION.md)).
 
 - 저장소(DB) 없음. 상태는 Kafka Streams **WindowStore**(로컬 state store)로만 유지한다.
 - REST/gRPC 서버를 노출하지 않는다. market gRPC를 부르는 **클라이언트**로만 쓴다(구독 대상 마켓 조회).
@@ -55,10 +55,12 @@ Upbit 실시간 시세를 수집해 **단기 이동평균 대비 변동률**을 
   2. 윈도우 `[timestamp - 3m, timestamp]`의 저장 시세로 **이동평균** 계산(없으면 현재가로 fallback).
   3. `changeRate = (current - avg) / avg`.
   4. 현재 시세를 store에 `put`.
-  5. `PriceAlertChangeRateThreshold.matchedBy(changeRate)`로 **초과한 임계값 전부**(절대값 기준 3%/5%/7%) 매칭.
+  5. `PriceAlertChangeRateThreshold.matchedBy(changeRate)`로 **초과한 임계값 전부**(절대값 기준 0%/3%/5%/7%) 매칭.
   6. 매칭된 임계값마다 `PriceAlertDetectedEvent`(code·price·timestamp·avgInterval(=windowMinutes 3)·avgPrice·changeRate·threshold enum명)를 processor context로 forward한다.
   7. 출력 KStream 바인딩 `upbitTickerAlertEventProcessor-out-0`이 `price-alert-detected-event`로 발행한다. WindowStore 갱신·출력 레코드·입력 offset은 Kafka Streams EOS 트랜잭션으로 함께 커밋된다.
 - 소비자: `notification`(`price-alert-detected-event`).
+
+0% 임계값은 `abs(changeRate) >= 0.0`이므로 처리 가능한 모든 ticker에서 감지 이벤트를 만든다. 실제 사용자 알림은 notification이 market에 `종목 + 0%`를 설정한 수신자를 조회한 뒤 해당 사용자에게만 생성한다.
 
 ### 4.4 흐름도
 
@@ -66,7 +68,7 @@ Upbit 실시간 시세를 수집해 **단기 이동평균 대비 변동률**을 
 Upbit WS ─(ticker)→ Listener(구독=market gRPC, 10s 스로틀, 큐 100)
    → Supplier(0.5s poll) → Kafka: upbit-ticker-event
    → KStream(upbit-ticker-event) → UpbitTickerProcessor
-        10s 초과 stale 폐기 → WindowStore(3m) 이동평균·변동률 → 임계 매칭(3/5/7%)
+        10s 초과 stale 폐기 → WindowStore(3m) 이동평균·변동률 → 임계 매칭(0/3/5/7%)
    → Kafka: price-alert-detected-event → [notification]
 ```
 
@@ -83,7 +85,7 @@ EOS 적용 전에는 `Consumer<KStream<...>>` 내부의 `UpbitTickerProcessor`�
 현재는 다음과 같이 구성한다.
 
 - binder 빈을 `Function<KStream<String, UpbitTickerEvent>, KStream<String, PriceAlertDetectedEvent>>`로 정의해 출력도 Streams 토폴로지에 포함한다.
-- `UpbitTickerProcessor`는 `StreamBridge` 대신 `ProcessorContext.forward`로 탐지 이벤트를 반환한다. 한 ticker가 3%·5%·7%를 모두 충족해 여러 이벤트를 만들더라도 같은 입력 처리 트랜잭션에 포함된다.
+- `UpbitTickerProcessor`는 `StreamBridge` 대신 `ProcessorContext.forward`로 탐지 이벤트를 반환한다. 한 ticker가 0%·3%·5%·7%를 모두 충족해 여러 이벤트를 만들더라도 같은 입력 처리 트랜잭션에 포함된다.
 - `spring.cloud.stream.kafka.streams.binder.configuration.processing.guarantee=exactly_once_v2`를 사용한다.
 - 일반 binder의 `spring.cloud.stream.kafka.binder.transaction.transaction-id-prefix`는 사용하지 않는다. Kafka Streams가 application/task 기준의 transactional producer와 transaction ID를 내부적으로 관리한다.
 
@@ -128,7 +130,7 @@ market-detection은 stateful Kafka 처리 결과가 곧 Kafka 출력이고 외�
 ## 5. 계약
 
 - **생산(외부 계약)**: `market-detection-contract`의 `PriceAlertDetectedEvent`(`AbstractInboxEvent` 상속, `implements KafkaEvent, ProducibleEvent`). 내부 `eventId`는 JSON에서 제외하고 Kafka header로 전달하며, payload는 `{ code, price, timestamp, avgInterval, avgPrice, changeRate, threshold }`로 구성한다. 토픽은 `PRICE_ALERT_DETECTED`(binding `upbitTickerAlertEventProcessor-out-0` → `price-alert-detected-event`), 파티션 키는 `code`다. `toPayload()`는 `PriceAlertDetectedPayloadKeys`(TypedKey)로 키-값 페이로드를 만든다(notification이 web push payload로 전달). 소비자 `notification`과 함께 변경한다(→ `../../.claude/rules/external-contracts.md`).
-- **소비(외부)**: market `market.v1 GetEnabledMarkets`(구독 대상). 임계값 enum `common-core/PriceAlertChangeRateThreshold`(`PERCENT_3/5/7`)는 market-detection(탐지)·notification(수신자 조회 rate 변환)·market(정확 일치 조회)이 **공유하는 계약**이다.
+- **소비(외부)**: market `market.v1 GetEnabledMarkets`(구독 대상). 임계값 enum `common-core/PriceAlertChangeRateThreshold`(`PERCENT_0/3/5/7`)는 market-detection(탐지)·notification(수신자 조회 rate 변환)·market(정확 일치 조회)이 **공유하는 계약**이다.
 - **내부 토픽**: `upbit-ticker-event`(수집 원본 — Supplier 출력이자 Kafka Streams 입력). auto-create(`auto-create-topics: true`).
 
 ## 6. 확인 필요 항목

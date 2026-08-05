@@ -109,15 +109,17 @@ class UpbitTickerProcessorTopologyIntegrationTest {
     }
 
     @Test
-    @DisplayName("평균 대비 변화율이 기준 이하이면 가격 알림 감지 이벤트를 발행하지 않는다")
-    void process_belowThreshold_doNotPublishPriceAlertDetectedEvent() {
+    @DisplayName("평균 대비 변화율이 3% 미만이면 0% 알림 감지 이벤트만 발행한다")
+    void process_belowThreshold_publishZeroPercentEvents() {
         // given & when
         inputTopic.pipeInput(CODE, tickerEvent(CODE, 100.0), Instant.ofEpochMilli(1_000L));
         inputTopic.pipeInput(CODE, tickerEvent(CODE, 100.0), Instant.ofEpochMilli(2_000L));
         inputTopic.pipeInput(CODE, tickerEvent(CODE, 102.0), Instant.ofEpochMilli(3_000L));
 
         // then
-        assertThat(outputTopic.isEmpty()).isTrue();
+        assertThat(outputTopic.readValuesToList())
+                .extracting(PriceAlertDetectedEvent::getThreshold)
+                .containsOnly("PERCENT_0");
     }
 
     @Test
@@ -126,6 +128,7 @@ class UpbitTickerProcessorTopologyIntegrationTest {
         // given & when
         inputTopic.pipeInput(CODE, tickerEvent(CODE, 100.0), Instant.ofEpochMilli(1_000L));
         inputTopic.pipeInput(CODE, tickerEvent(CODE, 100.0), Instant.ofEpochMilli(2_000L));
+        outputTopic.readValuesToList();
         inputTopic.pipeInput(CODE, tickerEvent(CODE, 110.0), Instant.ofEpochMilli(3_000L));
 
         // then
@@ -138,6 +141,7 @@ class UpbitTickerProcessorTopologyIntegrationTest {
         assertThat(events)
                 .extracting(PriceAlertDetectedEvent::getThreshold)
                 .containsExactlyInAnyOrder(
+                        "PERCENT_0",
                         "PERCENT_3",
                         "PERCENT_5",
                         "PERCENT_7"
@@ -162,6 +166,7 @@ class UpbitTickerProcessorTopologyIntegrationTest {
 
         // 4분 뒤라서 1초 데이터는 최근 3분 윈도우 밖
         inputTopic.pipeInput(CODE, tickerEvent(CODE, 100.0), Instant.ofEpochMilli(241_000L));
+        outputTopic.readValuesToList();
         inputTopic.pipeInput(CODE, tickerEvent(CODE, 110.0), Instant.ofEpochMilli(242_000L));
 
         // then
@@ -174,6 +179,7 @@ class UpbitTickerProcessorTopologyIntegrationTest {
         assertThat(events)
                 .extracting(PriceAlertDetectedEvent::getThreshold)
                 .containsExactlyInAnyOrder(
+                        "PERCENT_0",
                         "PERCENT_3",
                         "PERCENT_5",
                         "PERCENT_7"
