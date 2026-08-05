@@ -5,8 +5,8 @@ import org.example.common.test.testcontainer.MongoDBTestContainerInitializer;
 import org.example.common.test.testcontainer.ReadWriteMysqlTestContainerInitializer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.env.Environment;
 import org.springframework.test.context.ContextConfiguration;
 
@@ -41,5 +41,7 @@ class BootSmokeTest {
         assertThat(environment.getProperty(
                 "spring.cloud.stream.kafka.binder.consumer-properties.spring.json.trusted.packages"
         )).isEqualTo("*");
+        assertThat(environment.getProperty("grpc.client.market-client.address"))
+                .isEqualTo("discovery:///market-service");
     }
 }

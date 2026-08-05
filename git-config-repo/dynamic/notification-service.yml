@@ -7,6 +7,14 @@ server:
       charset: UTF-8
       force: true
 
+grpc:
+  client:
+    market-client:
+      address: ${uri.discovery.market-service}
+      negotiation-type: plaintext
+      max-inbound-message-size:
+        bytes: 16777216
+
 api-path:
   notification:
     me: ${api-contract.notification.me}
