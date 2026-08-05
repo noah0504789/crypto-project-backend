@@ -22,7 +22,6 @@ spring:
           destination: upbit-ticker-event
           content-type: application/json
           producer:
-            use-native-encoding: false
             poller:
               fixed-delay:
                 nanos: 500_000_000 # 0.5s
@@ -34,6 +33,11 @@ spring:
           destination: price-alert-detected-event
           content-type: application/json
       kafka:
+        bindings:
+          upbitTickerEventSupplier-out-0:
+            producer:
+              configuration:
+                value.serializer: org.springframework.kafka.support.serializer.JsonSerializer
         streams:
           binder:
             configuration:

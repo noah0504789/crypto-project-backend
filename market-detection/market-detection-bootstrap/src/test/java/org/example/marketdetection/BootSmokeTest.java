@@ -42,11 +42,14 @@ class BootSmokeTest {
     UpbitWebsocketClientStarter upbitWebsocketClientStarter;
 
     @Test
-    @DisplayName("ApplicationContext가 정상 부팅되고 Upbit ticker 출력은 JSON 메시지 변환을 사용한다")
+    @DisplayName("ApplicationContext가 정상 부팅되고 Upbit ticker 출력은 native JSON serializer를 사용한다")
     void contextLoads() {
         assertThat(environment.getProperty(
-                "spring.cloud.stream.bindings.upbitTickerEventSupplier-out-0.producer.use-native-encoding",
+                "spring.cloud.stream.default.producer.use-native-encoding",
                 Boolean.class
-        )).isFalse();
+        )).isTrue();
+        assertThat(environment.getProperty(
+                "spring.cloud.stream.kafka.bindings.upbitTickerEventSupplier-out-0.producer.configuration.value.serializer"
+        )).isEqualTo("org.springframework.kafka.support.serializer.JsonSerializer");
     }
 }
