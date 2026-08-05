@@ -1,5 +1,6 @@
 package org.example.common.outbox.adapter.out;
 
+import jakarta.persistence.Table;
 import org.example.common.outbox.domain.OutboxDispatchType;
 import org.example.common.outbox.domain.OutboxDomainType;
 import org.example.common.outbox.domain.OutboxStatus;
@@ -9,6 +10,15 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class JpaOutboxUnitTest {
+
+    @Test
+    @DisplayName("Outbox 엔티티는 event catalog의 outbox 테이블을 사용한다")
+    void table_usesEventCatalog() {
+        Table table = JpaOutbox.class.getAnnotation(Table.class);
+
+        assertThat(table.catalog()).isEqualTo("event");
+        assertThat(table.name()).isEqualTo("outbox");
+    }
 
     @Test
     @DisplayName("create는 PENDING 상태와 retryCnt 0으로 JpaOutbox를 생성한다")

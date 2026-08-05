@@ -79,7 +79,7 @@ Outbox 패턴의 핵심 모듈. **비즈니스 DB write와 이벤트 기록을 �
 #### 이벤트/엔티티 구성
 
 - **`AbstractOutboxEventList`**: `List<AbstractOutboxEvent>` + `txId`(생성자에서 `EventIdUtils.generateTxId()`로 채번, 한 커맨드에서 나온 이벤트들을 묶는 추적/멱등 키). 정적 `of(supplier, events...)`로 조립. `publish()`는 `@Deprecated`(직접 `EventUtils.raise`) — 신규는 포트 경유.
-- **`AbstractOutboxEvent`**: `aggregateType`(=목적지/토픽)·`aggregateId`·`partitionKey`는 `@JsonIgnore`(outbox 컬럼이지 wire payload가 아님). `toOutbox`가 `Outbox`를 `PENDING`/`retryCnt=0`으로 만든다. 기본값: `getDispatchType()=GENERAL`(하위가 `BROADCAST` override), `getMessageType()=클래스 FQCN`. `getDomainType()`은 `abstract`라 각 이벤트가 자신의 도메인을 직접 반환한다(chat→`CHAT`, market→`MARKET`, notification→`NOTIFICATION`). 라우팅은 `aggregateType`/`dispatchType`이 결정, `domainType`은 메타데이터.
+- **`AbstractOutboxEvent`**: `aggregateType`(=목적지/토픽)·`aggregateId`·`partitionKey`는 `@JsonIgnore`(outbox 컬럼이지 wire payload가 아님). `toOutbox`가 `Outbox`를 `PENDING`/`retryCnt=0`으로 만든다. 기본값: `getDispatchType()=GENERAL`(하위가 `BROADCAST` override), `getMessageType()=클래스 FQCN`. `getDomainType()`은 `abstract`라 각 이벤트가 자신의 도메인을 직접 반환한다(chat→`CHAT`, market→`MARKET`, notification→`NOTIFICATION`). 라우팅은 `aggregateType`/`dispatchType`이 결정, `domainType`은 메타데이터. JPA 저장은 `JpaOutbox(catalog="event")`로 `event.outbox`를 명시해 서비스 datasource의 기본 DB와 무관하게 공용 Outbox를 사용한다.
 - **`Outbox`**(JPA `@Entity extends BaseEntity`): `id`(`EventIdUtils`), `transactionId`, `aggregateId`, `aggregateType`, `partitionKey`, `@Lob payload`, `eventType`, `domainType`/`dispatchType`/`status`(enum STRING). 상태 변경은 도메인 메서드로만: `markPublished()`·`markFailed()`·`increaseRetryCnt()`·`isRetryExhausted(int)`.
 
 #### 구조·대칭

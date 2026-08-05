@@ -126,7 +126,7 @@ proto: `protobuf/src/main/proto/market/v1/market-service.proto`. 서버 구현�
 
 ## 10. 트랜잭션 · Read Replica 현황
 
-- 쓰기: `MarketCommandService.changeMarkets`, `PriceAlertSettingCommandService.changeMySettings` 각 `@Transactional`(기본 `transactionManager`).
+- 쓰기: `MarketCommandService.changeMarkets`, `PriceAlertSettingCommandService.changeMySettings` 각 `@Transactional`(기본 `transactionManager`). `MarketCommandService`의 Market 변경과 공용 `JpaOutbox(catalog="event")` 저장은 동일 MySQL 서버·connection을 사용해 `market.*`와 `event.outbox`에 걸친 하나의 로컬 트랜잭션으로 커밋·롤백된다. market 계정에는 `event.outbox`의 `SELECT, INSERT` 권한이 필요하다.
 - `DatasourceConfig`: `spring.datasource.write`(mysql-primary)·`spring.datasource.read`(mysql-replica) 두 `HikariDataSource`를 만들고, `ReplicationRoutingDataSource`(`WRITE`/`READ` 라우팅) → `LazyConnectionDataSourceProxy`(`@Primary`)로 EMF에 바인딩한다. `JpaTransactionManager("transactionManager")`.
 - `MarketQueryService.getMarkets()`의 `@ReadReplica`는 이제 실제로 동작한다: `ReadReplicaAspect`가 read 스코프를 세팅하고, lazy proxy가 statement 시점에 `ReplicationRoutingDataSource`를 통해 read 노드로 라우팅한다(단, `@Cacheable` 캐시 히트 시에는 DB 자체를 타지 않는다). 이미 write 트랜잭션이 활성이면 write 우선(`ReadReplicaAspect`).
 
