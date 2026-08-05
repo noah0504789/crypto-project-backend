@@ -14,6 +14,7 @@ import org.example.notification.application.exception.NotificationPersistExcepti
 import org.example.notification.application.port.out.PriceAlertNotificationIdGeneratorPort;
 import org.example.notification.application.port.out.PriceAlertRecipientQueryPort;
 import org.example.notification.application.service.command.PriceAlertNotificationCreateCommand;
+import org.example.notification.application.service.properties.PriceAlertNotificationProperties;
 import org.example.notification.contract.event.WebNotificationBroadcastEvent;
 import org.example.notification.contract.event.WebNotificationPayload;
 import org.example.notification.domain.model.Notification;
@@ -30,6 +31,7 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -69,6 +71,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
     private static final String THRESHOLD = "3";
     private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, 1, 1, 10, 0);
     private static final long CREATED_AT_MS = 1767229200000L;
+    private static final Duration MAX_EVENT_AGE = Duration.ofSeconds(10);
 
     private static final Map<String, Object> PAYLOAD = Map.of(
             "code", CODE,
@@ -85,7 +88,8 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 idGeneratorPort,
                 priceAlertRecipientQueryPort,
                 outboxEventListPublishPort,
-                inboxService
+                inboxService,
+                new PriceAlertNotificationProperties(MAX_EVENT_AGE)
         );
 
     }
@@ -113,6 +117,26 @@ class PriceAlertNotificationCommandServiceUnitTest {
                     .isInstanceOf(DuplicateInboxException.class);
 
             verify(idGeneratorPort, never()).generate();
+            verify(priceAlertRecipientQueryPort, never()).findReceiverIds(anyString(), anyString());
+            verify(outboxEventListPublishPort, never()).publish(any());
+        }
+
+        @Test
+        @DisplayName("허용시간이 지난 가격 알림 이벤트는 inbox에 기록하고 알림을 생성하지 않는다")
+        void create_should_skip_stale_event_after_saving_inbox() {
+            PriceAlertNotificationCreateCommand command = PriceAlertNotificationCreateCommand.builder()
+                    .eventId(EVENT_ID)
+                    .occurredAtMs(CREATED_AT_MS)
+                    .build();
+            long nowMs = CREATED_AT_MS + MAX_EVENT_AGE.toMillis() + 1;
+
+            given(clock.nowMs()).willReturn(nowMs);
+
+            sut.create(command);
+
+            verify(inboxService).save(PriceAlertNotificationCreateCommand.CONSUMER_NAME, EVENT_ID);
+            verify(idGeneratorPort, never()).generate();
+            verify(clock, never()).nowLocalDateTime();
             verify(priceAlertRecipientQueryPort, never()).findReceiverIds(anyString(), anyString());
             verify(outboxEventListPublishPort, never()).publish(any());
         }
@@ -540,6 +564,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
 
         given(command.code()).willReturn(CODE);
         given(command.eventId()).willReturn(EVENT_ID);
+        given(command.consumerName()).willReturn(PriceAlertNotificationCreateCommand.CONSUMER_NAME);
         given(command.changeRate()).willReturn(CHANGE_RATE);
         given(command.threshold()).willReturn(THRESHOLD);
         given(command.toPayload()).willReturn(PAYLOAD);

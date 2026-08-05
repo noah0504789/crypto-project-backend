@@ -10,6 +10,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.env.Environment;
 import org.springframework.test.context.ContextConfiguration;
 
+import java.time.Duration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -43,5 +45,17 @@ class BootSmokeTest {
         )).isEqualTo("*");
         assertThat(environment.getProperty("grpc.client.market-client.address"))
                 .isEqualTo("discovery:///market-service");
+        assertThat(environment.getProperty("notification.price-alert.max-event-age", Duration.class))
+                .isEqualTo(Duration.ofSeconds(10));
+        assertConsumerOffsetPolicy("priceAlertDetectedEventConsumer-in-0");
+        assertConsumerOffsetPolicy("notificationEventConsumer-in-0");
+    }
+
+    private void assertConsumerOffsetPolicy(String bindingName) {
+        String prefix = "spring.cloud.stream.kafka.bindings.%s.consumer.".formatted(bindingName);
+
+        assertThat(environment.getProperty(prefix + "reset-offsets", Boolean.class)).isFalse();
+        assertThat(environment.getProperty(prefix + "start-offset")).isEqualTo("latest");
+        assertThat(environment.getProperty(prefix + "ack-mode")).isEqualTo("record");
     }
 }

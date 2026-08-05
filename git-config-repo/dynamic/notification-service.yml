@@ -41,6 +41,17 @@ spring:
         binder:
           consumer-properties:
             spring.json.trusted.packages: "*"
+        bindings:
+          priceAlertDetectedEventConsumer-in-0:
+            consumer:
+              reset-offsets: false
+              start-offset: latest
+              ack-mode: record
+          notificationEventConsumer-in-0:
+            consumer:
+              reset-offsets: false
+              start-offset: latest
+              ack-mode: record
 #      kafka:
 #        binder:
 #          transaction:
@@ -63,6 +74,9 @@ mongo:
   authSource: notification
 
 notification:
+  price-alert:
+    # 실시간 가격 알림으로 처리할 수 있는 이벤트 최대 지연 시간
+    max-event-age: 10s
   cache:
     # 알림 정보 hash 의 Redis TTL(콜드 항목 상한. 실제 교체는 서버 LFU 축출)
     ttl: 7d
