@@ -44,6 +44,10 @@ merge-ci:
 
 안전 근거: 룰셋의 `strict_required_status_checks_policy: true`(브랜치 최신 강제) 때문에 squash 후 tree 일치가 거의 항상 성립한다. 중간에 다른 PR 이 머지돼 내용이 달라지면 tree 가 어긋나 **자동으로 풀빌드로 떨어진다.**
 
+**승격은 최적화지 필수 경로가 아니다.** `pr-<번호>` 이미지가 없거나 태그 조작이 실패하면 경고만 남기고 풀빌드로 전환한다. 승격 실패가 main 을 깨뜨리지 않는다.
+
+> required status check 는 **PR 시점만** 검사한다. 승격 경로는 머지 후에만 존재하므로 PR 에서 검증될 수 없고, 여기서 실패하면 이미 머지된 뒤다. 그래서 이 경로는 게이트가 아니라 **폴백**으로 설계했다.
+
 ### 2.2 Docker 태그 규칙
 
 | 시점 | 태그 | 비고 |
@@ -52,7 +56,14 @@ merge-ci:
 | 머지 | `<sha7>`, `latest` | 승격이면 태그만 추가, 아니면 새로 빌드해 push |
 | fork PR | (push 안 함) | 시크릿을 못 받는다. 빌드만 해 Dockerfile 유효성만 확인 |
 
-PR 태그는 PR 이 닫히면 `pr-image-cleanup.yml` 이 지운다(§5). `<sha7>`·`latest` 는 건드리지 않는다.
+PR 태그 정리는 경로가 둘로 나뉜다. **머지는 `push`(main)와 `pull_request: closed` 두 이벤트를 동시에 발생시키므로**, 정리를 별도 워크플로에만 두면 승격보다 먼저 태그를 지워 승격이 깨진다(#207 에서 실제 발생).
+
+| 경우 | 누가 지우나 |
+|---|---|
+| 머지됨 | `ci.yml` `merge-ci` 가 **승격 직후 같은 job 안에서** — 순서 보장 |
+| 머지 없이 닫힘 | `pr-image-cleanup.yml`(§5) — 승격이 없어 경쟁 없음 |
+
+`<sha7>`·`latest` 는 어느 경로에서도 건드리지 않는다.
 
 ### 2.3 빌드 캐시
 
@@ -134,7 +145,7 @@ git-config-repo/dynamic/*.yml 수정 → main push
 
 - `production-environment-test.yml`: 수동, self-hosted + env `production`. 러너/사용자/날짜만 출력 — **production Environment 승인 흐름과 러너 동작을 점검하는 스모크 테스트**.
 - `self-hosted-runner-test.yml`: 수동, self-hosted(환경 게이트 없음). hostname/whoami/uname/docker 버전 출력 — **러너 연결·도구 확인용**.
-- `pr-image-cleanup.yml`: PR 이 닫히면(`pull_request: closed`) CI 가 올린 `pr-<번호>` 태그를 DockerHub 에서 지운다. 대상 이미지는 각 실행 모듈 `build.gradle` 의 `ext.dockerImageName` 에서 읽는다(정본). `<sha7>`·`latest` 는 건드리지 않는다.
+- `pr-image-cleanup.yml`: **머지되지 않고** 닫힌 PR(`pull_request: closed` + `merged == false`)의 `pr-<번호>` 태그를 지운다. 머지된 PR 은 `ci.yml` `merge-ci` 가 승격 직후 처리한다(§2.2). 대상 이미지는 각 실행 모듈 `build.gradle` 의 `ext.dockerImageName` 에서 읽는다(정본). `<sha7>`·`latest` 는 건드리지 않는다.
   - **실패해도 job 을 죽이지 않는다**(경고만). 정리 실패가 개발 흐름을 막지 않게 한 것이며, `DOCKERHUB_TOKEN` 에 Delete 스코프가 없으면 403 경고가 남는다.
   - fork PR 은 대상에서 제외된다(시크릿 없음 → 애초에 push 되지 않았다).
 
