@@ -40,10 +40,10 @@ import java.util.Set;
                 TemporaryChatPersistenceException.class,
                 TemporaryChatCacheException.class
         },
-        maxAttemptsExpression = "${chat.retry.max-attempts:3}",
+        maxAttemptsExpression = "${chat.retry.max-attempts}",
         backoff = @Backoff(
-                    delayExpression = "${chat.retry.backoff-delay-ms:100}",
-                    multiplierExpression = "${chat.retry.backoff-multiplier:2}")
+                    delayExpression = "${chat.retry.backoff-delay-ms}",
+                    multiplierExpression = "${chat.retry.backoff-multiplier}")
 )
 @Service
 @RequiredArgsConstructor

@@ -20,12 +20,12 @@ public class JwksController {
     private final JwksService jwksService;
     private final JwtSigningService jwtSigningService;
 
-    @GetMapping("${api-path.jwks:/.well-known/jwks.json}")
+    @GetMapping("${api-path.jwks}")
     public Map<String, Object> jwks(@RequestParam("keyName") String keyName) {
         return jwksService.getJwks(keyName);
     }
 
-    @PostMapping("${api-path.sign:/sign}")
+    @PostMapping("${api-path.sign}")
     public SignResponse sign(@RequestBody SignRequest request) {
         return jwtSigningService.sign(request);
     }

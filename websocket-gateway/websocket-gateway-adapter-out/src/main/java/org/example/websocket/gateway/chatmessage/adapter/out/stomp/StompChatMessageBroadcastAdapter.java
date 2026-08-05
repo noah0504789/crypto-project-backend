@@ -18,7 +18,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class StompChatMessageBroadcastAdapter implements ChatMessageBroadcastPort {
 
-    @Value("${app.instance-id:unknown}")
+    @Value("${app.instance-id}")
     private String instanceId;
 
     private final SimpMessagingTemplate stompTemplate;

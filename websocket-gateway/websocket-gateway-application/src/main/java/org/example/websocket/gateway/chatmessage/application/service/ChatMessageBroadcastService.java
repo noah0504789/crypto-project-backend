@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class ChatMessageBroadcastService implements ChatMessageBroadcastUseCase {
 
-    @Value("${app.instance-id:unknown}")
+    @Value("${app.instance-id}")
     private String instanceId;
 
     private final ChatMessageBroadcastPort chatMessageBroadcastPort;

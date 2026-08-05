@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 public class MonitorConfig {
 
     @Bean
-    MeterRegistryCustomizer<MeterRegistry> metricsCommonTags(@Value("${app.instance-id:unknown}") String instanceId) {
+    MeterRegistryCustomizer<MeterRegistry> metricsCommonTags(@Value("${app.instance-id}") String instanceId) {
         return registry -> registry.config().commonTags("instanceId", instanceId);
     }
 }

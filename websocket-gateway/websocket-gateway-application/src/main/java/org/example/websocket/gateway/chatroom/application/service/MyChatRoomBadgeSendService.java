@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class MyChatRoomBadgeSendService implements MyChatRoomBadgeSendUseCase {
 
-    @Value("${app.instance-id:unknown}")
+    @Value("${app.instance-id}")
     private String instanceId;
 
     private final MyChatRoomBadgePort myChatRoomBadgePort;

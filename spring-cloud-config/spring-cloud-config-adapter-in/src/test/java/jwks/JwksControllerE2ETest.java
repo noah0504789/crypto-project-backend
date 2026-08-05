@@ -49,6 +49,8 @@ class JwksControllerE2ETest {
 
         mockMvc = MockMvcBuilders
                 .standaloneSetup(controller)
+                .addPlaceholderValue("api-path.jwks", "/.well-known/jwks.json")
+                .addPlaceholderValue("api-path.sign", "/sign")
                 .build();
     }
 

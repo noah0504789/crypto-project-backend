@@ -14,9 +14,9 @@ spring:
         git:
           uri: ${CONFIG_REPO_URI}
           search-paths:
-            - ${CONFIG_REPO_ROOT:git-config-repo}
-            - ${CONFIG_REPO_ROOT:git-config-repo}/dynamic
-            - ${CONFIG_REPO_ROOT:git-config-repo}/infrastructure
+            - ${CONFIG_REPO_ROOT}
+            - ${CONFIG_REPO_ROOT}/dynamic
+            - ${CONFIG_REPO_ROOT}/infrastructure
           default-label: main
           order: 2
         vault:

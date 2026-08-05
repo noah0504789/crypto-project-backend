@@ -5,6 +5,7 @@ plugins {
 ext.dockerImageName = "crypto-outbox-poller"
 
 dependencies {
+    implementation project(':common:common-validation')
     implementation project(':common:common-exception')
     implementation project(':common:common-core')
     implementation project(':common:common-outbox')

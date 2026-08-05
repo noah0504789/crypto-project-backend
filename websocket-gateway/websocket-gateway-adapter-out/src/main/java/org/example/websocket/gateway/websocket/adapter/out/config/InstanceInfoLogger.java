@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class InstanceInfoLogger implements ApplicationRunner {
 
-    @Value("${app.instance-id:unknown}")
+    @Value("${app.instance-id}")
     private String instanceId;
 
     @Override

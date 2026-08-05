@@ -420,6 +420,27 @@ assertThat(result.<String>getAttribute("id")).isEqualTo(userId);
 - `implementation project(':common')` aggregate 의존은 편하지만 의존 그래프가 커진다. 단순화된 모듈이 아닌 곳에서는 필요한 `common:*`만 의존하는 방향을 검토한다.
 - `api` 의존은 외부로 타입이 노출될 때만 사용한다.
 
+### 17.1 ConfigurationProperties 검증
+
+- 목적은 설정 누락과 키 오타를 **기동 시 fail-fast**로 드러내는 것이다. 운영 설정의 단일 정본은 yml로 두고 `@ConfigurationProperties`에 `@DefaultValue`를 중복 선언하지 않는다. 코드 기본값이 있으면 yml 키가 틀려도 정상값처럼 폴백해 설정 오류가 숨는다.
+- `@DefaultValue`만 제거해서는 충분하지 않다. Spring Boot는 prefix 아래 값이 없어도 `bindOrCreate`로 properties 인스턴스를 만들 수 있으므로, 필수 properties record에 `@Validated`를 붙이고 각 component에 제약을 선언한다.
+- `Duration`은 `@NotNull`, 양수 숫자는 `@Positive`로 검증한다. 숫자 필드는 미바인딩을 `null`로 감지하도록 primitive 대신 박싱 타입(`Integer` 등)을 쓴다. primitive는 누락 시 `0`이 되어 의도하지 않은 반복·배치 동작으로 이어질 수 있다.
+- 중첩 record는 바깥 component에 `@Valid @NotNull`을 붙이고 내부 component에도 제약을 둔다. 그래야 중첩 객체 전체 누락과 내부 필드 누락을 모두 차단한다.
+- 애플리케이션 코드와 로컬 resource에는 `${key:default}`를 두지 않는다. `${key}`로 선언해 설정 누락 시 기동을 실패시키고, 실제 값은 yml 한 곳에서 관리한다.
+- 배포 환경을 조합하는 Config Repository의 환경변수 fallback은 애플리케이션 기본값과 구분해 해당 운영 정책에 따라 관리한다.
+- 검증 애노테이션을 쓰는 모듈은 `common-validation`을 compile classpath에 직접 또는 `api` 전이 의존으로 가져야 한다.
+
+이 조합으로 막는 오류:
+
+| 오류 | 차단 장치 | 기동 결과 |
+| --- | --- | --- |
+| yml 키 오타·누락 | 기본값 없는 `${key}` 또는 `@NotNull` | placeholder 해석 또는 properties 바인딩 실패 |
+| 숫자 누락 | 박싱 타입 + `@Positive` | `null` validation 실패 |
+| 0·음수 설정 | `@Positive` | validation 실패 |
+| 중첩 설정 전체·일부 누락 | `@Valid @NotNull` + 내부 제약 | validation 실패 |
+
+제약 위반은 `@ConfigurationProperties` 바인딩 중 예외가 되어 ApplicationContext 생성을 중단한다. 검증 provider가 classpath에 없거나 `@Validated`/제약 애노테이션 중 하나라도 빠지면 이 보장은 성립하지 않는다.
+
 ## 18. 문서/주석 기준
 
 - 코드 주석은 “무엇”보다 “왜”를 설명할 때 쓴다.
