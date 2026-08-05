@@ -29,6 +29,10 @@ spring:
         web-notification-broadcast-event-out:
           destination: web-notification-broadcast-event
           content-type: application/json
+      kafka:
+        binder:
+          consumer-properties:
+            spring.json.trusted.packages: "*"
 #      kafka:
 #        binder:
 #          transaction:
