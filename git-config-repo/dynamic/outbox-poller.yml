@@ -35,16 +35,16 @@ poller:
   outbox:
     general:
       enabled: true
-      fixed-delay-ms: 2500
+      fixed-delay-ms: 5000
       batch-size: 1000
       max-retry-cnt: 3
     broadcast:
       enabled: true
-      fixed-delay-ms: 100
+      fixed-delay-ms: 300
       batch-size: 1000
       max-retry-cnt: 3
   dlq:
-    enabled: true
+    enabled: false
     fixed-delay-ms: 10000
     batch-size: 100
 
