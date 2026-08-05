@@ -6,6 +6,7 @@ dependencies {
     api project(':common:common-core')
     api project(':common:common-exception')
     api project(':common:common-validation')
+    api project(':common:common-time')
     api project(':common:common-jpa')
     api project(':common:common-event')
     api project(':common:common-web')

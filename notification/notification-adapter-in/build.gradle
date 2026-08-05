@@ -3,12 +3,12 @@ plugins {
 }
 
 dependencies {
+    implementation project(':common:common-time')
     implementation project(':common:common-web')
     implementation project(':common:common-event')
     implementation project(':common:common-inbox')
     implementation project(':market-detection:market-detection-contract')
     implementation project(':notification:notification-application')
-
     implementation(libs.spring.cloud.starter.stream.kafka)
 
     testImplementation project(':common:common-test')

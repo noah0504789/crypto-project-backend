@@ -5,7 +5,7 @@ import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessageRepo
 import org.example.chat.chatroom.adapter.out.persistence.MongoChatRoomAdapter;
 import org.example.chat.chatroom.adapter.out.persistence.MongoChatRoomMembershipRepository;
 import org.example.chat.chatroom.adapter.out.persistence.MongoChatRoomRepository;
-import org.example.common.clock.Clock;
+import org.example.common.time.Clock;
 import org.example.common.time.ServiceTimeConverter;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;

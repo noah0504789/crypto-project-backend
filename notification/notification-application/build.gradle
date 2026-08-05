@@ -5,6 +5,7 @@ plugins {
 dependencies {
     api project(':notification:notification-domain')
 
+    implementation project(':common:common-time')
     implementation project(':common:common-exception')
     implementation project(':common:common-outbox')
     implementation project(':common:common-inbox')

@@ -5,7 +5,7 @@ import config.TestRedisConfig;
 import org.example.common.test.testcontainer.RedisTestContainerInitializer;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.chatroom.application.service.result.ChatRoomMembershipScore;
-import org.example.common.clock.Clock;
+import org.example.common.time.Clock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

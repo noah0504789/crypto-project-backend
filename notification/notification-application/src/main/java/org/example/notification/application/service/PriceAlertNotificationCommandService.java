@@ -2,7 +2,7 @@ package org.example.notification.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.common.clock.Clock;
+import org.example.common.time.Clock;
 import org.example.common.event.TypedPayload;
 import org.example.common.inbox.application.service.InboxService;
 import org.example.common.inbox.exception.DuplicateInboxException;

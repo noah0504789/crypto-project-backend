@@ -6,7 +6,7 @@ import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Named;
 import org.example.common.event.KafkaEvent;
 import org.example.common.event.KafkaEventFactory;
-import org.example.common.clock.Clock;
+import org.example.common.time.Clock;
 import org.example.marketdetection.contract.event.PriceAlertDetectedEvent;
 import org.example.marketdetection.upbit.event.UpbitTickerEvent;
 import org.example.marketdetection.infra.properties.UpbitProperties;

@@ -7,7 +7,7 @@ import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
 import org.apache.kafka.streams.state.WindowStore;
 import org.apache.kafka.streams.state.WindowStoreIterator;
-import org.example.common.clock.Clock;
+import org.example.common.time.Clock;
 import org.example.common.enums.KafkaHeaderKey;
 import org.example.common.enums.PriceAlertChangeRateThreshold;
 import org.example.marketdetection.contract.event.PriceAlertDetectedEvent;

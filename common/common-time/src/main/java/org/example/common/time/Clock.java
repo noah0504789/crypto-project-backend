@@ -1,4 +1,4 @@
-package org.example.common.clock;
+package org.example.common.time;
 
 import java.time.Instant;
 import java.time.LocalDateTime;

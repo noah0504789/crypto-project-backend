@@ -3,7 +3,7 @@ package org.example.marketdetection.upbit;
 import okhttp3.Response;
 import okhttp3.WebSocket;
 import okio.ByteString;
-import org.example.common.clock.Clock;
+import org.example.common.time.Clock;
 import org.example.common.event.KafkaEvent;
 import org.example.contract.market.MarketResponse;
 import org.example.market.client.MarketClient;
