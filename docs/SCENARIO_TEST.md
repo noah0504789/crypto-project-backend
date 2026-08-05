@@ -98,10 +98,10 @@
 | TC-PA-02 초기 병렬 로드 | 로그인 | `/price-alerts` 진입 | ☐ `GET /markets` 200 + `GET /price-alerts/me` 200 **병렬**<br>&emsp;☐ 마켓·내 설정으로 폼 구성, `code=marketCode` 매핑<br>&emsp;☐ `targetChangeRate`(0.03) → 화면 퍼센트("3") 변환 |
 | TC-PA-03 로드 실패 | — | 조회 실패 재현 | ☐ `loadError` 카드 + "다시 시도"<br>&emsp;☐ 목 폴백 없음 |
 | TC-PA-04 마켓 추가 | — | 1. "알림 추가"<br>2. 모달 멀티 선택<br>3. 확인 | ☐ 선택 코인이 폼 카드로 추가(중복 방지)<br>&emsp;☐ 저장 전이므로 서버 요청 없음 |
-| TC-PA-05 카드 편집 | — | 1. on/off 토글<br>2. 변화율 3%/5%/7% 선택<br>3. 삭제 표시 | ☐ `hasUnsavedChanges` true<br>&emsp;☐ "처음상태"로 되돌리기 시 저장본 복원 |
+| TC-PA-05 카드 편집 | — | 1. on/off 토글<br>2. 변화율 0%/3%/5%/7% 선택<br>3. 삭제 표시 | ☐ `hasUnsavedChanges` true<br>&emsp;☐ "처음상태"로 되돌리기 시 저장본 복원 |
 | TC-PA-06 변경 없이 저장 | — | 변경 없이 "내 알람 설정하기" | ☐ alert(변경 없음)<br>&emsp;☐ 요청 안 나감 |
 | TC-PA-07 정상 저장(diff) | — | 추가/수정/삭제 섞어 저장 | ☐ `convertFormToRequest`로 `{creates[], updates[], deletes[]}` diff 계산<br>&emsp;☐ `PUT /price-alerts/me` **204** (create/update `{code,enabled,targetChangeRate}`, delete `{code}`)<br>&emsp;☐ 성공 후 폼/저장본 로컬 동기화(재조회 없음) |
-| TC-PA-08 서버 검증 범위 | — | (가능하면) 범위 밖 비율 전송 시도 | ☐ 서버 `0.01 ≤ targetChangeRate ≤ 1.00` 검증<br>&emsp;☐ 위반 시 4xx + errors<br>※ 화면 선택지는 3/5/7%라 정상 범위 |
+| TC-PA-08 서버 검증 범위 | — | (가능하면) 범위 밖 비율 전송 시도 | ☐ 서버 `0.00 ≤ targetChangeRate ≤ 1.00` 검증<br>&emsp;☐ 위반 시 4xx + errors<br>※ 화면 선택지는 0/3/5/7%라 정상 범위 |
 
 ---
 

@@ -89,8 +89,8 @@ class UpbitTickerProcessorUnitTest {
     }
 
     @Test
-    @DisplayName("평균 대비 변화율이 기준 이하이면 현재 값만 저장하고 알림 감지 이벤트는 발행하지 않는다")
-    void process_changeRateBelowThreshold_saveOnly() {
+    @DisplayName("평균 대비 변화율이 3% 미만이면 0% 알림 감지 이벤트만 발행한다")
+    void process_changeRateBelowThreshold_publishZeroPercentEvent() {
         // given
         UpbitTickerEvent event = tickerEvent(102.0);
         Record<String, UpbitTickerEvent> record = new Record<>(CODE, event, TIMESTAMP);
@@ -116,7 +116,11 @@ class UpbitTickerProcessorUnitTest {
                 eq(TIMESTAMP)
         );
 
-        verify(context, never()).forward(any());
+        ArgumentCaptor<Record<String, PriceAlertDetectedEvent>> recordCaptor =
+                ArgumentCaptor.forClass(Record.class);
+        verify(context).forward(recordCaptor.capture());
+
+        assertThat(recordCaptor.getValue().value().getThreshold()).isEqualTo("PERCENT_0");
     }
 
     @Test
@@ -149,7 +153,7 @@ class UpbitTickerProcessorUnitTest {
 
         ArgumentCaptor<Record<String, PriceAlertDetectedEvent>> recordCaptor =
                 ArgumentCaptor.forClass(Record.class);
-        verify(context, times(3)).forward(recordCaptor.capture());
+        verify(context, times(4)).forward(recordCaptor.capture());
 
         List<PriceAlertDetectedEvent> events = recordCaptor.getAllValues()
                 .stream()
@@ -167,6 +171,7 @@ class UpbitTickerProcessorUnitTest {
         assertThat(events)
                 .extracting(PriceAlertDetectedEvent::getThreshold)
                 .containsExactlyInAnyOrder(
+                        "PERCENT_0",
                         "PERCENT_3",
                         "PERCENT_5",
                         "PERCENT_7"
@@ -193,8 +198,8 @@ class UpbitTickerProcessorUnitTest {
     }
 
     @Test
-    @DisplayName("과거 가격 데이터가 없으면 현재가를 평균값으로 사용한다")
-    void process_emptyWindowStore_useCurrentPriceAsAverage() {
+    @DisplayName("과거 가격 데이터가 없으면 현재가를 평균값으로 사용해 0% 이벤트를 발행한다")
+    void process_emptyWindowStore_publishZeroPercentEvent() {
         // given
         UpbitTickerEvent event = tickerEvent(110.0);
         Record<String, UpbitTickerEvent> record = new Record<>(CODE, event, TIMESTAMP);
@@ -217,7 +222,14 @@ class UpbitTickerProcessorUnitTest {
                 eq(TIMESTAMP)
         );
 
-        verify(context, never()).forward(any());
+        ArgumentCaptor<Record<String, PriceAlertDetectedEvent>> recordCaptor =
+                ArgumentCaptor.forClass(Record.class);
+        verify(context).forward(recordCaptor.capture());
+
+        PriceAlertDetectedEvent detectedEvent = recordCaptor.getValue().value();
+        assertThat(detectedEvent.getThreshold()).isEqualTo("PERCENT_0");
+        assertThat(detectedEvent.getAvgPrice()).isEqualTo(110.0);
+        assertThat(detectedEvent.getChangeRate()).isZero();
     }
 
     @Test

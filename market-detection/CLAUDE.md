@@ -6,7 +6,7 @@ Kafka Streams·토픽 바인딩 변경은 `../.claude/rules/git-safety.md`의 Pl
 
 ## 모듈 역할과 적용 범위
 
-Upbit 실시간 시세를 수집해 이동평균 대비 변동률을 계산하고, 임계값(3/5/7%) 초과 시 `PriceAlertDetectedEvent`를 발행하는 스트림 처리 서비스(**축소형** — `-bootstrap` + `-contract` 2개, 헥사고날 계층 없음, 실행 모듈 `market-detection-bootstrap`).
+Upbit 실시간 시세를 수집해 이동평균 대비 변동률을 계산하고, 임계값(0/3/5/7%) 초과 시 `PriceAlertDetectedEvent`를 발행하는 스트림 처리 서비스(**축소형** — `-bootstrap` + `-contract` 2개, 헥사고날 계층 없음, 실행 모듈 `market-detection-bootstrap`).
 
 - DB 없음. 상태는 Kafka Streams WindowStore(`upbit-ticker-store`)로만.
 - REST/gRPC 서버 노출 없음. market gRPC 클라이언트로만 구독 대상 마켓을 조회한다.
@@ -17,7 +17,7 @@ Upbit 실시간 시세를 수집해 이동평균 대비 변동률을 계산하�
 ## 주요 변경 규칙
 
 - **발행 계약(`PriceAlertDetectedEvent`) 보존**: `market-detection-contract`의 클래스는 `AbstractInboxEvent`를 상속하며 notification이 소비하는 외부 계약이다. `eventId`는 최초 이벤트 생성 시 무작위 UUID로 생성되어 Kafka `event_id` 헤더에만 전달되고 payload에서는 제외된다. notification은 header를 Inbox 식별자의 단일 기준으로 사용한다. 필드/토픽(`price-alert-detected-event`)/`PriceAlertDetectedPayloadKeys` 변경은 notification과 함께(external-contracts 절차).
-- **공유 임계값 계약**: `common-core/PriceAlertChangeRateThreshold`(`PERCENT_3/5/7`)는 탐지(여기)·수신자 조회(notification)·정확 일치 조회(market)가 공유한다. rate 값/enum명을 바꾸면 세 서비스를 함께 본다.
+- **공유 임계값 계약**: `common-core/PriceAlertChangeRateThreshold`(`PERCENT_0/3/5/7`)는 탐지(여기)·수신자 조회(notification)·정확 일치 조회(market)가 공유한다. rate 값/enum명을 바꾸면 세 서비스를 함께 본다.
 - **Streams 토폴로지 주의**: 처리 로직은 `UpbitTickerProcessor`(WindowStore 이동평균·변동률)와 `StateStoreConfig`(store retention/window)에 있다. window/retention(`upbit.store.ticker`, `upbit.ticker.alert.window-minutes`)을 바꾸면 산식·상태 크기에 직접 영향. state store 이름 변경은 기존 changelog 토픽 호환을 함께 본다.
 - **토픽 바인딩은 계약**: `git-config-repo/dynamic/market-detection.yml`의 `spring.cloud.stream.bindings`(supplier out `upbit-ticker-event`, Streams processor in/out `upbit-ticker-event` → `price-alert-detected-event`)·poller(0.5s)·Kafka Streams EOS(`exactly_once_v2`)를 함께 본다.
 - **DataSource/JPA 자동설정 제외 유지**: 이 서비스는 DB가 없지만 발행 계약(`PriceAlertDetectedEvent` → `AbstractInboxEvent` → `common-inbox` → `common-jpa`)이 `spring-boot-starter-data-jpa`를 전이로 끌어온다. `market-detection.yml`의 `spring.autoconfigure.exclude`(`DataSourceAutoConfiguration`·`HibernateJpaAutoConfiguration`)를 제거하면 `DataSourceAutoConfiguration`이 강제 활성화돼 부팅이 실패한다. 지우지 않는다(상세: `../docs/modules/MARKET_DETECTION.md §3`).
