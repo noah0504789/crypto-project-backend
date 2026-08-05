@@ -17,6 +17,7 @@ import org.example.notification.application.port.in.PriceAlertNotificationComman
 import org.example.notification.application.port.out.PriceAlertNotificationIdGeneratorPort;
 import org.example.notification.application.port.out.PriceAlertRecipientQueryPort;
 import org.example.notification.application.service.command.PriceAlertNotificationCreateCommand;
+import org.example.notification.application.service.properties.PriceAlertNotificationProperties;
 import org.example.notification.application.exception.NotificationPersistException;
 import org.example.notification.contract.event.WebNotificationBroadcastEvent;
 import org.example.notification.contract.event.WebNotificationPayload;
@@ -39,6 +40,7 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
     private final PriceAlertRecipientQueryPort priceAlertRecipientQueryPort;
     private final OutboxEventListPublishPort outboxEventListPublishPort;
     private final InboxService inboxService;
+    private final PriceAlertNotificationProperties properties;
 
     @Override
     @Transactional(
@@ -47,6 +49,14 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
     )
     public void create(PriceAlertNotificationCreateCommand command) {
         inboxService.save(command.consumerName(), command.eventId());
+
+        if (isStale(command.occurredAtMs())) {
+            log.info(
+                    "Stale price alert event skipped. eventId={}, occurredAtMs={}, maxEventAge={}",
+                    command.eventId(), command.occurredAtMs(), properties.maxEventAge()
+            );
+            return;
+        }
 
         String id = idGeneratorPort.generate();
         LocalDateTime createdAt = clock.nowLocalDateTime();
@@ -73,6 +83,15 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
         );
 
         publishNotificationEvents(eventList);
+    }
+
+    private boolean isStale(Long occurredAtMs) {
+        if (occurredAtMs == null) {
+            return false;
+        }
+
+        long staleBoundaryMs = clock.nowMs() - properties.maxEventAge().toMillis();
+        return occurredAtMs < staleBoundaryMs;
     }
 
     private List<NotificationRecipientPayload> createRecipientPayloads(
