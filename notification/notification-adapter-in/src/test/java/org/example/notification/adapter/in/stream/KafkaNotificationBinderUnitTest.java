@@ -58,5 +58,6 @@ class KafkaNotificationBinderUnitTest {
                 ArgumentCaptor.forClass(PriceAlertNotificationCreateCommand.class);
         verify(useCase).create(commandCaptor.capture());
         assertThat(commandCaptor.getValue().eventId()).isEqualTo(EVENT_ID);
+        assertThat(commandCaptor.getValue().occurredAtMs()).isEqualTo(1_000L);
     }
 }

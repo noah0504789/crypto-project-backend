@@ -10,7 +10,7 @@ public record PriceAlertNotificationCreateCommand(
         String eventId,
         String code,
         Double price,
-        Long timestamp,
+        Long occurredAtMs,
         Integer avgInterval,
         Double avgPrice,
         Double changeRate,

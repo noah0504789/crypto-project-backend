@@ -61,7 +61,7 @@ public final class PriceAlertDetectedEvent extends AbstractInboxEvent implements
         return TypedPayload.builder()
                 .put(PriceAlertDetectedPayloadKeys.CODE, code)
                 .put(PriceAlertDetectedPayloadKeys.PRICE, price)
-                .put(PriceAlertDetectedPayloadKeys.TIMESTAMP, timestamp)
+                .put(PriceAlertDetectedPayloadKeys.OCCURRED_AT_MS, timestamp)
                 .put(PriceAlertDetectedPayloadKeys.AVG_INTERVAL, avgInterval)
                 .put(PriceAlertDetectedPayloadKeys.AVG_PRICE, avgPrice)
                 .put(PriceAlertDetectedPayloadKeys.CHANGE_RATE, changeRate)
