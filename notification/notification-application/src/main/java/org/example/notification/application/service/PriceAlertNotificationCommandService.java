@@ -111,7 +111,8 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
             LocalDateTime deliveredAt
     ) {
         return receiverIds.stream()
-                .map(receiverId -> NotificationRecipientPayload.of(notificationId, receiverId, deliveredAt))
+                .map(receiverId -> NotificationRecipientPayload.of(
+                        idGeneratorPort.generate(), notificationId, receiverId, deliveredAt))
                 .toList();
     }
 
