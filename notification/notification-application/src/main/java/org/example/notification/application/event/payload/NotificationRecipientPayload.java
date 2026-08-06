@@ -1,5 +1,6 @@
 package org.example.notification.application.event.payload;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import org.example.notification.domain.model.NotificationRecipient;
 
 import java.time.LocalDateTime;
@@ -10,7 +11,9 @@ public record NotificationRecipientPayload(
         String notificationId,
         UUID receiverId,
         boolean read,
+        @JsonFormat(pattern = "yyyy/MM/dd HH:mm:ss.SSS")
         LocalDateTime readAt,
+        @JsonFormat(pattern = "yyyy/MM/dd HH:mm:ss.SSS")
         LocalDateTime deliveredAt
 ) {
 

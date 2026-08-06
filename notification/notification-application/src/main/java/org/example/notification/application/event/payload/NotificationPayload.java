@@ -1,5 +1,6 @@
 package org.example.notification.application.event.payload;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import org.example.notification.domain.model.Notification;
 import org.example.notification.domain.model.NotificationMessagePart;
 import org.example.notification.domain.model.NotificationType;
@@ -17,7 +18,9 @@ public record NotificationPayload(
         String link,
         Map<String, Object> payload,
         boolean deleted,
+        @JsonFormat(pattern = "yyyy/MM/dd HH:mm:ss.SSS")
         LocalDateTime deletedAt,
+        @JsonFormat(pattern = "yyyy/MM/dd HH:mm:ss.SSS")
         LocalDateTime createdAt
 ) {
 
