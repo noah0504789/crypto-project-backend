@@ -96,19 +96,23 @@ public class MongoNotificationRecipientRepositoryImpl implements MongoNotificati
                     MongoNotificationRecipient.class
             );
 
-            batch.forEach(recipient -> operations.upsert(
-                    Query.query(
-                            Criteria.where("notificationId").is(recipient.getNotificationId())
-                                    .and("receiverId").is(recipient.getReceiverId())
-                    ),
-                    new Update()
-                            .setOnInsert("_id", recipient.getId())
-                            .setOnInsert("notificationId", recipient.getNotificationId())
-                            .setOnInsert("receiverId", recipient.getReceiverId())
-                            .setOnInsert("read", recipient.isRead())
-                            .setOnInsert("readAt", recipient.getReadAt())
-                            .setOnInsert("deliveredAt", recipient.getDeliveredAt())
-            ));
+            batch.forEach(recipient -> {
+                Update update = new Update()
+                        .setOnInsert("_id", recipient.getId())
+                        .setOnInsert("notificationId", recipient.getNotificationId())
+                        .setOnInsert("receiverId", recipient.getReceiverId())
+                        .setOnInsert("read", recipient.isRead())
+                        .setOnInsert("readAt", recipient.getReadAt())
+                        .setOnInsert("deliveredAt", recipient.getDeliveredAt());
+
+                operations.upsert(
+                        Query.query(
+                                Criteria.where("notificationId").is(recipient.getNotificationId())
+                                        .and("receiverId").is(recipient.getReceiverId())
+                        ),
+                        update
+                );
+            });
 
             operations.execute();
         }

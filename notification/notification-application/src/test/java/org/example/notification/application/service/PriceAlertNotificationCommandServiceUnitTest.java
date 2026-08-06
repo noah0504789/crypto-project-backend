@@ -65,6 +65,8 @@ class PriceAlertNotificationCommandServiceUnitTest {
     private PriceAlertNotificationCommandService sut;
 
     private static final String NOTIFICATION_ID = "notification-1";
+    private static final String RECIPIENT_ID_1 = "recipient-1";
+    private static final String RECIPIENT_ID_2 = "recipient-2";
     private static final String EVENT_ID = "event-1";
     private static final String CODE = "KRW-BTC";
     private static final Double CHANGE_RATE = 0.05;
@@ -208,7 +210,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 sut.create(command);
 
                 // then
-                verify(idGeneratorPort).generate();
+                verify(idGeneratorPort, times(3)).generate();
                 verify(clock).nowLocalDateTime();
 
                 notificationStatic.verify(() -> Notification.createPriceAlert(
@@ -235,6 +237,9 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 List<NotificationRecipientPayload> recipients = recipientsCaptor.getValue();
 
                 assertThat(recipients).hasSize(2);
+                assertThat(recipients)
+                        .extracting(NotificationRecipientPayload::id)
+                        .containsExactly(RECIPIENT_ID_1, RECIPIENT_ID_2);
                 assertThat(recipients)
                         .extracting(NotificationRecipientPayload::notificationId)
                         .containsExactly(NOTIFICATION_ID, NOTIFICATION_ID);
@@ -564,7 +569,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
     }
 
     private void givenCommon() {
-        given(idGeneratorPort.generate()).willReturn(NOTIFICATION_ID);
+        given(idGeneratorPort.generate()).willReturn(NOTIFICATION_ID, RECIPIENT_ID_1, RECIPIENT_ID_2);
         given(clock.nowLocalDateTime()).willReturn(CREATED_AT);
     }
 

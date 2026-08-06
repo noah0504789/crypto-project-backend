@@ -18,12 +18,13 @@ public record NotificationRecipientPayload(
 ) {
 
     public static NotificationRecipientPayload of(
+            String id,
             String notificationId,
             UUID receiverId,
             LocalDateTime deliveredAt
     ) {
         return new NotificationRecipientPayload(
-                null,
+                id,
                 notificationId,
                 receiverId,
                 false,
