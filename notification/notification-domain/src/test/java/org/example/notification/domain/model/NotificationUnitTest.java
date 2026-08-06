@@ -36,6 +36,9 @@ class NotificationUnitTest {
             Notification notification = Notification.createPriceAlert(
                     ID,
                     MARKET_CODE,
+                    2_671_000D,
+                    2_660_000D,
+                    5,
                     0.05,
                     payload,
                     CREATED_AT
@@ -45,7 +48,7 @@ class NotificationUnitTest {
             assertThat(notification.getId()).isEqualTo(ID);
             assertThat(notification.getType()).isEqualTo(NotificationType.PRICE_ALERT);
             assertThat(notification.getTitle()).isEqualTo("가격 알림");
-            assertThat(notification.getMessage()).isEqualTo("KRW-BTC이 5.0% 이상 상승했습니다.");
+            assertThat(notification.getMessage()).isEqualTo("KRW-BTC 현재가 2,671,000원, 최근 5분간 평균가 2,660,000원 대비 5.0% 상승했습니다.");
             assertThat(notification.getLink()).isNull();
             assertThat(notification.getPayload()).containsAllEntriesOf(payload);
             assertThat(notification.isDeleted()).isFalse();
@@ -56,12 +59,34 @@ class NotificationUnitTest {
                     .extracting(NotificationMessagePart::text)
                     .containsExactly(
                             "KRW-BTC",
-                            "이 ",
+                            " 현재가 ",
+                            "2,671,000원",
+                            ", 최근 5분간 평균가 ",
+                            "2,660,000원",
+                            " 대비 ",
                             "5.0%",
-                            " 이상 ",
+                            " ",
                             "상승",
                             "했습니다."
                     );
+        }
+
+        @Test
+        @DisplayName("현재가와 감시 구간 평균가를 가격 알림 본문에 포함한다")
+        void createPriceAlert_should_include_current_and_average_prices() {
+            Notification notification = Notification.createPriceAlert(
+                    ID,
+                    MARKET_CODE,
+                    2_671_000D,
+                    2_660_000D,
+                    5,
+                    0.0041353383D,
+                    Map.of(),
+                    CREATED_AT
+            );
+
+            assertThat(notification.getMessage())
+                    .isEqualTo("KRW-BTC 현재가 2,671,000원, 최근 5분간 평균가 2,660,000원 대비 0.4% 상승했습니다.");
         }
 
         @Test
@@ -77,6 +102,9 @@ class NotificationUnitTest {
             Notification notification = Notification.createPriceAlert(
                     ID,
                     MARKET_CODE,
+                    2_671_000D,
+                    2_660_000D,
+                    5,
                     -0.037,
                     payload,
                     CREATED_AT
@@ -86,15 +114,19 @@ class NotificationUnitTest {
             assertThat(notification.getId()).isEqualTo(ID);
             assertThat(notification.getType()).isEqualTo(NotificationType.PRICE_ALERT);
             assertThat(notification.getTitle()).isEqualTo("가격 알림");
-            assertThat(notification.getMessage()).isEqualTo("KRW-BTC이 3.7% 이상 하락했습니다.");
+            assertThat(notification.getMessage()).isEqualTo("KRW-BTC 현재가 2,671,000원, 최근 5분간 평균가 2,660,000원 대비 3.7% 하락했습니다.");
 
             assertThat(notification.getMessageParts())
                     .extracting(NotificationMessagePart::text)
                     .containsExactly(
                             "KRW-BTC",
-                            "이 ",
+                            " 현재가 ",
+                            "2,671,000원",
+                            ", 최근 5분간 평균가 ",
+                            "2,660,000원",
+                            " 대비 ",
                             "3.7%",
-                            " 이상 ",
+                            " ",
                             "하락",
                             "했습니다."
                     );
@@ -107,6 +139,9 @@ class NotificationUnitTest {
             Notification notification = Notification.createPriceAlert(
                     ID,
                     MARKET_CODE,
+                    2_671_000D,
+                    2_660_000D,
+                    5,
                     null,
                     null,
                     CREATED_AT
@@ -116,16 +151,20 @@ class NotificationUnitTest {
             assertThat(notification.getId()).isEqualTo(ID);
             assertThat(notification.getType()).isEqualTo(NotificationType.PRICE_ALERT);
             assertThat(notification.getTitle()).isEqualTo("가격 알림");
-            assertThat(notification.getMessage()).isEqualTo("KRW-BTC이 0.0% 이상 상승했습니다.");
+            assertThat(notification.getMessage()).isEqualTo("KRW-BTC 현재가 2,671,000원, 최근 5분간 평균가 2,660,000원 대비 0.0% 상승했습니다.");
             assertThat(notification.getPayload()).isEmpty();
 
             assertThat(notification.getMessageParts())
                     .extracting(NotificationMessagePart::text)
                     .containsExactly(
                             "KRW-BTC",
-                            "이 ",
+                            " 현재가 ",
+                            "2,671,000원",
+                            ", 최근 5분간 평균가 ",
+                            "2,660,000원",
+                            " 대비 ",
                             "0.0%",
-                            " 이상 ",
+                            " ",
                             "상승",
                             "했습니다."
                     );
@@ -142,6 +181,9 @@ class NotificationUnitTest {
             Notification notification = Notification.createPriceAlert(
                     ID,
                     MARKET_CODE,
+                    2_671_000D,
+                    2_660_000D,
+                    5,
                     0.05,
                     payload,
                     CREATED_AT

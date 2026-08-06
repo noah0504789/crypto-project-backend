@@ -68,6 +68,9 @@ class PriceAlertNotificationCommandServiceUnitTest {
     private static final String EVENT_ID = "event-1";
     private static final String CODE = "KRW-BTC";
     private static final Double CHANGE_RATE = 0.05;
+    private static final Double PRICE = 105D;
+    private static final Double AVG_PRICE = 100D;
+    private static final Integer AVG_INTERVAL = 5;
     private static final String THRESHOLD = "3";
     private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, 1, 1, 10, 0);
     private static final long CREATED_AT_MS = 1767229200000L;
@@ -173,6 +176,9 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 notificationStatic.when(() -> Notification.createPriceAlert(
                         NOTIFICATION_ID,
                         CODE,
+                        PRICE,
+                        AVG_PRICE,
+                        AVG_INTERVAL,
                         CHANGE_RATE,
                         PAYLOAD,
                         CREATED_AT
@@ -208,6 +214,9 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 notificationStatic.verify(() -> Notification.createPriceAlert(
                         NOTIFICATION_ID,
                         CODE,
+                        PRICE,
+                        AVG_PRICE,
+                        AVG_INTERVAL,
                         CHANGE_RATE,
                         PAYLOAD,
                         CREATED_AT
@@ -369,6 +378,9 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 notificationStatic.when(() -> Notification.createPriceAlert(
                         NOTIFICATION_ID,
                         CODE,
+                        PRICE,
+                        AVG_PRICE,
+                        AVG_INTERVAL,
                         CHANGE_RATE,
                         PAYLOAD,
                         CREATED_AT
@@ -434,6 +446,9 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 notificationStatic.when(() -> Notification.createPriceAlert(
                         NOTIFICATION_ID,
                         CODE,
+                        PRICE,
+                        AVG_PRICE,
+                        AVG_INTERVAL,
                         CHANGE_RATE,
                         PAYLOAD,
                         CREATED_AT
@@ -494,6 +509,9 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 notificationStatic.when(() -> Notification.createPriceAlert(
                         NOTIFICATION_ID,
                         CODE,
+                        PRICE,
+                        AVG_PRICE,
+                        AVG_INTERVAL,
                         CHANGE_RATE,
                         PAYLOAD,
                         CREATED_AT
@@ -530,6 +548,9 @@ class PriceAlertNotificationCommandServiceUnitTest {
     }
 
     private void givenNotificationCommandFields(PriceAlertNotificationCreateCommand command) {
+        given(command.price()).willReturn(PRICE);
+        given(command.avgPrice()).willReturn(AVG_PRICE);
+        given(command.avgInterval()).willReturn(AVG_INTERVAL);
         given(command.changeRate()).willReturn(CHANGE_RATE);
         given(command.toPayload()).willReturn(PAYLOAD);
     }

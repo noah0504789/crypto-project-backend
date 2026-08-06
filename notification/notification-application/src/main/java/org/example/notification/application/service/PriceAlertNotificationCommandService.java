@@ -73,6 +73,9 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
         Notification notification = Notification.createPriceAlert(
                 id,
                 command.code(),
+                command.price(),
+                command.avgPrice(),
+                command.avgInterval(),
                 command.changeRate(),
                 command.toPayload(),
                 createdAt
