@@ -9,6 +9,7 @@ dependencies {
     implementation project(':common:common-grpc')
     implementation project(':common:common-redis')
     implementation project(':chat:chat-client')
+    implementation project(':notification:notification-contract')
     implementation project(':websocket-gateway:websocket-gateway-application')
     implementation(libs.spring.boot.starter.websocket)
     implementation(libs.micrometer.core)

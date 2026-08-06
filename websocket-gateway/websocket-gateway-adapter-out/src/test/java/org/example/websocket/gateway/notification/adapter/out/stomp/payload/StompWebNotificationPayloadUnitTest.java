@@ -4,6 +4,7 @@ import org.example.websocket.gateway.notification.application.service.command.We
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,6 +23,7 @@ class StompWebNotificationPayloadUnitTest {
                 "KRW-BTC 가격이 변동했습니다.",
                 1_000L,
                 "/price-alerts",
+                List.of(),
                 Map.of()
         );
 
