@@ -9,6 +9,7 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.connection.ConnectionPoolSettings;
 import io.micrometer.observation.ObservationRegistry;
+import org.bson.UuidRepresentation;
 import org.example.common.mongo.converter.DateToLocalDateTimeConverter;
 import org.example.common.mongo.converter.LocalDateTimeToDateConverter;
 import org.example.common.mongo.SnakeCaseFieldNamingStrategy;
@@ -71,6 +72,7 @@ public class MongoConfig {
 
         MongoClientSettings settings = MongoClientSettings.builder()
                 .applyConnectionString(new ConnectionString(mongoUri))
+                .uuidRepresentation(UuidRepresentation.STANDARD)
                 .writeConcern(WriteConcern.ACKNOWLEDGED)
                 .readPreference(ReadPreference.primary())
                 .applyToConnectionPoolSettings(builder -> builder.applySettings(poolSettings))
