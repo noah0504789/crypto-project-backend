@@ -19,6 +19,7 @@ public class WebNotificationBroadcastEventMapper {
                 payload.body(),
                 payload.createdAtMs(),
                 payload.link(),
+                payload.messageParts(),
                 payload.typedPayload().toMap()
         );
     }

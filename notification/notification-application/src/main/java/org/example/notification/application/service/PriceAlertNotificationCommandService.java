@@ -21,6 +21,7 @@ import org.example.notification.application.service.properties.PriceAlertNotific
 import org.example.notification.application.exception.NotificationPersistException;
 import org.example.notification.contract.event.WebNotificationBroadcastEvent;
 import org.example.notification.contract.event.WebNotificationPayload;
+import org.example.notification.contract.event.WebNotificationMessagePart;
 import org.example.notification.domain.model.Notification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -148,6 +149,9 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
                 notification.getTitle(),
                 notification.getMessage(),
                 notification.getCreatedAtMs(),
+                notification.getMessageParts().stream()
+                        .map(part -> new WebNotificationMessagePart(part.text(), part.bold(), part.lineBreakAfter()))
+                        .toList(),
                 typedPayload
         );
     }
