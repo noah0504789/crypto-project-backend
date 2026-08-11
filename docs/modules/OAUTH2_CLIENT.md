@@ -154,4 +154,3 @@ Authorization Bearer access → subject(email) 해석
 - 연관 서비스: 토큰 발급/저장 [`OAUTH2_AUTHORIZATION_SERVER.md`](OAUTH2_AUTHORIZATION_SERVER.md), 계정 [`USER.md`](USER.md), 검증/blacklist [`API_GATEWAY.md`](API_GATEWAY.md)
 - 모듈 작업 규칙: [`../../oauth2-client/CLAUDE.md`](../../oauth2-client/CLAUDE.md)
 - rules: `../../.claude/rules/{security,external-contracts,architecture,testing}.md`
-- 미해결 관찰: [`../../TODO.md`](../../TODO.md)

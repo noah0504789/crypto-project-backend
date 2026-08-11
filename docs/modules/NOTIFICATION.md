@@ -232,4 +232,3 @@ market-detection은 최초 이벤트 생성 시 무작위 UUID를 만들어 Kafk
 - 루트 구조/흐름: [`../ARCHITECTURE.md`](../ARCHITECTURE.md), [`../SERVICE_FLOWS.md`](../SERVICE_FLOWS.md), 코드 스타일 [`../CODE_STYLE.md`](../CODE_STYLE.md)
 - 상·하류: 알림 소스 [`MARKET.md`](MARKET.md)(수신자 조회 gRPC), 실시간 push는 `websocket-gateway`(모듈 문서 미작성), Outbox 흐름 [`COMMON.md §5.1`](COMMON.md)
 - 계약/보안/아키텍처/테스트 rules: `../../.claude/rules/{external-contracts,security,architecture,testing}.md`
-- 미해결 관찰 항목 집계: [`../../TODO.md`](../../TODO.md)

@@ -184,4 +184,3 @@ proto: `protobuf/src/main/proto/user/v1/user-service.proto`. 서버 구현 `Grpc
 - 게이트웨이(인가·헤더 전파): [`API_GATEWAY.md`](API_GATEWAY.md)
 - 모듈 작업 규칙: [`../../user/CLAUDE.md`](../../user/CLAUDE.md)
 - 계약/보안/아키텍처/테스트 rules: `../../.claude/rules/{external-contracts,security,architecture,testing}.md`
-- 미해결 관찰 항목 집계: [`../../TODO.md`](../../TODO.md)

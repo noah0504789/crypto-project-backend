@@ -79,15 +79,14 @@
 
 ### 3.3 build-logic convention plugin
 
-`build-logic/src/main/groovy/`의 precompiled plugin 5종:
+`build-logic/src/main/groovy/`의 precompiled plugin 6종:
 
 - `crypto-common-library.gradle`: 기반. `java-library` + `io.spring.dependency-management`, Boot/Cloud BOM, Lombok, `spring-boot-starter-test`, Java 17, `-parameters`
 - `crypto-domain.gradle` / `crypto-application.gradle` / `crypto-adapter.gradle`: **현재는 `crypto-common-library`만 적용하는 의미상 별칭**(내용 동일)
 - `crypto-bootstrap.gradle`: 실행 모듈. `org.springframework.boot` 적용, `bootJar` 활성/`jar` 비활성, `buildInfo()`, `bootRun`
+- `crypto-quality.gradle`: Java·Gradle 포맷 검사와 `check`의 `spotlessCheck` 연결
 
-계층 강제는 plugin이 아니라 각 모듈의 `project(...)` 의존으로 이루어진다. 아키텍처 규칙 위반은 `common:common-arch-test`(ArchUnit)가 모든 서비스 CI에서 검증한다(§10).
-
-> 확인 필요: `common:common-arch-test`의 실제 ArchUnit 규칙 내용은 이번 조사에서 파일을 직접 열람하지 못했다(존재·CI 게이트 역할만 확인).
+계층 강제는 plugin이 아니라 각 모듈의 `project(...)` 의존으로 이루어진다. 아키텍처 규칙 위반은 `common:common-arch-test`(ArchUnit)가 모든 서비스 CI에서 검증한다(§10). 실제 자동 규칙의 범위와 한계는 [`harness/ARCHITECTURE_CONSTRAINTS.md`](harness/ARCHITECTURE_CONSTRAINTS.md)를 따른다.
 
 ---
 

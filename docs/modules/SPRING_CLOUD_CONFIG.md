@@ -156,4 +156,3 @@ POST /sign  { keyName, keyVersion, headerB64u, payloadB64u }
 - 연관 서비스: 발급/서명 소비 [`OAUTH2_AUTHORIZATION_SERVER.md`](OAUTH2_AUTHORIZATION_SERVER.md), 검증(JWKS) 소비 [`API_GATEWAY.md`](API_GATEWAY.md), [`OAUTH2_CLIENT.md`](OAUTH2_CLIENT.md)
 - 모듈 작업 규칙: [`../../spring-cloud-config/CLAUDE.md`](../../spring-cloud-config/CLAUDE.md)
 - rules: `../../.claude/rules/{security,external-contracts,architecture,testing}.md`
-- 미해결 관찰: [`../../TODO.md`](../../TODO.md)

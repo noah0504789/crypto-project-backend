@@ -18,6 +18,7 @@
 | [CI_CD.md](CI_CD.md) | CI(affected 빌드)·CD(배포)·Config 재배포 파이프라인 |
 | [TESTING.md](TESTING.md) | 테스트 4계층(단위·통합·E2E·부팅 스모크), Testcontainers 하니스, 부팅 스모크 설계 |
 | [SCENARIO_TEST.md](SCENARIO_TEST.md) | 화면 카테고리별 시연/연동 테스트 시나리오 |
+| [decisions/README.md](decisions/README.md) | 시스템 전반 기술 선택의 이유와 결과(ADR) |
 | [../README.md](../README.md) | 프로젝트 소개(기획·외부 API·화면 시연·문서 지도) |
 | [../TODO.md](../TODO.md) | 미해결 확인/결정 항목 단일 관리처 |
 | [../CLAUDE.md](../CLAUDE.md) | 루트 공통 작업 규칙·문서 지도 |
@@ -62,19 +63,19 @@
 | [testing.md](../.claude/rules/testing.md) | 테스트 작성·실행·검증 |
 | [commit-pr.md](../.claude/rules/commit-pr.md) | 커밋·PR 메시지 작성 |
 
-## 3.1 서브에이전트 (.claude/agents/)
+## 4. Harness 정리 문서
 
-컨텍스트를 분리해야 이득인 작업만 위임한다(중간 읽기량이 크고 결론은 작은 작업). 규칙·절차 정본은 `.claude/rules/`와 skill이고, 에이전트는 그것을 별도 컨텍스트에서 실행한다. 지식을 에이전트 프롬프트에 복제하지 않는다 — 모듈 지식의 정본은 이 문서들과 `<module>/CLAUDE.md`다.
+Harness의 책임 경계와 현재 상태는 아래 문서에서 관리한다. 작업 규칙·절차의 정본은 계속 `CLAUDE.md`, `.claude/rules/`, `.claude/skills/`, `.claude/agents/`다.
 
-| 에이전트 | 축 | 언제 |
-|---|---|---|
-| [module-explorer](../.claude/agents/module-explorer.md) | 탐색 | 코드 위치·호출 흐름·모듈 구조 조사(읽기 전용) |
-| [contract-scanner](../.claude/agents/contract-scanner.md) | 감사 | 외부 계약 변경 전 영향 조사(frontend·infra 소비처 포함) |
-| [build-runner](../.claude/agents/build-runner.md) | 실행 | Gradle 컴파일·테스트·`<service>Ci` 실행, 로그 압축 |
-| [arch-reviewer](../.claude/agents/arch-reviewer.md) | 감사 | 헥사고날·Outbox·트랜잭션·Redis Key 규약(ArchUnit 밖) |
+| 문서 | 내용 |
+|---|---|
+| [harness/INSTRUCTIONS_MAP.md](harness/INSTRUCTIONS_MAP.md) | 지시 문서·rules·skills·agents·docs의 책임과 탐색 기준 |
+| [harness/ARCHITECTURE_CONSTRAINTS.md](harness/ARCHITECTURE_CONSTRAINTS.md) | 자동 아키텍처 제약의 적용 범위, 보류 규칙, 실행 명령 |
+| [harness/FEEDBACK_LOOP.md](harness/FEEDBACK_LOOP.md) | 변경 유형별 최소 검증 매트릭스와 narrow → broad 순서 |
+| [harness/KNOWLEDGE_BASE.md](harness/KNOWLEDGE_BASE.md) | 지식 분류, ADR 후보, 새 지식 기록 위치 |
+| [harness/HARNESS_MAINTENANCE.md](harness/HARNESS_MAINTENANCE.md) | 문서·모듈·명령 Drift의 검사와 수동 리뷰 기준 |
+| [harness/HARNESS_STATUS.md](harness/HARNESS_STATUS.md) | Harness 구성 요소, 작업·검증 흐름, 유지보수 원칙 |
 
-여러 모듈·저장소·축에 걸친 요청은 [`cross-repo-impact`](../.claude/skills/cross-repo-impact/SKILL.md) skill이 병렬 조사와 종합 순서를 정한다.
-
-## 4. 커버리지
+## 5. 커버리지
 
 실행 서비스 12개 전부 + 공통 모듈(`common-*`)에 대해 **상세 문서 + 작업 지침(CLAUDE.md)** 쌍이 존재한다. 새 서비스를 추가하면 `docs/modules/<NAME>.md` + `<module>/CLAUDE.md`를 만들고 이 인덱스와 [`../CLAUDE.md`](../CLAUDE.md) 문서 지도에 반영한다.
