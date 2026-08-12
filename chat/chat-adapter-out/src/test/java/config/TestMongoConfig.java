@@ -1,6 +1,8 @@
 package config;
 
 import com.mongodb.ReadPreference;
+import java.time.Instant;
+import java.time.LocalDateTime;
 import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessageRepository;
 import org.example.chat.chatroom.adapter.out.persistence.MongoChatRoomAdapter;
 import org.example.chat.chatroom.adapter.out.persistence.MongoChatRoomMembershipRepository;
@@ -15,18 +17,14 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
-
 @TestConfiguration
 @EnableMongoRepositories(
         basePackageClasses = {
-                MongoChatRoomRepository.class,
-                MongoChatRoomMembershipRepository.class,
-                MongoChatMessageRepository.class
+            MongoChatRoomRepository.class,
+            MongoChatRoomMembershipRepository.class,
+            MongoChatMessageRepository.class
         },
-        mongoTemplateRef = "primaryMongoTemplate"
-)
+        mongoTemplateRef = "primaryMongoTemplate")
 public class TestMongoConfig {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 20, 52);
@@ -37,6 +35,11 @@ public class TestMongoConfig {
             @Override
             public long nowMs() {
                 return now().toEpochMilli();
+            }
+
+            @Override
+            public long monotonicTimeNanos() {
+                return 0L;
             }
 
             @Override
@@ -54,9 +57,7 @@ public class TestMongoConfig {
     @Primary
     @Bean("primaryMongoTemplate")
     public MongoTemplate primaryMongoTemplate(
-            MongoDatabaseFactory mongoDatabaseFactory,
-            MappingMongoConverter converter
-    ) {
+            MongoDatabaseFactory mongoDatabaseFactory, MappingMongoConverter converter) {
         MongoTemplate template = new MongoTemplate(mongoDatabaseFactory, converter);
         template.setReadPreference(ReadPreference.primary());
         return template;
@@ -64,9 +65,7 @@ public class TestMongoConfig {
 
     @Bean("secondaryMongoTemplate")
     public MongoTemplate secondaryMongoTemplate(
-            MongoDatabaseFactory mongoDatabaseFactory,
-            MappingMongoConverter converter
-    ) {
+            MongoDatabaseFactory mongoDatabaseFactory, MappingMongoConverter converter) {
         MongoTemplate template = new MongoTemplate(mongoDatabaseFactory, converter);
         template.setReadPreference(ReadPreference.secondaryPreferred());
         return template;
@@ -76,12 +75,8 @@ public class TestMongoConfig {
     public MongoChatRoomAdapter mongoChatRoomAdapter(
             MongoChatRoomRepository chatRoomRepository,
             MongoChatRoomMembershipRepository membershipRepository,
-            MongoChatMessageRepository chatMessageRepository
-    ) {
+            MongoChatMessageRepository chatMessageRepository) {
         return new MongoChatRoomAdapter(
-                chatRoomRepository,
-                membershipRepository,
-                chatMessageRepository
-        );
+                chatRoomRepository, membershipRepository, chatMessageRepository);
     }
 }

@@ -1,10 +1,8 @@
 package org.example.common.time;
 
-import org.springframework.stereotype.Service;
-
 import java.time.Instant;
 import java.time.LocalDateTime;
-
+import org.springframework.stereotype.Service;
 
 @Service
 public class ClockService implements Clock {
@@ -12,6 +10,11 @@ public class ClockService implements Clock {
     @Override
     public long nowMs() {
         return System.currentTimeMillis();
+    }
+
+    @Override
+    public long monotonicTimeNanos() {
+        return System.nanoTime();
     }
 
     @Override

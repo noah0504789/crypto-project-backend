@@ -137,7 +137,7 @@
 | common-core | 계약 enum·properties | `RedisKey`, `KafkaTopic`, `KafkaHeaderKey`, `StompDestination`, `JwtClaimKey`, `ApiPathProperties`, `JwtProperties` |
 | common-exception | 공통 예외 계층(외부 의존 0) | `InfrastructureException`/`InvalidRequestException`/`ResourceNotFoundException`/`ForbiddenException`, `ErrorResponse` |
 | common-validation | Bean Validation 공통 | `ValidationResult`, `FieldErrorDetail`, `NotBlankIfPresent`, 메시지 번들 |
-| common-time | 시각 조회·존 변환 | `Clock`(주입 인터페이스)/`ClockService`, `ServiceTimeConverter`(`ZONE_ID=Asia/Seoul`) |
+| common-time | 시각 조회·존 변환·경과시간 측정 | `Clock`(주입 인터페이스)/`ClockService`(`monotonicTimeNanos` 포함), `ServiceTimeConverter`(`ZONE_ID=Asia/Seoul`) |
 | common-jpa | JPA + Read Replica 라우팅 | `ReadReplica`, `ReadReplicaAspect`, `DataSourceContextHolder`, `ReplicationRoutingDataSource`, `BaseEntity` |
 | common-event | 이벤트 계약/발행 유틸 | `KafkaEvent`, `EventUtils`, `HandleableEvent`, `RecoverableEvent` |
 | common-web | REST 예외 처리 | `GlobalExceptionHandler`(`@RestControllerAdvice`) |
