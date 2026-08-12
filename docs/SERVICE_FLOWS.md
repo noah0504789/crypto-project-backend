@@ -175,11 +175,12 @@ outbox-poller:
 ```
 Upbit WebSocket (OkHttp)
  → UpbitWebsocketClientStarter / UpbitWebsocketListener / UpbitWebsocketService (ticker 구독·역직렬화)
- → 큐 → KafkaMarketDetectionBinder.upbitTickerEventSupplier
+ → UpbitTickerCoalescingBuffer (종목별 최신 ticker + shared ready key queue)
+ → UpbitTickerPublisher worker pool (BlockingQueue.take, StreamBridge)
  → Kafka(upbit-ticker-event)
 ```
 
-근거: `market-detection/market-detection-bootstrap/.../upbit/{UpbitWebsocketClientStarter,UpbitWebsocketListener,UpbitWebsocketService}.java`, `.../adapter/in/stream/KafkaMarketDetectionBinder.java`.
+근거: `market-detection/market-detection-bootstrap/.../upbit/{UpbitWebsocketClientStarter,UpbitWebsocketListener,UpbitWebsocketService,UpbitTickerCoalescingBuffer,UpbitTickerPublisher}.java`.
 
 ---
 

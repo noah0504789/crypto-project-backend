@@ -28,6 +28,7 @@ Upbit 실시간 시세를 수집해 **단기 이동평균 대비 변동률**을 
 - 실행 클래스: `org.example.marketdetection.Main`(`@SpringBootApplication` + `@ConfigurationPropertiesScan`, 컴포넌트 스캔은 기본값 `org.example.marketdetection`).
 - app name: `market-detection`. 포트 `8500`(server.port만, 컨텍스트 경로 없음).
 - 핵심 라이브러리: OkHttp(WebSocket 클라이언트), `spring-cloud-stream-binder-kafka-streams`(Kafka Streams), `market-client`(gRPC), `spring-cloud-starter-bus-kafka`.
+- ticker 발행 worker는 Spring `ThreadPoolTaskExecutor`가 소유한다. worker는 shared ready queue에서 `take()`로 대기하고, shutdown 시 lifecycle owner가 `Future.cancel(true)`로 interrupt한다.
 - Config Server 연동: `spring.cloud.config.name: market-detection,eureka-client,kafka,monitoring`.
 - DB가 없는데도 발행 계약(`market-detection-contract`의 `PriceAlertDetectedEvent`가 `AbstractInboxEvent` 상속 → `common-inbox` → `common-jpa`)이 `spring-boot-starter-data-jpa`를 **전이로** classpath에 끌어온다. 그대로 두면 `DataSourceAutoConfiguration`이 강제 활성화돼 datasource url 없이 부팅이 깨진다. 그래서 `market-detection.yml`에서 `spring.autoconfigure.exclude`로 `DataSourceAutoConfiguration`·`HibernateJpaAutoConfiguration`을 제외한다. **이 제외를 지우면 부팅이 실패한다.**
 - 컴포넌트 스캔: `Main`은 `@ComponentScan(basePackages="org.example")` + `@ConfigurationPropertiesScan(basePackages="org.example")`로 common 빈을 넓게 스캔한다. 다만 `common-inbox`의 `InboxService`(JPA Repository 요구) 등 영속 서비스 빈은 이 서비스가 쓰지 않으므로 `org.example.common.(outbox|dlq|inbox).*`를 `excludeFilters`로 제외한다. Inbox 멱등 영속은 소비자(notification)의 몫이고, 이 모듈은 이벤트를 발행만 한다. **이 필터를 지우면 스캔된 서비스 빈이 JPA Repository를 요구해 부팅이 실패한다.**
@@ -35,21 +36,28 @@ Upbit 실시간 시세를 수집해 **단기 이동평균 대비 변동률**을 
 
 ## 4. 데이터 흐름
 
-### 4.1 수집 (Upbit WebSocket → 큐)
+### 4.1 수집 (Upbit WebSocket → coalescing buffer)
 
 - `UpbitWebsocketClientStarter`가 `ApplicationReadyEvent`에서 공통 `application.yml`의 `uri.provider.upbit.websocket`으로 설정된 OkHttp WebSocket을 연다.
 - `UpbitWebsocketListener.onOpen` → `UpbitWebsocketService.subscribe`로 **구독 코드 목록**을 보낸다. 구독 코드는 **market gRPC `getEnabledMarkets`**(→ `market.v1`)에서 가져온다(활성 마켓만; 비면 `IllegalStateException`).
 - `onMessage` → `UpbitWebsocketService.deserialize`가 `type=ticker`만 `UpbitTickerEvent`로 변환.
-- **스로틀링**: 코드별 발행 간격 `ticker-publish-interval`(10s). `tryUpdateTickerLastSent`가 `ConcurrentMap<code, AtomicLong>` + CAS로 간격 미만 이벤트를 버린다.
-- **백프레셔**: 유계 큐 `LinkedBlockingQueue`(capacity 100). 가득 차면 `offer` 실패 → 드롭(warn 로그).
+- **스로틀링**: 코드별 발행 간격 `ticker-publish-interval`(7s). `ConcurrentMap<code, AtomicLong>` + CAS로 간격 미만 이벤트를 버린다. ready queue 등록에 실패하면 CAS 예약을 되돌려 다음 ticker가 즉시 재시도할 수 있다.
+- **최신값 병합**: `UpbitTickerCoalescingBuffer`가 종목별 slot에 최신 `UpbitTickerEvent`와 version을 유지한다. shared `LinkedBlockingQueue`에는 payload가 아니라 처리할 code만 들어가며, 동일 code는 `IDLE/QUEUED/PROCESSING` 상태에 따라 한 번만 예약된다.
+- **백프레셔**: ready queue는 `ticker-ready-queue-capacity`(512)로 제한한다. WebSocket thread는 `offer`만 사용해 queue 공간을 기다리지 않는다. full이면 최신값은 slot에 남기고 예약 상태만 `IDLE`로 복구해 다음 ticker가 재등록한다.
+- 이 경계는 원시 Upbit ticker 전체가 아니라 7초 스로틀을 통과한 **수집 샘플**을 다룬다. 기존에도 스로틀·queue-full drop이 허용된 lossy 실시간 경계이므로 지연 중 오래된 샘플보다 최신값을 우선한다. Kafka에 발행된 뒤의 WindowStore 입력과 탐지 이벤트는 병합하지 않는다.
 
-### 4.2 발행 (Supplier → `upbit-ticker-event`)
+### 4.2 발행 (worker pool → `upbit-ticker-event`)
 
-- `upbitTickerEventSupplier`(Spring Cloud Stream `Supplier`)가 **poller 0.5s**(`fixed-delay 500ms`)마다 큐를 `poll`해 `UpbitTickerEvent`를 발행한다. 파티션 키 = 마켓 코드(`KafkaEventFactory.createEventMessage(...)` → `KafkaHeaders.KEY`). 목적지 바인딩 `upbitTickerEventSupplier-out-0` → `upbit-ticker-event`.
+- `UpbitTickerPublisher`가 `ticker-worker-count`(2)개의 worker를 Spring `ThreadPoolTaskExecutor`에 제출한다. worker는 shared ready queue의 `take()`에서 blocking하고, code를 받으면 slot의 최신 ticker를 `KafkaEventFactory.createEventMessage(...)`로 감싸 `StreamBridge`에 전달한다.
+- 처리 중 같은 code의 ticker가 갱신되면 현재 발행을 강제 취소하지 않는다. 완료 시 version 차이를 확인해 code를 한 번 재예약하며, 여러 갱신은 최신 ticker 하나로 합쳐진다. 따라서 동일 code는 동시에 두 worker가 발행하지 않고 서로 다른 code는 병렬 처리할 수 있다.
+- `UpbitTickerPublisher`는 executor보다 높은 phase의 `SmartLifecycle`이다. shutdown 시 publisher가 먼저 worker `Future.cancel(true)`를 호출하고 그 다음 executor가 종료된다. `take()`의 `InterruptedException`을 받은 worker는 interrupt status를 복원하고 loop를 종료한다.
+- 파티션 키는 마켓 코드(`KafkaHeaders.KEY`)이며 목적지 output binding `upbitTickerEvent-out-0`은 `upbit-ticker-event`를 가리킨다. 이 binding은 함수형 Supplier가 아니라 worker publisher가 소유한다.
+- 처리 시간 metric은 시스템 시간을 직접 읽지 않고 `common-time`의 `Clock.monotonicTimeNanos()`에 의존한다. wall-clock 변경의 영향을 받지 않는 두 단조 시간 값의 차이를 `market_detection_ticker_processing` Timer에 기록한다.
+- 관측 metric은 ready queue 크기(`market_detection_ticker_ready_queue_size`), queue offer 실패(`..._offer_failures_total`), 병합 ticker(`..._coalesced_total`), 처리 ticker(`..._processed_total`), worker 오류(`..._worker_errors_total`), 처리 시간(`market_detection_ticker_processing`)이다. 정상 interrupt shutdown은 info 로그 한 건만 남기고 ticker별 로그는 만들지 않는다.
 
 ### 4.3 처리 (Kafka Streams → 임계 탐지 → `price-alert-detected-event`)
 
-- `upbitTickerAlertEventProcessor`(`Function<KStream<String, UpbitTickerEvent>, KStream<String, PriceAlertDetectedEvent>>`)가 KStream을 `UpbitTickerProcessor`로 `process`한다. 입력 바인딩 `upbitTickerAlertEventProcessor-in-0` → **`upbit-ticker-event`**(Supplier 출력과 동일 토픽), group `upbit-ticker-alert`.
+- `upbitTickerAlertEventProcessor`(`Function<KStream<String, UpbitTickerEvent>, KStream<String, PriceAlertDetectedEvent>>`)가 KStream을 `UpbitTickerProcessor`로 `process`한다. 입력 바인딩 `upbitTickerAlertEventProcessor-in-0` → **`upbit-ticker-event`**(worker publisher 출력과 동일 토픽), group `upbit-ticker-alert`.
 - `UpbitTickerProcessor`(state store `upbit-ticker-store`, persistent WindowStore, retention/window `3m`):
   1. Upbit `tradeTimestamp`(없으면 Kafka record timestamp)가 현재 시각보다 `max-event-age`(10s) 초과해 오래된 이벤트면 상태 저장과 알림 발행 없이 폐기한다.
   2. 윈도우 `[timestamp - 3m, timestamp]`의 저장 시세로 **이동평균** 계산(없으면 현재가로 fallback).
@@ -65,8 +73,9 @@ Upbit 실시간 시세를 수집해 **단기 이동평균 대비 변동률**을 
 ### 4.4 흐름도
 
 ```
-Upbit WS ─(ticker)→ Listener(구독=market gRPC, 10s 스로틀, 큐 100)
-   → Supplier(0.5s poll) → Kafka: upbit-ticker-event
+Upbit WS ─(ticker)→ Listener(구독=market gRPC, 7s 스로틀)
+   → latest ticker map + shared ready code queue(512)
+   → publisher worker pool(2, take/interrupt) → Kafka: upbit-ticker-event
    → KStream(upbit-ticker-event) → UpbitTickerProcessor
         10s 초과 stale 폐기 → WindowStore(3m) 이동평균·변동률 → 임계 매칭(0/3/5/7%)
    → Kafka: price-alert-detected-event → [notification]
@@ -131,7 +140,7 @@ market-detection은 stateful Kafka 처리 결과가 곧 Kafka 출력이고 외�
 
 - **생산(외부 계약)**: `market-detection-contract`의 `PriceAlertDetectedEvent`(`AbstractInboxEvent` 상속, `implements KafkaEvent, ProducibleEvent`). 내부 `eventId`는 JSON에서 제외하고 Kafka header로 전달하며, payload는 `{ code, price, timestamp, avgInterval, avgPrice, changeRate, threshold }`로 구성한다. 토픽은 `PRICE_ALERT_DETECTED`(binding `upbitTickerAlertEventProcessor-out-0` → `price-alert-detected-event`), 파티션 키는 `code`다. `toPayload()`는 `PriceAlertDetectedPayloadKeys`(TypedKey)로 키-값 페이로드를 만든다(notification이 web push payload로 전달). 소비자 `notification`과 함께 변경한다(→ `../../.claude/rules/external-contracts.md`).
 - **소비(외부)**: market `market.v1 GetEnabledMarkets`(구독 대상). 임계값 enum `common-core/PriceAlertChangeRateThreshold`(`PERCENT_0/3/5/7`)는 market-detection(탐지)·notification(수신자 조회 rate 변환)·market(정확 일치 조회)이 **공유하는 계약**이다.
-- **내부 토픽**: `upbit-ticker-event`(수집 원본 — Supplier 출력이자 Kafka Streams 입력). auto-create(`auto-create-topics: true`).
+- **내부 토픽**: `upbit-ticker-event`(coalescing publisher 출력이자 Kafka Streams 입력). auto-create(`auto-create-topics: true`).
 
 ## 6. 확인 필요 항목
 
@@ -142,7 +151,7 @@ market-detection은 stateful Kafka 처리 결과가 곧 Kafka 출력이고 외�
 ## 7. 테스트 현황
 
 - `UpbitTickerProcessorTest`, `UpbitTickerProcessorTopologyTest`(`TopologyTestDriver` 계열, `kafka-streams-test-utils`)
-- `UpbitWebsocketListenerTest`, `UpbitWebsocketServiceTest`, `UpbitWebsocketServiceExternalIntegrationTest`(외부 의존 통합)
+- `UpbitWebsocketListenerTest`, `UpbitTickerCoalescingBufferTest`, `UpbitTickerPublisherTest`, `UpbitWebsocketServiceTest`, `UpbitWebsocketServiceExternalIntegrationTest`(외부 의존 통합)
 - 테스트 지원: `TestPropertiesConfig`, `TestUpbitExternalDependencyConfig`
 
 ## 8. 컴파일 · 테스트 · CI 명령
@@ -159,8 +168,8 @@ market-detection은 stateful Kafka 처리 결과가 곧 Kafka 출력이고 외�
 | `market-detection-contract/.../PriceAlertDetectedEvent.java` · `PriceAlertDetectedPayloadKeys` | notification이 소비하는 발행 계약 |
 | `common-core/PriceAlertChangeRateThreshold` | 3서비스 공유 임계값 계약(탐지·수신자 조회·정확 일치) |
 | `UpbitTickerProcessor.java` / `StateStoreConfig.java` | 변동률 산식·WindowStore(retention/window) |
-| `git-config-repo/dynamic/market-detection.yml` | Streams 바인딩·토픽·poller·store·트랜잭션 |
-| `UpbitWebsocketListener.java` | 구독(market gRPC)·스로틀·큐 백프레셔 |
+| `git-config-repo/dynamic/market-detection.yml` | Streams 바인딩·토픽·worker/ready queue·store·트랜잭션 |
+| `UpbitWebsocketListener.java` / `UpbitTickerCoalescingBuffer.java` / `UpbitTickerPublisher.java` | 구독·스로틀·최신값 병합·동시성·worker shutdown |
 
 ## 10. 관련 문서와 rules
 

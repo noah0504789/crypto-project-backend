@@ -1,6 +1,14 @@
 package org.example.marketdetection.upbit;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
 import okhttp3.WebSocket;
 import okio.ByteString;
 import org.example.common.event.KafkaEvent;
@@ -15,23 +23,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.Duration;
-import java.util.Arrays;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-
 @ExtendWith(MockitoExtension.class)
 class UpbitWebsocketServiceUnitTest {
 
     private static final String CODE = "KRW-BTC";
     private static final String TICKET = "test-ticket";
 
-    @Mock
-    private WebSocket webSocket;
+    @Mock private WebSocket webSocket;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final UpbitProperties properties = createProperties();
@@ -40,10 +38,7 @@ class UpbitWebsocketServiceUnitTest {
 
     @BeforeEach
     void setUp() {
-        sut = new UpbitWebsocketService(
-                objectMapper,
-                properties
-        );
+        sut = new UpbitWebsocketService(objectMapper, properties);
     }
 
     @Test
@@ -108,7 +103,8 @@ class UpbitWebsocketServiceUnitTest {
     @DisplayName("ticker 타입 메시지를 UpbitTickerEvent로 역직렬화한다")
     void deserialize_tickerMessage_returnUpbitTickerEvent() {
         // given
-        String json = """
+        String json =
+                """
                 {
                   "type": "ticker",
                   "code": "KRW-BTC",
@@ -140,7 +136,8 @@ class UpbitWebsocketServiceUnitTest {
     @DisplayName("지원하지 않는 type이면 null을 반환한다")
     void deserialize_unsupportedType_returnNull() {
         // given
-        String json = """
+        String json =
+                """
                 {
                   "type": "trade",
                   "code": "KRW-BTC",
@@ -161,7 +158,8 @@ class UpbitWebsocketServiceUnitTest {
     @DisplayName("type 필드가 없으면 null을 반환한다")
     void deserialize_missingType_returnNull() {
         // given
-        String json = """
+        String json =
+                """
                 {
                   "code": "KRW-BTC",
                   "trade_price": 100.5
@@ -181,7 +179,8 @@ class UpbitWebsocketServiceUnitTest {
     @DisplayName("type 필드가 문자열이 아니면 null을 반환한다")
     void deserialize_invalidType_returnNull() {
         // given
-        String json = """
+        String json =
+                """
                 {
                   "type": 123,
                   "code": "KRW-BTC",
@@ -213,25 +212,14 @@ class UpbitWebsocketServiceUnitTest {
     private UpbitProperties createProperties() {
         return new UpbitProperties(
                 new UpbitProperties.Websocket(
-                        "wss://api.upbit.com/websocket/v1",
-                        TICKET,
-                        Duration.ofSeconds(3),
-                        100
-                ),
+                        "wss://api.upbit.com/websocket/v1", TICKET, Duration.ofSeconds(3), 100, 3),
                 new UpbitProperties.Ticker(
-                        new UpbitProperties.Ticker.Alert(
-                                3,
-                                Duration.ofSeconds(10)
-                        )
-                ),
+                        new UpbitProperties.Ticker.Alert(3, Duration.ofSeconds(10))),
                 new UpbitProperties.Store(
                         new UpbitProperties.Store.StoreTicker(
                                 "upbit-ticker-store",
                                 Duration.ofMinutes(3),
                                 Duration.ofMinutes(3),
-                                false
-                        )
-                )
-        );
+                                false)));
     }
 }

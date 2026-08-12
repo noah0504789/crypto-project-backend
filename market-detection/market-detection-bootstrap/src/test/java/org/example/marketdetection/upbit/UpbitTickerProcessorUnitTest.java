@@ -1,12 +1,20 @@
 package org.example.marketdetection.upbit;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.*;
+
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.List;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
 import org.apache.kafka.streams.state.WindowStore;
 import org.apache.kafka.streams.state.WindowStoreIterator;
-import org.example.common.time.Clock;
 import org.example.common.enums.KafkaHeaderKey;
+import org.example.common.time.Clock;
 import org.example.marketdetection.contract.event.PriceAlertDetectedEvent;
 import org.example.marketdetection.infra.properties.UpbitProperties;
 import org.example.marketdetection.upbit.event.UpbitTickerEvent;
@@ -19,15 +27,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.*;
-
 @ExtendWith(MockitoExtension.class)
 class UpbitTickerProcessorUnitTest {
 
@@ -37,14 +36,11 @@ class UpbitTickerProcessorUnitTest {
 
     private final UpbitProperties properties = createProperties();
 
-    @Mock
-    private ProcessorContext<String, PriceAlertDetectedEvent> context;
+    @Mock private ProcessorContext<String, PriceAlertDetectedEvent> context;
 
-    @Mock
-    private WindowStore<String, UpbitTickerValue> upbitTickerStore;
+    @Mock private WindowStore<String, UpbitTickerValue> upbitTickerStore;
 
-    @Mock
-    private Clock clock;
+    @Mock private Clock clock;
 
     private UpbitTickerProcessor sut;
 
@@ -95,26 +91,24 @@ class UpbitTickerProcessorUnitTest {
         UpbitTickerEvent event = tickerEvent(102.0);
         Record<String, UpbitTickerEvent> record = new Record<>(CODE, event, TIMESTAMP);
 
-        WindowStoreIterator<UpbitTickerValue> iterator = mockTickerIterator(
-                new UpbitTickerValue(100.0, TIMESTAMP - 2_000),
-                new UpbitTickerValue(100.0, TIMESTAMP - 1_000)
-        );
+        WindowStoreIterator<UpbitTickerValue> iterator =
+                mockTickerIterator(
+                        new UpbitTickerValue(100.0, TIMESTAMP - 2_000),
+                        new UpbitTickerValue(100.0, TIMESTAMP - 1_000));
 
-        given(upbitTickerStore.fetch(
-                eq(CODE),
-                eq(TIMESTAMP - Duration.ofMinutes(3).toMillis()),
-                eq(TIMESTAMP)
-        )).willReturn(iterator);
+        given(
+                        upbitTickerStore.fetch(
+                                eq(CODE),
+                                eq(TIMESTAMP - Duration.ofMinutes(3).toMillis()),
+                                eq(TIMESTAMP)))
+                .willReturn(iterator);
 
         // when
         sut.process(record);
 
         // then
-        verify(upbitTickerStore).put(
-                eq(CODE),
-                eq(new UpbitTickerValue(102.0, TIMESTAMP)),
-                eq(TIMESTAMP)
-        );
+        verify(upbitTickerStore)
+                .put(eq(CODE), eq(new UpbitTickerValue(102.0, TIMESTAMP)), eq(TIMESTAMP));
 
         ArgumentCaptor<Record<String, PriceAlertDetectedEvent>> recordCaptor =
                 ArgumentCaptor.forClass(Record.class);
@@ -130,52 +124,39 @@ class UpbitTickerProcessorUnitTest {
         UpbitTickerEvent event = tickerEvent(110.0);
         Record<String, UpbitTickerEvent> record = new Record<>(CODE, event, TIMESTAMP);
 
-        WindowStoreIterator<UpbitTickerValue> iterator = mockTickerIterator(
-                new UpbitTickerValue(100.0, TIMESTAMP - 2_000),
-                new UpbitTickerValue(100.0, TIMESTAMP - 1_000)
-        );
+        WindowStoreIterator<UpbitTickerValue> iterator =
+                mockTickerIterator(
+                        new UpbitTickerValue(100.0, TIMESTAMP - 2_000),
+                        new UpbitTickerValue(100.0, TIMESTAMP - 1_000));
 
-        given(upbitTickerStore.fetch(
-                eq(CODE),
-                eq(TIMESTAMP - Duration.ofMinutes(3).toMillis()),
-                eq(TIMESTAMP)
-        )).willReturn(iterator);
+        given(
+                        upbitTickerStore.fetch(
+                                eq(CODE),
+                                eq(TIMESTAMP - Duration.ofMinutes(3).toMillis()),
+                                eq(TIMESTAMP)))
+                .willReturn(iterator);
 
         // when
         sut.process(record);
 
         // then
-        verify(upbitTickerStore).put(
-                eq(CODE),
-                eq(new UpbitTickerValue(110.0, TIMESTAMP)),
-                eq(TIMESTAMP)
-        );
+        verify(upbitTickerStore)
+                .put(eq(CODE), eq(new UpbitTickerValue(110.0, TIMESTAMP)), eq(TIMESTAMP));
 
         ArgumentCaptor<Record<String, PriceAlertDetectedEvent>> recordCaptor =
                 ArgumentCaptor.forClass(Record.class);
         verify(context, times(4)).forward(recordCaptor.capture());
 
-        List<PriceAlertDetectedEvent> events = recordCaptor.getAllValues()
-                .stream()
-                .map(Record::value)
-                .toList();
+        List<PriceAlertDetectedEvent> events =
+                recordCaptor.getAllValues().stream().map(Record::value).toList();
 
-        assertThat(recordCaptor.getAllValues())
-                .extracting(Record::key)
-                .containsOnly(CODE);
+        assertThat(recordCaptor.getAllValues()).extracting(Record::key).containsOnly(CODE);
 
-        assertThat(events)
-                .extracting(PriceAlertDetectedEvent::getPartitionKey)
-                .containsOnly(CODE);
+        assertThat(events).extracting(PriceAlertDetectedEvent::getPartitionKey).containsOnly(CODE);
 
         assertThat(events)
                 .extracting(PriceAlertDetectedEvent::getThreshold)
-                .containsExactlyInAnyOrder(
-                        "PERCENT_0",
-                        "PERCENT_3",
-                        "PERCENT_5",
-                        "PERCENT_7"
-                );
+                .containsExactlyInAnyOrder("PERCENT_0", "PERCENT_3", "PERCENT_5", "PERCENT_7");
 
         for (PriceAlertDetectedEvent detectedEvent : events) {
             assertThat(detectedEvent.getEventId()).isNotBlank();
@@ -190,10 +171,14 @@ class UpbitTickerProcessorUnitTest {
         for (Record<String, PriceAlertDetectedEvent> outputRecord : recordCaptor.getAllValues()) {
             assertThat(outputRecord.headers().lastHeader(KafkaHeaderKey.EVENT_ID.value()))
                     .isNotNull();
-            assertThat(new String(
-                    outputRecord.headers().lastHeader(KafkaHeaderKey.EVENT_ID.value()).value(),
-                    StandardCharsets.UTF_8
-            )).isEqualTo(outputRecord.value().getEventId());
+            assertThat(
+                            new String(
+                                    outputRecord
+                                            .headers()
+                                            .lastHeader(KafkaHeaderKey.EVENT_ID.value())
+                                            .value(),
+                                    StandardCharsets.UTF_8))
+                    .isEqualTo(outputRecord.value().getEventId());
         }
     }
 
@@ -206,21 +191,19 @@ class UpbitTickerProcessorUnitTest {
 
         WindowStoreIterator<UpbitTickerValue> iterator = mockTickerIterator();
 
-        given(upbitTickerStore.fetch(
-                eq(CODE),
-                eq(TIMESTAMP - Duration.ofMinutes(3).toMillis()),
-                eq(TIMESTAMP)
-        )).willReturn(iterator);
+        given(
+                        upbitTickerStore.fetch(
+                                eq(CODE),
+                                eq(TIMESTAMP - Duration.ofMinutes(3).toMillis()),
+                                eq(TIMESTAMP)))
+                .willReturn(iterator);
 
         // when
         sut.process(record);
 
         // then
-        verify(upbitTickerStore).put(
-                eq(CODE),
-                eq(new UpbitTickerValue(110.0, TIMESTAMP)),
-                eq(TIMESTAMP)
-        );
+        verify(upbitTickerStore)
+                .put(eq(CODE), eq(new UpbitTickerValue(110.0, TIMESTAMP)), eq(TIMESTAMP));
 
         ArgumentCaptor<Record<String, PriceAlertDetectedEvent>> recordCaptor =
                 ArgumentCaptor.forClass(Record.class);
@@ -239,8 +222,7 @@ class UpbitTickerProcessorUnitTest {
         Record<String, UpbitTickerEvent> nullKeyRecord =
                 new Record<>(null, tickerEvent(100.0), TIMESTAMP);
 
-        Record<String, UpbitTickerEvent> nullValueRecord =
-                new Record<>(CODE, null, TIMESTAMP);
+        Record<String, UpbitTickerEvent> nullValueRecord = new Record<>(CODE, null, TIMESTAMP);
 
         // when
         sut.process(nullKeyRecord);
@@ -263,10 +245,12 @@ class UpbitTickerProcessorUnitTest {
 
         hasNextResults[values.length] = false;
 
-        given(iterator.hasNext()).willReturn(
-                hasNextResults[0],
-                List.of(hasNextResults).subList(1, hasNextResults.length).toArray(new Boolean[0])
-        );
+        given(iterator.hasNext())
+                .willReturn(
+                        hasNextResults[0],
+                        List.of(hasNextResults)
+                                .subList(1, hasNextResults.length)
+                                .toArray(new Boolean[0]));
 
         if (values.length > 0) {
             KeyValue<Long, UpbitTickerValue>[] keyValues = new KeyValue[values.length];
@@ -275,10 +259,12 @@ class UpbitTickerProcessorUnitTest {
                 keyValues[i] = KeyValue.pair(TIMESTAMP - values.length + i, values[i]);
             }
 
-            given(iterator.next()).willReturn(
-                    keyValues[0],
-                    List.of(keyValues).subList(1, keyValues.length).toArray(new KeyValue[0])
-            );
+            given(iterator.next())
+                    .willReturn(
+                            keyValues[0],
+                            List.of(keyValues)
+                                    .subList(1, keyValues.length)
+                                    .toArray(new KeyValue[0]));
         }
 
         return iterator;
@@ -287,26 +273,12 @@ class UpbitTickerProcessorUnitTest {
     private UpbitProperties createProperties() {
         return new UpbitProperties(
                 new UpbitProperties.Websocket(
-                        "wss://api.upbit.com/websocket/v1",
-                        "test",
-                        Duration.ofSeconds(3),
-                        100
-                ),
+                        "wss://api.upbit.com/websocket/v1", "test", Duration.ofSeconds(3), 100, 3),
                 new UpbitProperties.Ticker(
-                        new UpbitProperties.Ticker.Alert(
-                                3,
-                                Duration.ofSeconds(10)
-                        )
-                ),
+                        new UpbitProperties.Ticker.Alert(3, Duration.ofSeconds(10))),
                 new UpbitProperties.Store(
                         new UpbitProperties.Store.StoreTicker(
-                                STORE_NAME,
-                                Duration.ofMinutes(3),
-                                Duration.ofMinutes(3),
-                                false
-                        )
-                )
-        );
+                                STORE_NAME, Duration.ofMinutes(3), Duration.ofMinutes(3), false)));
     }
 
     private UpbitTickerEvent tickerEvent(Double tradePrice) {
@@ -345,7 +317,6 @@ class UpbitTickerProcessorUnitTest {
                 null,
                 null,
                 null,
-                null
-        );
+                null);
     }
 }

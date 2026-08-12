@@ -187,7 +187,7 @@ proto 4개(`protobuf/src/main/proto/**`)와 서버/클라이언트 매핑:
 
 - 공통 설정: `git-config-repo/infrastructure/kafka.yml`(멱등 producer acks=all, JsonDeserializer, isolation read_committed).
 - 이벤트 헤더 계약(`common-core/KafkaHeaderKey`): `transaction_id`, `__TypeId__`, `dlq_id`, `KafkaHeaders.KEY`(partition key).
-- 토픽 카탈로그(`common-core/KafkaTopic`): `chatroom-event(.dlq)`, `chatroom-broadcast-event`, `chatmessage-event(.dlq)`, `chatmessage-broadcast-event`, `notification-event(.dlq)`, `web-notification-broadcast-event`, `market-broadcast-event`, `price-alert-detected-event`. market-detection 내부: `upbit-ticker-event`(Supplier 출력이자 Kafka Streams 입력).
+- 토픽 카탈로그(`common-core/KafkaTopic`): `chatroom-event(.dlq)`, `chatroom-broadcast-event`, `chatmessage-event(.dlq)`, `chatmessage-broadcast-event`, `notification-event(.dlq)`, `web-notification-broadcast-event`, `market-broadcast-event`, `price-alert-detected-event`. market-detection 내부: `upbit-ticker-event`(worker publisher 출력이자 Kafka Streams 입력).
 - Kafka Streams: `market-detection`의 `KafkaMarketDetectionBinder` + `UpbitTickerProcessor`(WindowStore `upbit-ticker-store`로 이동평균·변동률 계산).
 
 ### 7.3 REST

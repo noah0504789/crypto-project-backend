@@ -1,27 +1,24 @@
 package org.example.marketdetection.upbit;
 
 import jakarta.annotation.PostConstruct;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Response;
 import okhttp3.WebSocket;
 import okhttp3.WebSocketListener;
 import okio.ByteString;
-import org.example.common.time.Clock;
 import org.example.common.event.KafkaEvent;
+import org.example.common.time.Clock;
 import org.example.contract.market.MarketResponse;
 import org.example.market.client.MarketClient;
 import org.example.marketdetection.infra.properties.UpbitProperties;
 import org.example.marketdetection.upbit.event.UpbitTickerEvent;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
-
-import java.util.List;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
 @Component
@@ -32,13 +29,12 @@ public class UpbitWebsocketListener extends WebSocketListener {
     private final UpbitProperties properties;
     private final Clock clock;
     private final MarketClient marketClient;
+    private final UpbitTickerCoalescingBuffer tickerBuffer;
     private ConcurrentMap<String, AtomicLong> tickerLastSentByCode;
-    private BlockingQueue<KafkaEvent> tickerQueue;
 
     @PostConstruct
     void init() {
         this.tickerLastSentByCode = new ConcurrentHashMap<>();
-        this.tickerQueue = new LinkedBlockingQueue<>(properties.websocket().tickerQueueCapacity());
     }
 
     @Override
@@ -54,27 +50,24 @@ public class UpbitWebsocketListener extends WebSocketListener {
 
         KafkaEvent event = websocketService.deserialize(bytes);
 
-        if (!(event instanceof UpbitTickerEvent tickerEvent) || !tryUpdateTickerLastSent(tickerEvent)) {
+        if (!(event instanceof UpbitTickerEvent tickerEvent)) {
             return;
         }
 
-        offerTickerQueue(tickerEvent);
-    }
-
-    public KafkaEvent pollTickerQueue() {
-        return tickerQueue.poll();
+        offerTicker(tickerEvent);
     }
 
     private List<String> resolveSubscribeCodes() {
-        List<String> subscribeCodes = marketClient.getEnabledMarkets()
-                .stream()
-                .map(MarketResponse::marketCode)
-                .filter(code -> code != null && !code.isBlank())
-                .distinct()
-                .toList();
+        List<String> subscribeCodes =
+                marketClient.getEnabledMarkets().stream()
+                        .map(MarketResponse::marketCode)
+                        .filter(code -> code != null && !code.isBlank())
+                        .distinct()
+                        .toList();
 
         if (subscribeCodes.isEmpty()) {
-            throw new IllegalStateException("No enabled markets found for Upbit websocket subscription.");
+            throw new IllegalStateException(
+                    "No enabled markets found for Upbit websocket subscription.");
         }
 
         log.info("[upbit] resolved upbit subscribe codes. codes={}", subscribeCodes);
@@ -82,32 +75,32 @@ public class UpbitWebsocketListener extends WebSocketListener {
         return subscribeCodes;
     }
 
-    private boolean tryUpdateTickerLastSent(UpbitTickerEvent tickerEvent) {
+    private void offerTicker(UpbitTickerEvent tickerEvent) {
         String code = tickerEvent.code();
 
         if (code == null || code.isBlank()) {
             log.warn("[upbit] ticker event code is blank. event={}", tickerEvent);
-            return false;
+            return;
         }
 
         long now = clock.nowMs();
 
-        AtomicLong lastSent = tickerLastSentByCode.computeIfAbsent(code, ignored -> new AtomicLong(0));
+        AtomicLong lastSent =
+                tickerLastSentByCode.computeIfAbsent(code, ignored -> new AtomicLong(0));
         long previous = lastSent.get();
         long intervalMillis = properties.websocket().tickerPublishInterval().toMillis();
 
         if (now - previous < intervalMillis) {
-            return false;
+            return;
         }
 
-        return lastSent.compareAndSet(previous, now);
-    }
+        if (!lastSent.compareAndSet(previous, now)) {
+            return;
+        }
 
-    private void offerTickerQueue(KafkaEvent event) {
-        boolean offered = tickerQueue.offer(event);
-
-        if (!offered) {
-            log.warn("[upbit] ticker queue is full. droppedEvent={}", event.getClass().getSimpleName());
+        if (!tickerBuffer.offer(tickerEvent)) {
+            lastSent.compareAndSet(now, previous);
+            log.warn("[upbit] ticker ready queue is full. code={}", code);
         }
     }
 }

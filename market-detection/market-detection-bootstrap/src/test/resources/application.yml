@@ -9,8 +9,9 @@ upbit:
     ticket: test
     subscribe-codes:
       - KRW-BTC
-    ticker-publish-interval: 10s
-    ticker-queue-capacity: 100
+    ticker-publish-interval: 7s
+    ticker-ready-queue-capacity: 512
+    ticker-worker-count: 2
 
   ticker:
     alert:
