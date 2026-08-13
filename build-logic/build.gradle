@@ -10,4 +10,5 @@ repositories {
 dependencies {
     implementation libs.spring.boot.gradle.plugin
     implementation libs.dependency.management.gradle.plugin
+    implementation libs.spotless.gradle.plugin
 }

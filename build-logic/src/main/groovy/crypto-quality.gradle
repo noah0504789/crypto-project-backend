@@ -1,0 +1,27 @@
+plugins {
+    id 'com.diffplug.spotless'
+}
+
+def ratchetReference = providers.environmentVariable('GITHUB_BASE_REF')
+        .map { baseRef -> "origin/${baseRef}" }
+        .getOrElse('main')
+
+spotless {
+    ratchetFrom ratchetReference
+
+    java {
+        target 'src/*/java/**/*.java'
+        removeUnusedImports()
+        googleJavaFormat(libs.versions.google.java.format.get()).aosp()
+    }
+
+    format 'misc', {
+        target '*.gradle', '*.properties'
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('spotlessCheck')
+}
