@@ -21,7 +21,7 @@
 
 **두 축이다.** ① 변경 영향 모듈만 빌드한다(`scripts/ci/affected_modules.py`). ② **PR 과 머지에서 같은 내용을 두 번 빌드하지 않는다.**
 
-PR, main push, 수동 전체 재빌드를 각각 별도 workflow로 분리한다. 각 파일에는 해당 이벤트의 job만 두며, 공통 셋업(Java·Python·실행 권한·`pytest scripts/ci`)은 `.github/actions/setup-build` composite action 에 있다.
+PR, main push, 수동 전체 재빌드를 각각 별도 workflow로 분리한다. 각 파일에는 해당 이벤트의 job만 두며, 공통 셋업(Java·Gradle·Python·실행 권한)은 `.github/actions/setup-build` composite action 에 있다.
 
 | 파일 | job · name | 트리거 | 하는 일 |
 |---|---|---|---|
@@ -187,7 +187,7 @@ git-config-repo/dynamic/*.yml 수정 → main push
 
 - GitHub Secrets: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`(태그 삭제를 위해 **Read/Write/Delete** 스코프), `DEPLOY_TOKEN`, `VAULT_ROLE_ID`, `VAULT_SECRET_ID`.
 - GitHub Variables(vars): `INFRA_REPO_DIR`, `CONFIG_REPO_URI`, `CONFIG_SERVER_URL`.
-- CI 스크립트(`scripts/ci/`): `affected_modules.py`(엔트리), `affected_modules_core.py`(로직), `test_affected_modules.py`(pytest — CI가 매 실행 시 검증). 변경 파일 → 영향 모듈 → gradle task(`--mode build`) 또는 docker 대상(`--mode docker`) 산출.
+- CI 스크립트(`scripts/ci/`): `affected_modules.py`는 유일한 CLI 엔트리, `affected_modules_core.py`는 계산 로직이다. 변경 파일 → 영향 모듈 → Gradle task(`--mode build`) 또는 Docker 대상(`--mode docker`)을 산출한다.
 - Dockerfile: 각 실행 모듈 디렉토리(`docs/ARCHITECTURE.md §10`, 12개). docker-compose·배포 스크립트는 별도 infra 저장소.
 
 ## 7. 확인 필요

@@ -17,7 +17,7 @@
 |---|---|
 | 문서·하네스 변경 전/후 로컬 | 관련 링크·참조 경로 확인, `git diff --check` |
 | Gradle 구조·계층 변경 후 로컬 | ArchUnit + 영향 `<service>Ci` |
-| CI script 변경 후 로컬 | `pytest scripts/ci` + affected 계산 |
+| CI script 변경 후 로컬 | 실제 base/head 기준 affected build/docker 계산 비교 |
 | 정기 housekeeping | 구조 후보를 출력만 하고 사람이 확인·삭제 판단 |
 
 ## 수동 리뷰가 필요한 항목

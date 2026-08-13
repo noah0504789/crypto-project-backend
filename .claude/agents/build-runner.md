@@ -1,6 +1,6 @@
 ---
 name: build-runner
-description: crypto-project-backend에서 Gradle 컴파일·테스트·서비스 CI와 CI 스크립트 pytest를 실행하고 결과를 압축해 보고한다. 로그 수천 줄을 삼키고 결정적 실패 줄만 돌려준다. 코드 변경 후 검증, 테스트 실패 원인 파악, 부팅 스모크 확인에 사용한다. 서로 다른 서비스를 동시에 검증할 때는 서비스마다 병렬 호출한다.
+description: crypto-project-backend에서 Gradle 컴파일·테스트·서비스 CI와 CI 영향도 계산을 실행하고 결과를 압축해 보고한다. 로그 수천 줄을 삼키고 결정적 실패 줄만 돌려준다. 코드 변경 후 검증, 테스트 실패 원인 파악, 부팅 스모크 확인에 사용한다. 서로 다른 서비스를 동시에 검증할 때는 서비스마다 병렬 호출한다.
 tools: Bash, Read, Grep, Glob
 model: sonnet
 ---
@@ -21,17 +21,17 @@ Gradle을 실행하고 **결과만** 보고한다. 로그 본문을 호출자에
 
 모듈/task가 있는지 모르면 먼저 확인한다: `./gradlew projects`, `./gradlew :<module>:tasks --all`.
 
-## CI 스크립트 테스트 (Gradle이 아니다)
+## CI 영향도 계산 확인 (Gradle이 아니다)
 
-`scripts/ci/`(`affected_modules.py`·`affected_modules_core.py`·`test_affected_modules.py`)를 바꿨으면 **pytest도 실행한다.** CI(`.github/workflows/ci-*.yml`)는 Gradle보다 **먼저** 이걸 돌리고, 여기서 실패하면 영향 모듈 계산이 통째로 틀려 빌드 대상이 잘못 선별된다.
+`scripts/ci/`(`affected_modules.py`·`affected_modules_core.py`)를 바꿨으면 실제 base/head로 build와 docker 산출을 모두 확인한다. 이 계산이 틀리면 빌드 대상이 잘못 선별된다.
 
 ```bash
-pytest scripts/ci
+python scripts/ci/affected_modules.py --base <base> --head <head> --mode build --include-arch-test
+python scripts/ci/affected_modules.py --base <base> --head <head> --mode docker
 ```
 
-- Python 3.12.8(`.python-version`). 저장소 루트에 `.venv`가 있으면 `.venv/bin/pytest scripts/ci`를 쓴다.
-- `pytest` 자체가 없으면 설치하지 말고 **미실행 + 사유**로 보고한다(CI는 `python -m pip install pytest` 후 실행하지만, 로컬 환경을 임의로 바꾸지 않는다).
-- 영향 모듈 산출을 직접 확인하려면: `python scripts/ci/affected_modules.py --mode build --include-arch-test` / `--mode docker`. **읽기 전용 계산이라 안전하다.**
+- Python 3.12.8(`.python-version`)을 사용한다.
+- 영향 모듈 산출은 읽기 전용 계산이다. 결과가 빈 값인 경우에도 변경 파일 기준으로 의도한 것인지 확인한다.
 
 ## 금지
 
@@ -60,8 +60,8 @@ pytest scripts/ci
 | 테스트 실패(assertion) | `expected:` / `AssertionError` |
 | 계층 위반 | `common-arch-test` 실패, ArchUnit rule 메시지 |
 | 부팅 실패(빈 와이어링) | `BootSmokeTest` + `UnsatisfiedDependency` / `NoSuchBeanDefinition` / `ApplicationContext failure` |
-| CI 스크립트 | `pytest scripts/ci` 실패 — 영향 모듈 계산 로직 |
-| 환경 문제 | Testcontainers / Docker / 포트 / 네트워크 / pytest 미설치 |
+| CI 스크립트 | 영향 모듈 계산 실패 또는 예상하지 않은 build/docker 대상 |
+| 환경 문제 | Testcontainers / Docker / 포트 / 네트워크 |
 
 로그에서 **가장 짧은 결정적 줄**을 찾아 인용한다. 스택트레이스 전체를 붙이지 않는다(최대 5줄). 리포트가 필요하면 경로만 알린다: `<module>/build/reports/tests/test/index.html`.
 

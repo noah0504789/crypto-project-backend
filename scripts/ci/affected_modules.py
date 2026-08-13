@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
-from pathlib import Path
 
-from affected_modules_core import changed_files, calculate_output
+from affected_modules_core import calculate_output, changed_files, find_root
 
 
 def main() -> None:
@@ -20,7 +19,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    root = Path.cwd()
+    root = find_root()
     files = changed_files(args.base, args.head)
 
     output = calculate_output(
