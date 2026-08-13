@@ -1,24 +1,7 @@
-name: Backend CI
+name: Backend Merge CI
 
-# PR 과 머지에서 같은 내용을 두 번 빌드하지 않는다.
-#   pull_request : 검증 + 이미지를 pr-<번호> 태그로 push
-#   push(머지)   : tree 해시가 PR 과 같으면 그 이미지를 승격(빌드 스킵), 다르면 풀빌드
+# PR 에서 검증된 이미지를 승격하거나, 내용이 달라졌으면 다시 빌드한다.
 on:
-  workflow_dispatch:
-    inputs:
-      ci_task:
-        description: 'CI task to run'
-        required: true
-        default: 'serviceCi'
-        type: choice
-        options:
-          - serviceCi
-      base_ref:
-        description: 'Base ref for affected Docker calculation'
-        required: false
-        default: 'origin/main'
-  pull_request:
-    branches: [ "main" ]
   push:
     branches: [ "main" ]
 
@@ -27,99 +10,8 @@ permissions:
   pull-requests: read
 
 jobs:
-  # name 을 바꾸지 않는다. 룰셋 main-protection 의 required status check 가 이 이름을 참조하며,
-  # 이름이 어긋나면 모든 PR 이 머지 불가가 된다.
-  pull-request-ci:
-    name: Affected module CI
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: ./.github/actions/setup-build
-
-      - name: Calculate affected Gradle tasks
-        id: affected
-        run: |
-          TASKS=$(./scripts/ci/affected_modules.py \
-            --base "origin/${{ github.base_ref }}" --head "${{ github.sha }}" \
-            --mode build --include-arch-test)
-          echo "tasks=$TASKS" >> "$GITHUB_OUTPUT"
-          echo "Affected tasks: $TASKS"
-
-      - name: Run affected module CI
-        if: steps.affected.outputs.tasks != ''
-        run: ./gradlew clean ${{ steps.affected.outputs.tasks }}
-
-      - name: Calculate affected Docker services
-        id: docker
-        run: |
-          SERVICES=$(./scripts/ci/affected_modules.py \
-            --base "origin/${{ github.base_ref }}" --head "${{ github.sha }}" --mode docker)
-          echo "services=$SERVICES" >> "$GITHUB_OUTPUT"
-          echo "Affected Docker services: $SERVICES"
-
-      - uses: docker/setup-buildx-action@v3
-        if: steps.docker.outputs.services != ''
-
-      # fork PR 은 시크릿을 못 받는다. 로그인 없이 빌드만 해 Dockerfile 유효성만 확인한다.
-      - name: Login to DockerHub
-        if: steps.docker.outputs.services != '' && github.event.pull_request.head.repo.full_name == github.repository
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      # latest 는 붙이지 않는다. 아직 머지되지 않은 코드다.
-      - name: Build and push PR image
-        if: steps.docker.outputs.services != ''
-        env:
-          CAN_PUSH: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
-        run: |
-          set -euo pipefail
-
-          for ITEM in ${{ steps.docker.outputs.services }}; do
-            SERVICE_PATH="${ITEM%%=*}"
-            IMAGE_NAME="${ITEM#*=}"
-            DOCKERFILE="$SERVICE_PATH/Dockerfile"
-
-            if [ ! -f "$DOCKERFILE" ]; then
-              echo "Dockerfile not found: $DOCKERFILE"
-              exit 1
-            fi
-
-            if [ "$CAN_PUSH" = "true" ]; then
-              TAG="${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME:pr-${{ github.event.pull_request.number }}"
-            else
-              TAG="local/$IMAGE_NAME:pr"
-            fi
-
-            echo "Building $TAG"
-            docker build -f "$DOCKERFILE" -t "$TAG" "$SERVICE_PATH"
-
-            if [ "$CAN_PUSH" = "true" ]; then
-              docker push "$TAG"
-            else
-              echo "fork PR 이라 push 를 건너뛴다."
-            fi
-          done
-
-      - name: Upload test reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-reports-pr
-          path: |
-            **/build/reports/tests/test/
-            **/build/test-results/test/
-
-  # PR 에서 검증된 이미지를 승격하거나, 내용이 달라졌으면 다시 빌드한다.
   merge-ci:
     name: Promote or rebuild
-    if: github.event_name == 'push'
     runs-on: ubuntu-latest
 
     steps:
@@ -243,9 +135,11 @@ jobs:
           exit 0
 
       # ---------- 풀빌드 경로: tree 가 달라 승격할 수 없을 때만 ----------
+      # Docker 대상이 없으면 promoted step 자체가 skip되어 ok가 비어 있다.
+      # 이 경우 tree 재사용에 성공했다면 fallback 조건으로 취급하지 않는다.
       - name: Calculate affected Gradle tasks
         id: affected
-        if: steps.promote.outputs.reuse != 'true' || steps.promoted.outputs.ok != 'true'
+        if: steps.promote.outputs.reuse != 'true' || (steps.docker.outputs.services != '' && steps.promoted.outputs.ok != 'true')
         run: |
           TASKS=$(./scripts/ci/affected_modules.py \
             --base "${{ github.event.before }}" --head "${{ github.sha }}" \
@@ -254,11 +148,11 @@ jobs:
           echo "Affected tasks: $TASKS"
 
       - name: Run affected module CI
-        if: (steps.promote.outputs.reuse != 'true' || steps.promoted.outputs.ok != 'true') && steps.affected.outputs.tasks != ''
+        if: (steps.promote.outputs.reuse != 'true' || (steps.docker.outputs.services != '' && steps.promoted.outputs.ok != 'true')) && steps.affected.outputs.tasks != ''
         run: ./gradlew clean ${{ steps.affected.outputs.tasks }}
 
       - name: Build and push Docker images
-        if: (steps.promote.outputs.reuse != 'true' || steps.promoted.outputs.ok != 'true') && steps.docker.outputs.services != ''
+        if: (steps.promote.outputs.reuse != 'true' || (steps.docker.outputs.services != '' && steps.promoted.outputs.ok != 'true')) && steps.docker.outputs.services != ''
         run: |
           set -euo pipefail
 
@@ -279,59 +173,10 @@ jobs:
           done
 
       - name: Upload test reports
-        if: always() && (steps.promote.outputs.reuse != 'true' || steps.promoted.outputs.ok != 'true')
+        if: always() && (steps.promote.outputs.reuse != 'true' || (steps.docker.outputs.services != '' && steps.promoted.outputs.ok != 'true'))
         uses: actions/upload-artifact@v4
         with:
           name: test-reports-merge
           path: |
             **/build/reports/tests/test/
             **/build/test-results/test/
-
-  # 전체 서비스를 강제로 다시 빌드한다. affected 계산을 신뢰할 수 없을 때의 탈출구.
-  full-rebuild:
-    name: Full rebuild (manual)
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: ./.github/actions/setup-build
-
-      - name: Run service CI
-        run: ./gradlew clean ${{ inputs.ci_task }}
-
-      - name: Calculate affected Docker services
-        id: docker
-        run: |
-          SERVICES=$(./scripts/ci/affected_modules.py \
-            --base "${{ inputs.base_ref }}" --head "${{ github.sha }}" --mode docker)
-          echo "services=$SERVICES" >> "$GITHUB_OUTPUT"
-          echo "Affected Docker services: $SERVICES"
-
-      - uses: docker/setup-buildx-action@v3
-        if: steps.docker.outputs.services != ''
-
-      - name: Login to DockerHub
-        if: steps.docker.outputs.services != ''
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and push Docker images
-        if: steps.docker.outputs.services != ''
-        run: |
-          set -euo pipefail
-
-          for ITEM in ${{ steps.docker.outputs.services }}; do
-            SERVICE_PATH="${ITEM%%=*}"
-            IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/${ITEM#*=}"
-
-            docker build -f "$SERVICE_PATH/Dockerfile" \
-              -t "${IMAGE}:${GITHUB_SHA::7}" -t "${IMAGE}:latest" "$SERVICE_PATH"
-            docker push "${IMAGE}:${GITHUB_SHA::7}"
-            docker push "${IMAGE}:latest"
-          done

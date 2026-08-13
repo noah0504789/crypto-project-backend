@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import argparse
 import re
 import subprocess
 from collections import defaultdict, deque
@@ -425,50 +424,15 @@ def calculate_output(
 def find_root() -> Path:
     current = Path.cwd().resolve()
 
-    while current is not None:
+    while True:
         if (current / "settings.gradle").is_file():
             return current
 
-        current = current.parent
+        parent = current.parent
+
+        if parent == current:
+            break
+
+        current = parent
 
     raise RuntimeError("Cannot locate repository root")
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Calculate affected Gradle tasks or Docker services.")
-    parser.add_argument("--base", required=True)
-    parser.add_argument("--head", required=True)
-    parser.add_argument(
-        "--mode",
-        choices=("build", "assemble", "docker"),
-        default="build"
-    )
-    parser.add_argument(
-        "--include-arch-test",
-        action="store_true",
-        help="Always include common architecture test task."
-    )
-    parser.add_argument(
-        "--fallback-task",
-        default="build",
-        help="Task used when a global change is detected."
-    )
-
-    args = parser.parse_args()
-
-    root = find_root()
-    files = changed_files(args.base, args.head)
-
-    output = calculate_output(
-        root=root,
-        files=files,
-        mode=args.mode,
-        include_arch_test=args.include_arch_test,
-        fallback_task=args.fallback_task
-    )
-
-    print(" ".join(output))
-
-
-if __name__ == "__main__":
-    main()

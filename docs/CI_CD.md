@@ -1,12 +1,14 @@
 # CI / CD
 
-이 문서는 `.github/workflows/`의 GitHub Actions 워크플로우 6개를 사람이 읽기 위해 정리한 것이다. 근거는 각 워크플로우 YAML과 `scripts/ci/`이며, 값·의도를 코드만으로 판단할 수 없는 항목은 §7 `확인 필요`로 분리했다. 빌드/CI Gradle task 개요는 `docs/ARCHITECTURE.md §10`, 배포 스크립트 실체는 이 저장소가 아니라 별도 infra 저장소에 있다.
+이 문서는 `.github/workflows/`의 GitHub Actions 워크플로우 8개를 사람이 읽기 위해 정리한 것이다. 근거는 각 워크플로우 YAML과 `scripts/ci/`이며, 값·의도를 코드만으로 판단할 수 없는 항목은 §7 `확인 필요`로 분리했다. 빌드/CI Gradle task 개요는 `docs/ARCHITECTURE.md §10`, 배포 스크립트 실체는 이 저장소가 아니라 별도 infra 저장소에 있다.
 
 ## 1. 워크플로우 개요
 
 | 이름 | 파일 | 트리거 | 러너 | 목적 |
 |---|---|---|---|---|
-| Backend CI | `ci.yml` | PR→main, push→main, 수동 | `ubuntu-latest` | 영향 모듈만 빌드·테스트, 머지 시 PR 이미지 승격 |
+| Backend PR CI | `ci-pr.yml` | PR→main | `ubuntu-latest` | 영향 모듈 빌드·테스트와 PR 이미지 생성 |
+| Backend Merge CI | `ci-merge.yml` | push→main | `ubuntu-latest` | PR 이미지 승격 또는 영향 모듈 fallback 빌드 |
+| Backend Full Rebuild | `ci-full-rebuild.yml` | 수동 | `ubuntu-latest` | 전체 서비스 검증과 영향 Docker 이미지 재빌드 |
 | PR cleanup | `pr-cleanup.yml` | PR closed | `ubuntu-latest` | `pr-<번호>` 태그·브랜치 캐시 삭제 |
 | Backend CD | `cd.yml` | 수동만 | self-hosted `[local, backend]` · env `production` | 서비스별 운영 배포 |
 | Spring Cloud Config Bus Refresh | `spring-cloud-config-bus.yml` | push→main (`git-config-repo/**`) | self-hosted · env `production` | 동적 설정 변경 시 busrefresh |
@@ -15,17 +17,17 @@
 
 `environment: production`인 워크플로우는 GitHub Environment 보호 규칙(승인)을 거친다.
 
-## 2. Backend CI (`ci.yml`)
+## 2. Backend CI (`ci-*.yml`)
 
 **두 축이다.** ① 변경 영향 모듈만 빌드한다(`scripts/ci/affected_modules.py`). ② **PR 과 머지에서 같은 내용을 두 번 빌드하지 않는다.**
 
-이벤트마다 job 이 하나씩 대응하며, 공통 셋업(Java·Python·실행 권한·`pytest scripts/ci`)은 `.github/actions/setup-build` composite action 에 있다.
+PR, main push, 수동 전체 재빌드를 각각 별도 workflow로 분리한다. 각 파일에는 해당 이벤트의 job만 두며, 공통 셋업(Java·Gradle·Python·실행 권한)은 `.github/actions/setup-build` composite action 에 있다.
 
-| job | name | 트리거 | 하는 일 |
+| 파일 | job · name | 트리거 | 하는 일 |
 |---|---|---|---|
-| `pull-request-ci` | `Affected module CI` | `pull_request` | affected Gradle CI → Docker 빌드 → `pr-<번호>` 태그로 push |
-| `merge-ci` | `Promote or rebuild` | `push`(main) | tree 비교 후 **승격** 또는 풀빌드 |
-| `full-rebuild` | `Full rebuild (manual)` | `workflow_dispatch` | `serviceCi`(전체) + Docker 빌드·push |
+| `ci-pr.yml` | `pull-request-ci` · `Affected module CI` | `pull_request` | affected Gradle CI → Docker 빌드 → `pr-<번호>` 태그로 push |
+| `ci-merge.yml` | `merge-ci` · `Promote or rebuild` | `push`(main) | tree 비교 후 **승격** 또는 풀빌드 |
+| `ci-full-rebuild.yml` | `full-rebuild` · `Full rebuild (manual)` | `workflow_dispatch` | `serviceCi`(전체) + Docker 빌드·push |
 
 > **`pull-request-ci` 의 `name` 을 바꾸지 않는다.** 룰셋 `main-protection` 의 required status check 가 `"Affected module CI"` 를 참조한다. 어긋나면 모든 PR 이 머지 불가가 된다.
 
@@ -46,6 +48,8 @@ merge-ci:
 
 **승격은 최적화지 필수 경로가 아니다.** `pr-<번호>` 이미지가 없거나 태그 조작이 실패하면 경고만 남기고 풀빌드로 전환한다. 승격 실패가 main 을 깨뜨리지 않는다.
 
+Docker 대상 서비스가 없는 docs-only PR은 승격할 이미지가 없으므로 승격 단계를 건너뛴다. 이때 PR과 main의 tree가 같으면 재사용 성공으로 간주해 Gradle fallback도 실행하지 않는다. Docker 대상이 있을 때만 승격 결과를 fallback 판정에 포함한다.
+
 > required status check 는 **PR 시점만** 검사한다. 승격 경로는 머지 후에만 존재하므로 PR 에서 검증될 수 없고, 여기서 실패하면 이미 머지된 뒤다. 그래서 이 경로는 게이트가 아니라 **폴백**으로 설계했다.
 
 ### 2.2 Docker 태그 규칙
@@ -60,7 +64,7 @@ PR 태그 정리는 경로가 둘로 나뉜다. **머지는 `push`(main)와 `pul
 
 | 경우 | 누가 지우나 |
 |---|---|
-| 머지됨 | `ci.yml` `merge-ci` 가 **승격 직후 같은 job 안에서** — 순서 보장 |
+| 머지됨 | `ci-merge.yml`이 **승격 직후 같은 job 안에서** — 순서 보장 |
 | 머지 없이 닫힘 | `pr-cleanup.yml`(§5) — 승격이 없어 경쟁 없음 |
 
 `<sha7>`·`latest` 는 어느 경로에서도 건드리지 않는다.
@@ -174,7 +178,7 @@ git-config-repo/dynamic/*.yml 수정 → main push
 - `production-environment-test.yml`: 수동, self-hosted + env `production`. 러너/사용자/날짜만 출력 — **production Environment 승인 흐름과 러너 동작을 점검하는 스모크 테스트**.
 - `self-hosted-runner-test.yml`: 수동, self-hosted(환경 게이트 없음). hostname/whoami/uname/docker 버전 출력 — **러너 연결·도구 확인용**.
 - `pr-cleanup.yml`: PR 이 닫히면 두 가지를 정리한다.
-  - `delete-pr-tags`: **머지되지 않은** PR(`merged == false`)의 `pr-<번호>` 이미지 태그. 머지된 PR 은 `ci.yml` `merge-ci` 가 승격 직후 처리한다(§2.2).
+  - `delete-pr-tags`: **머지되지 않은** PR(`merged == false`)의 `pr-<번호>` 이미지 태그. 머지된 PR 은 `ci-merge.yml`이 승격 직후 처리한다(§2.2).
   - `delete-pr-caches`: 그 PR 의 브랜치 스코프 GitHub Actions 캐시(`refs/pull/<N>/merge`). 머지 여부와 무관하게 실행한다. `actions: write` 권한이 필요하다. 대상 이미지는 각 실행 모듈 `build.gradle` 의 `ext.dockerImageName` 에서 읽는다(정본). `<sha7>`·`latest` 는 건드리지 않는다.
   - **실패해도 job 을 죽이지 않는다**(경고만). 정리 실패가 개발 흐름을 막지 않게 한 것이며, `DOCKERHUB_TOKEN` 에 Delete 스코프가 없으면 403 경고가 남는다.
   - fork PR 은 대상에서 제외된다(시크릿 없음 → 애초에 push 되지 않았다).
@@ -183,7 +187,7 @@ git-config-repo/dynamic/*.yml 수정 → main push
 
 - GitHub Secrets: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`(태그 삭제를 위해 **Read/Write/Delete** 스코프), `DEPLOY_TOKEN`, `VAULT_ROLE_ID`, `VAULT_SECRET_ID`.
 - GitHub Variables(vars): `INFRA_REPO_DIR`, `CONFIG_REPO_URI`, `CONFIG_SERVER_URL`.
-- CI 스크립트(`scripts/ci/`): `affected_modules.py`(엔트리), `affected_modules_core.py`(로직), `test_affected_modules.py`(pytest — CI가 매 실행 시 검증). 변경 파일 → 영향 모듈 → gradle task(`--mode build`) 또는 docker 대상(`--mode docker`) 산출.
+- CI 스크립트(`scripts/ci/`): `affected_modules.py`는 유일한 CLI 엔트리, `affected_modules_core.py`는 계산 로직이다. 변경 파일 → 영향 모듈 → Gradle task(`--mode build`) 또는 Docker 대상(`--mode docker`)을 산출한다.
 - Dockerfile: 각 실행 모듈 디렉토리(`docs/ARCHITECTURE.md §10`, 12개). docker-compose·배포 스크립트는 별도 infra 저장소.
 
 ## 7. 확인 필요

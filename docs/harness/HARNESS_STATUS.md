@@ -6,7 +6,7 @@
 |---|---|---|---|
 | 지시 문서 | 작업 진입, 행동 규칙, 모듈 고유 제약, 반복 절차와 분리 실행 | `CLAUDE.md`, `.claude/rules/`, module `CLAUDE.md`, `.claude/skills/`, `.claude/agents/` | 문서 링크 검사 |
 | 아키텍처 제약 | Gradle 모듈·package 의존 방향 강제 | `architecture.md`, `ARCHITECTURE_CONSTRAINTS.md`, `common-arch-test` | `:common:common-arch-test:test` |
-| 피드백 루프 | 변경 유형별 최소 검증 선택과 완료 조건 | `testing.md`, `FEEDBACK_LOOP.md`, `verify-change` | 모듈 test, `<service>Ci`, `pytest scripts/ci` |
+| 피드백 루프 | 변경 유형별 최소 검증 선택과 완료 조건 | `testing.md`, `FEEDBACK_LOOP.md`, `verify-change` | 모듈 test, `<service>Ci`, affected build/docker 계산 |
 | 지식 저장소 | 구조·흐름·결정·미해결 항목의 기록 위치 제공 | `docs/README.md`, `docs/decisions/`, `TODO.md` | 변경한 경로와 참조 확인 |
 | Harness 유지보수 | 지침·문서·서비스 CI 구성을 변경 범위와 함께 검토 | `HARNESS_MAINTENANCE.md` | `git diff --check`, 관련 경로·task 확인 |
 

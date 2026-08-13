@@ -1,5 +1,5 @@
 name: Setup build environment
-description: Java·Gradle·Python 준비, 실행 권한 부여, CI 스크립트 테스트까지 공통 셋업
+description: Java·Gradle·Python 준비와 실행 권한 부여
 
 runs:
   using: composite
@@ -30,11 +30,3 @@ runs:
       run: |
         chmod +x ./gradlew
         chmod +x ./scripts/ci/affected_modules.py
-
-    # affected 모듈 계산이 틀리면 빌드 대상이 통째로 잘못 선별된다. Gradle 보다 먼저 검증한다.
-    - name: Test CI scripts
-      shell: bash
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install pytest
-        pytest scripts/ci

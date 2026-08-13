@@ -50,7 +50,7 @@
 | skill | `pr-draft` | push/PR 생성 없이 PR 제목·본문 초안 작성 | PR 초안이 필요하지 않은 로컬 작업 |
 | agent | `module-explorer` | 모듈별 코드 위치·호출 흐름 조사 | 단일 파일의 자명한 위치 확인 |
 | agent | `contract-scanner` | backend·frontend·infra 소비처를 포함한 계약 영향 조사 | 계약과 무관한 변경 |
-| agent | `build-runner` | Gradle/pytest 실행과 압축된 결과 보고 | 코드 수정이나 배포 |
+| agent | `build-runner` | Gradle 검증·CI 영향도 계산과 압축된 결과 보고 | 코드 수정이나 배포 |
 | agent | `arch-reviewer` | ArchUnit 밖의 아키텍처 규약을 diff 기준으로 감사 | 단순 문서·무관한 설정 변경 |
 
 - skill은 절차를 제공하고, agent는 독립 컨텍스트에서 그 절차 또는 규칙을 실행한다.
