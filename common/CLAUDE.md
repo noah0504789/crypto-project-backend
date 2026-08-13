@@ -10,7 +10,7 @@
 
 ## 주요 변경 규칙
 
-- **예외는 `common-exception`, 검증은 `common-validation`, 시각은 `common-time`**: `common-core`는 계약 enum·properties만 갖고 외부 의존은 `spring-boot` 코어뿐이다. 검증 starter를 `common-core`로 되돌리면 전 모듈에 다시 전파된다.
+- **예외는 `common-exception`, 검증은 `common-validation`, 시각은 `common-time`**: `Clock`은 wall-clock 조회와 경과시간 측정용 `monotonicTimeNanos()` 계약을 제공하고 `ClockService`만 시스템 시간을 직접 읽는다. 소비 코드는 `System.currentTimeMillis()`/`System.nanoTime()` 대신 주입된 `Clock`에 의존한다. `common-core`는 계약 enum·properties만 갖고 외부 의존은 `spring-boot` 코어뿐이다. 검증 starter를 `common-core`로 되돌리면 전 모듈에 다시 전파된다.
 - **계약 문자열은 `common-core`에서만**: `RedisKey`·`KafkaTopic`·`KafkaHeaderKey`·`StompDestination`·`JwtClaimKey`·`HttpHeaderKey`·`AuthTokenKey`·`RoleKey` 등의 이름/값/의미를 별도 설명 없이 바꾸지 않는다. 소비처(전 서비스·프론트·저장된 데이터)에 영향(→ external-contracts). `RedisKey`는 pattern + expectedArgCount, hash tag(`{chat}`/`{auth}`/`{session}`)를 유지한다.
 - **common은 서비스 모듈에 의존 금지**: `common-*`가 서비스(`chat`/`user`/… ) 모듈이나 그 패키지를 import하면 `common-arch-test`가 실패한다. 방향은 항상 서비스 → common.
 - **아키텍처 변경 시 게이트 실행**: 의존/계층/패키지 구조를 건드리면 `./gradlew :common:common-arch-test:test`(ArchUnit)를 반드시 실행한다. 규칙 자체(`ModuleArchitectureTest`/`PackageArchitectureTest`)를 완화해 통과시키지 않는다(→ git-safety).

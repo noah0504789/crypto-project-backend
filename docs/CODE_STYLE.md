@@ -128,6 +128,7 @@
   - 예: `ServiceTimeConverter.toInstant(dateTime)`, `ServiceTimeConverter.toEpochMillis(dateTime)`.
 - **현재 시각**: **`now<타입토큰>()`**.
   - 예: `ClockService.nowLocalDateTime()`.
+- 애플리케이션 코드는 시스템 시간을 직접 호출하지 않고 주입된 `common-time`의 `Clock`에 의존한다. wall-clock은 `nowMs()`/`now()`/`nowLocalDateTime()`, 처리 시간처럼 두 시점의 경과시간은 `monotonicTimeNanos()` 값의 차이를 사용한다.
 
 타입 토큰(반환 타입과 1:1):
 

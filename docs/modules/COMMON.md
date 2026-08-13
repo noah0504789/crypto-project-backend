@@ -34,7 +34,7 @@
 | `common-inbox` | Consumer Inbox 멱등 처리 | `AbstractInboxEvent`, `Inbox`/`InboxService`, `InboxException` 계층 | common-jpa, common-core, common-util, spring-messaging |
 | `common-web` | REST(MVC) 공통 | `GlobalExceptionHandler`(`@RestControllerAdvice`), `CursorPage`/`CursorPages`, `MessageConverterConfig` | common-core, web, validation |
 | `common-exception` | 공통 예외 계층·`ErrorResponse` | `InfrastructureException`, `InvalidRequestException`, `ResourceNotFoundException`, `ForbiddenException`, `ErrorResponse` 등 8종 | 없음(외부 의존 0) |
-| `common-time` | 시각 조회·존 변환 | `Clock`/`ClockService`, `ServiceTimeConverter` | spring-boot 코어 |
+| `common-time` | 시각 조회·존 변환·경과시간 측정 | `Clock`/`ClockService`(`monotonicTimeNanos` 포함), `ServiceTimeConverter` | spring-boot 코어 |
 | `common-validation` | Bean Validation 공통 | `ValidationResult`, `FieldErrorDetail`, `NotBlankIfPresent(+Validator)`, `common-validation-messages.properties` | spring-boot-starter-validation |
 | `common-grpc` | gRPC 예외 처리 | `AbstractGrpcExceptionAdvice`, `GrpcExceptionTranslator`, `GrpcClientException`, `GrpcFailureCode` | common-core, grpc(bom/stub/server-starter) |
 | `common-outbox` | Outbox/DLQ 도메인·서비스(헥사고날) | `Outbox`/`OutboxStatus`/`OutboxService`/`OutboxEventListListener`, `Dlq`/`DlqStatus`/`DlqService`, `Abstract*OutboxEvent(List)`, `*PublishPort` | common-jpa, common-event, common-util, jackson |
