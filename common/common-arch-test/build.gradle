@@ -18,3 +18,24 @@ dependencies {
     testRuntimeOnly project(':market-detection')
     testRuntimeOnly project(':spring-cloud-eureka-server')
 }
+
+def architectureSubjectProjects = rootProject.subprojects.findAll { candidate ->
+    if (candidate.path == project.path) {
+        return false
+    }
+
+    def isCommonModule = candidate.path.startsWith(':common:')
+    def isLayerModule = [
+            '-domain',
+            '-application',
+            '-adapter-in',
+            '-adapter-out'
+    ].any { suffix -> candidate.name.endsWith(suffix) }
+    isCommonModule || isLayerModule || candidate.name.endsWith('-bootstrap')
+}
+
+tasks.named('test') {
+    // PackageArchitectureTest reads compiled classes directly. Build every inspected
+    // common/layer/bootstrap project first so a missing output cannot skip a rule.
+    dependsOn architectureSubjectProjects.collect { it.tasks.named('classes') }
+}
