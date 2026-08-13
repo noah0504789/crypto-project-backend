@@ -243,9 +243,11 @@ jobs:
           exit 0
 
       # ---------- 풀빌드 경로: tree 가 달라 승격할 수 없을 때만 ----------
+      # Docker 대상이 없으면 promoted step 자체가 skip되어 ok가 비어 있다.
+      # 이 경우 tree 재사용에 성공했다면 fallback 조건으로 취급하지 않는다.
       - name: Calculate affected Gradle tasks
         id: affected
-        if: steps.promote.outputs.reuse != 'true' || steps.promoted.outputs.ok != 'true'
+        if: steps.promote.outputs.reuse != 'true' || (steps.docker.outputs.services != '' && steps.promoted.outputs.ok != 'true')
         run: |
           TASKS=$(./scripts/ci/affected_modules.py \
             --base "${{ github.event.before }}" --head "${{ github.sha }}" \
@@ -254,11 +256,11 @@ jobs:
           echo "Affected tasks: $TASKS"
 
       - name: Run affected module CI
-        if: (steps.promote.outputs.reuse != 'true' || steps.promoted.outputs.ok != 'true') && steps.affected.outputs.tasks != ''
+        if: (steps.promote.outputs.reuse != 'true' || (steps.docker.outputs.services != '' && steps.promoted.outputs.ok != 'true')) && steps.affected.outputs.tasks != ''
         run: ./gradlew clean ${{ steps.affected.outputs.tasks }}
 
       - name: Build and push Docker images
-        if: (steps.promote.outputs.reuse != 'true' || steps.promoted.outputs.ok != 'true') && steps.docker.outputs.services != ''
+        if: (steps.promote.outputs.reuse != 'true' || (steps.docker.outputs.services != '' && steps.promoted.outputs.ok != 'true')) && steps.docker.outputs.services != ''
         run: |
           set -euo pipefail
 
@@ -279,7 +281,7 @@ jobs:
           done
 
       - name: Upload test reports
-        if: always() && (steps.promote.outputs.reuse != 'true' || steps.promoted.outputs.ok != 'true')
+        if: always() && (steps.promote.outputs.reuse != 'true' || (steps.docker.outputs.services != '' && steps.promoted.outputs.ok != 'true'))
         uses: actions/upload-artifact@v4
         with:
           name: test-reports-merge
