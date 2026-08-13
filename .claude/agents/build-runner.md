@@ -23,7 +23,7 @@ Gradle을 실행하고 **결과만** 보고한다. 로그 본문을 호출자에
 
 ## CI 스크립트 테스트 (Gradle이 아니다)
 
-`scripts/ci/`(`affected_modules.py`·`affected_modules_core.py`·`test_affected_modules.py`)를 바꿨으면 **pytest도 실행한다.** CI(`.github/workflows/ci.yml`)는 Gradle보다 **먼저** 이걸 돌리고, 여기서 실패하면 영향 모듈 계산이 통째로 틀려 빌드 대상이 잘못 선별된다.
+`scripts/ci/`(`affected_modules.py`·`affected_modules_core.py`·`test_affected_modules.py`)를 바꿨으면 **pytest도 실행한다.** CI(`.github/workflows/ci-*.yml`)는 Gradle보다 **먼저** 이걸 돌리고, 여기서 실패하면 영향 모듈 계산이 통째로 틀려 빌드 대상이 잘못 선별된다.
 
 ```bash
 pytest scripts/ci

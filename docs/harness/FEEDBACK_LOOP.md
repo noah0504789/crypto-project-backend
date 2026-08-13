@@ -24,7 +24,7 @@
 | `<service>Ci` | 서비스 build/test, 부팅 스모크, ArchUnit | 영향 서비스 단위 최종 검증 |
 | `pytest scripts/ci` | affected-module 계산 로직 | `scripts/ci/` 변경 시 |
 | `affected_modules.py --mode ...` | CI가 선택할 task/Docker 대상의 읽기 전용 확인 | CI 영향 분석 시 |
-| GitHub Actions `ci.yml` | PR diff 기준 affected 검증과 Dockerfile 빌드 | PR에서의 독립 재현 |
+| GitHub Actions `ci-pr.yml` | PR diff 기준 affected 검증과 Dockerfile 빌드 | PR에서의 독립 재현 |
 
 `:<service>:test` 같은 부모 집계 task는 대부분 비어 있다. 반드시 실제 하위 모듈 task 또는 `<service>Ci`를 사용한다. `commonCi`와 `protobufCi` task는 존재하지 않는다.
 
@@ -41,7 +41,7 @@
 | Kafka event·Outbox/DLQ | producer/consumer의 compile/test, 계약 검색 | 관련 contract·integration test, `review-contract-impact` | producer·consumer 서비스의 `<service>Ci` |
 | REST·STOMP·Redis key·JWT·DB schema | 변경 모듈 test와 계약 영향 조사 | producer/consumer/E2E 또는 migration 검증 | 영향 서비스 `<service>Ci`; 비호환 계약은 구현 전 승인 |
 | 런타임 config·infra 설정 | 변경 service bootstrap `compileJava`과 설정 참조 확인 | 해당 `BootSmokeTest` 또는 service CI | 영향 `<service>Ci`; 배포 workflow는 실행하지 않고 정적 검토 |
-| `scripts/ci/`·affected CI | `pytest scripts/ci` | `python scripts/ci/affected_modules.py --mode build --include-arch-test` 및 `--mode docker` | PR의 `ci.yml` affected CI |
+| `scripts/ci/`·affected CI | `pytest scripts/ci` | `python scripts/ci/affected_modules.py --mode build --include-arch-test` 및 `--mode docker` | PR의 `ci-pr.yml` affected CI |
 | 문서·Harness 지침만 | `git diff --check`, 경로·명령 존재 확인 | 참조하는 가장 좁은 Gradle task 또는 pytest | 코드/CI 동작 변경이 없으면 추가 build 불필요 |
 
 `<service>Ci`는 `chatCi`, `userCi`, `marketCi`, `notificationCi`, `oauth2AuthorizationServerCi`, `oauth2ClientCi`, `websocketGatewayCi`, `gatewayCi`, `springCloudConfigCi`, `marketDetectionCi`, `outboxPollerCi`, `eurekaServerCi` 중 영향 서비스에 맞는 task다.
