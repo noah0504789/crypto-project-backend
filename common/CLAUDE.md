@@ -32,7 +32,7 @@
 | [`common-jpa/.../aop/ReadReplicaAspect.java`](common-jpa/src/main/java/org/example/common/jpa/aop/ReadReplicaAspect.java) | read 라우팅 트리거 |
 | [`common-event/.../EventUtils.java`](common-event/src/main/java/org/example/common/event/EventUtils.java) | 도메인 이벤트 수집·발행 진입점 |
 | [`common-event/.../KafkaEventFactory.java`](common-event/src/main/java/org/example/common/event/KafkaEventFactory.java) | Kafka `Message`와 공통 헤더 생성 책임 |
-| [`common-inbox/.../AbstractInboxEvent.java`](common-inbox/src/main/java/org/example/common/inbox/event/AbstractInboxEvent.java) | Inbox 대상 이벤트의 `eventId` 상속·무작위 UUID 생성 |
+| [`common-inbox/.../AbstractInboxEvent.java`](common-inbox/src/main/java/org/example/common/inbox/domain/event/AbstractInboxEvent.java) | Inbox 대상 이벤트의 `eventId` 상속·무작위 UUID 생성 |
 | [`common-inbox/.../inbox/`](common-inbox/src/main/java/org/example/common/inbox/) | `(consumer_name,event_id)` unique 기반 consumer 중복 선점·header 추출 |
 
 Inbox 예외는 HTTP 상태나 인프라 실패를 뜻하지 않는 `InboxException` 계층으로 묶는다. 구체 예외는 이 타입을 상속하고 Kafka adapter가 처리 정책을 결정한다.

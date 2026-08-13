@@ -138,4 +138,3 @@ DB `event`(`mysql.event.*`), persistence unit `event`, 단일 write 데이터소
 - Outbox 패턴 발행 측·이벤트 구성: [`COMMON.md §5.1`](COMMON.md)
 - 루트 흐름: [`../SERVICE_FLOWS.md`](../SERVICE_FLOWS.md)(§10 Outbox/DLQ), 구조 [`../ARCHITECTURE.md`](../ARCHITECTURE.md)
 - 계약/아키텍처/테스트 rules: `../../.claude/rules/{external-contracts,architecture,testing}.md`
-- 미해결 관찰 항목 집계: [`../../TODO.md`](../../TODO.md)

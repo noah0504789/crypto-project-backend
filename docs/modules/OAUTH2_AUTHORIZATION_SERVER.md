@@ -188,4 +188,3 @@ proto: `protobuf/src/main/proto/auth/v1/auth-service.proto`. 서버: adapter-in�
 - 검증측/소비자: [`API_GATEWAY.md`](API_GATEWAY.md)(blacklist·JWKS·issuer), user 계정 조회 [`USER.md`](USER.md)
 - 모듈 작업 규칙: [`../../oauth2-authorization-server/CLAUDE.md`](../../oauth2-authorization-server/CLAUDE.md)
 - rules: `../../.claude/rules/{security,external-contracts,architecture,testing}.md`
-- 미해결 관찰: [`../../TODO.md`](../../TODO.md)

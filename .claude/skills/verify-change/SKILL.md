@@ -6,6 +6,7 @@ description: crypto-project-backend에서 코드 변경 후 완료를 선언하�
 # 변경 검증 절차
 
 "코드를 만들었다"는 이유만으로 완료로 보지 않는다. 아래를 확인한 뒤 결과를 사실대로 보고한다.
+변경 유형에 맞는 최소 검증 명령은 `docs/harness/FEEDBACK_LOOP.md`를 먼저 선택 기준으로 삼고, 이 skill은 그 실행·기록 절차를 담당한다.
 
 ## 1. 상태 확인
 - `git status --short`로 변경 파일이 의도한 범위인지 확인한다(무관한 파일 변경·생성 여부).

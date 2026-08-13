@@ -175,4 +175,3 @@ proto: `protobuf/src/main/proto/market/v1/market-service.proto`. 서버 구현�
 - 루트 구조/흐름: [`../ARCHITECTURE.md`](../ARCHITECTURE.md), [`../SERVICE_FLOWS.md`](../SERVICE_FLOWS.md), 코드 스타일 [`../CODE_STYLE.md`](../CODE_STYLE.md)
 - 소비자 서비스: `market-detection`(Upbit 수집·탐지), `notification`(알림) — 모듈 문서 미작성(코드 경로는 `docs/ARCHITECTURE.md §서비스별 역할`)
 - 계약/보안/아키텍처/테스트 rules: `../../.claude/rules/{external-contracts,security,architecture,testing}.md`
-- 미해결 관찰 항목 집계: [`../../TODO.md`](../../TODO.md)

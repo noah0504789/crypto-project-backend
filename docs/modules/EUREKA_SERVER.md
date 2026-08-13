@@ -84,4 +84,3 @@
 - 연관: 설정 소스 [`SPRING_CLOUD_CONFIG.md`](SPRING_CLOUD_CONFIG.md), gRPC 디스커버리 소비 [`API_GATEWAY.md`](API_GATEWAY.md)
 - 모듈 작업 규칙: [`../../spring-cloud-eureka-server/CLAUDE.md`](../../spring-cloud-eureka-server/CLAUDE.md)
 - rules: `../../.claude/rules/{external-contracts,architecture,testing}.md`
-- 미해결 관찰: [`../../TODO.md`](../../TODO.md)

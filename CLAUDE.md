@@ -9,8 +9,10 @@ Java 17 · Spring Boot 3.4.0 · Spring Cloud 2024.0.2 기반 헥사고날 멀티
 
 문서 지도(전체 인덱스: `docs/README.md`):
 - 전체 구조 `docs/ARCHITECTURE.md`, 주요 흐름 `docs/SERVICE_FLOWS.md`, 코드 작성 기준 `docs/CODE_STYLE.md`, CI/CD `docs/CI_CD.md`.
+- 구조·기술 선택의 이유는 `docs/decisions/`에서 확인한다. 해당 결정을 바꾸거나 대안을 제안하기 전 먼저 읽는다.
 - 모듈별 상세는 `docs/modules/*.md`(현재 user·chat·market·market-detection·notification·outbox-poller·websocket-gateway·common·oauth2-authorization-server·oauth2-client·api-gateway·config·eureka 커버). 특정 모듈 디렉토리에서 작업하면 그 디렉토리의 `CLAUDE.md`(모듈 작업 규칙)가 자동 로드된다.
 - 확인 필요·미결 항목의 **단일 관리처는 `TODO.md`**(docs/modules의 "확인 필요" 절은 TODO 번호만 참조).
+- 지시 파일의 책임·탐색 기준은 `docs/harness/INSTRUCTIONS_MAP.md`에서 확인한다. 작업 규칙 자체는 이 파일이 아니라 아래 rules/skills/agents가 정본이다.
 
 ## 안전 규칙
 @.claude/rules/git-safety.md
@@ -24,9 +26,9 @@ Java 17 · Spring Boot 3.4.0 · Spring Cloud 2024.0.2 기반 헥사고날 멀티
 | REST/gRPC/Kafka/Redis/STOMP/JWT/DB 등 계약 변경 | `.claude/rules/external-contracts.md` | review-contract-impact |
 | 인증·인가·OAuth2/JWT·Secret | `.claude/rules/security.md` | — |
 | 테스트 작성·실행·검증 | `.claude/rules/testing.md` | verify-change |
-| 커밋·PR 메시지 작성 | `.claude/rules/commit-pr.md` | — |
+| 커밋·PR 메시지 작성 | `.claude/rules/commit-pr.md` | pr-draft |
 
-skill은 자동 노출된다: `analyze-module`(모듈 분석), `verify-change`(변경 검증), `review-contract-impact`(계약 영향), `cross-repo-impact`(여러 모듈·저장소·축에 걸친 요청의 병렬 조사/종합 절차).
+skill은 자동 노출된다: `analyze-module`(모듈 분석), `verify-change`(변경 검증), `review-contract-impact`(계약 영향), `cross-repo-impact`(여러 모듈·저장소·축에 걸친 요청의 병렬 조사/종합 절차), `pr-draft`(검토용 PR 초안).
 
 ## 서브에이전트 (`.claude/agents/`)
 컨텍스트를 분리해야 이득인 작업(중간 읽기량이 크고 결론은 작은 작업)만 위임한다. 규칙·절차의 정본은 위 `.claude/rules/`·skill이며 에이전트는 그것을 자기 컨텍스트에서 실행할 뿐이다.

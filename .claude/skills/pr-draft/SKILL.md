@@ -9,10 +9,14 @@ description: 변경사항에 대한 PR 제목/본문 초안을 .claude/pr-draft.
 
 ## 절차
 
-0. **`.claude/rules/commit-pr.md`를 읽는다.** 제목 형식(`[<type>] <scope>: <subject>`)과 PR 본문 템플릿의 **단일 정본**이다. 이 파일은 절차만 담고 형식을 따로 정의하지 않는다.
-1. `git diff main...HEAD` 로 main 브랜치 대비 전체 변경사항 확인
-2. `git log main..HEAD --oneline` 으로 이 브랜치의 커밋 히스토리 확인
-3. 위 내용을 바탕으로 `commit-pr.md`의 템플릿에 맞춰 PR 제목과 본문 작성
+0. **원고 작성 전에 검증한다.**
+   - Gradle·아키텍처·공통 품질 설정 변경: `./gradlew qualityCheck`
+   - 그 외: `verify-change` 절차의 최소 검증
+   - 실행하지 못한 검증과 사유: PR 본문 `## 검증`에 기록
+1. **`.claude/rules/commit-pr.md`를 읽는다.** 제목 형식(`[<type>] <scope>: <subject>`)과 PR 본문 템플릿의 **단일 정본**이다. 이 파일은 절차만 담고 형식을 따로 정의하지 않는다.
+2. `git diff main...HEAD` 로 main 브랜치 대비 전체 변경사항 확인
+3. `git log main..HEAD --oneline` 으로 이 브랜치의 커밋 히스토리 확인
+4. 위 내용을 바탕으로 `commit-pr.md`의 템플릿에 맞춰 PR 제목과 본문 작성
 
 ## 출력 형식
 

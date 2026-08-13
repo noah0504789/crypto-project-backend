@@ -154,4 +154,3 @@
 - 루트 흐름: [`../SERVICE_FLOWS.md`](../SERVICE_FLOWS.md)(§8 채팅 송신), wire payload [`../ARCHITECTURE.md §7.4`](../ARCHITECTURE.md)
 - 인증·헤더 전파: [`API_GATEWAY.md`](API_GATEWAY.md)
 - 계약/보안/아키텍처/테스트 rules: `../../.claude/rules/{external-contracts,security,architecture,testing}.md`
-- 미해결 관찰 항목 집계: [`../../TODO.md`](../../TODO.md)

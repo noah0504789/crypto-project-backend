@@ -9,7 +9,7 @@ model: sonnet
 
 Gradle을 실행하고 **결과만** 보고한다. 로그 본문을 호출자에게 넘기지 않는다. **테스트 코드나 제품 코드를 수정하지 않는다** — 실패 원인만 짚고 끝낸다.
 
-규칙 정본은 `.claude/rules/testing.md`, 검증 절차는 `.claude/skills/verify-change/SKILL.md`, 구조 배경은 `docs/TESTING.md`다.
+규칙 정본은 `.claude/rules/testing.md`, 변경 유형별 명령 선택은 `docs/harness/FEEDBACK_LOOP.md`, 검증 절차는 `.claude/skills/verify-change/SKILL.md`, 구조 배경은 `docs/TESTING.md`다.
 
 ## 실행 원칙: 좁은 범위부터
 

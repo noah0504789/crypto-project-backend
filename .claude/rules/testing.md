@@ -1,6 +1,6 @@
 # 테스트 · 빌드 규칙
 
-이 파일은 테스트 작성·실행·검증 시 읽는다. 변경 후 검증 절차는 `verify-change` skill을 사용한다. 테스트 4계층(단위·통합·E2E·부팅 스모크) 구조·Testcontainers 하니스·부팅 스모크 설계의 상세는 [`../../docs/TESTING.md`](../../docs/TESTING.md)를 본다.
+이 파일은 테스트 작성·실행·검증 시 읽는다. 변경 후 검증 절차는 `verify-change` skill을 사용한다. 변경 유형별 최소 명령과 narrow → broad 순서는 [`../../docs/harness/FEEDBACK_LOOP.md`](../../docs/harness/FEEDBACK_LOOP.md)를, 테스트 4계층·Testcontainers 하니스·부팅 스모크 설계의 상세는 [`../../docs/TESTING.md`](../../docs/TESTING.md)를 본다.
 
 ## 프레임워크
 - JUnit 5, Mockito, AssertJ. 통합 테스트는 `common-test`의 Testcontainers/embedded(mysql·redis·mongo) 우선.

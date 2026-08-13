@@ -166,4 +166,3 @@ Outbox 패턴의 핵심 모듈. **비즈니스 DB write와 이벤트 기록을 �
 - 루트: [`../ARCHITECTURE.md`](../ARCHITECTURE.md) §5, [`../SERVICE_FLOWS.md`](../SERVICE_FLOWS.md), [`../CODE_STYLE.md`](../CODE_STYLE.md)
 - 계약/아키텍처 rules: `../../.claude/rules/{external-contracts,architecture,testing}.md`
 - 모듈 작업 규칙: [`../../common/CLAUDE.md`](../../common/CLAUDE.md)
-- 미해결 관찰: [`../../TODO.md`](../../TODO.md)
