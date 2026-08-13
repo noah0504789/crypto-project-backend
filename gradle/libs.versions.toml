@@ -8,10 +8,12 @@ logback-encoder = "7.4"
 ulid-creator = "5.2.3"
 grpc = "1.64.0"
 grpc-spring = "3.1.0.RELEASE"
+google-java-format = "1.22.0"
 protobuf = "3.25.3"
 protos = "1.0.0-SNAPSHOT"
 redisson = "3.40.0"
 spring-vault = "4.0.2"
+spotless = "6.25.0"
 okhttp = "4.12.0"
 kafka = "3.8.0"
 protobuf-plugin = "0.9.4"
@@ -33,6 +35,7 @@ protobuf    = { id = "com.google.protobuf", version.ref = "protobuf-plugin" }
 
 [libraries]
 dependency-management-gradle-plugin = { group = "io.spring.gradle", name = "dependency-management-plugin", version.ref = "dependency-management" }
+spotless-gradle-plugin = { group = "com.diffplug.spotless", name = "spotless-plugin-gradle", version.ref = "spotless" }
 
 spring-boot-starter-actuator = { group = "org.springframework.boot", name = "spring-boot-starter-actuator", version.ref = "spring-boot" }
 spring-boot-starter-aop      = { group = "org.springframework.boot",  name = "spring-boot-starter-aop" }

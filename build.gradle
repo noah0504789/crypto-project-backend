@@ -2,6 +2,27 @@ plugins {
     id 'base'
 }
 
+tasks.register('qualityCheck') {
+    group = 'verification'
+    description = 'Runs formatter, Java compilation, and architecture checks'
+    dependsOn ':common:common-arch-test:test'
+}
+
+subprojects {
+    pluginManager.withPlugin('java') {
+        rootProject.tasks.named('qualityCheck') {
+            dependsOn tasks.named('spotlessCheck')
+            dependsOn tasks.named('compileJava')
+        }
+    }
+}
+
+tasks.register('installGitHooks', Exec) {
+    group = 'verification'
+    description = 'Configures this clone to use the versioned Git hooks in .githooks'
+    commandLine 'git', 'config', 'core.hooksPath', '.githooks'
+}
+
 tasks.register("serviceCi") {
     group = "verification"
     description = "Runs CI checks for all service modules"

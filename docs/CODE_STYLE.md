@@ -420,7 +420,7 @@ assertThat(result.<String>getAttribute("id")).isEqualTo(userId);
 
 ## 17. Gradle 의존성 기준
 
-- 공통 버전은 `gradle/libs.versions.toml`에 둔다.
+- 외부 라이브러리, Gradle plugin, build tool의 의존성이나 버전을 추가할 때는 `gradle/libs.versions.toml`에 version과 library/plugin alias를 먼저 등록하고, Gradle script에서는 `libs.*`로 참조한다. `group:name:version` 좌표나 tool version을 script에 직접 적지 않는다.
 - Spring Boot starter가 너무 많은 auto configuration을 켜는지 확인한다.
 - 단순 crypto/password 기능이면 `spring-security-crypto`처럼 좁은 의존성을 우선한다.
 - `implementation project(':common')` aggregate 의존은 편하지만 의존 그래프가 커진다. 단순화된 모듈이 아닌 곳에서는 필요한 `common:*`만 의존하는 방향을 검토한다.

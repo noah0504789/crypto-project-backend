@@ -12,6 +12,7 @@
 - 사용자가 명시적으로 요청하지 않는 한 `commit`, `push`, `merge`, `rebase`, 배포를 수행하지 않는다.
 - 운영 환경에 접근하거나 운영 시스템을 수정하지 않는다.
 - 명시적 승인 없이 DB, Redis, Kafka, Docker, 파일 시스템에 파괴적인 명령을 실행하지 않는다.
+- 새 clone에서는 `./gradlew installGitHooks`를 한 번 실행해 versioned pre-commit hook을 활성화한다. hook은 Java·Gradle·품질 설정 변경을 커밋하기 전 포맷과 공백 오류를 검증한다.
 
 ## 민감 정보 (출력·커밋 금지)
 아래는 응답에 출력하거나 커밋하지 않는다.

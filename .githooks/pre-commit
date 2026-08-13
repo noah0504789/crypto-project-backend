@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! git diff --cached --name-only --diff-filter=ACMR | grep -Eq '(^|/)(src/.*/java/.*\.java|build\.gradle|gradle\.properties|libs\.versions\.toml)$'; then
+  exit 0
+fi
+
+git diff --cached --check
+./gradlew spotlessCheck --no-daemon
