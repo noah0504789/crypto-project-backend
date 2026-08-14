@@ -61,8 +61,13 @@ public class UpbitTickerPublisher implements SmartLifecycle {
             return;
         }
 
-        for (int index = 0; index < workerCount; index++) {
-            workerFutures.add(workerExecutor.submit(this::runWorker));
+        try {
+            for (int index = 0; index < workerCount; index++) {
+                workerFutures.add(workerExecutor.submit(this::runWorker));
+            }
+        } catch (RuntimeException e) {
+            interruptWorkers();
+            throw e;
         }
 
         running = true;
@@ -75,8 +80,7 @@ public class UpbitTickerPublisher implements SmartLifecycle {
             return;
         }
 
-        workerFutures.forEach(future -> future.cancel(true));
-        workerFutures.clear();
+        interruptWorkers();
         running = false;
         log.info("[upbit] ticker publisher workers interrupted for shutdown.");
     }
@@ -131,5 +135,10 @@ public class UpbitTickerPublisher implements SmartLifecycle {
         } finally {
             processingTimer.record(clock.monotonicTimeNanos() - startedAt, TimeUnit.NANOSECONDS);
         }
+    }
+
+    private void interruptWorkers() {
+        workerFutures.forEach(future -> future.cancel(true));
+        workerFutures.clear();
     }
 }
