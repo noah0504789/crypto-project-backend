@@ -1,6 +1,7 @@
 package org.example.marketdetection.upbit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doReturn;
@@ -63,6 +64,33 @@ class UpbitTickerPublisherUnitTest {
         // then
         verify(workerExecutor, times(2)).submit(any(Runnable.class));
         verify(workerFuture, times(2)).cancel(true);
+    }
+
+    @Test
+    @DisplayName("worker 제출이 일부 실패하면 시작된 worker를 취소하고 다시 시작할 수 있다")
+    void lifecycle_partialSubmissionFailure_cancelSubmittedWorkersAndAllowRestart() {
+        // given
+        UpbitTickerPublisher sut = createSut(2);
+        IllegalStateException rejection = new IllegalStateException("rejected");
+        doReturn(workerFuture)
+                .doThrow(rejection)
+                .doReturn(workerFuture)
+                .doReturn(workerFuture)
+                .when(workerExecutor)
+                .submit(any(Runnable.class));
+
+        // when & then
+        assertThatThrownBy(sut::start).isSameAs(rejection);
+        assertThat(sut.isRunning()).isFalse();
+        verify(workerFuture).cancel(true);
+
+        // when
+        sut.start();
+        sut.stop();
+
+        // then
+        assertThat(sut.isRunning()).isFalse();
+        verify(workerFuture, times(3)).cancel(true);
     }
 
     @Test
