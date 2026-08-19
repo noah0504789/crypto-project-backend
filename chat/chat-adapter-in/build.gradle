@@ -13,7 +13,7 @@ dependencies {
     implementation(libs.grpc.server.spring.boot.starter)
     implementation(libs.spring.cloud.starter.stream.kafka)
 
-    testImplementation project(':chat:chat-adapter-out')
     testImplementation project(':common:common-test')
+    testImplementation project(':chat:chat-adapter-out')
     testImplementation(libs.mongodb.bson)
 }

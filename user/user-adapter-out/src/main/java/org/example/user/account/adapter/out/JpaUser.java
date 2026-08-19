@@ -46,7 +46,7 @@ public class JpaUser extends BaseEntity {
     private Set<JpaUserRole> roles = new HashSet<>();
 
     @PrePersist
-    void init() {
+    public void init() {
         if (publicId == null) {
             publicId = UUID.randomUUID();
         }

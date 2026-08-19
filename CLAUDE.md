@@ -3,14 +3,14 @@
 이 파일은 모든 작업에 항상 필요한 짧은 공통 규칙만 담는다. 상세 규칙은 `.claude/rules/`, 사람이 읽는 설명은 `docs/`에 있다.
 
 ## 프로젝트 개요
-Java 17 · Spring Boot 3.4.0 · Spring Cloud 2024.0.2 기반 헥사고날 멀티모듈 마이크로서비스. 실행 서비스 12개(Eureka, Config+Vault, gRPC, Kafka, MySQL/MongoDB, Redis Cluster). 런타임 설정은 `git-config-repo`에서 원격 로드된다(로컬 `application-*.yml` 없음).
+Java 17 · Spring Boot 3.4.0 · Spring Cloud 2024.0.2 기반 헥사고날 멀티모듈 마이크로서비스. 실행 서비스 13개(Eureka, Config+Vault, gRPC, Kafka, MySQL/MongoDB, Redis Cluster). 런타임 설정은 `git-config-repo`에서 원격 로드된다(로컬 `application-*.yml` 없음).
 
 활성 모듈·Task는 추측하지 말고 확인한다: `./gradlew projects`.
 
 문서 지도(전체 인덱스: `docs/README.md`):
 - 전체 구조 `docs/ARCHITECTURE.md`, 주요 흐름 `docs/SERVICE_FLOWS.md`, 코드 작성 기준 `docs/CODE_STYLE.md`, CI/CD `docs/CI_CD.md`.
 - 구조·기술 선택의 이유는 `docs/decisions/`에서 확인한다. 해당 결정을 바꾸거나 대안을 제안하기 전 먼저 읽는다.
-- 모듈별 상세는 `docs/modules/*.md`(현재 user·chat·market·market-detection·notification·outbox-poller·websocket-gateway·common·oauth2-authorization-server·oauth2-client·api-gateway·config·eureka 커버). 특정 모듈 디렉토리에서 작업하면 그 디렉토리의 `CLAUDE.md`(모듈 작업 규칙)가 자동 로드된다.
+- 모듈별 상세는 `docs/modules/*.md`(현재 user·chat·market·market-detection·upbit-connector·notification·outbox-poller·websocket-gateway·common·oauth2-authorization-server·oauth2-client·api-gateway·config·eureka 커버). 특정 모듈 디렉토리에서 작업하면 그 디렉토리의 `CLAUDE.md`(모듈 작업 규칙)가 자동 로드된다.
 - 확인 필요·미결 항목의 **단일 관리처는 `TODO.md`**(docs/modules의 "확인 필요" 절은 TODO 번호만 참조).
 - 지시 파일의 책임·탐색 기준은 `docs/harness/INSTRUCTIONS_MAP.md`에서 확인한다. 작업 규칙 자체는 이 파일이 아니라 아래 rules/skills/agents가 정본이다.
 
@@ -28,7 +28,7 @@ Java 17 · Spring Boot 3.4.0 · Spring Cloud 2024.0.2 기반 헥사고날 멀티
 | 테스트 작성·실행·검증 | `.claude/rules/testing.md` | verify-change |
 | 커밋·PR 메시지 작성 | `.claude/rules/commit-pr.md` | pr-draft |
 
-skill은 자동 노출된다: `analyze-module`(모듈 분석), `verify-change`(변경 검증), `review-contract-impact`(계약 영향), `cross-repo-impact`(여러 모듈·저장소·축에 걸친 요청의 병렬 조사/종합 절차), `pr-draft`(검토용 PR 초안).
+skill은 자동 노출된다: `analyze-module`(모듈 분석), `verify-change`(변경 검증), `review-contract-impact`(계약 영향), `cross-repo-impact`(여러 모듈·저장소·축에 걸친 요청의 병렬 조사/종합 절차), `project-skeleton`(새 서비스 모듈 스켈레톤), `pr-draft`(검토용 PR 초안).
 
 ## 서브에이전트 (`.claude/agents/`)
 컨텍스트를 분리해야 이득인 작업(중간 읽기량이 크고 결론은 작은 작업)만 위임한다. 규칙·절차의 정본은 위 `.claude/rules/`·skill이며 에이전트는 그것을 자기 컨텍스트에서 실행할 뿐이다.
@@ -52,7 +52,7 @@ skill은 자동 노출된다: `analyze-module`(모듈 분석), `verify-change`(�
 DTO/record·Entity·네이밍·상수화·예외·트랜잭션·Kafka/Redis·gRPC·테스트 등 코드 작성/리팩토링 기준은 **`docs/CODE_STYLE.md`**(단일 정본)를 따른다. 대상 모듈의 기존 스타일·구조를 우선한다.
 
 ## 작업 절차
-1. Git 상태 확인 → 2. 관련 규칙/문서 확인 → 3. 전체 호출 흐름·공유 계약 검색 → 4. 파일 경로 근거로 현재 동작 설명 → 5. 원인/변경 식별 → 6. 최소 계획 제시 → 7. 필요한 파일만 수정 → 8. 가장 좁은 테스트/빌드 실행(`verify-change`) → 9. `git diff` 검토 → 10. 결과를 사실대로 보고.
+1. Git 상태 확인 → 2. 관련 규칙/문서 확인 → 3. 전체 호출 흐름·공유 계약 검색 → 4. 파일 경로 근거로 현재 동작 설명 → 5. 원인/변경 식별 → 6. 최소 계획 제시 → 7. **코드를 쓰기 전 `docs/CODE_STYLE.md` 확인** → 8. 필요한 파일만 수정 → 9. 가장 좁은 테스트/빌드 실행(`verify-change`, 스타일 셀프체크 포함) → 10. `git diff` 검토 → 11. 결과를 사실대로 보고.
 
 `git-safety.md`의 Plan Mode 우선 목록(멀티모듈·보안·Kafka/Outbox·트랜잭션·Proto·Schema·CI/CD·대규모 리팩터링)에 해당하면 수정 전 분석·계획을 먼저 제시한다.
 

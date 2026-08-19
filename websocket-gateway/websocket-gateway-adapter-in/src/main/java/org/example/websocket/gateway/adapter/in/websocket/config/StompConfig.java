@@ -105,7 +105,7 @@ public class StompConfig implements WebSocketMessageBrokerConfigurer {
     }
 
     @Bean
-    ApplicationRunner websocketStatsRunner(WebSocketMessageBrokerStats stats) {
+    public ApplicationRunner websocketStatsRunner(WebSocketMessageBrokerStats stats) {
         return args -> {
             stats.setLoggingPeriod(10_000);
             log.info("[stomp] WebSocket STOMP stats now: {}", stats);

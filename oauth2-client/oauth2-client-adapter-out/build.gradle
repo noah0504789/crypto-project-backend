@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-    implementation project(':oauth2-client:oauth2-client-application')
     implementation project(':oauth2-authorization-server:oauth2-authorization-server-client')
     implementation project(':user:user-client')
+    implementation project(':oauth2-client:oauth2-client-application')
 }

@@ -5,8 +5,8 @@ plugins {
 dependencies {
     implementation project(':common:common-core')
     implementation project(':common:common-redis')
-    implementation project(':oauth2-authorization-server:oauth2-authorization-server-application')
     implementation project(':user:user-client')
+    implementation project(':oauth2-authorization-server:oauth2-authorization-server-application')
 
     implementation(libs.caffeine)
 
