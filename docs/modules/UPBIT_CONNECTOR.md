@@ -26,9 +26,7 @@ Upbit 외부 API와의 통신을 전담하는 **리액티브(WebFlux/Reactor) �
 
 ### 2.1 왜 별도 모듈인가
 
-현재 Upbit WebSocket 수집은 `market-detection` 안에 있다(`market-detection-bootstrap/.../upbit/`). 그 서비스는 수집과 탐지(Kafka Streams)를 함께 갖고 있고, 둘 사이 경계는 이미 Kafka 토픽(`upbit-ticker-event`)이다. 수집을 이 모듈로 옮기면 `market-detection`은 순수 탐지만 남는다.
-
-**이관 완료**: `market-detection`의 수집·발행 코드(WebSocket·coalescing buffer·worker pool)와 market gRPC 구독 조회는 이 서비스로 옮겨졌다. `market-detection`에는 Kafka Streams 탐지만 남는다.
+이 브랜치에는 Upbit WebSocket 수집·스로틀·Kafka 발행 구현이 이 서비스에 추가됐지만, 기존 `market-detection`의 수집·발행 코드도 아직 남아 있다. 따라서 두 서비스가 같은 `upbit-ticker-event`를 발행하는 과도기 상태이며, 후속 `market-detection` 이관 브랜치가 기존 WebSocket·coalescing buffer·worker pool과 market gRPC 구독 조회를 제거한다. 이관이 끝나면 `market-detection`에는 Kafka Streams 탐지만 남는다.
 
 ## 3. 실행 구조와 주요 의존성
 
@@ -50,7 +48,7 @@ Upbit 외부 API와의 통신을 전담하는 **리액티브(WebFlux/Reactor) �
 
 주요 라이브러리: `spring-boot-starter-webflux`(Reactor Netty), `spring-boot-starter-validation`, `spring-cloud-config-client`, `spring-cloud-eureka-client`. 테스트는 `reactor-test`(`StepVerifier` 가상 시계).
 
-## 4. 데이터 흐름 (1단계 구현됨 — Kafka 발행은 미연결)
+## 4. 데이터 흐름 (1단계 구현됨 — Kafka 발행 연결)
 
 ```
 market gRPC getEnabledMarkets (boundedElastic) ─┐
@@ -62,13 +60,21 @@ Upbit WebSocket (wss://api.upbit.com/websocket/v1)
  → Kafka `upbit-ticker-event` → [market-detection Kafka Streams]
 ```
 
+### 4.1 종목별 스로틀 계약
+
+- 런타임 설정은 `ticker-publish-interval: 7s`다.
+- 첫 ticker가 들어와 `groupBy(code)`의 종목 그룹이 만들어진 시점부터 각 종목의 7초 구간을 센다.
+- `sample(7s)`은 해당 구간에 ticker가 있으면 가장 최신값 **최대 1개**만 내보낸다. 값이 없는 구간은 발행하지 않는다.
+- Kafka 발행이 느리면 `onBackpressureLatest`가 같은 종목의 대기값을 최신 하나로 교체하고, `concatMap`이 같은 종목을 순서대로 하나씩 발행한다.
+- 7초는 실제 Kafka 발행 완료 시점이 아니라 종목 Flux의 구간 기준이다. 따라서 Kafka 지연 시 실제 브로커 도착 간격이 정확히 7초라고 보장하지 않는다.
+
 기존 `market-detection` 구현과의 대응 관계, 그리고 **의미가 등가가 아닌 지점**은 [`MARKET_DETECTION.md`](MARKET_DETECTION.md) §4.1–4.2와 함께 본다. 특히:
 
-- 현재 구현은 스로틀 윈도우의 **첫 값**을 통과시킨다. Reactor `sample`은 윈도우의 **마지막 값**을 내보낸다 → 이동평균에 들어가는 표본이 달라져 탐지 결과가 바뀔 수 있다.
-- 현재 구현은 ready queue가 가득 차면 drop하고 카운터를 올린다. `onBackpressureLatest`에는 실패 개념이 없어 해당 지표가 사라진다.
-- 현재 worker pool은 code와 무관하게 병렬 처리한다. `groupBy` + `flatMap`은 code별 병렬이라 같은 code의 순서 보장이 더 강해진다.
+- 기존 `market-detection` 구현은 스로틀 윈도우의 **첫 값**을 통과시킨다. Reactor `sample`은 윈도우의 **마지막 값**을 내보낸다 → 이동평균에 들어가는 표본이 달라져 탐지 결과가 바뀔 수 있다.
+- 기존 구현은 ready queue가 가득 차면 drop하고 카운터를 올린다. `onBackpressureLatest`에는 실패 개념이 없어 해당 지표가 사라진다.
+- 기존 worker pool은 code와 무관하게 병렬 처리한다. `groupBy` + `flatMap`은 code별 병렬이라 같은 code의 순서 보장이 더 강해진다.
 
-## 5. 이관 결과와 기존 구현과의 차이
+## 5. 이관 구현과 기존 구현의 차이
 
 | 기존(market-detection) | 현재(upbit-connector) |
 |---|---|
@@ -111,7 +117,7 @@ outbox 계열 발행(`outbox-poller`)은 payload가 JSON 문자열이고 `value.
 ## 7. 설정
 
 - 로컬 `application.yml`: `spring.application.name`, Config Server import, `spring.cloud.config.name: upbit-connector,eureka-client,kafka,monitoring`
-- 원격: `git-config-repo/dynamic/upbit-connector.yml` — 현재 `server.port: 8600`만
+- 원격: `git-config-repo/dynamic/upbit-connector.yml` — 포트, market gRPC client, Kafka 출력 바인딩, WebSocket·스로틀·재연결 정책
 - Upbit WebSocket URL은 `git-config-repo/application.yml`의 `uri.provider.upbit.websocket`에 이미 존재한다(재사용 대상)
 
 ### 7.1 설정 변경은 재시작으로 반영한다
@@ -128,7 +134,7 @@ outbox 계열 발행(`outbox-poller`)은 payload가 JSON 문자열이고 `value.
 
 | 층 | 현황 |
 |---|---|
-| 단위 | `UpbitTickerCollectServiceUnitTest`(`StepVerifier` 가상 시계로 스로틀 정책 검증) |
+| 단위 | `UpbitTickerCollectServiceUnitTest`(`StepVerifier` 가상 시계로 종목별 7초 최신값·느린 발행 시 latest 1개·발행 실패 격리 검증) |
 | 통합 | `KafkaUpbitTickerPublishIntegrationTest`(Kafka Testcontainer, 발행 wire 계약 고정) |
 | E2E | 없음(웹 엔드포인트 없음) |
 | 부팅 스모크 | `BootSmokeTest` 존재. 외부 인프라 의존 없이 `RANDOM_PORT`로 부팅 검증 |
@@ -152,7 +158,7 @@ outbox 계열 발행(`outbox-poller`)은 payload가 JSON 문자열이고 `value.
 
 ## 11. 관련 문서와 rules
 
-- [`MARKET_DETECTION.md`](MARKET_DETECTION.md) — 현재 Upbit 수집·탐지 구현
+- [`MARKET_DETECTION.md`](MARKET_DETECTION.md) — 이관 전 수집 구현과 Kafka Streams 탐지
 - [`../ARCHITECTURE.md`](../ARCHITECTURE.md) — 전체 구조·서비스 카탈로그
 - [`../TESTING.md`](../TESTING.md) — 부팅 스모크 하니스
 - [`../../.claude/rules/external-contracts.md`](../../.claude/rules/external-contracts.md) — Kafka·REST 계약 변경 절차

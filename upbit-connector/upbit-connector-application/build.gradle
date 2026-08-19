@@ -1,0 +1,12 @@
+plugins {
+    id 'crypto-application'
+}
+
+dependencies {
+    api project(':upbit-connector:upbit-connector-contract')
+
+    implementation(libs.spring.boot.starter.webflux)
+    implementation(libs.spring.boot.starter.validation)
+
+    testImplementation(libs.reactor.test)
+}

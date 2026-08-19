@@ -21,7 +21,7 @@
 
 ## 2. 시스템 구성
 
-13개 실행 서비스와 인프라 구성 요소는 다음과 같다(아래 그림은 실제 트래픽·이벤트가 흐르는 12개만 표시한다. `upbit-connector`는 아직 스켈레톤이라 흐름이 없다).
+13개 실행 서비스와 인프라 구성 요소는 다음과 같다. 이 브랜치는 수집 책임 이관의 과도기라 `upbit-connector`와 기존 `market-detection` 수집기가 모두 `upbit-ticker-event`를 발행하며, 후속 이관 브랜치에서 기존 producer를 제거한다.
 
 ```
                          [ Frontend / Client ]
@@ -38,7 +38,9 @@
    oauth2-authorization-server (gRPC auth.v1)   ...
              │
    ───────────────────────── 비동기(Kafka) ─────────────────────────
-   market-detection → (price-alert-detected-event) → notification → (web-notification-broadcast-event) → websocket-gateway
+   upbit-connector ─┐
+                    ├→ (upbit-ticker-event) → market-detection → (price-alert-detected-event) → notification → (web-notification-broadcast-event) → websocket-gateway
+   market-detection legacy collector ─┘
    각 서비스 Outbox → outbox-poller → Kafka → 소비 서비스
 
    인프라: spring-cloud-eureka-server(디스커버리) · spring-cloud-config(Config+Vault)
@@ -103,7 +105,7 @@
 | chat | chat-bootstrap | chat-service | MongoDB, Redis | `chatmessage.v1` | — |
 | websocket-gateway | …-bootstrap | websocket-gateway | Redis | — | `chatmessage.v1` |
 | market | market-bootstrap | market-service | MySQL | `market.v1` | — |
-| market-detection | …-bootstrap | market-detection | — (Kafka Streams 상태만) | — | — |
+| market-detection | …-bootstrap | market-detection | Upbit WebSocket, Kafka Streams 상태 | — | `market.v1` |
 | notification | notification-bootstrap | notification-service | MongoDB | — | `market.v1` |
 | outbox-poller | (단일) | outbox-poller | MySQL, Kafka | — | — |
 | spring-cloud-config | …-bootstrap | (config server) | git, Vault | — | — |
@@ -121,7 +123,7 @@
 - **chat**: 채팅방/메시지. MongoDB + Redis 캐시, gRPC `chatmessage.v1`, Outbox → Kafka, DLQ 소비. 쓰기는 캐시-우선 + Outbox, 영속은 Kafka consumer가 비동기 수행. (`chat/chat-adapter-in`, `chat/chat-adapter-out/.../persistence/MongoChatMessageAdapter.java`) — **상세: `docs/modules/CHAT.md`**
 - **websocket-gateway**: STOMP 게이트웨이. `chatmessage.v1` gRPC 클라이언트, Kafka broadcast consumer(인스턴스별 group) → 로컬 세션 보유자에게 STOMP push, 세션 위치 로컬+Redis(`{session}`). (`websocket-gateway/.../adapter/in/websocket/`, `.../adapter/in/stream/KafkaWebsocketGatewayBinder.java`) — **상세: `docs/modules/WEBSOCKET_GATEWAY.md`**
 - **market**: 마켓 카탈로그·가격알림 설정. MySQL, gRPC `market.v1`(MarketService, PriceAlertSettingService), Caffeine 캐시 + `market-broadcast-event`로 인스턴스별 캐시 무효화. (`market/market-adapter-in/.../grpc/`) — **상세: `docs/modules/MARKET.md`**
-- **market-detection**: `upbit-ticker-event`를 소비해 Kafka Streams로 변동률을 탐지하고 `PriceAlertDetectedEvent`를 발행. 헥사고날 계층(application/adapter-in/bootstrap/contract). 수집은 `upbit-connector` 소관. (`market-detection-application/.../dto/PriceChange.java`, `market-detection-adapter-in/.../stream/PriceAlertDetectionProcessor.java`) — **상세: `docs/modules/MARKET_DETECTION.md`**
+- **market-detection**: 기존 Upbit 수집·worker 발행과 Kafka Streams 변동률 탐지를 함께 수행한다. 이 브랜치에서는 `upbit-connector`와 같은 토픽을 발행하며, 후속 이관 브랜치가 수집 코드를 제거한다. (`market-detection-bootstrap/.../upbit/`, `.../adapter/in/stream/KafkaMarketDetectionBinder.java`) — **상세: `docs/modules/MARKET_DETECTION.md`**
 - **notification**: 알림 생성·저장·전달. Kafka consumer(`price-alert-detected-event`), MongoDB, `market.v1`(수신자 조회) gRPC 클라이언트, Outbox → `web-notification-broadcast-event`. (`notification/.../adapter/in/stream/KafkaNotificationBinder.java`, `notification/notification-adapter-out/.../grpc/PriceAlertRecipientQueryAdapter.java`) — **상세: `docs/modules/NOTIFICATION.md`**
 - **outbox-poller**: 모든 서비스의 Outbox/DLQ 레코드를 폴링 → Kafka 발행. `EventPublisherPort` 빈 보유 유일 서비스, dispatchType별(GENERAL/BROADCAST) 분리 폴링. (`outbox-poller/.../outbox/OutboxEventScheduler.java`, `.../infra/event/KafkaEventPublisher.java`) — **상세: `docs/modules/OUTBOX_POLLER.md`**
 - **spring-cloud-config**: Config Server(git + Vault), JWKS 엔드포인트, Vault Transit 서명 대행. (`spring-cloud-config/.../jwks/adapter/in/JwksController.java`, `-adapter-out/.../vault/`) — **상세: `docs/modules/SPRING_CLOUD_CONFIG.md`**
@@ -178,7 +180,7 @@ proto 4개(`protobuf/src/main/proto/**`)와 서버/클라이언트 매핑:
 
 | proto | 서버 구현 모듈 | 클라이언트 소비 모듈 |
 |---|---|---|
-| `market.v1`(MarketService.GetEnabledMarkets, PriceAlertSettingService.FindReceiverIds) | market-adapter-in | notification-adapter-out, market-detection, market 자체 |
+| `market.v1`(MarketService.GetEnabledMarkets, PriceAlertSettingService.FindReceiverIds) | market-adapter-in | notification-adapter-out, market-detection, upbit-connector, market 자체 |
 | `chatmessage.v1`(save, HardDelete) | chat-adapter-in | websocket-gateway-adapter-out |
 | `user.v1`(FindByEmail, SignUpOauth2) | user-adapter-in | oauth2-authorization-server, oauth2-client |
 | `auth.v1`(Access/Refresh/Blacklist/AuthorizedClient) | oauth2-authorization-server-adapter-in | spring-cloud-api-gateway, oauth2-client |
@@ -189,8 +191,8 @@ proto 4개(`protobuf/src/main/proto/**`)와 서버/클라이언트 매핑:
 
 - 공통 설정: `git-config-repo/infrastructure/kafka.yml`(멱등 producer acks=all, JsonDeserializer, isolation read_committed).
 - 이벤트 헤더 계약(`common-core/KafkaHeaderKey`): `transaction_id`, `__TypeId__`, `dlq_id`, `KafkaHeaders.KEY`(partition key).
-- 토픽 카탈로그(`common-core/KafkaTopic`): `chatroom-event(.dlq)`, `chatroom-broadcast-event`, `chatmessage-event(.dlq)`, `chatmessage-broadcast-event`, `notification-event(.dlq)`, `web-notification-broadcast-event`, `market-broadcast-event`, `price-alert-detected-event`. market-detection 내부: `upbit-ticker-event`(worker publisher 출력이자 Kafka Streams 입력).
-- Kafka Streams: `market-detection`의 `KafkaMarketDetectionBinder` + `PriceAlertDetectionProcessor`(WindowStore `upbit-ticker-store`로 표본 저장, 계산은 `-application`의 `PriceChange`).
+- 토픽 카탈로그(`common-core/KafkaTopic`): `chatroom-event(.dlq)`, `chatroom-broadcast-event`, `chatmessage-event(.dlq)`, `chatmessage-broadcast-event`, `notification-event(.dlq)`, `web-notification-broadcast-event`, `market-broadcast-event`, `price-alert-detected-event`. `upbit-ticker-event`는 `upbit-connector`와 기존 market-detection worker가 함께 발행하고 market-detection Kafka Streams가 소비한다(후속 이관에서 producer 단일화).
+- Kafka Streams: `market-detection`의 `KafkaMarketDetectionBinder` + `UpbitTickerProcessor`가 WindowStore `upbit-ticker-store`에 표본을 저장하고 이동평균·변동률을 계산한다.
 
 ### 7.3 REST
 

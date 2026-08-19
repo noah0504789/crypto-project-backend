@@ -153,7 +153,7 @@
 | spring-cloud-config | ✓ | ✗ | ✓ | ✓ | Vault Transit 서명·JWKS 단위, `JwksControllerTest` E2E |
 | outbox-poller | ✓ | ✗ | ✗ | ✓ | 스케줄러·발행 단위 |
 | spring-cloud-eureka-server | ✗ | ✗ | ✗ | ✓ | 자체 로직 없음 → 부팅 스모크만 |
-| upbit-connector | ✓ | ✓ | ✗ | ✓ | 스로틀 정책은 `StepVerifier` 가상 시계, 발행 wire 계약은 Kafka Testcontainer |
+| upbit-connector | ✓ | ✓ | ✗ | ✓ | 종목별 7초 최신값·느린 발행 latest 1개는 `StepVerifier` 가상 시계, 발행 wire 계약은 Kafka Testcontainer |
 | common-* | ✓ | ✓ | ✓ | — | 라이브러리(실행 모듈 아님). ReadReplica·RedisCluster 통합, actuator WebFlux E2E, ArchUnit |
 
 - ✓ 있음 / ✗ 없음 / △ 부분(slice) / — 해당 없음.
