@@ -102,11 +102,11 @@ public class UpbitTickerCoalescingBuffer {
         }
     }
 
-    int readyQueueSize() {
+    public int readyQueueSize() {
         return readyQueue.size();
     }
 
-    UpbitTickerEvent latestTicker(String code) {
+    public UpbitTickerEvent latestTicker(String code) {
         TickerSlot slot = latestTickerByCode.get(code);
 
         if (slot == null) {

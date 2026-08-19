@@ -44,7 +44,6 @@ tasks.register("serviceCi") {
             "gatewayCi",
             "marketCi",
             "marketDetectionCi",
-            "upbitConnectorCi",
             "notificationCi",
             "outboxPollerCi",
             "eurekaServerCi"
@@ -177,23 +176,8 @@ tasks.register("marketDetectionCi") {
     description = "Runs build and tests for market detection"
 
     dependsOn(
-            ":market-detection:market-detection-contract:build",
-            ":market-detection:market-detection-application:build",
-            ":market-detection:market-detection-adapter-in:build",
             ":market-detection:market-detection-bootstrap:build",
-            ":common:common-arch-test:test"
-    )
-}
-
-tasks.register("upbitConnectorCi") {
-    group = "verification"
-    description = "Runs build and tests for upbit connector modules"
-
-    dependsOn(
-            ":upbit-connector:upbit-connector-contract:build",
-            ":upbit-connector:upbit-connector-application:build",
-            ":upbit-connector:upbit-connector-adapter-out:build",
-            ":upbit-connector:upbit-connector-bootstrap:build",
+            ":market-detection:market-detection-contract:build",
             ":common:common-arch-test:test"
     )
 }
