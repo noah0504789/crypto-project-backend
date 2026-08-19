@@ -38,7 +38,7 @@ public class SnowflakeIdProvider {
     private int workerId;
 
     @PostConstruct
-    void init() {
+    public void init() {
         this.epochMilli = properties.epoch().toEpochMilli();
         this.datacenterId = properties.datacenterId();
         this.workerId = properties.workerId();

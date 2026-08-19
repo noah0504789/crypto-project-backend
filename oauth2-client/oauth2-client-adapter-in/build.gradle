@@ -9,8 +9,7 @@ dependencies {
 
     testImplementation project(':common:common-test')
     testImplementation project(':common:common-redis')
-    testImplementation project(':oauth2-client:oauth2-client-adapter-out')
     testImplementation project(':oauth2-authorization-server:oauth2-authorization-server-adapter-in')
+    testImplementation project(':oauth2-client:oauth2-client-adapter-out')
     testImplementation(libs.spring.security.test)
 }
-

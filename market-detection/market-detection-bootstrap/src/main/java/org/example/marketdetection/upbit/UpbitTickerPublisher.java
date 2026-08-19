@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class UpbitTickerPublisher implements SmartLifecycle {
 
-    static final String OUTPUT_BINDING = "upbitTickerEvent-out-0";
+    public static final String OUTPUT_BINDING = "upbitTickerEvent-out-0";
 
     private final UpbitTickerCoalescingBuffer tickerBuffer;
     private final StreamBridge streamBridge;
@@ -101,7 +101,7 @@ public class UpbitTickerPublisher implements SmartLifecycle {
         return Integer.MAX_VALUE;
     }
 
-    void runWorker() {
+    public void runWorker() {
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 TickerTask task = tickerBuffer.take();

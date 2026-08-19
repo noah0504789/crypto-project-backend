@@ -218,15 +218,94 @@ JPA Entity가 아니어도 도메인 모델이면 같은 기준을 적용한다.
 - 분리는 **가독성/응집을 위한 선택**이며, 엄밀히는 관련 엔티티(예: `ChatRoom`)의 도메인 로직이다. 분리했더라도 짝이 되는 엔티티 메서드(`ChatRoom.hasUnread`)와 규칙 일관성을 함께 유지한다.
 - 도메인 서비스로 뺄지 엔티티 메서드로 둘지는 응집도로 판단하고, 상태 변경(mutation)은 여전히 엔티티 도메인 메서드에 둔다.
 
-## 6. Lombok 기준
+## 6. 포맷 · 줄바꿈
+
+**포맷터가 코드를 재배치하지 않는다.** spotless는 사용하지 않는 import 제거·후행 공백 정리·파일 끝 개행만 한다(`build-logic/src/main/groovy/crypto-quality.gradle`). 줄바꿈은 작성자가 정하고 리뷰가 지킨다.
+
+이전에는 `googleJavaFormat(...).aosp()`를 썼는데, spotless가 `ratchetFrom main`이라 **한 줄만 고쳐도 그 파일 전체가 재포맷**됐다. 실제 변경 1줄짜리 커밋이 37줄 변경으로 부풀어 diff에서 의도가 묻혔다. 그래서 자동 재배치를 뺐다.
+
+### 6.1 줄 길이로 자르지 않는다
+
+길다는 이유만으로 줄을 나누지 않는다. 시그니처·`implements` 절·인자 목록은 길어도 한 줄에 둔다.
+
+```java
+public class PriceAlertDetectionProcessor implements Processor<String, UpbitTickerEvent, String, PriceAlertDetectedEvent> {
+
+    public List<PriceAlertDetectedEvent> detect(String code, PricePoint sample, List<PricePoint> recentSamples) {
+
+    Stores.persistentWindowStore(store.name(), store.retention(), store.windowSize(), store.retainDuplicates()),
+
+    try (WindowStoreIterator<PricePoint> iterator = tickerSampleStore.fetch(code, from, timestamp)) {
+```
+
+### 6.2 나열할 때는 한 줄에 하나씩, 닫는 괄호는 독립 줄
+
+레코드 컴포넌트처럼 **항목마다 애노테이션·의미가 붙는 경우**에만 나눈다. 나눌 때는 항목당 한 줄, 닫는 `)`는 자기 줄에 둔다.
+
+```java
+public record PriceAlertDetectionProperties(
+        @Positive Integer windowMinutes,
+        @NotNull Duration maxEventAge,
+        @Valid @NotNull Store store
+) {
+
+headers.add(
+        KafkaHeaderKey.EVENT_ID.value(),
+        event.getEventId().getBytes(StandardCharsets.UTF_8)
+);
+```
+
+### 6.3 체이닝은 `.` 단위로 나눈다
+
+스트림·리액티브 체이닝은 **한 줄에 들어가더라도** 단계마다 줄을 나눈다. 단계가 눈에 보여야 읽힌다. 첫 호출은 대상과 같은 줄에 둔다.
+
+```java
+List<String> codes = marketClient.getEnabledMarkets().stream()
+        .map(MarketResponse::marketCode)
+        .filter(code -> code != null && !code.isBlank())
+        .toList();
+
+subscription = collectService.collect()
+        .subscribe(event -> {}, this::logStreamTermination);
+```
+
+### 6.4 삼항 연산자
+
+조건까지 첫 줄에 두고 `?`와 `:`를 각각 다음 줄에 둔다.
+
+```java
+Long timestamp = tickerEvent.tradeTimestamp() != null
+        ? tickerEvent.tradeTimestamp()
+        : record.timestamp();
+```
+
+### 6.5 그 밖
+
+- 들여쓰기 4칸, 이어지는 줄은 8칸.
+- **접근제어자는 생략하지 않는다.** Java에는 package-private 키워드가 없어 생략하면 의도인지 실수인지 구분되지 않는다. `public`/`private`/`protected` 중 하나를 명시한다(인터페이스 메서드처럼 언어가 강제하는 자리는 예외). ArchUnit `CodeStyleArchitectureTest`가 검사한다.
+- 인라인 람다가 길어지면 이름 있는 메서드로 뽑는다.
+- `build.gradle`의 `project(...)` 의존은 **common → 다른 서비스 → 자기 서비스** 순으로 적는다. `api`와 `implementation`은 의미가 다르므로 섞어 정렬하지 않고 같은 configuration 안에서만 정렬한다. `./gradlew checkDependencyOrder`가 검사한다.
+
+```groovy
+implementation project(':common:common-event')
+implementation project(':market:market-client')
+implementation project(':upbit-connector:upbit-connector-application')
+```
+
+## 7. Lombok 기준
 
 사용 가능:
 
 - `@Getter`
-- `@RequiredArgsConstructor`
+- `@RequiredArgsConstructor` — **스프링 빈의 의존성 주입 생성자는 손으로 쓰지 않고 이걸 쓴다.**
 - `@Slf4j`
 - Entity의 protected no-args
 - 제한적 private builder
+
+생성자 관련 주의:
+
+- **생성자가 둘 이상이면 스프링이 주입 대상을 고르지 못해 부팅이 깨진다.** 테스트 편의용 보조 생성자를 추가하지 않는다(아래 "테스트 편의를 위한 production visibility 확장"에 해당). 테스트는 실제 협력 객체·`@ConfigurationProperties` 인스턴스를 만들어 같은 생성자로 넘긴다.
+- 주입 대상이 아닌 협력 객체(HTTP/WebSocket 클라이언트 등)를 생성자 안에서 `new` 하지 않는다. `@Bean`으로 분리해 주입받아야 `@RequiredArgsConstructor`를 유지할 수 있고 테스트에서 교체도 된다.
 
 피할 것:
 
@@ -236,9 +315,9 @@ JPA Entity가 아니어도 도메인 모델이면 같은 기준을 적용한다.
 - Entity public `@AllArgsConstructor`
 - 테스트 편의를 위한 production visibility 확장
 
-## 7. 상수화 기준
+## 8. 상수화 기준
 
-### 7.1 상수화 우선 후보
+### 8.1 상수화 우선 후보
 
 - 외부 계약 문자열
 - Redis key pattern/hash tag
@@ -264,14 +343,14 @@ Authorization
 {auth}:blacklist
 ```
 
-### 7.2 상수화하지 않아도 되는 것
+### 8.2 상수화하지 않아도 되는 것
 
 - 한 번만 쓰이는 지역 변수 수준 literal
 - 테스트 시나리오 설명용 literal
 - 자연어 로그 메시지
 - 너무 짧은 private helper 내부 값
 
-### 7.3 위치 선택
+### 8.3 위치 선택
 
 | 값 | 위치 |
 | --- | --- |
@@ -287,7 +366,7 @@ Authorization
 
 상수 class 하나에 모든 값을 몰아넣지 않는다. 같은 성격끼리만 모은다.
 
-## 8. enum 기준
+## 9. enum 기준
 
 enum을 우선 사용할 값:
 
@@ -306,28 +385,28 @@ enum을 우선 사용할 값:
 - 사용자 입력값
 - 로그 자연어
 
-## 9. 예외 처리 기준
+## 10. 예외 처리 기준
 
-### 9.0 예외 계층
+### 10.1 예외 계층
 
 - 서비스별 예외는 새로 만들기보다 **`common`의 공통 베이스를 상속**한다: not-found는 `ResourceNotFoundException`(`ChatRoomNotFoundException`, `UserNotFoundException`), 잘못된 요청은 `InvalidRequestException`(`InvalidResourceRequestException`), 인프라 실패는 `InfrastructureException`(`ChatPersistenceException`). 상속 베이스로 REST/gRPC 응답 매핑이 일관되게 결정된다.
 - **재시도 여부를 예외 타입으로 표현**한다. 일시적 실패는 `Temporary*` 마커 예외를 계층으로 두고(`TemporaryChatPersistenceException extends ChatPersistenceException`) `@Retryable(retryFor = Temporary*.class)` 대상으로 삼는다. 재시도해도 소용없는 멱등 충돌(`DuplicateChatMessageException`)은 `@Retryable(noRetryFor = ...)`로 제외한다.
 - 인프라 예외를 서비스 경계에서 도메인/애플리케이션 예외로 **번역**한다(`MongoChatPersistenceExceptionTranslator`가 Mongo 예외를 `Temporary*`/`Duplicate*`로 변환). 원인 예외(cause)를 보존한다.
 
-### 9.1 REST
+### 10.2 REST
 
 - 공통 REST 예외 응답은 `common-web`의 `GlobalExceptionHandler` 기준을 따른다.
 - 서비스별 예외가 필요하면 handler를 확장하되 응답 형식을 흔들지 않는다.
 - validation 오류는 field 단위 정보를 포함한다.
 - status code는 예외 이름이 아니라 의미로 결정한다.
 
-### 9.2 gRPC
+### 10.3 gRPC
 
 - gRPC endpoint 예외는 `@GrpcAdvice` 또는 `AbstractGrpcExceptionAdvice` 계열에서 처리한다.
 - REST handler에 gRPC 예외를 억지로 태우지 않는다.
 - `CANCELLED`, `DEADLINE_EXCEEDED`, `INTERNAL`, `RESOURCE_EXHAUSTED`는 의미를 구분한다.
 
-### 9.3 외부 시스템 예외
+### 10.4 외부 시스템 예외
 
 - Redis 조회 실패: fail-open 후보.
 - Redis command/write 실패: 복구 이벤트 또는 invalidate 후보.
@@ -335,7 +414,7 @@ enum을 우선 사용할 값:
 - Kafka 발행 실패: Outbox/DLQ 상태 전이.
 - gRPC 실패: deadline, name resolution, server internal을 구분.
 
-## 10. Transaction 기준
+## 11. Transaction 기준
 
 - 상태 변경 application service는 transaction boundary를 명확히 둔다.
 - 조회 메서드는 `@Transactional(readOnly = true)`를 사용할 수 있지만 이것만으로 read replica 라우팅하지 않는다.
@@ -343,7 +422,7 @@ enum을 우선 사용할 값:
 - write transaction 내부에서 read replica로 빠지지 않도록 한다.
 - transaction manager 이름은 외부 계약 수준으로 보고 상수화 후보로 둔다.
 
-## 11. Redis 기준
+## 12. Redis 기준
 
 - key pattern은 enum/key factory로 관리한다.
 - cluster hash tag를 임의 변경하지 않는다.
@@ -352,7 +431,7 @@ enum을 우선 사용할 값:
 - key 인자 수, hash tag, TTL 정책은 단위 테스트를 작성한다.
 - cache fail-open은 조회에 제한한다. command 실패를 조용히 무시하지 않는다.
 
-## 12. Kafka/Outbox/DLQ 기준
+## 13. Kafka/Outbox/DLQ 기준
 
 - Kafka 직접 발행보다 Outbox를 우선 검토한다.
 - domain event -> Outbox -> poller -> Kafka 흐름을 보존한다.
@@ -361,7 +440,7 @@ enum을 우선 사용할 값:
 - Outbox/DLQ entity 상태 변경은 도메인 메서드로 한다.
 - consumer는 중복/재시도 가능성을 고려해 idempotent하게 작성한다.
 
-## 13. gRPC/protobuf 기준
+## 14. gRPC/protobuf 기준
 
 - proto field number는 재사용하지 않는다.
 - field 삭제는 reserved를 검토한다.
@@ -370,7 +449,7 @@ enum을 우선 사용할 값:
 - blocking call이 servlet/request thread를 오래 점유하지 않게 주의한다.
 - `protobuf` publish 또는 root build 영향을 확인한다.
 
-## 14. OAuth2/Security 기준
+## 15. OAuth2/Security 기준
 
 - Spring Security principal name과 도메인 userId를 구분한다.
 - `OidcUser#getName()`은 닉네임이 아니라 principal name이다.
@@ -379,7 +458,7 @@ enum을 우선 사용할 값:
 - Authorization Server registered client id/secret은 config/Vault 양쪽이 일치해야 한다.
 - resource server 설정을 단순 password encoder 사용 때문에 서비스 전체에 켜지 않도록 의존성을 조심한다. 단순 password hashing에는 `spring-security-crypto` 사용을 우선 검토한다.
 
-## 15. WebSocket/STOMP 기준
+## 16. WebSocket/STOMP 기준
 
 - destination string은 외부 계약이다.
 - ack와 broadcast timeout은 k6 테스트와 맞춰 본다.
@@ -387,7 +466,7 @@ enum을 우선 사용할 값:
 - gRPC save deadline과 STOMP ack timeout은 함께 조정한다.
 - 대량 broadcast는 channel contention과 backpressure를 고려한다.
 
-## 16. 테스트 스타일
+## 17. 테스트 스타일
 
 기본 형태:
 
@@ -419,7 +498,7 @@ void method_condition_expected() {
 assertThat(result.<String>getAttribute("id")).isEqualTo(userId);
 ```
 
-## 17. Gradle 의존성 기준
+## 18. Gradle 의존성 기준
 
 - 외부 라이브러리, Gradle plugin, build tool의 의존성이나 버전을 추가할 때는 `gradle/libs.versions.toml`에 version과 library/plugin alias를 먼저 등록하고, Gradle script에서는 `libs.*`로 참조한다. `group:name:version` 좌표나 tool version을 script에 직접 적지 않는다.
 - Spring Boot starter가 너무 많은 auto configuration을 켜는지 확인한다.
@@ -427,7 +506,7 @@ assertThat(result.<String>getAttribute("id")).isEqualTo(userId);
 - `implementation project(':common')` aggregate 의존은 편하지만 의존 그래프가 커진다. 단순화된 모듈이 아닌 곳에서는 필요한 `common:*`만 의존하는 방향을 검토한다.
 - `api` 의존은 외부로 타입이 노출될 때만 사용한다.
 
-### 17.1 ConfigurationProperties 검증
+## 19. ConfigurationProperties 검증
 
 - 목적은 설정 누락과 키 오타를 **기동 시 fail-fast**로 드러내는 것이다. 운영 설정의 단일 정본은 yml로 두고 `@ConfigurationProperties`에 `@DefaultValue`를 중복 선언하지 않는다. 코드 기본값이 있으면 yml 키가 틀려도 정상값처럼 폴백해 설정 오류가 숨는다.
 - `@DefaultValue`만 제거해서는 충분하지 않다. Spring Boot는 prefix 아래 값이 없어도 `bindOrCreate`로 properties 인스턴스를 만들 수 있으므로, 필수 properties record에 `@Validated`를 붙이고 각 component에 제약을 선언한다.
@@ -448,25 +527,25 @@ assertThat(result.<String>getAttribute("id")).isEqualTo(userId);
 
 제약 위반은 `@ConfigurationProperties` 바인딩 중 예외가 되어 ApplicationContext 생성을 중단한다. 검증 provider가 classpath에 없거나 `@Validated`/제약 애노테이션 중 하나라도 빠지면 이 보장은 성립하지 않는다.
 
-## 18. 문서/주석 기준
+## 20. 문서/주석 기준
 
 - 코드 주석은 “무엇”보다 “왜”를 설명할 때 쓴다.
 - 복잡한 장애 대응, 트랜잭션 정책, 외부 계약은 docs에 남긴다.
 - 아직 구현되지 않은 목표는 `목표` 또는 `후보`로 표시한다.
 - 문서는 코드보다 앞서가면 안 된다.
 
-## 19. 로깅 기준
+## 21. 로깅 기준
 
 로그는 장애 대응·추적의 1차 자료다. 포맷을 맞춰 grep·집계·알림을 쉽게 한다.
 
-### 19.1 선언·포맷
+### 21.1 선언·포맷
 
 - 로거는 **`@Slf4j`** 로만 선언한다(수동 `LoggerFactory` 금지).
 - 메시지는 **파라미터화 `{}`** 만 쓴다. 문자열 `+` 연결·`String.format` 금지.
 - 메시지 **본문은 영어**로 쓴다(검색·국제화·툴링 용이). 도메인 고유명사·식별자 값은 예외.
 - **이모지·장식 문자 금지**(`✅`/`❌` 등 — 터미널 인코딩·grep 방해).
 
-### 19.2 태그와 식별자
+### 21.2 태그와 식별자
 
 - 하위 영역 태그는 **`[lower-kebab]`** 소문자 고정. 대문자·혼용 금지. 아래 레지스트리에서 고르고, 새 하위영역이 생기면 같은 규칙으로 추가한다.
 - 추적 식별자를 **하나 이상** `key=value` 로 포함한다: `txId`, `roomId`, `messageId`, `dlqId`, `id` 등. 메시지는 `[tag] what happened. key=value, key=value` 순서.
@@ -497,7 +576,7 @@ assertThat(result.<String>getAttribute("id")).isEqualTo(userId);
 log.warn("[cache] chat message save failed after commit (repair will cover). messageId={}, roomId={}", messageId, roomId, e);
 ```
 
-### 19.3 레벨 의미
+### 21.3 레벨 의미
 
 | 레벨 | 사용 | 예외 인자 |
 | --- | --- | --- |

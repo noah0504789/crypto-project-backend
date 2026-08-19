@@ -33,7 +33,7 @@ public class UpbitWebsocketListener extends WebSocketListener {
     private ConcurrentMap<String, AtomicLong> tickerLastSentByCode;
 
     @PostConstruct
-    void init() {
+    public void init() {
         this.tickerLastSentByCode = new ConcurrentHashMap<>();
     }
 

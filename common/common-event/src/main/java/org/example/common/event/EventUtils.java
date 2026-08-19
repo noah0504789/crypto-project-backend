@@ -6,7 +6,7 @@ public class EventUtils {
 
     private static ApplicationEventPublisher publisher;
 
-    static void setPublisher(ApplicationEventPublisher publisher) {
+    public static void setPublisher(ApplicationEventPublisher publisher) {
         EventUtils.publisher = publisher;
     }
 
