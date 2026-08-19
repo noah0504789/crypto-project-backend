@@ -2,10 +2,15 @@
 build/
 bin/
 out/
+# IDE 출력 디렉터리(out/)를 무시하되 소스의 adapter/out·port/out 은 살린다.
+# 이 예외가 없으면 헥사고날 out 패키지가 통째로 커밋에서 빠진다.
+!**/src/main/**/out/
+!**/src/test/**/out/
 .idea/
 .junie/
 *.class
 *.log
+*.hprof
 *.lock
 .DS_Store
 property*/
