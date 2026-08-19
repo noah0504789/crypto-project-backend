@@ -25,8 +25,8 @@
 ```
 - 가장 좁은 범위부터: `./gradlew :<service>:<submodule>:test`, 컴파일만은 `:...:compileJava`.
   - 예: `./gradlew :chat:chat-application:test`, `./gradlew :common:common-jpa:test`
-- 서비스 전체 CI(빌드+테스트+ArchUnit)는 **루트 task**로 실행: `./gradlew chatCi` · `userCi` · `marketCi` · `notificationCi` · `oauth2AuthorizationServerCi` · `oauth2ClientCi` · `websocketGatewayCi` · `gatewayCi` · `springCloudConfigCi` · `marketDetectionCi` · `outboxPollerCi` · `eurekaServerCi`. 전체는 `./gradlew serviceCi`.
-- **변경 영향 서비스의 CI만 실행한다.** 여러 서비스에 걸친 변경은 필요한 `*Ci` task만 한 Gradle 호출에 묶는다. `serviceCi`는 공통 기반·빌드 로직·전체 런타임 설정처럼 12개 실행 서비스 모두에 영향이 있거나 사용자가 전체 CI를 명시한 경우에만 실행한다. 단순히 여러 모듈을 수정했다는 이유만으로 전체 CI를 선택하지 않는다.
+- 서비스 전체 CI(빌드+테스트+ArchUnit)는 **루트 task**로 실행: `./gradlew chatCi` · `userCi` · `marketCi` · `notificationCi` · `oauth2AuthorizationServerCi` · `oauth2ClientCi` · `websocketGatewayCi` · `gatewayCi` · `springCloudConfigCi` · `marketDetectionCi` · `upbitConnectorCi` · `outboxPollerCi` · `eurekaServerCi`. 전체는 `./gradlew serviceCi`.
+- **변경 영향 서비스의 CI만 실행한다.** 여러 서비스에 걸친 변경은 필요한 `*Ci` task만 한 Gradle 호출에 묶는다. `serviceCi`는 공통 기반·빌드 로직·전체 런타임 설정처럼 13개 실행 서비스 모두에 영향이 있거나 사용자가 전체 CI를 명시한 경우에만 실행한다. 단순히 여러 모듈을 수정했다는 이유만으로 전체 CI를 선택하지 않는다.
 - **`serviceCi`를 동시에 둘 이상 실행하지 않는다.** 부팅 스모크가 재사용 Testcontainers와 Docker 자원을 공유하므로 중복 실행하면 컨테이너 초기화·종료 경합으로 테스트가 실패 로그 없이 장시간 정체될 수 있다. 기존 실행 여부를 확인하고 하나가 끝난 뒤 다음 실행을 시작한다.
 - 모든 서비스 CI에 `:common:common-arch-test:test`(ArchUnit)가 포함된다.
 

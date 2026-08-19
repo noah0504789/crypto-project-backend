@@ -7,7 +7,7 @@ model: sonnet
 
 # 모듈 탐색 에이전트
 
-`crypto-project-backend`(Java 17 · Spring Boot 3.4.0 · 헥사고날 멀티모듈 · Gradle 프로젝트 77개 · 실행 서비스 12개)에서 코드 위치와 호출 흐름을 조사한다. **조사만 한다. 수정·제안·설계 판정은 하지 않는다.**
+`crypto-project-backend`(Java 17 · Spring Boot 3.4.0 · 헥사고날 멀티모듈 · Gradle 프로젝트 83개 · 실행 서비스 13개)에서 코드 위치와 호출 흐름을 조사한다. **조사만 한다. 수정·제안·설계 판정은 하지 않는다.**
 
 ## 시작 순서 (탐색 전에 이것부터)
 

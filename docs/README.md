@@ -27,7 +27,7 @@
 
 각 행은 **상세 문서**(구조·흐름·계약·확인 필요)와 **작업 지침**(모듈 디렉토리 CLAUDE.md) 쌍이다.
 
-### 실행 서비스 (12)
+### 실행 서비스 (13)
 
 | 서비스 | 상세 문서 | 작업 지침 | 한 줄 요약 |
 |---|---|---|---|
@@ -38,11 +38,12 @@
 | chat | [CHAT.md](modules/CHAT.md) | [chat/CLAUDE.md](../chat/CLAUDE.md) | 채팅방/메시지. 캐시-우선 + Outbox, 영속은 Kafka consumer 비동기, gRPC `chatmessage.v1` |
 | websocket-gateway | [WEBSOCKET_GATEWAY.md](modules/WEBSOCKET_GATEWAY.md) | [.../CLAUDE.md](../websocket-gateway/CLAUDE.md) | STOMP 게이트웨이. broadcast 소비 → 로컬 세션 push, 세션 위치 로컬+Redis |
 | market | [MARKET.md](modules/MARKET.md) | [market/CLAUDE.md](../market/CLAUDE.md) | 마켓 카탈로그·가격알림 설정. MySQL, gRPC `market.v1`, Caffeine 캐시 무효화 |
-| market-detection | [MARKET_DETECTION.md](modules/MARKET_DETECTION.md) | [.../CLAUDE.md](../market-detection/CLAUDE.md) | Upbit WS 수집 + Kafka Streams 변동률 탐지 → `PriceAlertDetectedEvent` |
+| market-detection | [MARKET_DETECTION.md](modules/MARKET_DETECTION.md) | [.../CLAUDE.md](../market-detection/CLAUDE.md) | `upbit-ticker-event` 소비 → Kafka Streams 변동률 탐지 → `PriceAlertDetectedEvent` |
 | notification | [NOTIFICATION.md](modules/NOTIFICATION.md) | [notification/CLAUDE.md](../notification/CLAUDE.md) | 탐지 이벤트 소비 → 수신자 fan-out 저장(Mongo) + web push 발행 |
 | outbox-poller | [OUTBOX_POLLER.md](modules/OUTBOX_POLLER.md) | [outbox-poller/CLAUDE.md](../outbox-poller/CLAUDE.md) | Outbox/DLQ 릴레이. dispatchType별 폴링 → Kafka 발행 |
 | spring-cloud-config | [SPRING_CLOUD_CONFIG.md](modules/SPRING_CLOUD_CONFIG.md) | [.../CLAUDE.md](../spring-cloud-config/CLAUDE.md) | Config Server(git + Vault), JWKS, Vault Transit 서명 대행 |
 | spring-cloud-eureka-server | [EUREKA_SERVER.md](modules/EUREKA_SERVER.md) | [.../CLAUDE.md](../spring-cloud-eureka-server/CLAUDE.md) | 서비스 디스커버리(HTTP `lb://` + gRPC metadata) |
+| upbit-connector | [UPBIT_CONNECTOR.md](modules/UPBIT_CONNECTOR.md) | [upbit-connector/CLAUDE.md](../upbit-connector/CLAUDE.md) | Upbit 연동 전담 WebFlux 서비스. 실시간 시세 수집·스로틀 → `upbit-ticker-event` 발행 |
 
 ### 공통 모듈
 
@@ -78,4 +79,4 @@ Harness의 책임 경계와 현재 상태는 아래 문서에서 관리한다. �
 
 ## 5. 커버리지
 
-실행 서비스 12개 전부 + 공통 모듈(`common-*`)에 대해 **상세 문서 + 작업 지침(CLAUDE.md)** 쌍이 존재한다. 새 서비스를 추가하면 `docs/modules/<NAME>.md` + `<module>/CLAUDE.md`를 만들고 이 인덱스와 [`../CLAUDE.md`](../CLAUDE.md) 문서 지도에 반영한다.
+실행 서비스 13개 전부 + 공통 모듈(`common-*`)에 대해 **상세 문서 + 작업 지침(CLAUDE.md)** 쌍이 존재한다. 새 서비스를 추가하면 [`project-skeleton`](../.claude/skills/project-skeleton/SKILL.md) skill의 체크리스트를 따른다.

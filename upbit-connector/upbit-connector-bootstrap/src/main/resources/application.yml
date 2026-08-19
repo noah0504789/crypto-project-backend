@@ -1,0 +1,7 @@
+spring:
+  application.name: upbit-connector
+  config.import: configserver:http://crypto-spring-cloud-config:8888
+  cloud:
+    config:
+      name: upbit-connector,eureka-client,kafka,monitoring
+      label: main
