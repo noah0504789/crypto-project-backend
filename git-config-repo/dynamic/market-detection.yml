@@ -1,13 +1,5 @@
 server.port: 8500
 
-grpc:
-  client:
-    market-client:
-      address: ${uri.discovery.market-service}
-      negotiation-type: plaintext
-      max-inbound-message-size:
-        bytes: 16777216
-
 spring:
   autoconfigure:
     exclude:
@@ -15,52 +7,30 @@ spring:
       - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
   cloud:
     function:
-      definition: upbitTickerAlertEventProcessor
+      definition: priceAlertDetectionProcessor
     stream:
-      output-bindings: upbitTickerEvent-out-0
       bindings:
-        upbitTickerEvent-out-0:
-          destination: upbit-ticker-event
-          content-type: application/json
-        upbitTickerAlertEventProcessor-in-0:
+        priceAlertDetectionProcessor-in-0:
           destination: upbit-ticker-event
           content-type: application/json
           group: upbit-ticker-alert
-        upbitTickerAlertEventProcessor-out-0:
+        priceAlertDetectionProcessor-out-0:
           destination: price-alert-detected-event
           content-type: application/json
       kafka:
-        bindings:
-          upbitTickerEvent-out-0:
-            producer:
-              configuration:
-                value.serializer: org.springframework.kafka.support.serializer.JsonSerializer
         streams:
           binder:
             configuration:
               processing.guarantee: exactly_once_v2
+            # 함수 이름이 바뀌어도 소비 그룹과 state store 디렉터리가 유지되도록 고정한다.
+            application-id: market-detection
 
-upbit:
-  websocket:
-    url: ${uri.provider.upbit.websocket}
-    ticket: test
-    ticker-publish-interval: 7s
-    ticker-ready-queue-capacity: 512
-    ticker-worker-count: 2
-
-  ticker:
-    alert:
-      window-minutes: 3
-      max-event-age: 10s
+price-alert-detection:
+  window-minutes: 3
+  max-event-age: 10s
 
   store:
-    ticker:
-      name: upbit-ticker-store
-      retention: 3m
-      window-size: 3m
-      retain-duplicates: false
-
-app:
-  grpc:
-    market-client:
-      deadline: 3500ms
+    name: upbit-ticker-store
+    retention: 3m
+    window-size: 3m
+    retain-duplicates: false

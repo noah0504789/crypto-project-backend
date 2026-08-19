@@ -173,19 +173,18 @@ outbox-poller:
 ## 11. Upbit WebSocket 데이터 수집 — 구현됨
 
 ```
-market gRPC GetEnabledMarkets (boundedElastic)
- → Upbit WebSocket (Reactor Netty)
+Upbit WebSocket (Reactor Netty)
  → UpbitWebsocketTickerStreamAdapter (ticker 구독·역직렬화·재연결)
- → UpbitTickerCollectService (종목별 sample + onBackpressureLatest)
+ → UpbitTickerCollectService: groupBy(code) → sample(publish-interval) → onBackpressureLatest
  → KafkaUpbitTickerPublishAdapter (StreamBridge, boundedElastic)
  → Kafka(upbit-ticker-event)
 ```
 
-근거: `upbit-connector/upbit-connector-adapter-out/.../upbit/{UpbitWebsocketTickerStreamAdapter,UpbitTickerCollectStarter,KafkaUpbitTickerPublishAdapter}.java`, `upbit-connector-application/.../UpbitTickerCollectService.java`.
+수집 주체는 **upbit-connector**다(market-detection에서 이관). 값 타입은 `upbit-connector-contract`의 `UpbitTickerEvent`이며, 이 바인딩에서는 `__TypeId__` 헤더가 전달되지 않아 소비자가 선언된 타입으로 역직렬화한다(→ `docs/modules/UPBIT_CONNECTOR.md` §6.1).
 
 종목별 첫 ticker로 Flux 그룹이 만들어진 시점부터 7초 구간을 세며, 각 구간의 최신값 최대 1개만 발행한다. Kafka가 느리면 같은 종목의 대기값은 최신 하나로 교체되지만, 실제 Kafka 발행 완료 시점 기준의 정확한 7초 간격을 보장하는 정책은 아니다(→ `docs/modules/UPBIT_CONNECTOR.md` §4.1).
 
-> 이 브랜치에는 기존 `market-detection`의 OkHttp·coalescing buffer·worker producer도 남아 있어 같은 토픽을 함께 발행한다. 후속 수집 이관 브랜치가 기존 producer를 제거한다.
+근거: `upbit-connector/upbit-connector-adapter-out/.../upbit/{UpbitWebsocketTickerStreamAdapter,KafkaUpbitTickerPublishAdapter,UpbitTickerCollectStarter}.java`, `upbit-connector-application/.../service/UpbitTickerCollectService.java`.
 
 ---
 
@@ -193,24 +192,24 @@ market gRPC GetEnabledMarkets (boundedElastic)
 
 ```
 Kafka(upbit-ticker-event)
- → KafkaMarketDetectionBinder.upbitTickerAlertEventProcessor (KStream)
- → UpbitTickerProcessor.process:
+ → KafkaMarketDetectionBinder.priceAlertDetectionProcessor (KStream)
+ → PriceAlertDetectionProcessor.process:
      WindowStore(upbit-ticker-store, window/retention 3m)로 이동평균·변동률 계산
 ```
 
-근거: `market-detection/.../adapter/in/stream/KafkaMarketDetectionBinder.java`, `.../upbit/UpbitTickerProcessor.java`, `.../upbit/StateStoreConfig.java`.
+근거: `market-detection-adapter-in/.../stream/{KafkaMarketDetectionBinder,PriceAlertDetectionProcessor}.java`, `.../infra/config/StateStoreConfig.java`, `market-detection-application/.../dto/PriceChange.java`.
 
 ---
 
 ## 13. 마켓 알림 생성 — 구현됨
 
 ```
-UpbitTickerProcessor
+PriceAlertDetectionProcessor
  → PriceAlertChangeRateThreshold.matchedBy로 임계치 매칭
  → PriceAlertDetectedEvent 발행(KStream output → price-alert-detected-event)
 ```
 
-근거: `market-detection/.../upbit/UpbitTickerProcessor.java`, `market-detection/market-detection-contract/.../PriceAlertDetectedEvent.java`.
+근거: `market-detection-application/.../service/PriceAlertDetectionService.java`, `market-detection-contract/.../PriceAlertDetectedEvent.java`.
 
 > 참고: 기존 문서는 이 출력 이벤트를 `UpbitTickerAlertEvent`/`WebNotificationBroadcastEvent`로 기술했으나, 실제 발행 계약은 `PriceAlertDetectedEvent`이며 notification 서비스가 이를 소비해 후속 이벤트를 만든다(§14).
 

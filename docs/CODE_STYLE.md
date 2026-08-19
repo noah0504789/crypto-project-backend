@@ -235,7 +235,7 @@ public class PriceAlertDetectionProcessor implements Processor<String, UpbitTick
 
     Stores.persistentWindowStore(store.name(), store.retention(), store.windowSize(), store.retainDuplicates()),
 
-    try (WindowStoreIterator<PricePoint> iterator = tickerSampleStore.fetch(code, from, timestamp)) {
+    try (WindowStoreIterator<PricePoint> iterator = pricePointStore.fetch(code, from, timestamp)) {
 ```
 
 ### 6.2 나열할 때는 한 줄에 하나씩, 닫는 괄호는 독립 줄

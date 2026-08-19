@@ -1,0 +1,16 @@
+plugins {
+    id 'crypto-adapter'
+}
+
+dependencies {
+    implementation project(':common:common-core')
+    implementation project(':common:common-event')
+    implementation project(':common:common-time')
+    implementation project(':upbit-connector:upbit-connector-contract')
+    implementation project(':market-detection:market-detection-application')
+    implementation project(':market-detection:market-detection-contract')
+    implementation(libs.spring.cloud.stream.binder.kafka.streams)
+
+    testImplementation project(':common:common-test')
+    testImplementation(libs.kafka.streams.test.utils)
+}

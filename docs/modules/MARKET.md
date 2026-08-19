@@ -87,7 +87,7 @@ proto: `protobuf/src/main/proto/market/v1/market-service.proto`. 서버 구현�
 
 | 서비스 · RPC | 요청 | 응답 | 소비자 · 용도 |
 |---|---|---|---|
-| `MarketService.GetEnabledMarkets` | `GrpcGetEnabledMarketsRequest{}` | `GrpcGetEnabledMarketsResponse{repeated GrpcMarket}` | **market-detection**(`UpbitWebsocketListener`) — 구독할 마켓 목록 |
+| `MarketService.GetEnabledMarkets` | `GrpcGetEnabledMarketsRequest{}` | `GrpcGetEnabledMarketsResponse{repeated GrpcMarket}` | **upbit-connector**(`UpbitWebsocketTickerStreamAdapter`) — 구독할 마켓 목록 |
 | `PriceAlertSettingService.FindReceiverIds` | `GrpcFindPriceAlertReceiversRequest{market_code, target_change_rate}` | `GrpcFindPriceAlertReceiversResponse{repeated receiver_ids}` | **notification**(`PriceAlertRecipientQueryAdapter`) — 알림 수신자 |
 
 - `GrpcMarket`: `{ id, market_code, symbol, korean_name, english_name }`.
@@ -173,5 +173,5 @@ proto: `protobuf/src/main/proto/market/v1/market-service.proto`. 서버 구현�
 ## 16. 관련 문서와 rules
 
 - 루트 구조/흐름: [`../ARCHITECTURE.md`](../ARCHITECTURE.md), [`../SERVICE_FLOWS.md`](../SERVICE_FLOWS.md), 코드 스타일 [`../CODE_STYLE.md`](../CODE_STYLE.md)
-- 소비자 서비스: `market-detection`(Upbit 수집·탐지), `notification`(알림) — 모듈 문서 미작성(코드 경로는 `docs/ARCHITECTURE.md §서비스별 역할`)
+- 소비자 서비스: `upbit-connector`(활성 마켓 구독 조회), `notification`(알림 수신자 조회) — 상세는 [`UPBIT_CONNECTOR.md`](UPBIT_CONNECTOR.md), [`NOTIFICATION.md`](NOTIFICATION.md)
 - 계약/보안/아키텍처/테스트 rules: `../../.claude/rules/{external-contracts,security,architecture,testing}.md`

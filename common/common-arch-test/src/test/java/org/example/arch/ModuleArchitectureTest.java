@@ -27,7 +27,6 @@ class ModuleArchitectureTest {
     private static final Pattern INCLUDED_PROJECT = Pattern.compile("'([^']+)'|\"([^\"]+)\"");
     private static final Pattern PROJECT_DEPENDENCY = Pattern.compile("^\\s*(\\w+)\\s+project\\(['\"](:[^'\"]+)['\"]\\)");
 
-    private static final String LEGACY_MARKET_DETECTION_BOOTSTRAP = ":market-detection:market-detection-bootstrap";
 
     private static final Set<String> NON_SERVICE_PROJECTS = Set.of("common", "protobuf");
     private static final Set<String> SERVICE_IMPORT_PREFIXES = Set.of(
@@ -196,10 +195,6 @@ class ModuleArchitectureTest {
         dependencies.forEach((from, targets) -> {
             ProjectModule module = modules.get(from);
             if (module == null || !module.isBootstrap()) {
-                return;
-            }
-
-            if (isLegacyMarketDetectionBootstrap(module)) {
                 return;
             }
 
@@ -401,15 +396,6 @@ class ModuleArchitectureTest {
             current = current.getParent();
         }
         throw new IllegalStateException("Cannot locate repository root from user.dir=" + System.getProperty("user.dir"));
-    }
-
-    /*
-     * market-detection was originally structured as a legacy monolithic module.
-     * It was temporarily split into bootstrap/contract to expose events.
-     * Remove this exception after market-detection is separated into application/domain/adapter modules.
-     */
-    private boolean isLegacyMarketDetectionBootstrap(ProjectModule module) {
-        return LEGACY_MARKET_DETECTION_BOOTSTRAP.equals(module.path());
     }
 
     private void assertNoFailures(List<String> failures) {

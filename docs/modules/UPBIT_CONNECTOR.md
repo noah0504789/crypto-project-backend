@@ -26,7 +26,7 @@ Upbit 외부 API와의 통신을 전담하는 **리액티브(WebFlux/Reactor) �
 
 ### 2.1 왜 별도 모듈인가
 
-이 브랜치에는 Upbit WebSocket 수집·스로틀·Kafka 발행 구현이 이 서비스에 추가됐지만, 기존 `market-detection`의 수집·발행 코드도 아직 남아 있다. 따라서 두 서비스가 같은 `upbit-ticker-event`를 발행하는 과도기 상태이며, 후속 `market-detection` 이관 브랜치가 기존 WebSocket·coalescing buffer·worker pool과 market gRPC 구독 조회를 제거한다. 이관이 끝나면 `market-detection`에는 Kafka Streams 탐지만 남는다.
+`market-detection`에 함께 있던 Upbit WebSocket·coalescing buffer·worker pool과 market gRPC 구독 조회를 이 서비스로 이관했다. 두 서비스 사이의 Kafka 경계를 유지해 `upbit-connector`는 `upbit-ticker-event` 발행만, `market-detection`은 Kafka Streams 탐지만 담당한다.
 
 ## 3. 실행 구조와 주요 의존성
 
@@ -48,7 +48,7 @@ Upbit 외부 API와의 통신을 전담하는 **리액티브(WebFlux/Reactor) �
 
 주요 라이브러리: `spring-boot-starter-webflux`(Reactor Netty), `spring-boot-starter-validation`, `spring-cloud-config-client`, `spring-cloud-eureka-client`. 테스트는 `reactor-test`(`StepVerifier` 가상 시계).
 
-## 4. 데이터 흐름 (1단계 구현됨 — Kafka 발행 연결)
+## 4. 데이터 흐름 (1단계 구현됨)
 
 ```
 market gRPC getEnabledMarkets (boundedElastic) ─┐
@@ -74,7 +74,7 @@ Upbit WebSocket (wss://api.upbit.com/websocket/v1)
 - 기존 구현은 ready queue가 가득 차면 drop하고 카운터를 올린다. `onBackpressureLatest`에는 실패 개념이 없어 해당 지표가 사라진다.
 - 기존 worker pool은 code와 무관하게 병렬 처리한다. `groupBy` + `flatMap`은 code별 병렬이라 같은 code의 순서 보장이 더 강해진다.
 
-## 5. 이관 구현과 기존 구현의 차이
+## 5. 이관 결과와 기존 구현의 차이
 
 | 기존(market-detection) | 현재(upbit-connector) |
 |---|---|
@@ -158,7 +158,7 @@ outbox 계열 발행(`outbox-poller`)은 payload가 JSON 문자열이고 `value.
 
 ## 11. 관련 문서와 rules
 
-- [`MARKET_DETECTION.md`](MARKET_DETECTION.md) — 이관 전 수집 구현과 Kafka Streams 탐지
+- [`MARKET_DETECTION.md`](MARKET_DETECTION.md) — `upbit-ticker-event` 소비와 Kafka Streams 탐지
 - [`../ARCHITECTURE.md`](../ARCHITECTURE.md) — 전체 구조·서비스 카탈로그
 - [`../TESTING.md`](../TESTING.md) — 부팅 스모크 하니스
 - [`../../.claude/rules/external-contracts.md`](../../.claude/rules/external-contracts.md) — Kafka·REST 계약 변경 절차

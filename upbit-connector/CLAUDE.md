@@ -25,9 +25,9 @@ Upbit 외부 API 통신을 전담하는 리액티브 커넥터 서비스. 계층
 - **블로킹 호출 금지**: 이벤트 루프에서 JDBC·`RestTemplate`·`OkHttp` 동기 호출·`Thread.sleep`을 쓰지 않는다. 불가피한 블로킹 호출(예: 기존 gRPC 클라이언트)은 `subscribeOn(Schedulers.boundedElastic())`으로 격리하고 왜 필요한지 주석에 남긴다.
 - **스로틀·백프레셔는 정책이다**: Upbit ticker는 종목 수 × 초당 수 건으로 들어온다. 스로틀 없이 그대로 흘리면 Kafka·다운스트림이 밀린다. `market-detection`의 기존 스로틀(코드별 publish interval + 유계 ready queue)과 **의미가 같은지**를 확인하지 않은 채 연산자만 바꿔 끼우지 않는다. 차이는 `../docs/modules/UPBIT_CONNECTOR.md` §4에 정리돼 있다.
   현재 계약은 종목 Flux가 만들어진 시점부터 7초 구간마다 최신값 최대 1개를 발행하는 것이다. 실제 Kafka 발행 시점을 기준으로 7초를 다시 세지 않는다.
-- **`market-detection`을 함께 고치지 않는다**: 수집 이관은 검증(같은 문서 §5) 이후 별도 작업이다. 이 모듈 작업 중에 `market-detection/`을 수정하지 않는다.
+- **책임 경계 유지**: Upbit WebSocket 접속·구독 대상 조회·스로틀·`upbit-ticker-event` 발행은 이 모듈 소관이다. 탐지 로직을 이 모듈로 가져오거나 수집 코드를 `market-detection`에 다시 추가하지 않는다.
 - **타입 헤더에 의존하지 않는다**: 이 바인딩(JsonSerializer)에서는 `__TypeId__`가 브로커까지 가지 않는다. 소비자는 선언된 타입으로 읽어야 한다. 근거·실측은 `../docs/modules/UPBIT_CONNECTOR.md` §6.1.
-- **토픽 이중 발행 과도기**: 이 브랜치에서는 이 모듈과 기존 `market-detection` 수집기가 모두 `upbit-ticker-event`를 발행한다. 후속 `market-detection` 이관 브랜치가 기존 수집·발행 코드를 제거한다. 새 producer를 더 추가하거나 이관 순서를 바꾸기 전에는 계약 절차(`../.claude/rules/external-contracts.md`)를 먼저 거친다.
+- **토픽 producer 단일화 유지**: `upbit-ticker-event`는 이 모듈만 발행하고 `market-detection`이 소비한다. 다른 서비스에 producer를 추가하기 전에는 계약 절차(`../.claude/rules/external-contracts.md`)를 먼저 거친다.
 - **생성자는 `@RequiredArgsConstructor`**: 손으로 쓴 주입 생성자를 두지 않는다. 협력 객체(`HttpClient` 등)는 `infra/config`의 `@Bean`으로 분리한다(기준: `../docs/CODE_STYLE.md` §6·§7).
 - **시간 조회**: `System.nanoTime()`·`System.currentTimeMillis()`를 직접 호출하지 않고 `common-time`의 `Clock`을 주입받는다.
 - **설정은 원격**: 런타임 설정은 `../git-config-repo/dynamic/upbit-connector.yml`에 둔다. 실행용 로컬 `application-*.yml`을 만들지 않는다(test classpath의 스모크 전용 `application.yml`은 예외).
