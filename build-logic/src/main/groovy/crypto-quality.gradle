@@ -9,10 +9,13 @@ def ratchetReference = providers.environmentVariable('GITHUB_BASE_REF')
 spotless {
     ratchetFrom ratchetReference
 
+    // 포맷터가 코드를 재배치하지 않는다. 한 줄만 고쳐도 파일 전체가 뒤집히면 diff에서 실제 변경이 묻히고,
+    // 작성자가 의도한 줄바꿈(시그니처 한 줄, 체이닝 한 단계씩)이 사라진다. 스타일 기준은 docs/CODE_STYLE.md.
     java {
         target 'src/*/java/**/*.java'
         removeUnusedImports()
-        googleJavaFormat(libs.versions.google.java.format.get()).aosp()
+        trimTrailingWhitespace()
+        endWithNewline()
     }
 
     format 'misc', {
