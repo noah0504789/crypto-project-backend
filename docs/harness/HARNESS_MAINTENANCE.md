@@ -28,8 +28,12 @@
 
 ## 신규 모듈 체크리스트
 
+**새 실행 서비스는 [`project-skeleton`](../../.claude/skills/project-skeleton/SKILL.md) skill의 절차를 따른다.** Gradle 등록·원격 설정·부팅 스모크·문서/하네스 갱신·배포 조건이 순서대로 정리돼 있다.
+
+라이브러리 모듈(실행 서비스가 아닌 경우)은 아래만 확인한다.
+
 1. `settings.gradle` include와 모듈 디렉터리
 2. `<module>/CLAUDE.md` 및 `docs/README.md` 대응 링크
-3. 모듈 상세 문서와 필요한 `<service>Ci` task(스크립트의 service → task mapping 포함)
+3. 모듈 상세 문서와 필요한 `<service>Ci` task
 4. `common-arch-test` 적용 범위와 레거시 예외 필요성
-5. 관련 `BootSmokeTest`, 계약/CI 영향
+5. 소비 모듈의 계약/CI 영향

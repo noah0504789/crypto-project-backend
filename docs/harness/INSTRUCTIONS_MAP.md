@@ -48,6 +48,7 @@
 | skill | `verify-change` | 변경 후 상태·좁은 검증·계약 영향·diff를 확인 | 읽기 전용 조사만 수행한 경우 |
 | skill | `cross-repo-impact` | 여러 모듈/저장소/축의 병렬 조사와 순차 실행을 종합 | 단일 모듈·단일 파일 작업 |
 | skill | `pr-draft` | push/PR 생성 없이 PR 제목·본문 초안 작성 | PR 초안이 필요하지 않은 로컬 작업 |
+| skill | `project-skeleton` | 새 서비스 모듈 스켈레톤의 Gradle·설정·부팅 스모크·문서/하네스 갱신 절차 | 라이브러리 모듈 추가, 기존 서비스 내부 변경 |
 | agent | `module-explorer` | 모듈별 코드 위치·호출 흐름 조사 | 단일 파일의 자명한 위치 확인 |
 | agent | `contract-scanner` | backend·frontend·infra 소비처를 포함한 계약 영향 조사 | 계약과 무관한 변경 |
 | agent | `build-runner` | Gradle 검증·CI 영향도 계산과 압축된 결과 보고 | 코드 수정이나 배포 |
