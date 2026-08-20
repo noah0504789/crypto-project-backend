@@ -1,12 +1,15 @@
 package org.example.marketdetection.adapter.in.stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.BDDMockito.given;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Properties;
+import java.util.UUID;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
@@ -19,6 +22,7 @@ import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.state.StoreBuilder;
 import org.apache.kafka.streams.state.Stores;
 import org.apache.kafka.streams.state.WindowStore;
+import org.example.common.enums.KafkaHeaderKey;
 import org.example.common.time.Clock;
 import org.example.marketdetection.application.properties.PriceAlertDetectionProperties;
 import org.example.marketdetection.application.service.PriceAlertDetectionService;
@@ -108,6 +112,23 @@ class PriceAlertDetectionProcessorTopologyIntegrationTest {
     }
 
     @Test
+    @DisplayName("stale 판정과 별개로 Kafka record 시각을 상태와 출력에 사용한다")
+    void process_usesKafkaRecordTimestampForStore() {
+        // given & when
+        inputTopic.pipeInput(CODE, tickerEvent(100.0, 1_000L), Instant.ofEpochMilli(5_000L));
+
+        // then
+        WindowStore<String, PricePoint> store = testDriver.getWindowStore(STORE_NAME);
+
+        try (var iterator = store.fetch(CODE, 5_000L, 5_000L)) {
+            assertThat(iterator.hasNext()).isTrue();
+            assertThat(iterator.next().value.timestamp()).isEqualTo(5_000L);
+        }
+
+        assertThat(outputTopic.readValue().getTimestamp()).isEqualTo(5_000L);
+    }
+
+    @Test
     @DisplayName("평균 대비 변동률이 3% 미만이면 0% 이벤트만 발행한다")
     void process_belowThreshold_publishesZeroPercentOnly() {
         // given & when
@@ -140,13 +161,30 @@ class PriceAlertDetectionProcessorTopologyIntegrationTest {
     }
 
     @Test
+    @DisplayName("탐지 이벤트의 event id를 Kafka header로 전달한다")
+    void process_addsEventIdHeader() {
+        // given & when
+        inputTopic.pipeInput(CODE, tickerEvent(100.0, 1_000L), Instant.ofEpochMilli(1_000L));
+
+        // then
+        var outputRecord = outputTopic.readRecord();
+        var eventIdHeader = outputRecord.headers().lastHeader(KafkaHeaderKey.EVENT_ID.value());
+
+        assertThat(eventIdHeader).isNotNull();
+        String eventId = new String(eventIdHeader.value(), StandardCharsets.UTF_8);
+
+        assertThat(eventId).isNotBlank();
+        assertThatCode(() -> UUID.fromString(eventId)).doesNotThrowAnyException();
+    }
+
+    @Test
     @DisplayName("허용 시간이 지난 이벤트는 처리하지 않는다")
     void process_staleEvent_isIgnored() {
         // given
         given(clock.nowMs()).willReturn(100_000L);
 
         // when
-        inputTopic.pipeInput(CODE, tickerEvent(100.0, 1_000L), Instant.ofEpochMilli(1_000L));
+        inputTopic.pipeInput(CODE, tickerEvent(100.0, 1_000L), Instant.ofEpochMilli(100_000L));
 
         // then
         assertThat(outputTopic.readValuesToList()).isEmpty();

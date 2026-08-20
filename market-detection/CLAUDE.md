@@ -31,6 +31,7 @@ Upbit 시세(`upbit-ticker-event`)를 소비해 이동평균 대비 변동률을
 - **공유 임계값 계약**: `common-core/PriceAlertChangeRateThreshold`(`PERCENT_0/3/5/7`)는 탐지(여기)·수신자 조회(notification)·정확 일치 조회(market)가 공유한다. rate 값/enum명을 바꾸면 세 서비스를 함께 본다.
 - **계층 경계 유지**: 변동률·임계 판정과 이벤트 생성은 `-application`, WindowStore 접근·forward·헤더는 `-adapter-in`이다. 상태·불변식을 가진 도메인 모델이 없어 `-domain` 모듈은 두지 않는다(`PricePoint`·`PriceChange`는 계산용 값 객체라 `application/dto`에 있다). Kafka Streams 타입(`Processor`, `WindowStore`)을 application·domain으로 들이지 않는다.
 - **Streams 토폴로지 주의**: window/retention(`price-alert-detection.store`, `price-alert-detection.window-minutes`)을 바꾸면 산식·상태 크기에 직접 영향. **state store 이름(`upbit-ticker-store`)은 changelog 토픽과 묶여 있어 바꾸지 않는다.**
+- **시간 설정 검증 유지**: `max-event-age`와 store duration은 양수여야 하고, retention은 store window와 탐지 window를 모두 포함해야 한다. 잘못된 값은 시작 시 `PriceAlertDetectionProperties` 검증으로 차단한다.
 - **토픽 바인딩은 계약**: `git-config-repo/dynamic/market-detection.yml`의 `spring.cloud.stream.bindings`(Streams processor in/out `upbit-ticker-event` → `price-alert-detected-event`)·Kafka Streams EOS(`exactly_once_v2`)를 함께 본다.
 - **DataSource/JPA 자동설정 제외 유지**: 이 서비스는 DB가 없지만 발행 계약(`PriceAlertDetectedEvent` → `AbstractInboxEvent` → `common-inbox` → `common-jpa`)이 `spring-boot-starter-data-jpa`를 전이로 끌어온다. `market-detection.yml`의 `spring.autoconfigure.exclude`(`DataSourceAutoConfiguration`·`HibernateJpaAutoConfiguration`)를 제거하면 `DataSourceAutoConfiguration`이 강제 활성화돼 부팅이 실패한다. 지우지 않는다(상세: `../docs/modules/MARKET_DETECTION.md §3`).
 - **common 영속 서비스 빈 스캔 제외 유지**: `Main`은 `@ComponentScan(basePackages="org.example")` + `@ConfigurationPropertiesScan(basePackages="org.example")`로 common 빈을 넓게 스캔하되, `org.example.common.(outbox|dlq|inbox).*`를 `excludeFilters`로 제외한다. `common-inbox`의 `InboxService`가 JPA Repository를 요구하는데 이 서비스는 이벤트 생성(발행)만 하고 Inbox 영속은 소비자(notification) 몫이라 필요 없다. 이 필터를 지우면 부팅이 실패한다.
@@ -54,7 +55,9 @@ Upbit 시세(`upbit-ticker-event`)를 소비해 이동평균 대비 변동률을
 ## 검증 명령
 
 - 컴파일: `./gradlew :market-detection:market-detection-bootstrap:compileJava`
-- 테스트: `./gradlew :market-detection:market-detection-bootstrap:test`(`TopologyTestDriver` 포함)
+- 계산·설정 단위 테스트: `./gradlew :market-detection:market-detection-application:test`
+- Streams 토폴로지 테스트: `./gradlew :market-detection:market-detection-adapter-in:test`
+- 부팅 스모크: `./gradlew :market-detection:market-detection-bootstrap:test`
 - 서비스 CI: `./gradlew marketDetectionCi`
 
 전체 build, 전체 test, `bootRun`, 실행, 배포는 명시적 요청 없이 수행하지 않는다.

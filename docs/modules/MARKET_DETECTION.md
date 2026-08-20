@@ -52,7 +52,7 @@ Upbit 실시간 시세(`upbit-ticker-event`)를 소비해 **단기 이동평균 
 - `priceAlertDetectionProcessor`(`Function<KStream<String, UpbitTickerEvent>, KStream<String, PriceAlertDetectedEvent>>`)가 KStream을 `PriceAlertDetectionProcessor`로 `process`한다. 입력 바인딩 `priceAlertDetectionProcessor-in-0` → **`upbit-ticker-event`**(`upbit-connector`가 발행), group `upbit-ticker-alert`.
 - `PriceAlertDetectionProcessor`(state store `upbit-ticker-store`, persistent WindowStore, retention/window `3m`):
   1. Upbit `tradeTimestamp`(없으면 Kafka record timestamp)가 현재 시각보다 `max-event-age`(10s) 초과해 오래된 이벤트면 상태 저장과 알림 발행 없이 폐기한다.
-  2. 윈도우 `[timestamp - 3m, timestamp]`의 저장 시세로 **이동평균** 계산(없으면 현재가로 fallback).
+  2. Kafka record timestamp를 상태·출력 시각으로 사용하고, 윈도우 `[timestamp - 3m, timestamp]`의 저장 시세로 **이동평균** 계산(없으면 현재가로 fallback). Upbit 체결 시각은 stale 판정에만 사용해 기존 처리 의미를 유지한다.
   3. `changeRate = (current - avg) / avg`.
   4. 현재 시세를 store에 `put`.
   5. `PriceAlertChangeRateThreshold.matchedBy(changeRate)`로 **초과한 임계값 전부**(절대값 기준 0%/3%/5%/7%) 매칭.
@@ -79,13 +79,14 @@ Upbit 실시간 시세(`upbit-ticker-event`)를 소비해 **단기 이동평균 
 2. `upbit-ticker-store` WindowStore 및 changelog 변경
 3. 하나 이상의 `PriceAlertDetectedEvent` 출력
 
-EOS 적용 전에는 `Consumer<KStream<...>>` 내부의 기존 `UpbitTickerProcessor`가 `StreamBridge.send`를 부수 효과로 호출했다. 이 방식은 출력이 Kafka Streams 토폴로지 밖에서 발생하므로, 일반 binder의 `transaction-id-prefix`가 설정되어 있어도 Streams의 입력 offset·state store·출력을 하나의 트랜잭션으로 만들지 못한다. 예를 들어 출력은 성공했지만 offset commit 전에 장애가 발생하면 같은 입력을 다시 처리해 탐지 이벤트가 중복될 수 있다.
+리팩터링 전에도 탐지 binder는 `Function<KStream<...>, KStream<...>>`, `ProcessorContext.forward`, `exactly_once_v2`로 구성돼 있었다. 이번 변경은 EOS를 새로 도입한 것이 아니라, 이 처리 경계를 유지하면서 계산을 application 계층으로 분리하고 Upbit 수집 producer만 별도 서비스로 이관한 것이다. 기존 `StreamBridge`는 탐지 결과가 아니라 `upbit-ticker-event` 입력을 만들던 수집 worker에서 사용했으므로 원래부터 아래 Streams 트랜잭션의 바깥이었다.
 
-현재는 다음과 같이 구성한다.
+현재 구성과 유지 조건은 다음과 같다.
 
-- binder 빈을 `Function<KStream<String, UpbitTickerEvent>, KStream<String, PriceAlertDetectedEvent>>`로 정의해 출력도 Streams 토폴로지에 포함한다.
-- `PriceAlertDetectionProcessor`는 `StreamBridge` 대신 `ProcessorContext.forward`로 탐지 이벤트를 반환한다. 한 ticker가 0%·3%·5%·7%를 모두 충족해 여러 이벤트를 만들더라도 같은 입력 처리 트랜잭션에 포함된다.
-- `spring.cloud.stream.kafka.streams.binder.configuration.processing.guarantee=exactly_once_v2`를 사용한다.
+- binder 빈은 `Function<KStream<String, UpbitTickerEvent>, KStream<String, PriceAlertDetectedEvent>>`이며 출력도 Streams 토폴로지에 포함한다.
+- `PriceAlertDetectionProcessor`는 `ProcessorContext.forward`로 탐지 이벤트를 반환한다. 한 ticker가 0%·3%·5%·7%를 모두 충족해 여러 이벤트를 만들더라도 같은 입력 처리 트랜잭션에 포함된다.
+- `spring.cloud.stream.kafka.streams.binder.configuration.processing.guarantee=exactly_once_v2`를 유지한다.
+- `application-id: market-detection`을 명시해 함수 이름 변경과 무관하게 기존 application ID·state store·changelog를 유지한다.
 - 일반 binder의 `spring.cloud.stream.kafka.binder.transaction.transaction-id-prefix`는 사용하지 않는다. Kafka Streams가 application/task 기준의 transactional producer와 transaction ID를 내부적으로 관리한다.
 
 정상 처리와 장애 처리는 다음과 같다.
@@ -104,7 +105,7 @@ EOS 적용 전에는 `Consumer<KStream<...>>` 내부의 기존 `UpbitTickerProce
 | `upbit-ticker-event` → Streams 처리 → `price-alert-detected-event` | 입력 offset, WindowStore/changelog, 출력 레코드의 Kafka 원자성 | 외부 DB·gRPC·HTTP side effect |
 | 한 ticker에서 여러 임계값 이벤트 생성 | 출력 이벤트들을 같은 Streams transaction에 포함 | notification consumer의 MongoDB/Outbox 처리 |
 | 장애 후 재처리 | abort된 출력 비노출, commit 전 입력 재처리 | 시스템 전체의 end-to-end exactly-once |
-| Upbit queue Supplier → `upbit-ticker-event` | 단일 Kafka produce에 공통 producer idempotence 적용 | Supplier 발행과 이후 Streams 처리까지 하나로 묶는 트랜잭션 |
+| `upbit-connector` → `upbit-ticker-event` | 단일 Kafka produce에 공통 producer idempotence 적용 | WebSocket 수집·발행과 이후 Streams 처리까지 하나로 묶는 트랜잭션 |
 
 따라서 이 모듈에서 말하는 exactly-once는 **Kafka Streams 처리 구간의 EOS**다. 하류 notification이 수행하는 MySQL Outbox 저장이나 MongoDB 반영까지 포함하는 분산 트랜잭션은 아니며, 하류 consumer의 멱등성·재시도·DLQ는 별도로 필요하다.
 
@@ -139,15 +140,17 @@ market-detection은 stateful Kafka 처리 결과가 곧 Kafka 출력이고 외�
 
 ## 7. 테스트 현황
 
-- `-application`: `PriceChangeUnitTest`(평균·변동률·임계 매칭), `PriceAlertDetectionServiceUnitTest`(stale 판정·임계별 이벤트 생성)
-- `-adapter-in`: `PriceAlertDetectionProcessorTopologyIntegrationTest`(`TopologyTestDriver`, `kafka-streams-test-utils`)
+- `-application`: `PriceChangeUnitTest`(평균·변동률·임계 매칭), `PriceAlertDetectionServiceUnitTest`(stale 판정·임계별 이벤트 생성), `PriceAlertDetectionPropertiesUnitTest`(시간·retention 설정 검증)
+- `-adapter-in`: `PriceAlertDetectionProcessorTopologyIntegrationTest`(`TopologyTestDriver`, state store·event time·임계별 출력·`event_id` header)
 - `BootSmokeTest`(Kafka Testcontainer). 수집 이관 후 외부 접속이 없어 mock 차단이 필요 없다.
 - 수집 관련 테스트(WebSocket·coalescing buffer·publisher worker)는 `upbit-connector`로 이동했다.
 
 ## 8. 컴파일 · 테스트 · CI 명령
 
 - 컴파일: `./gradlew :market-detection:market-detection-bootstrap:compileJava`
-- 테스트: `./gradlew :market-detection:market-detection-bootstrap:test`
+- 계산·설정 단위 테스트: `./gradlew :market-detection:market-detection-application:test`
+- Streams 토폴로지 테스트: `./gradlew :market-detection:market-detection-adapter-in:test`
+- 부팅 스모크: `./gradlew :market-detection:market-detection-bootstrap:test`
 - 서비스 CI: `./gradlew marketDetectionCi`(빌드+테스트+ArchUnit 포함)
 - 전체 build/test, `bootRun`, 실행, 배포는 명시적 요청 없이 수행하지 않는다.
 

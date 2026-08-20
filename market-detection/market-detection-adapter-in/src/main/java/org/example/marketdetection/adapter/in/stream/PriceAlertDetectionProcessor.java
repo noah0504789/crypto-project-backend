@@ -42,7 +42,7 @@ public class PriceAlertDetectionProcessor implements Processor<String, UpbitTick
         String code = record.key();
         PricePoint pricePoint = toPricePoint(record);
 
-        if (priceAlertDetectUseCase.isStale(pricePoint)) {
+        if (priceAlertDetectUseCase.isStale(eventTimestamp(record))) {
             return;
         }
 
@@ -63,12 +63,13 @@ public class PriceAlertDetectionProcessor implements Processor<String, UpbitTick
     }
 
     private PricePoint toPricePoint(Record<String, UpbitTickerEvent> record) {
-        UpbitTickerEvent tickerEvent = record.value();
-        Long timestamp = tickerEvent.tradeTimestamp() != null
-                        ? tickerEvent.tradeTimestamp()
-                        : record.timestamp();
+        return new PricePoint(record.value().tradePrice(), record.timestamp());
+    }
 
-        return new PricePoint(tickerEvent.tradePrice(), timestamp);
+    private long eventTimestamp(Record<String, UpbitTickerEvent> record) {
+        Long tradeTimestamp = record.value().tradeTimestamp();
+
+        return tradeTimestamp != null ? tradeTimestamp : record.timestamp();
     }
 
     private List<PricePoint> fetchRecentPoints(String code, long timestamp) {

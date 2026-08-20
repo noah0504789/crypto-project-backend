@@ -44,8 +44,8 @@ class PriceAlertDetectionServiceUnitTest {
         given(clock.nowMs()).willReturn(20_000L);
 
         // when & then
-        assertThat(sut.isStale(new PricePoint(100.0, 5_000L))).isTrue();
-        assertThat(sut.isStale(new PricePoint(100.0, 15_000L))).isFalse();
+        assertThat(sut.isStale(5_000L)).isTrue();
+        assertThat(sut.isStale(15_000L)).isFalse();
     }
 
     @Test

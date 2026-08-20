@@ -28,8 +28,8 @@ public class PriceAlertDetectionService implements PriceAlertDetectUseCase {
     }
 
     @Override
-    public boolean isStale(PricePoint pricePoint) {
-        return clock.nowMs() - pricePoint.timestamp() > properties.maxEventAge().toMillis();
+    public boolean isStale(long eventTimestamp) {
+        return clock.nowMs() - eventTimestamp > properties.maxEventAge().toMillis();
     }
 
     private PriceAlertDetectedEvent toEvent(
