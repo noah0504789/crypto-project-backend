@@ -48,7 +48,7 @@
 | `-adapter-in` | adapter-in | 서버 설정 3종(`AuthorizationServerConfig`/`SecurityFilterChainConfig`/`TokenConfig`), gRPC 서비스 4종 | `common-web`, `common-grpc`, `protobuf`, application |
 | `-adapter-out` | adapter-out | Redis 토큰 어댑터 4종(+Lua), `Rs256JwtEncoder`(Vault), `GrpcUserQueryAdapter`, infra config | `common-redis`, `user-client`, caffeine |
 | `-bootstrap` | 실행 | `Main`, `application.yml` | 위 3개 + config/eureka/bus |
-| `-client` | 클라이언트 | `Oauth2AuthorizationServerClient` + `GrpcOauth2AuthorizationServerClient`(소비자용) | `protobuf`, grpc-client |
+| `-client` | 클라이언트 | `Oauth2AuthorizationServerClient` + `GrpcOauth2AuthorizationServerClient`(blocking API와 Reactor 비의존 `CompletableFuture` blacklist API 제공) | `protobuf`, grpc-client |
 
 의존 방향: adapter-in/out → application. `-client`는 **소비자(gateway, oauth2-client)가 의존**하는 산출물.
 
@@ -121,7 +121,7 @@ oauth2-client → POST /oauth2/token (grant_type=refresh_token)
 
 ## 9. gRPC 계약 (`auth.v1`)
 
-proto: `protobuf/src/main/proto/auth/v1/auth-service.proto`. 서버: adapter-in의 `Grpc*Service` 4종(포트 19000). 클라이언트: `-client`의 `GrpcOauth2AuthorizationServerClient`(deadline 3500ms).
+proto: `protobuf/src/main/proto/auth/v1/auth-service.proto`. 서버: adapter-in의 `Grpc*Service` 4종(포트 19000). 클라이언트: `-client`의 `GrpcOauth2AuthorizationServerClient`(deadline 3500ms). 기존 blocking API와 함께 blacklist 조회용 `CompletableFuture<Boolean>` API를 제공하며, future 취소는 진행 중인 gRPC 호출에 전파된다. 공용 client는 Reactor에 의존하지 않고 Gateway가 이를 `Mono`로 변환한다.
 
 | 서비스 | RPC | 용도 | 주 소비자 |
 |---|---|---|---|
