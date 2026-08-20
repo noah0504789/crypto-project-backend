@@ -45,7 +45,7 @@
 | Gradle 모듈 | 계층 | 핵심 내용 | 주요 의존 |
 |---|---|---|---|
 | `-application` | application | `CustomOAuth2AuthorizationService`, `CustomAuthenticationSuccessHandler`, refresh 정책, token/user 포트, `UserQueryService` | `common-core`, `user-contract`, spring-authorization-server |
-| `-adapter-in` | adapter-in | 서버 설정 3종(`AuthorizationServerConfig`/`SecurityFilterChainConfig`/`TokenConfig`), gRPC 서비스 4종 | `common-web`, `common-grpc`, `protobuf`, application |
+| `-adapter-in` | adapter-in | 서버 설정 3종(`AuthorizationServerConfig`/`SecurityFilterChainConfig`/`TokenConfig`), gRPC 서비스 4종 | `common-web`, `common-grpc-server`, `protobuf`, application |
 | `-adapter-out` | adapter-out | Redis 토큰 어댑터 4종(+Lua), `Rs256JwtEncoder`(Vault), `GrpcUserQueryAdapter`, infra config | `common-redis`, `user-client`, caffeine |
 | `-bootstrap` | 실행 | `Main`, `application.yml` | 위 3개 + config/eureka/bus |
 | `-client` | 클라이언트 | `Oauth2AuthorizationServerClient` + `GrpcOauth2AuthorizationServerClient`(blocking API와 Reactor 비의존 `CompletableFuture` blacklist API 제공) | `protobuf`, grpc-client |

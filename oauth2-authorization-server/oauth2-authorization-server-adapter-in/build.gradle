@@ -5,7 +5,7 @@ plugins {
 dependencies {
     implementation project(':common:common-core')
     implementation project(':common:common-web')
-    implementation project(':common:common-grpc')
+    implementation project(':common:common-grpc-server')
     implementation project(':protobuf')
     implementation project(':oauth2-authorization-server:oauth2-authorization-server-application')
 

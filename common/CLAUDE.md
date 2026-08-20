@@ -18,7 +18,7 @@
 - **Outbox/DLQ 흐름 보존**(`common-outbox`): 상태 변경은 도메인 메서드로만(`markPublished`·`markFailed`·`increaseRetryCnt`·`markCompleted`). 발행은 `EventUtils.raise` → `OutboxEventListListener` → `OutboxService.saveAll` 경로를 지키고 `ApplicationEventPublisher`를 직접 쓰지 않는다. `__TypeId__`·`event_id`·`transaction_id`·`dlq_id` 헤더는 계약이다. `event_id`는 Outbox/DLQ 레코드 ID로 같은 레코드 재발행에서도 유지된다. `DlqStatus`는 `@Enumerated(STRING)`으로 이름이 저장되는 계약이다(소비 실패 상태 = `CONSUME_FAILED`). 값 추가/변경 시 저장된 row 영향을 함께 본다.
 - **Inbox 경계 유지**(`common-inbox`): 비멱등 consumer는 `InboxService`의 `(consumer_name,event_id)` unique INSERT와 비즈니스 처리를 같은 event DB 트랜잭션에 묶는다. `AbstractInboxEvent`가 header용 ID를 만들고 `extractEventId(Message<?>)`로 consumer의 `event_id` header를 읽는다.
 - **Read Replica 규칙**(`common-jpa`): `@ReadReplica`가 read 라우팅 트리거다. `@Transactional(readOnly=true)`만으로 read로 보내지 않는다. `ReadReplicaAspect`/`DataSourceContextHolder`/`ReplicationRoutingDataSource` 동작을 바꾸면 전 JPA 서비스에 영향.
-- **예외 매핑 일관성**: REST 예외는 `common-web/GlobalExceptionHandler`(`ErrorResponse`/`ValidationResult` 형식), gRPC 예외는 `common-grpc/AbstractGrpcExceptionAdvice`가 담당한다. 응답 형식을 흔들지 않는다.
+- **예외 매핑 일관성**: REST 예외는 `common-web/GlobalExceptionHandler`(`ErrorResponse`/`ValidationResult` 형식), gRPC 서버 예외는 `common-grpc-server/AbstractGrpcExceptionAdvice`가 담당한다. 응답 형식을 흔들지 않는다.
 - **actuator 선택**: MVC 서비스는 `common-actuator-webmvc`, gateway(WebFlux)는 `common-actuator-webflux`를 쓴다(공용 코어는 `common-actuator-core`). 배포 제어 토큰은 `deployment.control.token`(`${DEPLOY_TOKEN}`).
 
 ## 주요 파일 안내
@@ -38,7 +38,7 @@
 Inbox 예외는 HTTP 상태나 인프라 실패를 뜻하지 않는 `InboxException` 계층으로 묶는다. 구체 예외는 이 타입을 상속하고 Kafka adapter가 처리 정책을 결정한다.
 | [`common-outbox/.../outbox/`](common-outbox/src/main/java/org/example/common/outbox/) · [`.../dlq/`](common-outbox/src/main/java/org/example/common/dlq/) | Outbox/DLQ 도메인·서비스 |
 | [`common-web/.../web/exception/GlobalExceptionHandler.java`](common-web/src/main/java/org/example/common/web/exception/GlobalExceptionHandler.java) | REST 예외 매핑 |
-| [`common-grpc/.../exception/AbstractGrpcExceptionAdvice.java`](common-grpc/src/main/java/org/example/common/grpc/exception/AbstractGrpcExceptionAdvice.java) | gRPC 예외 매핑 |
+| [`common-grpc-server/.../exception/AbstractGrpcExceptionAdvice.java`](common-grpc-server/src/main/java/org/example/common/grpc/exception/AbstractGrpcExceptionAdvice.java) | gRPC 서버 예외 매핑 |
 | [`common-arch-test/src/test/java/org/example/arch/`](common-arch-test/src/test/java/org/example/arch/) | ArchUnit 계층/의존 게이트 |
 | [`common/build.gradle`](build.gradle) | 파사드 재수출 목록 |
 

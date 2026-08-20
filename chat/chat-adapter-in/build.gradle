@@ -7,7 +7,7 @@ dependencies {
     implementation project(':common:common-validation')
     implementation project(':common:common-web')
     implementation project(':common:common-outbox')
-    implementation project(':common:common-grpc')
+    implementation project(':common:common-grpc-server')
     implementation project(':protobuf')
     implementation project(':chat:chat-application')
     implementation(libs.grpc.server.spring.boot.starter)

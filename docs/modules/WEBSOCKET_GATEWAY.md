@@ -40,7 +40,7 @@
 
 | Gradle 모듈 | 계층 | 핵심 내용 | 주요 의존 |
 |---|---|---|---|
-| `websocket-gateway-application` | application | UseCase/Service, Port(in/out), Command/Result, `LocalSessionCache` | `common-grpc`, caffeine |
+| `websocket-gateway-application` | application | UseCase/Service, Port(in/out), Command/Result, `LocalSessionCache` | `common-grpc-client`, caffeine |
 | `websocket-gateway-adapter-in` | adapter-in | STOMP(`StompController`, `StompConfig`, 세션 이벤트), Kafka 바인더, 이벤트→커맨드 매퍼 | `websocket-gateway-application`, `chat-contract`, `notification-contract`, starter-websocket, stream-kafka |
 | `websocket-gateway-adapter-out` | adapter-out | gRPC(chat), STOMP push 어댑터, Redis 세션, id 생성, metrics | `common-core/id/grpc/redis`, `chat-client`, grpc-netty/client-starter |
 | `websocket-gateway-bootstrap` | 실행 | `Main`, `application.yml`, OTEL agent | 위 3개 + actuator/config/eureka/bus/prometheus |

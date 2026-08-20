@@ -101,7 +101,7 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 #### 4.11 upbit-connector REST 조회 API 미구현(2단계)
 `upbit-connector`는 현재 WebSocket 수집·Kafka 발행만 한다. 도입 당시 합의한 2단계 — **Upbit REST 조회(캔들·호가 등)를 조합해 응답하는 API** — 는 아직 없다. 프론트 차트에 필요한 과거 데이터를 줄 곳이 없는 상태가 유지된다.
 - 착수 시 함께 볼 것: Upbit REST 요청 제한(공식 문서 기준 확인 필요)과 그 구현 위치, 응답 캐시(Redis reactive 여부), Gateway route·CORS(외부 계약 → `.claude/rules/external-contracts.md`).
-- **예외 처리 계층이 없다.** 이 서비스는 HTTP 엔드포인트가 없어 지금은 필요 없지만, REST를 열면 응답 형식을 맞출 곳이 필요하다. `common-web/GlobalExceptionHandler`는 MVC 어댑터(`*-adapter-in`)만 쓰고 서블릿 계열 예외를 다루므로 WebFlux에서 그대로 재사용할지, WebFlux 전용 advice(또는 `ErrorWebExceptionHandler`)를 둘지 확인 필요. `common-grpc`의 gRPC advice는 gRPC 서버가 없어 무관.
+- **예외 처리 계층이 없다.** 이 서비스는 HTTP 엔드포인트가 없어 지금은 필요 없지만, REST를 열면 응답 형식을 맞출 곳이 필요하다. `common-web/GlobalExceptionHandler`는 MVC 어댑터(`*-adapter-in`)만 쓰고 서블릿 계열 예외를 다루므로 WebFlux에서 그대로 재사용할지, WebFlux 전용 advice(또는 `ErrorWebExceptionHandler`)를 둘지 확인 필요. `common-grpc-server`의 gRPC advice는 gRPC 서버가 없어 무관.
 - 설계 메모: 캔들은 `to` 파라미터로 과거를 거슬러 여러 번 호출해야 하며 `Flux.expand`로 표현 가능. 동일 구간 동시 요청은 `Mono.cache()`로 합칠 수 있다. 둘 다 미검증 아이디어다.
 `[출처: docs/modules/UPBIT_CONNECTOR.md §2·§6 / 모듈 도입 논의]`
 

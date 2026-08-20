@@ -36,8 +36,8 @@
 | `common-exception` | 공통 예외 계층·`ErrorResponse` | `InfrastructureException`, `InvalidRequestException`, `ResourceNotFoundException`, `ForbiddenException`, `ErrorResponse` 등 8종 | 없음(외부 의존 0) |
 | `common-time` | 시각 조회·존 변환·경과시간 측정 | `Clock`/`ClockService`(`monotonicTimeNanos` 포함), `ServiceTimeConverter` | spring-boot 코어 |
 | `common-validation` | Bean Validation 공통 | `ValidationResult`, `FieldErrorDetail`, `NotBlankIfPresent(+Validator)`, `common-validation-messages.properties` | spring-boot-starter-validation |
-| `common-grpc` | gRPC 예외 처리 | `AbstractGrpcExceptionAdvice`, `GrpcExceptionTranslator`, `GrpcClientException`, `GrpcFailureCode` | common-core, grpc(bom/stub/server-starter) |
-| `common-grpc-client` | gRPC future 연결 | `GrpcFutures`(ListenableFuture 변환, 매핑·취소 전파, 동기 경계 join) | grpc-stub |
+| `common-grpc-server` | gRPC 서버 예외 처리 | `AbstractGrpcExceptionAdvice` | common-core, common-exception, grpc server starter |
+| `common-grpc-client` | gRPC client future·오류 처리 | `GrpcFutures`(ListenableFuture 변환, 매핑·취소 전파, 동기 경계 join), `GrpcExceptionTranslator`, `GrpcClientException`, `GrpcFailureCode` | grpc-stub |
 | `common-outbox` | Outbox/DLQ 도메인·서비스(헥사고날) | `Outbox`/`OutboxStatus`/`OutboxService`/`OutboxEventListListener`, `Dlq`/`DlqStatus`/`DlqService`, `Abstract*OutboxEvent(List)`, `*PublishPort` | common-jpa, common-event, common-util, jackson |
 | `common-redis` | Redis 코덱·Fail-open·연산 | `RedisValueCodec`, `RedisHashCodec`, `RedisCodecSupport`/`RedisCodecException`(codec 공통 헬퍼: str/parse/toJson/fromJson), `CacheFailOpen`(+`Aspect`), `StringRedisHashOperations`, `RedisConnectionFactorySupport` | common-core, data-redis, aop, jackson |
 | `common-redisson` | 분산락 | `DistributedLockExecutor`, `DistributedLockPolicy`, `RedissonConfig` | common-core, redisson starter |
@@ -55,7 +55,7 @@
 `common-core`는 **여러 서비스가 공유하는 계약 문자열·상수의 단일 출처**다. 아래는 외부 계약(→ `external-contracts.md`)으로 취급한다.
 
 - `RedisKey`(pattern + expectedArgCount, hash tag `{chat}`/`{auth}`/`{session}`), `KafkaTopic`·`KafkaHeaderKey`(`event_id`·`transaction_id`·`dlq_id`·`__TypeId__` 등), `StompDestination`, `JwtClaimKey`/`JwtHeaderKey`, `HttpHeaderKey`(`X-User-Id` 등), `AuthTokenKey`(refresh 쿠키명 등), `RoleKey`(`ROLE_*`).
-- 예외 계층: `InfrastructureException`/`InvalidRequestException`/`ResourceNotFoundException`을 기반으로 각 서비스·common 모듈이 파생(예: `common-outbox`의 `*PersistenceException`, `common-config`의 예외). REST 매핑은 `common-web/GlobalExceptionHandler`, gRPC 매핑은 `common-grpc`가 담당한다.
+- 예외 계층: `InfrastructureException`/`InvalidRequestException`/`ResourceNotFoundException`을 기반으로 각 서비스·common 모듈이 파생(예: `common-outbox`의 `*PersistenceException`, `common-config`의 예외). REST 매핑은 `common-web/GlobalExceptionHandler`, gRPC 서버 매핑은 `common-grpc-server`가 담당한다.
 - 프로퍼티 레코드: `JwtProperties`(`keyName`·`jwksUri`·`signUri`·TTL 등, → `SPRING_CLOUD_CONFIG.md`/`OAUTH2_*`), `ApiPathProperties`, `AppRedisProperties`, `FrontendProperties`.
 
 ## 5. 핵심 패턴 모듈
@@ -144,7 +144,7 @@ Outbox 패턴의 핵심 모듈. **비즈니스 DB write와 이벤트 기록을 �
 
 ## 6. 사용처(대표)
 
-- 전 서비스: `common-core`(계약/예외), `common-web` 또는 `common-grpc`(예외 매핑), `common-actuator-*`(모니터링).
+- 전 서비스: `common-core`(계약/예외), `common-web` 또는 `common-grpc-server`(서버 예외 매핑), `common-grpc-client`(client 연결), `common-actuator-*`(모니터링).
 - Kafka/Outbox 사용 서비스(chat·market·notification·outbox-poller 등): `common-event`·`common-outbox`.
 - JPA 서비스(user·market 등): `common-jpa`(+ Read Replica). Mongo 서비스(chat·notification): `common-mongo`.
 - ID 필요 서비스(user 등): `common-id`(Snowflake, `idgen.yml`). 분산락 필요 시 `common-redisson`.

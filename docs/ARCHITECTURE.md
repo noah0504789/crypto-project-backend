@@ -143,7 +143,8 @@
 | common-jpa | JPA + Read Replica 라우팅 | `ReadReplica`, `ReadReplicaAspect`, `DataSourceContextHolder`, `ReplicationRoutingDataSource`, `BaseEntity` |
 | common-event | 이벤트 계약/발행 유틸 | `KafkaEvent`, `EventUtils`, `HandleableEvent`, `RecoverableEvent` |
 | common-web | REST 예외 처리 | `GlobalExceptionHandler`(`@RestControllerAdvice`) |
-| common-grpc | gRPC 예외 처리 | `AbstractGrpcExceptionAdvice`, `GrpcExceptionTranslator` |
+| common-grpc-server | gRPC 서버 예외 처리 | `AbstractGrpcExceptionAdvice` |
+| common-grpc-client | gRPC client 비동기 연결·오류 처리 | `GrpcFutures`, `GrpcExceptionTranslator`, `GrpcClientException`, `GrpcFailureCode` |
 | common-outbox | Outbox/DLQ 도메인·서비스 | `Outbox`, `Dlq`, `OutboxService`, `OutboxEventListListener` |
 | common-redis | Redis 코덱·Fail-open | `RedisValueCodec`, `RedisHashCodec`, `CacheFailOpen(Aspect)` |
 | common-redisson | 분산락 | `DistributedLockExecutor`, `RedissonConfig` |
@@ -235,7 +236,7 @@ Spring `ApplicationEventPublisher`를 직접 쓰지 않고 `EventUtils.raise(lis
 
 ### 8.8 예외 처리
 - REST: `common-web/GlobalExceptionHandler`(`@RestControllerAdvice`) — 검증 실패→400, ResourceNotFound→204, InvalidRequest→404, Infrastructure→500 등.
-- gRPC: `common-grpc/AbstractGrpcExceptionAdvice`(`@GrpcExceptionHandler`) — 도메인 예외를 gRPC Status로 매핑. 서비스별 `@GrpcAdvice` 하위 클래스.
+- gRPC: `common-grpc-server/AbstractGrpcExceptionAdvice`(`@GrpcExceptionHandler`) — 도메인 예외를 gRPC Status로 매핑. 서비스별 `@GrpcAdvice` 하위 클래스.
 
 ---
 
