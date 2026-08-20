@@ -3,25 +3,12 @@ spring:
     config:
       enabled: false
 
-upbit:
-  websocket:
-    url: wss://api.upbit.com/websocket/v1
-    ticket: test
-    subscribe-codes:
-      - KRW-BTC
-    ticker-publish-interval: 7s
-    ticker-ready-queue-capacity: 512
-    ticker-worker-count: 2
-
-  ticker:
-    alert:
-      window-minutes: 3
-      max-event-age: 10s
-      threshold-rate: 0.05
+price-alert-detection:
+  window-minutes: 3
+  max-event-age: 10s
 
   store:
-    ticker:
-      name: upbit-ticker-store
-      retention: 5m
-      window-size: 3m
-      retain-duplicates: false
+    name: upbit-ticker-store
+    retention: 5m
+    window-size: 3m
+    retain-duplicates: false

@@ -1,0 +1,10 @@
+plugins {
+    id 'crypto-application'
+}
+
+dependencies {
+    implementation project(':common:common-core')
+    implementation project(':common:common-time')
+    implementation project(':market-detection:market-detection-contract')
+    implementation(libs.spring.boot.starter.validation)
+}

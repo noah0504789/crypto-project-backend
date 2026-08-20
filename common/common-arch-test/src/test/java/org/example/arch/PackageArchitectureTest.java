@@ -18,9 +18,6 @@ import java.util.stream.Stream;
 @AnalyzeClasses(packages = "org.example.arch")
 class PackageArchitectureTest {
 
-    private static final String LEGACY_MARKET_DETECTION_BOOTSTRAP =
-            "market-detection/market-detection-bootstrap";
-
     private static final List<ServiceBoundary> SERVICE_BOUNDARIES =
             List.of(
                     new ServiceBoundary(
@@ -250,10 +247,7 @@ class PackageArchitectureTest {
     }
 
     private static List<String> bootstrapModuleDirectories() {
-        return moduleDirectoriesEndingWith("-bootstrap").stream()
-                // market-detection is a documented legacy monolith; see ModuleArchitectureTest.
-                .filter(directory -> !directory.equals(LEGACY_MARKET_DETECTION_BOOTSTRAP))
-                .toList();
+        return moduleDirectoriesEndingWith("-bootstrap");
     }
 
     private static List<String> moduleDirectories() {

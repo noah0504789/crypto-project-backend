@@ -3,18 +3,16 @@ package org.example.marketdetection;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.example.common.test.testcontainer.KafkaTestContainerInitializer;
-import org.example.marketdetection.upbit.UpbitWebsocketClientStarter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.env.Environment;
 import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
  * 부팅 스모크: Config Server 없이 실제 git-config-repo 설정 + Testcontainers(kafka)로 ApplicationContext(Kafka
- * Streams 바인더 포함)가 부팅되는지 검증한다. ApplicationReadyEvent에서 외부 Upbit WebSocket에 접속하는 스타터는 mock으로 차단한다.
+ * Streams 바인더 포함)가 부팅되는지 검증한다. 수집은 upbit-connector가 담당하므로 외부 접속이 없다.
  */
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.NONE,
@@ -36,19 +34,14 @@ class BootSmokeTest {
 
     @Autowired Environment environment;
 
-    @MockitoBean UpbitWebsocketClientStarter upbitWebsocketClientStarter;
-
     @Test
-    @DisplayName("ApplicationContext가 정상 부팅되고 Upbit ticker 출력은 native JSON serializer를 사용한다")
+    @DisplayName("ApplicationContext가 정상 부팅되고 ticker 소비는 upbit-ticker-event를 바라본다")
     void contextLoads() {
-        assertThat(
-                        environment.getProperty(
-                                "spring.cloud.stream.default.producer.use-native-encoding",
-                                Boolean.class))
-                .isTrue();
-        assertThat(
-                        environment.getProperty(
-                                "spring.cloud.stream.kafka.bindings.upbitTickerEvent-out-0.producer.configuration.value.serializer"))
-                .isEqualTo("org.springframework.kafka.support.serializer.JsonSerializer");
+        assertThat(environment.getProperty("spring.cloud.stream.bindings.priceAlertDetectionProcessor-in-0.destination"))
+                .isEqualTo("upbit-ticker-event");
+
+        // 수집·발행은 upbit-connector로 이관됐다. 발행 바인딩이 남아 있으면 이중 발행이다.
+        assertThat(environment.getProperty("spring.cloud.stream.bindings.upbitTickerEvent-out-0.destination"))
+                .isNull();
     }
 }

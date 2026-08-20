@@ -85,6 +85,8 @@ include 'market:market-bootstrap'
 
 include 'market-detection'
 include 'market-detection:market-detection-contract'
+include 'market-detection:market-detection-application'
+include 'market-detection:market-detection-adapter-in'
 include 'market-detection:market-detection-bootstrap'
 
 include 'upbit-connector'
