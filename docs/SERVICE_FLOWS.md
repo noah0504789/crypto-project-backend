@@ -83,10 +83,10 @@ POST /auth/logout (oauth2-client 로그아웃 URL)
      2) BlacklistTokenService.register (access token 블랙리스트, auth 서버 gRPC)
      3) refresh 쿠키 삭제(maxAge 0)
      4) authorizedClientService.removeAuthorizedClient (email 기준 삭제)
- → 이후 게이트웨이 BlacklistTokenValidator가 블랙리스트 토큰 차단
+ → 이후 게이트웨이 ReactiveBlacklistTokenValidator가 블랙리스트 토큰 차단
 ```
 
-근거: `oauth2-client/.../CustomLogoutSuccessHandler.java`, `oauth2-client-adapter-in/.../config/SecurityFilterChainConfig.java`, `spring-cloud-api-gateway/.../BlacklistTokenValidator.java`.
+근거: `oauth2-client/.../CustomLogoutSuccessHandler.java`, `oauth2-client-adapter-in/.../config/SecurityFilterChainConfig.java`, `spring-cloud-api-gateway/.../validator/ReactiveBlacklistTokenValidator.java`.
 
 ---
 
@@ -95,14 +95,17 @@ POST /auth/logout (oauth2-client 로그아웃 URL)
 ```
 외부 요청 → spring-cloud-api-gateway
  → ReactiveSecurityConfig(oauth2ResourceServer, anyExchange denyAll 기본)
- → ReactiveJwtDecoderConfig: NimbusReactiveJwtDecoder(JWKS) + [issuer 검증 + BlacklistTokenValidator + RequiredUserIdClaimValidator]
+ → ReactiveJwtDecoderConfig: NimbusReactiveJwtDecoder(JWKS)에서 서명·issuer·id claim 검증
+ → BlacklistAwareReactiveJwtDecoder: 로컬 검증 성공 후 ReactiveBlacklistTokenValidator 연결
+ → Oauth2AuthorizationServerClient: future stub 결과를 CompletableFuture로 제공
+ → GrpcBlacklistTokenClientAdapter: CompletableFuture를 구독 시점에 Mono로 변환
  → IdentityPropagationGlobalFilter: id claim → X-User-Id 헤더로 하위 서비스 전파
  → ReactiveRouteConfig 라우팅(lb://…, /api/v1 rewrite)
 ```
 
-근거: `spring-cloud-api-gateway/.../config/{ReactiveSecurityConfig,ReactiveJwtDecoderConfig,ReactiveRouteConfig}.java`, `.../filter/IdentityPropagationGlobalFilter.java`, `.../validator/RequiredUserIdClaimValidator.java`.
+근거: `spring-cloud-api-gateway/.../config/{ReactiveSecurityConfig,ReactiveJwtDecoderConfig,ReactiveRouteConfig}.java`, `.../filter/IdentityPropagationGlobalFilter.java`, `.../validator/{BlacklistAwareReactiveJwtDecoder,ReactiveBlacklistTokenValidator,RequiredUserIdClaimValidator}.java`, `.../adapter/out/grpc/GrpcBlacklistTokenClientAdapter.java`, `oauth2-authorization-server/.../client/GrpcOauth2AuthorizationServerClient.java`.
 
-JWKS는 Config Server의 `/.well-known/jwks.json`에서 제공. `aud` 검증 여부는 §끝 "확인 필요" 참조.
+형식·서명·issuer·id 검증 실패 시 blacklist 원격 호출은 시작하지 않는다. gRPC 오류는 인증 실패 경로로 전파하며, 구독 취소는 gRPC 호출에도 전달한다. JWKS는 Config Server의 `/.well-known/jwks.json`에서 제공. `aud` 검증 여부는 §끝 "확인 필요" 참조.
 
 ---
 
