@@ -10,8 +10,8 @@ dependencies {
     implementation project(':oauth2-authorization-server:oauth2-authorization-server-client')
 
     runtimeOnly(libs.grpc.netty)
-    runtimeOnly(libs.grpc.client.spring.boot.starter)
 
+    runtimeOnly(libs.grpc.client.spring.boot.starter)
     implementation(libs.spring.boot.starter.webflux)
     implementation(libs.spring.boot.starter.security)
     implementation(libs.spring.security.oauth2.jose)

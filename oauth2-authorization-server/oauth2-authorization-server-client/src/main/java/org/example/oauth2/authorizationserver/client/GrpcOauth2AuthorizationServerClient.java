@@ -1,5 +1,10 @@
 package org.example.oauth2.authorizationserver.client;
 
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.MoreExecutors;
+import com.google.protobuf.BoolValue;
 import io.grpc.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +23,10 @@ import org.example.oauth2.authorizationserver.client.properties.GrpcOauth2Author
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 import static java.util.stream.Collectors.toMap;
 
@@ -31,7 +39,6 @@ public class GrpcOauth2AuthorizationServerClient implements Oauth2AuthorizationS
     private Channel channel;
 
     private final GrpcOauth2AuthorizationServerClientProperties grpcOauth2AuthorizationServerClientProperties;
-
     @Override
     public String findAccessToken(String clientRegistrationId, String username) {
         GrpcFindAccessTokenRequest request = GrpcFindAccessTokenRequest.newBuilder()
@@ -68,6 +75,15 @@ public class GrpcOauth2AuthorizationServerClient implements Oauth2AuthorizationS
                 .build();
 
         return blacklistTokenStub().exists(request).getValue();
+    }
+
+    @Override
+    public CompletableFuture<Boolean> existsBlacklistAsync(String accessToken) {
+        GrpcExistsBlacklistTokenRequest request = GrpcExistsBlacklistTokenRequest.newBuilder()
+                .setAccessToken(accessToken)
+                .build();
+
+        return toCompletableFuture(blacklistTokenFutureStub().exists(request), BoolValue::getValue);
     }
 
     @Override
@@ -110,7 +126,37 @@ public class GrpcOauth2AuthorizationServerClient implements Oauth2AuthorizationS
         return BlacklistTokenServiceGrpc.newBlockingStub(channel).withDeadlineAfter(grpcOauth2AuthorizationServerClientProperties.deadlineMillis(), TimeUnit.MILLISECONDS);
     }
 
+    private BlacklistTokenServiceGrpc.BlacklistTokenServiceFutureStub blacklistTokenFutureStub() {
+        return BlacklistTokenServiceGrpc.newFutureStub(channel).withDeadlineAfter(grpcOauth2AuthorizationServerClientProperties.deadlineMillis(), TimeUnit.MILLISECONDS);
+    }
+
     private AuthorizedClientServiceGrpc.AuthorizedClientServiceBlockingStub authorizedClientStub() {
         return AuthorizedClientServiceGrpc.newBlockingStub(channel).withDeadlineAfter(grpcOauth2AuthorizationServerClientProperties.deadlineMillis(), TimeUnit.MILLISECONDS);
+    }
+
+    private <T, R> CompletableFuture<R> toCompletableFuture(ListenableFuture<T> grpcFuture, Function<T, R> mapper) {
+        CompletableFuture<R> resultFuture = new CompletableFuture<>();
+
+        Futures.addCallback(grpcFuture, new FutureCallback<>() {
+            @Override
+            public void onSuccess(T result) {
+                try {
+                    resultFuture.complete(mapper.apply(Objects.requireNonNull(result, "gRPC returned null")));
+                } catch (Throwable error) {
+                    resultFuture.completeExceptionally(error);
+                }
+            }
+
+            @Override
+            public void onFailure(Throwable error) {
+                resultFuture.completeExceptionally(error);
+            }
+        }, MoreExecutors.directExecutor());
+
+        resultFuture.whenComplete((result, error) -> {
+            if (resultFuture.isCancelled()) grpcFuture.cancel(true);
+        });
+
+        return resultFuture;
     }
 }

@@ -1,6 +1,7 @@
 package org.example.oauth2.authorizationserver.client;
 
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 public interface Oauth2AuthorizationServerClient {
 
@@ -11,6 +12,8 @@ public interface Oauth2AuthorizationServerClient {
     boolean registerBlacklist(String accessToken);
 
     boolean existsBlacklist(String accessToken);
+
+    CompletableFuture<Boolean> existsBlacklistAsync(String accessToken);
 
     boolean saveTokens(
             String clientRegistrationId,

@@ -2,8 +2,8 @@ package org.example.apigateway.config;
 
 import lombok.RequiredArgsConstructor;
 import org.example.common.properties.JwtProperties;
-import org.example.apigateway.oauth2.application.service.BlacklistTokenService;
-import org.example.apigateway.oauth2.validator.BlacklistTokenValidator;
+import org.example.apigateway.oauth2.validator.BlacklistAwareReactiveJwtDecoder;
+import org.example.apigateway.oauth2.validator.ReactiveBlacklistTokenValidator;
 import org.example.apigateway.oauth2.validator.RequiredUserIdClaimValidator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,22 +18,20 @@ import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 @RequiredArgsConstructor
 public class ReactiveJwtDecoderConfig {
 
-    private final BlacklistTokenService blacklistTokenService;
+    private final ReactiveBlacklistTokenValidator blacklistTokenValidator;
 
     @Bean
     public ReactiveJwtDecoder reactiveJwtDecoder(JwtProperties jwtProperties) {
         NimbusReactiveJwtDecoder jwtDecoder = NimbusReactiveJwtDecoder.withJwkSetUri(jwtProperties.jwksUri()).build();
 
         OAuth2TokenValidator<Jwt> defaultValidator = JwtValidators.createDefaultWithIssuer(jwtProperties.issuerUri());
-        OAuth2TokenValidator<Jwt> blacklistValidator = new BlacklistTokenValidator(blacklistTokenService);
         OAuth2TokenValidator<Jwt> requiredUserIdValidator = new RequiredUserIdClaimValidator();
 
         jwtDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                 defaultValidator,
-                blacklistValidator,
                 requiredUserIdValidator
         ));
 
-        return jwtDecoder;
+        return new BlacklistAwareReactiveJwtDecoder(jwtDecoder, blacklistTokenValidator);
     }
 }
