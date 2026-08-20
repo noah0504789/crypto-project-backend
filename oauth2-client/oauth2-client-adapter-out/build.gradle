@@ -3,6 +3,8 @@ plugins {
 }
 
 dependencies {
+    implementation project(':common:common-grpc-client')
+    implementation project(':common:common-time')
     implementation project(':oauth2-authorization-server:oauth2-authorization-server-client')
     implementation project(':user:user-client')
     implementation project(':oauth2-client:oauth2-client-application')

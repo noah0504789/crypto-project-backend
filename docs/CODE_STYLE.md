@@ -446,7 +446,11 @@ enum을 우선 사용할 값:
 - field 삭제는 reserved를 검토한다.
 - proto 변경 후 server/client 영향 범위를 문서화한다.
 - gRPC client는 deadline을 명확히 설정한다.
-- blocking call이 servlet/request thread를 오래 점유하지 않게 주의한다.
+- 공용 `*-client`는 Reactor에 의존하지 않고 future stub을 `CompletableFuture<GrpcResponse>`로 제공한다.
+- gRPC DTO의 application 타입 매핑은 소비 adapter가 담당한다.
+- WebFlux 소비자는 adapter 경계에서 `Mono.fromFuture()`로 변환하고 event-loop에서 blocking/join하지 않는다.
+- 동기 소비자는 adapter 경계에서만 `GrpcFutures.join()`한 뒤 application 타입으로 매핑한다.
+- 상세 명세는 `docs/GRPC_CLIENTS.md`를 따른다.
 - `protobuf` publish 또는 root build 영향을 확인한다.
 
 ## 15. OAuth2/Security 기준

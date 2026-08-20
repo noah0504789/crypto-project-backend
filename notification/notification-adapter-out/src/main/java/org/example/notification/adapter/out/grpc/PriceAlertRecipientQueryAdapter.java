@@ -2,6 +2,7 @@ package org.example.notification.adapter.out.grpc;
 
 import lombok.RequiredArgsConstructor;
 import org.example.common.enums.PriceAlertChangeRateThreshold;
+import org.example.common.grpc.client.GrpcFutures;
 import org.example.market.client.PriceAlertSettingClient;
 import org.example.notification.application.port.out.PriceAlertRecipientQueryPort;
 import org.springframework.stereotype.Repository;
@@ -24,6 +25,10 @@ public class PriceAlertRecipientQueryAdapter implements PriceAlertRecipientQuery
 
         BigDecimal targetChangeRate = PriceAlertChangeRateThreshold.toBigDecimal(threshold);
 
-        return priceAlertSettingClient.findReceiverIds(marketCode, targetChangeRate);
+        return GrpcFutures.join(priceAlertSettingClient.findReceiverIds(marketCode, targetChangeRate))
+                .getReceiverIdsList()
+                .stream()
+                .map(UUID::fromString)
+                .toList();
     }
 }

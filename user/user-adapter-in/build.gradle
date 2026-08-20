@@ -6,7 +6,7 @@ dependencies {
     implementation project(':common:common-exception')
     implementation project(':common:common-validation')
     implementation project(':common:common-web')
-    implementation project(':common:common-grpc')
+    implementation project(':common:common-grpc-server')
     implementation project(':protobuf')
     implementation project(':user:user-application')
 

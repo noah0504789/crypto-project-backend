@@ -63,15 +63,15 @@ class GrpcOauth2AuthorizationServerClientUnitTest {
 
     @Test
     @DisplayName("future stub에 deadline을 적용하고 blacklist 결과를 CompletableFuture로 반환한다")
-    void existsBlacklistAsync_shouldReturnCompletableFutureWithDeadline() throws Exception {
+    void existsBlacklist_shouldReturnCompletableFutureWithDeadline() throws Exception {
         // given
         completeCall(BoolValue.of(true));
 
         // when
-        CompletableFuture<Boolean> result = sut.existsBlacklistAsync(ACCESS_TOKEN);
+        CompletableFuture<BoolValue> result = sut.existsBlacklist(ACCESS_TOKEN);
 
         // then
-        assertThat(result.get(1, TimeUnit.SECONDS)).isTrue();
+        assertThat(result.get(1, TimeUnit.SECONDS).getValue()).isTrue();
 
         ArgumentCaptor<CallOptions> callOptionsCaptor = ArgumentCaptor.forClass(CallOptions.class);
         then(channel)
@@ -84,12 +84,12 @@ class GrpcOauth2AuthorizationServerClientUnitTest {
 
     @Test
     @DisplayName("gRPC 오류를 CompletableFuture에 전달한다")
-    void existsBlacklistAsync_shouldPropagateGrpcError() {
+    void existsBlacklist_shouldPropagateGrpcError() {
         // given
         failCall(Status.UNAVAILABLE);
 
         // when
-        CompletableFuture<Boolean> result = sut.existsBlacklistAsync(ACCESS_TOKEN);
+        CompletableFuture<BoolValue> result = sut.existsBlacklist(ACCESS_TOKEN);
 
         // then
         CompletionException error = assertThrows(CompletionException.class, result::join);
@@ -98,9 +98,9 @@ class GrpcOauth2AuthorizationServerClientUnitTest {
 
     @Test
     @DisplayName("CompletableFuture를 취소하면 진행 중인 gRPC call을 취소한다")
-    void existsBlacklistAsync_shouldCancelGrpcCall_whenFutureIsCancelled() {
+    void existsBlacklist_shouldCancelGrpcCall_whenFutureIsCancelled() {
         // when
-        CompletableFuture<Boolean> result = sut.existsBlacklistAsync(ACCESS_TOKEN);
+        CompletableFuture<BoolValue> result = sut.existsBlacklist(ACCESS_TOKEN);
         result.cancel(true);
 
         // then

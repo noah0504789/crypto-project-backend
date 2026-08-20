@@ -40,7 +40,7 @@ Reactive Spring Cloud Gateway 기반 OAuth2 Resource Server. 외부 HTTP·WebSoc
 | `IdentityPropagationGlobalFilter` | `src/main/java/org/example/apigateway/filter/IdentityPropagationGlobalFilter.java` | 일반 HTTP 요청의 클라이언트 `X-User-Id`·`X-From` 제거 + 검증된 JWT `id`로 `X-User-Id` 전파(`GlobalFilter`, `HIGHEST_PRECEDENCE`) |
 | `WebsocketHandshakeAuthWebFilter` | `src/main/java/org/example/apigateway/filter/WebsocketHandshakeAuthWebFilter.java` | WebSocket 핸드셰이크 전용 쿼리 토큰 인증(`WebFilter`, `@Order(-1000)`) |
 | `BlacklistTokenService` | `src/main/java/org/example/apigateway/oauth2/application/service/BlacklistTokenService.java` | `Mono<Boolean>` 기반 블랙리스트 조회 유스케이스 |
-| `GrpcBlacklistTokenClientAdapter` | `src/main/java/org/example/apigateway/oauth2/adapter/out/grpc/GrpcBlacklistTokenClientAdapter.java` | 공용 client의 `CompletableFuture<Boolean>` blacklist 조회를 구독 시점에 `Mono`로 변환 |
+| `GrpcBlacklistTokenClientAdapter` | `src/main/java/org/example/apigateway/oauth2/adapter/out/grpc/GrpcBlacklistTokenClientAdapter.java` | 공용 client의 `CompletableFuture<BoolValue>` blacklist 조회를 구독 시점에 `Mono<Boolean>`으로 변환 |
 | `BlacklistAwareReactiveJwtDecoder` | `src/main/java/org/example/apigateway/oauth2/validator/BlacklistAwareReactiveJwtDecoder.java` | Nimbus JWT 검증 성공 후 비동기 blacklist 검증을 연결 |
 | `ReactiveBlacklistTokenValidator` | `src/main/java/org/example/apigateway/oauth2/validator/ReactiveBlacklistTokenValidator.java` | 비동기 조회 결과가 blacklist이면 `invalid_token`으로 거부 |
 | `RequiredUserIdClaimValidator` | `src/main/java/org/example/apigateway/oauth2/validator/RequiredUserIdClaimValidator.java` | `OAuth2TokenValidator<Jwt>` — `id` claim 필수 검증 |
@@ -85,7 +85,7 @@ Reactive Spring Cloud Gateway 기반 OAuth2 Resource Server. 외부 HTTP·WebSoc
   1. `NimbusReactiveJwtDecoder`가 서명/JWKS와 `JwtValidators.createDefaultWithIssuer(...)`의 기본·issuer 검증을 수행한다. issuer URI는 `git-config-repo/dynamic/jwt.yml`이 공통 `application.yml`의 `uri.internal.oauth2-authorization-server`를 참조한다.
   2. 같은 로컬 검증 체인의 `RequiredUserIdClaimValidator`가 `id` claim(`JwtClaimKey.USER_ID`)의 존재와 비공백 여부를 확인한다.
   3. 위 검증이 성공한 JWT만 `BlacklistAwareReactiveJwtDecoder`의 `flatMap`을 거쳐 `ReactiveBlacklistTokenValidator`로 전달된다.
-  4. 공용 `Oauth2AuthorizationServerClient`가 future stub으로 blacklist를 조회해 `CompletableFuture<Boolean>`을 반환하고, `GrpcBlacklistTokenClientAdapter`가 이를 `Mono<Boolean>`으로 변환한다. 블랙리스트 토큰은 기존과 동일하게 `invalid_token`으로 실패한다.
+  4. 공용 `Oauth2AuthorizationServerClient`가 future stub으로 blacklist를 조회해 `CompletableFuture<BoolValue>`를 반환하고, `GrpcBlacklistTokenClientAdapter`가 이를 `Mono<Boolean>`으로 변환한다. 블랙리스트 토큰은 기존과 동일하게 `invalid_token`으로 실패한다.
 - 형식·서명·issuer·`id` 검증에 실패한 토큰은 원격 blacklist 조회를 시작하지 않는다. gRPC 오류는 인증 실패 경로로 전파하는 fail-closed 동작이며, 요청 취소 시 gRPC future도 취소한다.
 - **audience(`aud`) 검증은 확인되지 않음.** 위 검증기 외에 aud를 확인하는 코드는 없다(`ReactiveJwtDecoderConfig.java` 전체 검토 기준).
 - 사용 claim: `id`(`JwtClaimKey.USER_ID`), `roles`(`JwtClaimKey.ROLES`) — `common/common-core/.../enums/JwtClaimKey.java`.
@@ -138,7 +138,7 @@ Reactive Spring Cloud Gateway 기반 OAuth2 Resource Server. 외부 HTTP·WebSoc
 | `POST /internal/deployment/**` | Gateway 자신 | N/A(Route 아님, 로컬 컨트롤러) | `DeploymentControlAuthWebFilter`(`X-Deploy-Token`) | JWT는 permitAll, Deploy Token 별도 필요 | `ReactiveSecurityConfig.java:56`, `common/common-actuator-webflux/.../DeploymentControlAuthWebFilter.java` |
 | `/actuator/**` | Gateway 자신 | N/A | 없음 | 아니오 | `ReactiveSecurityConfig.java:78` |
 
-**oauth2-authorization-server로 향하는 HTTP Route는 없다.** 연결은 공용 `Oauth2AuthorizationServerClient.existsBlacklistAsync`가 수행하는 `auth.v1.BlacklistTokenService/Exists` gRPC 호출뿐이며, `grpc.client.oauth2-authorization-server-client.address`는 공통 `application.yml`의 `uri.discovery.oauth2-authorization-server`를 참조한다.
+**oauth2-authorization-server로 향하는 HTTP Route는 없다.** 연결은 공용 `Oauth2AuthorizationServerClient.existsBlacklist`가 수행하는 `auth.v1.BlacklistTokenService/Exists` gRPC 호출뿐이며, `grpc.client.oauth2-authorization-server-client.address`는 공통 `application.yml`의 `uri.discovery.oauth2-authorization-server`를 참조한다.
 
 ## 10. Header 및 Path Rewrite 계약
 

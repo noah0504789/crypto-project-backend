@@ -1,12 +1,14 @@
 package org.example.user.client;
 
-import org.example.contract.user.UserResponse;
+import org.example.grpc.user.GrpcFindByEmailResponse;
+import org.example.grpc.user.GrpcSignUpOauth2Response;
 
-import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 public interface UserClient {
 
-    Optional<UserResponse> findByEmail(String email);
+    CompletableFuture<GrpcFindByEmailResponse> findByEmail(String email);
 
-    UserResponse signUpOauth2(String sub, String email, String nickname);
+    CompletableFuture<GrpcSignUpOauth2Response> signUpOauth2(
+            String sub, String email, String nickname);
 }

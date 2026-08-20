@@ -2,7 +2,6 @@ package org.example.websocket.gateway.chatmessage.adapter.out.grpc;
 
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
-import io.grpc.stub.StreamObserver;
 import org.example.chat.chatmessage.client.ChatMessageClient;
 import org.example.common.grpc.exception.GrpcClientException;
 import org.example.common.grpc.exception.GrpcFailureCode;
@@ -26,6 +25,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,15 +48,19 @@ class GrpcChatMessageCommandAdapterUnitTest {
                 "hello"
         );
 
+        GrpcChatMessageResponse response = GrpcChatMessageResponse.newBuilder()
+                .setSuccess(true)
+                .setId("body-id")
+                .setTs(12345L)
+                .build();
+        when(chatMessageClient.save(any())).thenReturn(CompletableFuture.completedFuture(response));
+
         CompletableFuture<ChatMessageSendResult> future = sut.save(command);
 
         ArgumentCaptor<GrpcChatMessageRequest> requestCaptor =
                 ArgumentCaptor.forClass(GrpcChatMessageRequest.class);
 
-        ArgumentCaptor<StreamObserver<GrpcChatMessageResponse>> observerCaptor =
-                ArgumentCaptor.forClass(StreamObserver.class);
-
-        verify(chatMessageClient).save(requestCaptor.capture(), observerCaptor.capture());
+        verify(chatMessageClient).save(requestCaptor.capture());
 
         GrpcChatMessageRequest request = requestCaptor.getValue();
 
@@ -65,15 +69,6 @@ class GrpcChatMessageCommandAdapterUnitTest {
         assertThat(request.getRoomId()).isEqualTo(command.roomId());
         assertThat(request.getWriterId()).isEqualTo(command.writerId());
         assertThat(request.getContent()).isEqualTo(command.content());
-
-        GrpcChatMessageResponse response = GrpcChatMessageResponse.newBuilder()
-                .setSuccess(true)
-                .setId("body-id")
-                .setTs(12345L)
-                .build();
-
-        observerCaptor.getValue().onNext(response);
-        observerCaptor.getValue().onCompleted();
 
         ChatMessageSendResult result = future.join();
 
@@ -93,18 +88,12 @@ class GrpcChatMessageCommandAdapterUnitTest {
                 "hello"
         );
 
-        CompletableFuture<ChatMessageSendResult> future = sut.save(command);
-
-        ArgumentCaptor<StreamObserver<GrpcChatMessageResponse>> observerCaptor =
-                ArgumentCaptor.forClass(StreamObserver.class);
-
-        verify(chatMessageClient).save(any(), observerCaptor.capture());
-
         StatusRuntimeException error = Status.DEADLINE_EXCEEDED
                 .withDescription("deadline exceeded")
                 .asRuntimeException();
+        when(chatMessageClient.save(any())).thenReturn(CompletableFuture.failedFuture(error));
 
-        observerCaptor.getValue().onError(error);
+        CompletableFuture<ChatMessageSendResult> future = sut.save(command);
 
         GrpcClientException resolved = extractGrpcClientException(future);
 
@@ -120,22 +109,6 @@ class GrpcChatMessageCommandAdapterUnitTest {
                 "save failed after timeout"
         );
 
-        CompletableFuture<ChatMessageHardDeleteResult> future = sut.hardDelete(command);
-
-        ArgumentCaptor<GrpcChatMessageHardDeleteRequest> requestCaptor =
-                ArgumentCaptor.forClass(GrpcChatMessageHardDeleteRequest.class);
-
-        ArgumentCaptor<StreamObserver<GrpcChatMessageHardDeleteResponse>> observerCaptor =
-                ArgumentCaptor.forClass(StreamObserver.class);
-
-        verify(chatMessageClient).hardDelete(requestCaptor.capture(), observerCaptor.capture());
-
-        GrpcChatMessageHardDeleteRequest request = requestCaptor.getValue();
-
-        assertThat(request.getMessageId()).isEqualTo(command.messageId());
-        assertThat(request.getRoomId()).isEqualTo(command.roomId());
-        assertThat(request.getReason()).isEqualTo(command.reason());
-
         GrpcChatMessageHardDeleteResponse response = GrpcChatMessageHardDeleteResponse.newBuilder()
                 .setSuccess(true)
                 .setMessageId("body-id")
@@ -143,9 +116,20 @@ class GrpcChatMessageCommandAdapterUnitTest {
                 .setAlreadyDeleted(false)
                 .setNotFound(false)
                 .build();
+        when(chatMessageClient.hardDelete(any())).thenReturn(CompletableFuture.completedFuture(response));
 
-        observerCaptor.getValue().onNext(response);
-        observerCaptor.getValue().onCompleted();
+        CompletableFuture<ChatMessageHardDeleteResult> future = sut.hardDelete(command);
+
+        ArgumentCaptor<GrpcChatMessageHardDeleteRequest> requestCaptor =
+                ArgumentCaptor.forClass(GrpcChatMessageHardDeleteRequest.class);
+
+        verify(chatMessageClient).hardDelete(requestCaptor.capture());
+
+        GrpcChatMessageHardDeleteRequest request = requestCaptor.getValue();
+
+        assertThat(request.getMessageId()).isEqualTo(command.messageId());
+        assertThat(request.getRoomId()).isEqualTo(command.roomId());
+        assertThat(request.getReason()).isEqualTo(command.reason());
 
         ChatMessageHardDeleteResult result = future.join();
 
@@ -165,18 +149,12 @@ class GrpcChatMessageCommandAdapterUnitTest {
                 "save failed after timeout"
         );
 
-        CompletableFuture<ChatMessageHardDeleteResult> future = sut.hardDelete(command);
-
-        ArgumentCaptor<StreamObserver<GrpcChatMessageHardDeleteResponse>> observerCaptor =
-                ArgumentCaptor.forClass(StreamObserver.class);
-
-        verify(chatMessageClient).hardDelete(any(), observerCaptor.capture());
-
         StatusRuntimeException error = Status.CANCELLED
                 .withDescription("cancelled")
                 .asRuntimeException();
+        when(chatMessageClient.hardDelete(any())).thenReturn(CompletableFuture.failedFuture(error));
 
-        observerCaptor.getValue().onError(error);
+        CompletableFuture<ChatMessageHardDeleteResult> future = sut.hardDelete(command);
 
         GrpcClientException resolved = extractGrpcClientException(future);
 

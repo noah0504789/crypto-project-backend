@@ -6,6 +6,7 @@ dependencies {
     implementation project(':common:common-validation')
     implementation project(':common:common-time')
     implementation project(':common:common-core')
+    implementation project(':common:common-grpc-client')
     implementation project(':common:common-id')
     implementation project(':common:common-jpa')
     implementation project(':common:common-mongo')

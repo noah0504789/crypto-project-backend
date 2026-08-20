@@ -9,9 +9,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.example.contract.market.MarketResponse;
+import org.example.grpc.market.GrpcGetEnabledMarketsResponse;
+import org.example.grpc.market.GrpcMarket;
 import org.example.market.client.MarketClient;
 import org.example.upbitconnector.application.properties.UpbitProperties;
 import org.junit.jupiter.api.AfterEach;
@@ -51,7 +53,7 @@ class UpbitWebsocketTickerStreamAdapterIntegrationTest {
     @DisplayName("활성 마켓을 정리해 구독하고 ticker 메시지를 역직렬화한다")
     void subscribesEnabledMarketsAndDeserializesTicker() throws Exception {
         given(marketClient.getEnabledMarkets())
-                .willReturn(List.of(market("KRW-BTC"), market(""), market("KRW-ETH"), market("KRW-BTC")));
+                .willReturn(markets("KRW-BTC", "", "KRW-ETH", "KRW-BTC"));
         startServer((attempt, inbound, outbound) -> Mono.when(
                         outbound.sendString(Mono.just(TICKER_JSON)).then(),
                         inbound.receive().asString().next().doOnNext(subscribeRequests::add).then())
@@ -85,7 +87,7 @@ class UpbitWebsocketTickerStreamAdapterIntegrationTest {
     @Test
     @DisplayName("WebSocket이 정상 종료되면 활성 마켓을 다시 조회해 재연결한다")
     void reconnectsAfterNormalCompletion() {
-        given(marketClient.getEnabledMarkets()).willReturn(List.of(market("KRW-BTC")));
+        given(marketClient.getEnabledMarkets()).willReturn(markets("KRW-BTC"));
         startServer((attempt, inbound, outbound) -> attempt == 1
                 ? outbound.sendClose()
                 : sendResponse(outbound, TICKER_JSON));
@@ -101,7 +103,7 @@ class UpbitWebsocketTickerStreamAdapterIntegrationTest {
     @Test
     @DisplayName("메시지 역직렬화에 실패하면 backoff 후 재연결한다")
     void reconnectsAfterDeserializationFailure() {
-        given(marketClient.getEnabledMarkets()).willReturn(List.of(market("KRW-BTC")));
+        given(marketClient.getEnabledMarkets()).willReturn(markets("KRW-BTC"));
         startServer((attempt, inbound, outbound) -> sendResponse(outbound, attempt == 1 ? "{" : TICKER_JSON));
 
         StepVerifier.create(adapter().ticker().take(1))
@@ -146,10 +148,13 @@ class UpbitWebsocketTickerStreamAdapterIntegrationTest {
                 Duration.ofMillis(10)));
     }
 
-    private MarketResponse market(String code) {
-        return MarketResponse.builder()
-                .marketCode(code)
+    private CompletableFuture<GrpcGetEnabledMarketsResponse> markets(String... codes) {
+        GrpcGetEnabledMarketsResponse response = GrpcGetEnabledMarketsResponse.newBuilder()
+                .addAllMarkets(List.of(codes).stream()
+                        .map(code -> GrpcMarket.newBuilder().setMarketCode(code).build())
+                        .toList())
                 .build();
+        return CompletableFuture.completedFuture(response);
     }
 
     @FunctionalInterface

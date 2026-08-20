@@ -5,6 +5,7 @@ plugins {
 dependencies {
     api project(':protobuf')
 
+    implementation project(':common:common-grpc-client')
     implementation project(':common:common-validation')
     implementation(libs.grpc.client.spring.boot.starter)
 }

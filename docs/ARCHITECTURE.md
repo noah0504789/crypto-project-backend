@@ -143,7 +143,8 @@
 | common-jpa | JPA + Read Replica 라우팅 | `ReadReplica`, `ReadReplicaAspect`, `DataSourceContextHolder`, `ReplicationRoutingDataSource`, `BaseEntity` |
 | common-event | 이벤트 계약/발행 유틸 | `KafkaEvent`, `EventUtils`, `HandleableEvent`, `RecoverableEvent` |
 | common-web | REST 예외 처리 | `GlobalExceptionHandler`(`@RestControllerAdvice`) |
-| common-grpc | gRPC 예외 처리 | `AbstractGrpcExceptionAdvice`, `GrpcExceptionTranslator` |
+| common-grpc-server | gRPC 서버 예외 처리 | `AbstractGrpcExceptionAdvice` |
+| common-grpc-client | gRPC client 비동기 연결·오류 처리 | `GrpcFutures`, `GrpcExceptionTranslator`, `GrpcClientException`, `GrpcFailureCode` |
 | common-outbox | Outbox/DLQ 도메인·서비스 | `Outbox`, `Dlq`, `OutboxService`, `OutboxEventListListener` |
 | common-redis | Redis 코덱·Fail-open | `RedisValueCodec`, `RedisHashCodec`, `CacheFailOpen(Aspect)` |
 | common-redisson | 분산락 | `DistributedLockExecutor`, `RedissonConfig` |
@@ -183,7 +184,7 @@ proto 4개(`protobuf/src/main/proto/**`)와 서버/클라이언트 매핑:
 | `user.v1`(FindByEmail, SignUpOauth2) | user-adapter-in | oauth2-authorization-server, oauth2-client |
 | `auth.v1`(Access/Refresh/Blacklist/AuthorizedClient) | oauth2-authorization-server-adapter-in | spring-cloud-api-gateway, oauth2-client |
 
-클라이언트 deadline은 `*-client` 모듈의 `Grpc*ClientProperties`(prefix `app.grpc.<client-name>.deadline`)로 주입된다. 기본값은 chat-client `10s`, 나머지 `3500ms`이며 소비 서비스 yml에서 조정한다. 예외는 REST가 아닌 `AbstractGrpcExceptionAdvice` + 서비스별 `@GrpcAdvice`로 처리.
+클라이언트 deadline은 `*-client` 모듈의 `Grpc*ClientProperties`(prefix `app.grpc.<client-name>.deadline`)로 주입된다. 기본값은 chat-client `10s`, 나머지 `3500ms`이며 소비 서비스 yml에서 조정한다. 공용 client는 Reactor에 의존하지 않는 `CompletableFuture<GrpcResponse>`를 제공하고, DTO 매핑과 WebFlux의 `Mono` 변환은 소비 adapter가 담당한다([상세 명세](GRPC_CLIENTS.md)). 예외는 REST가 아닌 `AbstractGrpcExceptionAdvice` + 서비스별 `@GrpcAdvice`로 처리.
 
 ### 7.2 Kafka (Spring Cloud Stream / Streams)
 
@@ -235,7 +236,7 @@ Spring `ApplicationEventPublisher`를 직접 쓰지 않고 `EventUtils.raise(lis
 
 ### 8.8 예외 처리
 - REST: `common-web/GlobalExceptionHandler`(`@RestControllerAdvice`) — 검증 실패→400, ResourceNotFound→204, InvalidRequest→404, Infrastructure→500 등.
-- gRPC: `common-grpc/AbstractGrpcExceptionAdvice`(`@GrpcExceptionHandler`) — 도메인 예외를 gRPC Status로 매핑. 서비스별 `@GrpcAdvice` 하위 클래스.
+- gRPC: `common-grpc-server/AbstractGrpcExceptionAdvice`(`@GrpcExceptionHandler`) — 도메인 예외를 gRPC Status로 매핑. 서비스별 `@GrpcAdvice` 하위 클래스.
 
 ---
 

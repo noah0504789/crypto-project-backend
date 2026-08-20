@@ -40,11 +40,11 @@
 |---|---|---|---|
 | `market-domain` | domain | `Market`, `PriceAlertSetting`(프레임워크 비의존, rehydrate 팩토리) | `common-core` |
 | `market-application` | application | UseCase/Service, Port(in/out), Command/Result, 캐시 이름·설정, Outbox 이벤트 | `market-domain`(api), `common-outbox`, caffeine, starter-cache |
-| `market-adapter-in` | adapter-in | REST(`Market`/`PriceAlertSettingController`), gRPC(`GrpcMarketService`, `GrpcPriceAlertSettingService`), Kafka 바인더 | `common-web`, `common-event`, `common-grpc`, `protobuf`, `market-application` |
+| `market-adapter-in` | adapter-in | REST(`Market`/`PriceAlertSettingController`), gRPC(`GrpcMarketService`, `GrpcPriceAlertSettingService`), Kafka 바인더 | `common-web`, `common-event`, `common-grpc-server`, `protobuf`, `market-application` |
 | `market-adapter-out` | adapter-out | JPA 영속(`JpaMarket*`, `JpaPriceAlertSetting*`), `DatasourceConfig` | `common-id`, `common-jpa`, `market-application`, `market-client` |
 | `market-bootstrap` | 실행 | `Main`, `application.yml`, `schema.sql`, messages | 위 4개 + actuator/config/eureka/bus/prometheus |
-| `market-client` | 클라이언트 | 소비자용 gRPC 클라이언트(`MarketClient`/`GrpcMarketClient`, `PriceAlertSettingClient`/`GrpcPriceAlertSettingClient`) | `protobuf`, `market-contract`, grpc-client-starter |
-| `market-contract` | 계약 | gRPC 클라이언트 응답 DTO(`contract.market.MarketResponse`, record) | (없음) |
+| `market-client` | 클라이언트 | future stub 기반 소비자용 gRPC 클라이언트(`MarketClient`/`GrpcMarketClient`, `PriceAlertSettingClient`/`GrpcPriceAlertSettingClient`) | `protobuf`, `common-grpc-client`, grpc-client-starter |
+| `market-contract` | 계약 | 서비스 간 이벤트/응답용 `contract.market.MarketResponse` | (없음) |
 
 의존 방향: adapter-in/out → application → domain. `market-client`/`market-contract`는 **소비자용 산출물**로, market 자신이 아니라 `market-detection`·`notification`이 의존한다. (특이: `market-adapter-out`이 `market-client`에 의존 — gRPC 클라이언트를 어댑터에서 참조.)
 
@@ -64,7 +64,7 @@
 | `PriceAlertSettingCommandService` | `market-application/.../service/PriceAlertSettingCommandService.java` | 내 설정 create/update/delete(`@Transactional`) |
 | `JpaMarketAdapter` / `JpaPriceAlertSettingAdapter` | `market-adapter-out/.../persistence/` | `*PersistencePort` 구현 |
 | `CacheConfig` / `MarketCacheNames` | `market-application/.../config`·`.../cache` | Caffeine 매니저, 캐시 이름 상수 |
-| `GrpcMarketClient` / `GrpcPriceAlertSettingClient` | `market-client/.../` | 소비자용 gRPC 클라이언트(deadline 3500ms) |
+| `GrpcMarketClient` / `GrpcPriceAlertSettingClient` | `market-client/.../` | `CompletableFuture<GrpcResponse>`를 제공하는 소비자용 gRPC 클라이언트(deadline 3500ms) |
 
 ## 6. REST API 계약
 
@@ -92,7 +92,7 @@ proto: `protobuf/src/main/proto/market/v1/market-service.proto`. 서버 구현�
 
 - `GrpcMarket`: `{ id, market_code, symbol, korean_name, english_name }`.
 - `FindReceiverIds`: `market_code` blank 또는 `target_change_rate` blank/파싱 실패 시 `INVALID_ARGUMENT`. 수신자는 `receiver_ids`(UUID 문자열)로 반환. **`target_change_rate`는 `BigDecimal` 정확 일치**로 조회한다(설정의 `enabled=true` + 동일 rate만 매칭) — market-detection이 이산 임계 rate를 보낸다는 전제.
-- 클라이언트(`GrpcMarketClient`) deadline `3500ms`. 예외는 `common-grpc`의 advice 계열.
+- 클라이언트(`GrpcMarketClient`) deadline `3500ms`. 서버 예외는 `common-grpc-server`의 advice 계열.
 - **계약 주의**: 이 proto는 외부 계약이다(→ market-detection·notification). field number 재사용 금지, 변경 시 server(market)·client 재빌드. 상세 절차는 `../../.claude/rules/external-contracts.md`.
 
 ## 8. 조회 캐시와 분산 무효화

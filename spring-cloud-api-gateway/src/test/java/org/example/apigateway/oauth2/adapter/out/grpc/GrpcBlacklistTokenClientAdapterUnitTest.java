@@ -1,5 +1,6 @@
 package org.example.apigateway.oauth2.adapter.out.grpc;
 
+import com.google.protobuf.BoolValue;
 import java.util.concurrent.CompletableFuture;
 import org.example.oauth2.authorizationserver.client.Oauth2AuthorizationServerClient;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,8 +36,8 @@ class GrpcBlacklistTokenClientAdapterUnitTest {
     @DisplayName("구독할 때 공용 client의 async blacklist 조회를 호출한다")
     void existsByAccessToken_shouldCallAsyncClientLazily() {
         // given
-        CompletableFuture<Boolean> response = new CompletableFuture<>();
-        given(authorizationServerClient.existsBlacklistAsync(ACCESS_TOKEN)).willReturn(response);
+        CompletableFuture<BoolValue> response = new CompletableFuture<>();
+        given(authorizationServerClient.existsBlacklist(ACCESS_TOKEN)).willReturn(response);
 
         // when
         Mono<Boolean> result = sut.existsByAccessToken(ACCESS_TOKEN);
@@ -45,22 +46,22 @@ class GrpcBlacklistTokenClientAdapterUnitTest {
         verifyNoInteractions(authorizationServerClient);
 
         StepVerifier.create(result)
-                .then(() -> response.complete(true))
+                .then(() -> response.complete(BoolValue.of(true)))
                 .expectNext(true)
                 .verifyComplete();
 
         then(authorizationServerClient)
                 .should()
-                .existsBlacklistAsync(ACCESS_TOKEN);
+                .existsBlacklist(ACCESS_TOKEN);
     }
 
     @Test
     @DisplayName("공용 client 오류를 reactive subscriber에게 전달한다")
     void existsByAccessToken_shouldPropagateClientError() {
         // given
-        CompletableFuture<Boolean> response = new CompletableFuture<>();
+        CompletableFuture<BoolValue> response = new CompletableFuture<>();
         IllegalStateException error = new IllegalStateException("blacklist lookup failed");
-        given(authorizationServerClient.existsBlacklistAsync(ACCESS_TOKEN)).willReturn(response);
+        given(authorizationServerClient.existsBlacklist(ACCESS_TOKEN)).willReturn(response);
 
         // when & then
         StepVerifier.create(sut.existsByAccessToken(ACCESS_TOKEN))
@@ -73,8 +74,8 @@ class GrpcBlacklistTokenClientAdapterUnitTest {
     @DisplayName("구독을 취소하면 공용 client의 future를 취소한다")
     void existsByAccessToken_shouldCancelClientFuture_whenSubscriptionIsCancelled() {
         // given
-        CompletableFuture<Boolean> response = new CompletableFuture<>();
-        given(authorizationServerClient.existsBlacklistAsync(ACCESS_TOKEN)).willReturn(response);
+        CompletableFuture<BoolValue> response = new CompletableFuture<>();
+        given(authorizationServerClient.existsBlacklist(ACCESS_TOKEN)).willReturn(response);
 
         // when
         StepVerifier.create(sut.existsByAccessToken(ACCESS_TOKEN))

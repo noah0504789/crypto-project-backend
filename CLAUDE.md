@@ -24,6 +24,7 @@ Java 17 · Spring Boot 3.4.0 · Spring Cloud 2024.0.2 기반 헥사고날 멀티
 | --- | --- | --- |
 | 계층·의존·트랜잭션·Outbox/DLQ·Read Replica·Redis·예외 | `.claude/rules/architecture.md` | analyze-module |
 | REST/gRPC/Kafka/Redis/STOMP/JWT/DB 등 계약 변경 | `.claude/rules/external-contracts.md` | review-contract-impact |
+| gRPC client·adapter·WebFlux 비동기 경계 | `.claude/rules/grpc-clients.md` | — |
 | 인증·인가·OAuth2/JWT·Secret | `.claude/rules/security.md` | — |
 | 테스트 작성·실행·검증 | `.claude/rules/testing.md` | verify-change |
 | 커밋·PR 메시지 작성 | `.claude/rules/commit-pr.md` | pr-draft |

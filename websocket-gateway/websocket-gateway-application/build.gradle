@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-    implementation project(':common:common-grpc')
+    implementation project(':common:common-grpc-client')
     implementation project(':notification:notification-contract')
 
     implementation(libs.caffeine)

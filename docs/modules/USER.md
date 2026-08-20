@@ -36,11 +36,11 @@
 |---|---|---|---|
 | `user-domain` | domain | `User`, `Role`, `RoleEnum` (프레임워크 비의존) | `common-core` |
 | `user-application` | application | UseCase/Service, Port(in/out), Command, 검증, 예외 | `user-domain`(api), `common-jpa`, `spring-security-crypto` |
-| `user-adapter-in` | adapter-in | REST(`UserController`), gRPC(`GrpcUserService`), gRPC 예외 advice | `common-web`, `common-grpc`, `protobuf`, `user-application` |
+| `user-adapter-in` | adapter-in | REST(`UserController`), gRPC(`GrpcUserService`), gRPC 예외 advice | `common-web`, `common-grpc-server`, `protobuf`, `user-application` |
 | `user-adapter-out` | adapter-out | JPA 영속성(`JpaUser*`, `JpaRole*`), infra config(DataSource, PasswordEncoder) | `common-id`, `common-jpa`, `user-application`, `spring-security-crypto` |
 | `user-bootstrap` | 실행 | `Main`, `application.yml`, `schema.sql`, messages | 위 4개 + config/eureka/bus/prometheus |
-| `user-client` | 클라이언트 | 다른 서비스가 쓰는 gRPC 클라이언트(`UserClient`/`GrpcUserClient`) | `protobuf`, `common-core`, `user-contract` |
-| `user-contract` | 계약 | gRPC 클라이언트 응답 DTO(`contract.user.UserResponse`, record) | (없음) |
+| `user-client` | 클라이언트 | future stub 기반 gRPC 클라이언트(`UserClient`/`GrpcUserClient`) | `protobuf`, `common-grpc-client` |
+| `user-contract` | 계약 | 소비 서비스의 adapter가 매핑하는 application 응답 DTO(`contract.user.UserResponse`, record) | (없음) |
 
 의존 방향: adapter-in/out → application → domain. `user-client`/`user-contract`는 **소비자용 산출물**로, user 서비스 자신이 아니라 oauth2-client·oauth2-authorization-server가 의존한다.
 
@@ -60,7 +60,7 @@
 | `JpaRoleAdapter` | `user-adapter-out/.../role/adapter/out/JpaRoleAdapter.java` | `RolePersistencePort` 구현 |
 | `DataSourceConfig` | `user-adapter-out/.../infra/config/DataSourceConfig.java` | write/read Hikari + `ReplicationRoutingDataSource`(§10) |
 | `PasswordEncoderConfig` | `user-adapter-out/.../infra/config/PasswordEncoderConfig.java` | `BCryptPasswordEncoder(5)` |
-| `GrpcUserClient` | `user-client/.../GrpcUserClient.java` | 소비자용 gRPC 클라이언트(deadline 3500ms) |
+| `GrpcUserClient` | `user-client/.../GrpcUserClient.java` | `CompletableFuture<GrpcResponse>`를 제공하는 소비자용 gRPC 클라이언트(deadline 3500ms) |
 
 ## 6. REST API 계약
 
@@ -94,7 +94,7 @@ proto: `protobuf/src/main/proto/user/v1/user-service.proto`. 서버 구현 `Grpc
 | `SignUpOauth2` | `GrpcSignUpOauth2Request{sub,email,nickname}` | `GrpcSignUpOauth2Response{GrpcUser}` | OAuth2 가입(기본 role 부여). 로그인 시 find-or-create의 create 부분 |
 
 - `GrpcUser`: `{ sub, nickname, email, roles[], created_at(Timestamp), id }`. `id`는 `publicId` 문자열.
-- 클라이언트(`GrpcUserClient`) deadline `3500ms`. 예외는 `GrpcUserExceptionAdvice`(→ `common-grpc/AbstractGrpcExceptionAdvice`).
+- 클라이언트(`GrpcUserClient`) deadline `3500ms`. 서버 예외는 `GrpcUserExceptionAdvice`(→ `common-grpc-server/AbstractGrpcExceptionAdvice`).
 - **계약 주의**: 이 proto는 외부 계약이다. field number 재사용 금지, 변경 시 server(user)·client(oauth2-*) 재빌드. 상세 절차는 루트 `.claude/rules/external-contracts.md`.
 
 ## 8. 도메인 모델
