@@ -4,7 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.contract.market.MarketResponse;
+import org.example.grpc.market.GrpcGetEnabledMarketsResponse;
+import org.example.grpc.market.GrpcMarket;
 import org.example.market.client.MarketClient;
 import org.example.upbitconnector.adapter.out.upbit.dto.UpbitWebsocketRequest;
 import org.example.upbitconnector.application.port.out.UpbitTickerStreamPort;
@@ -14,7 +15,6 @@ import org.example.upbitconnector.infra.exception.UpbitWebsocketException;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.http.websocket.WebsocketInbound;
 import reactor.netty.http.websocket.WebsocketOutbound;
@@ -67,16 +67,15 @@ public class UpbitWebsocketTickerStreamAdapter implements UpbitTickerStreamPort 
         log.warn("[upbit] websocket retry. attempts={}", signal.totalRetries() + 1, signal.failure());
     }
 
-    // market gRPC 호출이 블로킹이라 이벤트 루프 밖으로 옮긴다.
     private Mono<String> subscribePayload() {
-        return Mono.fromCallable(this::subscribeCodes)
-                .subscribeOn(Schedulers.boundedElastic())
+        return Mono.defer(() -> Mono.fromFuture(marketClient.getEnabledMarkets()))
+                .map(this::subscribeCodes)
                 .map(this::serializeSubscribeRequest);
     }
 
-    private List<String> subscribeCodes() {
-        List<String> codes = marketClient.getEnabledMarkets().stream()
-                .map(MarketResponse::marketCode)
+    private List<String> subscribeCodes(GrpcGetEnabledMarketsResponse response) {
+        List<String> codes = response.getMarketsList().stream()
+                .map(GrpcMarket::getMarketCode)
                 .filter(code -> code != null && !code.isBlank())
                 .distinct()
                 .toList();

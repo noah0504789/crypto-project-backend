@@ -1,10 +1,10 @@
 package org.example.market.client;
 
-import org.example.contract.market.MarketResponse;
+import org.example.grpc.market.GrpcGetEnabledMarketsResponse;
 
-import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 public interface MarketClient {
 
-    List<MarketResponse> getEnabledMarkets();
+    CompletableFuture<GrpcGetEnabledMarketsResponse> getEnabledMarkets();
 }

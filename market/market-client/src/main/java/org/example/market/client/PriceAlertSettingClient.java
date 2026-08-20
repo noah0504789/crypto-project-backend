@@ -1,10 +1,11 @@
 package org.example.market.client;
 
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import org.example.grpc.market.GrpcFindPriceAlertReceiversResponse;
 
 public interface PriceAlertSettingClient {
 
-    List<UUID> findReceiverIds(String marketCode, BigDecimal targetChangeRate);
+    CompletableFuture<GrpcFindPriceAlertReceiversResponse> findReceiverIds(
+            String marketCode, BigDecimal targetChangeRate);
 }

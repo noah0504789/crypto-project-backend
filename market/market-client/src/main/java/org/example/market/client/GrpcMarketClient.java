@@ -3,14 +3,14 @@ package org.example.market.client;
 import io.grpc.Channel;
 import lombok.RequiredArgsConstructor;
 import net.devh.boot.grpc.client.inject.GrpcClient;
-import org.example.contract.market.MarketResponse;
+import org.example.common.grpc.client.GrpcFutures;
 import org.example.grpc.market.GrpcGetEnabledMarketsRequest;
-import org.example.grpc.market.GrpcMarket;
+import org.example.grpc.market.GrpcGetEnabledMarketsResponse;
 import org.example.grpc.market.MarketServiceGrpc;
 import org.example.market.client.properties.GrpcMarketClientProperties;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -23,29 +23,15 @@ public class GrpcMarketClient implements MarketClient {
     private final GrpcMarketClientProperties grpcMarketClientProperties;
 
     @Override
-    public List<MarketResponse> getEnabledMarkets() {
+    public CompletableFuture<GrpcGetEnabledMarketsResponse> getEnabledMarkets() {
         GrpcGetEnabledMarketsRequest request = GrpcGetEnabledMarketsRequest.newBuilder()
                 .build();
 
-        return stub().getEnabledMarkets(request)
-                .getMarketsList()
-                .stream()
-                .map(this::toResponse)
-                .toList();
+        return GrpcFutures.toCompletableFuture(stub().getEnabledMarkets(request));
     }
 
-    private MarketServiceGrpc.MarketServiceBlockingStub stub() {
-        return MarketServiceGrpc.newBlockingStub(channel)
+    private MarketServiceGrpc.MarketServiceFutureStub stub() {
+        return MarketServiceGrpc.newFutureStub(channel)
                 .withDeadlineAfter(grpcMarketClientProperties.deadlineMillis(), TimeUnit.MILLISECONDS);
-    }
-
-    private MarketResponse toResponse(GrpcMarket market) {
-        return MarketResponse.builder()
-                .id(market.getId())
-                .marketCode(market.getMarketCode())
-                .symbol(market.getSymbol())
-                .koreanName(market.getKoreanName())
-                .englishName(market.getEnglishName())
-                .build();
     }
 }
