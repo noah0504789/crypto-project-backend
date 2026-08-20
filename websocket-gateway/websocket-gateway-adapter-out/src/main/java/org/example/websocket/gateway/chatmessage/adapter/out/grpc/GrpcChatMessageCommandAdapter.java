@@ -1,8 +1,8 @@
 package org.example.websocket.gateway.chatmessage.adapter.out.grpc;
 
-import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import org.example.chat.chatmessage.client.ChatMessageClient;
+import org.example.common.grpc.client.GrpcFutures;
 import org.example.common.grpc.exception.GrpcExceptionTranslator;
 import org.example.grpc.chatmessage.GrpcChatMessageHardDeleteRequest;
 import org.example.grpc.chatmessage.GrpcChatMessageHardDeleteResponse;
@@ -25,50 +25,20 @@ public class GrpcChatMessageCommandAdapter implements ChatMessageCommandPort {
 
     @Override
     public CompletableFuture<ChatMessageSendResult> save(ChatMessageSendCommand command) {
-        CompletableFuture<ChatMessageSendResult> future = new CompletableFuture<>();
-
-        chatMessageClient.save(toGrpcRequest(command), new StreamObserver<>() {
-            @Override
-            public void onNext(GrpcChatMessageResponse response) {
-                future.complete(toResult(response));
-            }
-
-            @Override
-            public void onError(Throwable t) {
-                future.completeExceptionally(GrpcExceptionTranslator.translate(t));
-            }
-
-            @Override
-            public void onCompleted() {
-                // no-op
-            }
-        });
-
-        return future;
+        return GrpcFutures.map(
+                chatMessageClient.save(toGrpcRequest(command)),
+                this::toResult,
+                GrpcExceptionTranslator::translate
+        );
     }
 
     @Override
     public CompletableFuture<ChatMessageHardDeleteResult> hardDelete(ChatMessageHardDeleteCommand command) {
-        CompletableFuture<ChatMessageHardDeleteResult> future = new CompletableFuture<>();
-
-        chatMessageClient.hardDelete(toGrpcRequest(command), new StreamObserver<>() {
-            @Override
-            public void onNext(GrpcChatMessageHardDeleteResponse response) {
-                future.complete(toResult(response));
-            }
-
-            @Override
-            public void onError(Throwable t) {
-                future.completeExceptionally(GrpcExceptionTranslator.translate(t));
-            }
-
-            @Override
-            public void onCompleted() {
-                // no-op
-            }
-        });
-
-        return future;
+        return GrpcFutures.map(
+                chatMessageClient.hardDelete(toGrpcRequest(command)),
+                this::toResult,
+                GrpcExceptionTranslator::translate
+        );
     }
 
     private GrpcChatMessageRequest toGrpcRequest(ChatMessageSendCommand command) {

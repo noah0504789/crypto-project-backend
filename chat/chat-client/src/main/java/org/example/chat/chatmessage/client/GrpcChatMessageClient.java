@@ -1,10 +1,10 @@
 package org.example.chat.chatmessage.client;
 
 import io.grpc.Channel;
-import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.client.inject.GrpcClient;
+import org.example.common.grpc.client.GrpcFutures;
 import org.example.grpc.chatmessage.GrpcChatMessageRequest;
 import org.example.grpc.chatmessage.GrpcChatMessageResponse;
 import org.example.grpc.chatmessage.GrpcChatMessageHardDeleteRequest;
@@ -14,6 +14,7 @@ import org.example.chat.chatmessage.client.properties.GrpcChatMessageClientPrope
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -26,16 +27,17 @@ public class GrpcChatMessageClient implements ChatMessageClient {
     private final GrpcChatMessageClientProperties grpcChatMessageClientProperties;
 
     @Override
-    public void save(GrpcChatMessageRequest request, StreamObserver<GrpcChatMessageResponse> responseObserver) {
-        stub().save(request, responseObserver);
+    public CompletableFuture<GrpcChatMessageResponse> save(GrpcChatMessageRequest request) {
+        return GrpcFutures.toCompletableFuture(stub().save(request));
     }
 
     @Override
-    public void hardDelete(GrpcChatMessageHardDeleteRequest request, StreamObserver<GrpcChatMessageHardDeleteResponse> responseObserver) {
-        stub().hardDelete(request, responseObserver);
+    public CompletableFuture<GrpcChatMessageHardDeleteResponse> hardDelete(GrpcChatMessageHardDeleteRequest request) {
+        return GrpcFutures.toCompletableFuture(stub().hardDelete(request));
     }
 
-    private ChatMessageServiceGrpc.ChatMessageServiceStub stub() {
-        return ChatMessageServiceGrpc.newStub(channel).withDeadlineAfter(grpcChatMessageClientProperties.deadlineMillis(), TimeUnit.MILLISECONDS);
+    private ChatMessageServiceGrpc.ChatMessageServiceFutureStub stub() {
+        return ChatMessageServiceGrpc.newFutureStub(channel)
+                .withDeadlineAfter(grpcChatMessageClientProperties.deadlineMillis(), TimeUnit.MILLISECONDS);
     }
 }
