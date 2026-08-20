@@ -121,7 +121,7 @@ oauth2-client → POST /oauth2/token (grant_type=refresh_token)
 
 ## 9. gRPC 계약 (`auth.v1`)
 
-proto: `protobuf/src/main/proto/auth/v1/auth-service.proto`. 서버: adapter-in의 `Grpc*Service` 4종(포트 19000). 클라이언트: `-client`의 `GrpcOauth2AuthorizationServerClient`(deadline 3500ms). 기존 blocking API와 함께 blacklist 조회용 `CompletableFuture<Boolean>` API를 제공하며, future 취소는 진행 중인 gRPC 호출에 전파된다. 공용 client는 Reactor에 의존하지 않고 Gateway가 이를 `Mono`로 변환한다.
+proto: `protobuf/src/main/proto/auth/v1/auth-service.proto`. 서버: adapter-in의 `Grpc*Service` 4종(포트 19000). 클라이언트: `-client`의 `GrpcOauth2AuthorizationServerClient`(deadline 3500ms). 모든 메서드는 future stub 기반 `CompletableFuture<GrpcResponse>`를 제공하며, future 취소는 진행 중인 gRPC 호출에 전파된다. 공용 client는 Reactor에 의존하지 않고 Gateway가 blacklist 응답을 `Mono<Boolean>`으로 변환한다. 동기 OAuth2 framework 경계는 `GrpcAuthServerTokenAdapter`에서 완료를 기다린 뒤 scalar application 값으로 매핑한다.
 
 | 서비스 | RPC | 용도 | 주 소비자 |
 |---|---|---|---|

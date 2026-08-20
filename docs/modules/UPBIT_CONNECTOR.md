@@ -51,8 +51,8 @@ Upbit 외부 API와의 통신을 전담하는 **리액티브(WebFlux/Reactor) �
 ## 4. 데이터 흐름 (1단계 구현됨)
 
 ```
-market gRPC getEnabledMarkets (boundedElastic) ─┐
-                                                ▼
+market gRPC getEnabledMarkets (CompletableFuture → Mono) ─┐
+                                                          ▼
 Upbit WebSocket (wss://api.upbit.com/websocket/v1)
  → UpbitWebsocketTickerStreamAdapter: Flux<UpbitTickerEvent> (+ repeatWhen/retryWhen 재연결)
  → UpbitTickerCollectService: groupBy(code) → sample(ticker-publish-interval) → onBackpressureLatest

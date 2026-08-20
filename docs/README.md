@@ -15,6 +15,7 @@
 | [ARCHITECTURE.md](ARCHITECTURE.md) | 전체 시스템 구조·모듈 관계·서비스 카탈로그·계약 목록 |
 | [SERVICE_FLOWS.md](SERVICE_FLOWS.md) | 주요 요청/이벤트 흐름(로그인·채팅·알림·Outbox 등) |
 | [CODE_STYLE.md](CODE_STYLE.md) | 코드 작성/리팩토링 기준(네이밍·DTO·도메인·예외·상수화 등) — 단일 정본 |
+| [GRPC_CLIENTS.md](GRPC_CLIENTS.md) | 공용 gRPC client의 Future 계약과 adapter/WebFlux 경계 명세 |
 | [CI_CD.md](CI_CD.md) | CI(affected 빌드)·CD(배포)·Config 재배포 파이프라인 |
 | [TESTING.md](TESTING.md) | 테스트 4계층(단위·통합·E2E·부팅 스모크), Testcontainers 하니스, 부팅 스모크 설계 |
 | [SCENARIO_TEST.md](SCENARIO_TEST.md) | 화면 카테고리별 시연/연동 테스트 시나리오 |
@@ -59,6 +60,7 @@
 |---|---|
 | [git-safety.md](../.claude/rules/git-safety.md) | 항상 로드(파일 변경·Git·민감정보·Plan Mode 우선) |
 | [architecture.md](../.claude/rules/architecture.md) | 계층·의존·트랜잭션·Outbox/DLQ·Redis·예외 |
+| [grpc-clients.md](../.claude/rules/grpc-clients.md) | 공용 gRPC client·adapter·WebFlux 비동기 경계 |
 | [external-contracts.md](../.claude/rules/external-contracts.md) | REST/gRPC/Kafka/Redis/STOMP/JWT/DB 계약 변경 |
 | [security.md](../.claude/rules/security.md) | 인증·인가·OAuth2/JWT·Secret |
 | [testing.md](../.claude/rules/testing.md) | 테스트 작성·실행·검증 |

@@ -18,7 +18,7 @@
 
 ## 2. 파사드 구조
 
-- `common`(부모)은 **16개 모듈을 `api`로 재수출하는 파사드**다(`common/build.gradle`): `common-core`, `common-exception`, `common-validation`, `common-time`, `common-jpa`, `common-event`, `common-web`, `common-grpc`, `common-id`, `common-inbox`, `common-outbox`, `common-redis`, `common-redisson`, `common-util`, `common-tx`, `common-mongo`.
+- `common`(부모)은 **17개 모듈을 `api`로 재수출하는 파사드**다(`common/build.gradle`): 기존 공통 모듈과 `common-grpc-client`를 포함한다.
 - 파사드를 compile 의존으로 쓰는 모듈은 없다. 유일한 소비처가 `common-arch-test`의 `testRuntimeOnly`라 실질 역할은 **ArchUnit 커버리지 통로**다 — 새 common 모듈은 여기에 등록해야 검사 대상이 된다.
 - 서비스는 보통 `implementation project(':common')` 하나로 위 11개를 전이 확보한다.
 - **파사드에서 제외**되어 필요한 모듈만 개별 의존하는 것: `common-test`(테스트), `common-arch-test`(CI 게이트), `common-actuator-core/webmvc/webflux`(모니터링). 예: 실행 모듈은 web/webflux에 맞춰 `common-actuator-webmvc` 또는 `-webflux`를 골라 의존한다.
@@ -37,6 +37,7 @@
 | `common-time` | 시각 조회·존 변환·경과시간 측정 | `Clock`/`ClockService`(`monotonicTimeNanos` 포함), `ServiceTimeConverter` | spring-boot 코어 |
 | `common-validation` | Bean Validation 공통 | `ValidationResult`, `FieldErrorDetail`, `NotBlankIfPresent(+Validator)`, `common-validation-messages.properties` | spring-boot-starter-validation |
 | `common-grpc` | gRPC 예외 처리 | `AbstractGrpcExceptionAdvice`, `GrpcExceptionTranslator`, `GrpcClientException`, `GrpcFailureCode` | common-core, grpc(bom/stub/server-starter) |
+| `common-grpc-client` | gRPC future 연결 | `GrpcFutures`(ListenableFuture 변환, 매핑·취소 전파, 동기 경계 join) | grpc-stub |
 | `common-outbox` | Outbox/DLQ 도메인·서비스(헥사고날) | `Outbox`/`OutboxStatus`/`OutboxService`/`OutboxEventListListener`, `Dlq`/`DlqStatus`/`DlqService`, `Abstract*OutboxEvent(List)`, `*PublishPort` | common-jpa, common-event, common-util, jackson |
 | `common-redis` | Redis 코덱·Fail-open·연산 | `RedisValueCodec`, `RedisHashCodec`, `RedisCodecSupport`/`RedisCodecException`(codec 공통 헬퍼: str/parse/toJson/fromJson), `CacheFailOpen`(+`Aspect`), `StringRedisHashOperations`, `RedisConnectionFactorySupport` | common-core, data-redis, aop, jackson |
 | `common-redisson` | 분산락 | `DistributedLockExecutor`, `DistributedLockPolicy`, `RedissonConfig` | common-core, redisson starter |

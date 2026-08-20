@@ -43,8 +43,8 @@
 | `market-adapter-in` | adapter-in | REST(`Market`/`PriceAlertSettingController`), gRPC(`GrpcMarketService`, `GrpcPriceAlertSettingService`), Kafka 바인더 | `common-web`, `common-event`, `common-grpc`, `protobuf`, `market-application` |
 | `market-adapter-out` | adapter-out | JPA 영속(`JpaMarket*`, `JpaPriceAlertSetting*`), `DatasourceConfig` | `common-id`, `common-jpa`, `market-application`, `market-client` |
 | `market-bootstrap` | 실행 | `Main`, `application.yml`, `schema.sql`, messages | 위 4개 + actuator/config/eureka/bus/prometheus |
-| `market-client` | 클라이언트 | 소비자용 gRPC 클라이언트(`MarketClient`/`GrpcMarketClient`, `PriceAlertSettingClient`/`GrpcPriceAlertSettingClient`) | `protobuf`, `market-contract`, grpc-client-starter |
-| `market-contract` | 계약 | gRPC 클라이언트 응답 DTO(`contract.market.MarketResponse`, record) | (없음) |
+| `market-client` | 클라이언트 | future stub 기반 소비자용 gRPC 클라이언트(`MarketClient`/`GrpcMarketClient`, `PriceAlertSettingClient`/`GrpcPriceAlertSettingClient`) | `protobuf`, `common-grpc-client`, grpc-client-starter |
+| `market-contract` | 계약 | 서비스 간 이벤트/응답용 `contract.market.MarketResponse` | (없음) |
 
 의존 방향: adapter-in/out → application → domain. `market-client`/`market-contract`는 **소비자용 산출물**로, market 자신이 아니라 `market-detection`·`notification`이 의존한다. (특이: `market-adapter-out`이 `market-client`에 의존 — gRPC 클라이언트를 어댑터에서 참조.)
 
@@ -64,7 +64,7 @@
 | `PriceAlertSettingCommandService` | `market-application/.../service/PriceAlertSettingCommandService.java` | 내 설정 create/update/delete(`@Transactional`) |
 | `JpaMarketAdapter` / `JpaPriceAlertSettingAdapter` | `market-adapter-out/.../persistence/` | `*PersistencePort` 구현 |
 | `CacheConfig` / `MarketCacheNames` | `market-application/.../config`·`.../cache` | Caffeine 매니저, 캐시 이름 상수 |
-| `GrpcMarketClient` / `GrpcPriceAlertSettingClient` | `market-client/.../` | 소비자용 gRPC 클라이언트(deadline 3500ms) |
+| `GrpcMarketClient` / `GrpcPriceAlertSettingClient` | `market-client/.../` | `CompletableFuture<GrpcResponse>`를 제공하는 소비자용 gRPC 클라이언트(deadline 3500ms) |
 
 ## 6. REST API 계약
 
