@@ -4,7 +4,9 @@ plugins {
 
 dependencies {
     implementation project(':common:common-core')
+    implementation project(':common:common-grpc-client')
     implementation project(':common:common-redis')
+    implementation project(':common:common-time')
     implementation project(':user:user-client')
     implementation project(':oauth2-authorization-server:oauth2-authorization-server-application')
 
