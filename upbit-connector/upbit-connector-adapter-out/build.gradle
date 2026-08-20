@@ -1,0 +1,14 @@
+plugins {
+    id 'crypto-adapter'
+}
+
+dependencies {
+    implementation project(':common:common-event')
+    implementation project(':market:market-client')
+    implementation project(':upbit-connector:upbit-connector-application')
+
+    implementation(libs.spring.boot.starter.webflux)
+    implementation(libs.spring.boot.starter.validation)
+
+    testImplementation(libs.reactor.test)
+}

@@ -3,7 +3,7 @@
 가상화폐 시장의 **급격한 가격 변동을 실시간으로 탐지·알림**하고, 코인별 **오픈채팅**을 제공하는 Spring Cloud 기반 MSA 백엔드.
 
 - 언어/프레임워크: **Java 17 · Spring Boot 3.4.0 · Spring Cloud 2024.0.2**
-- 아키텍처: **헥사고날(포트/어댑터) 멀티모듈**, 실행 서비스 **12개**
+- 아키텍처: **헥사고날(포트/어댑터) 멀티모듈**, 실행 서비스 **13개**
 - 인프라: Eureka(디스커버리) · Spring Cloud Config(+Vault) · gRPC · Kafka(Cloud Stream/Streams) · MySQL · MongoDB · Redis Cluster
 - 프론트엔드: [`../crypto-project-frontend`](../crypto-project-frontend) (React 19 · Vite)
 
@@ -187,7 +187,7 @@ https://github.com/user-attachments/assets/441ca20c-0091-4350-bf14-3548cd3c5ad0
 | [`docs/CODE_STYLE.md`](docs/CODE_STYLE.md) | 코드 작성/리팩토링 기준 |
 | [`docs/CI_CD.md`](docs/CI_CD.md) | CI(affected 빌드)·CD(배포) 파이프라인 |
 | [`docs/SCENARIO_TEST.md`](docs/SCENARIO_TEST.md) | 화면 카테고리별 시연/연동 테스트 시나리오 |
-| [`docs/modules/`](docs/modules/) | 모듈별 상세 문서(서비스 12개 + common) |
+| [`docs/modules/`](docs/modules/) | 모듈별 상세 문서(서비스 13개 + common) |
 | [`TODO.md`](TODO.md) | 미해결 확인/결정 항목 단일 관리처 |
 
 빌드·테스트·CI task는 `docs/CI_CD.md`와 루트 `build.gradle` 참고(예: 서비스별 `./gradlew <service>Ci`).

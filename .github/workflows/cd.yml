@@ -20,6 +20,7 @@ on:
           - crypto-notification-service
           - crypto-outbox-poller
           - crypto-market-detection
+          - crypto-upbit-connector
 
       image_tag:
         description: "Docker image tag to deploy"
@@ -179,6 +180,12 @@ jobs:
             crypto-market-detection)
               echo "Scale input is ignored for crypto-market-detection safe recreate deployment."
               ./scripts/deploy/deploy-market-detection-safe.sh \
+                "$IMAGE_TAG"
+              ;;
+
+            crypto-upbit-connector)
+              echo "Scale input is ignored for crypto-upbit-connector safe recreate deployment."
+              ./scripts/deploy/deploy-upbit-connector-safe.sh \
                 "$IMAGE_TAG"
               ;;
 

@@ -1,0 +1,22 @@
+plugins {
+    id 'crypto-bootstrap'
+}
+
+ext.dockerImageName = "crypto-upbit-connector"
+
+dependencies {
+    implementation project(':common:common-core')
+    implementation project(':common:common-actuator-webflux')
+    implementation project(':common:common-time')
+    implementation project(':upbit-connector:upbit-connector-application')
+    implementation project(':upbit-connector:upbit-connector-adapter-out')
+
+    implementation(libs.spring.boot.starter.webflux)
+    implementation(libs.spring.cloud.config.client)
+    implementation(libs.spring.cloud.eureka.client)
+
+    testImplementation project(':common:common-test')
+    // 발행 결과를 소비자 관점에서 되읽는 계약 검증 테스트용 Kafka 클라이언트
+    testImplementation project(':common:common-event')
+    testImplementation(libs.reactor.test)
+}

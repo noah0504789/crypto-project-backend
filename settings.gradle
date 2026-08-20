@@ -84,8 +84,14 @@ include 'market:market-adapter-out'
 include 'market:market-bootstrap'
 
 include 'market-detection'
-include 'market-detection:market-detection-bootstrap'
 include 'market-detection:market-detection-contract'
+include 'market-detection:market-detection-bootstrap'
+
+include 'upbit-connector'
+include 'upbit-connector:upbit-connector-contract'
+include 'upbit-connector:upbit-connector-application'
+include 'upbit-connector:upbit-connector-adapter-out'
+include 'upbit-connector:upbit-connector-bootstrap'
 
 include 'notification'
 include 'notification:notification-domain'

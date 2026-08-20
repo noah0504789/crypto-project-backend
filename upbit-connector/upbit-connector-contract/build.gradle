@@ -1,0 +1,7 @@
+plugins {
+    id 'crypto-common-library'
+}
+
+dependencies {
+    api(libs.jackson.annotations)
+}

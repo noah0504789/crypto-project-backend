@@ -13,7 +13,7 @@
 | **단위(Unit)** | 도메인·정책·매퍼·서비스 로직 | 안 띄움 | 없음(전부 mock) | `*-domain`, `*-application`(예: `ChatMessageSendServiceTest`, `MyChatRoomScoreCalculator` 테스트) |
 | **통합(Integration, sliced)** | 특정 어댑터/슬라이스를 실제 인프라와 | `@SpringBootTest(classes = {...})` 로 **빈 선별** 또는 slice | Testcontainers(해당 것만) | `*-adapter-out`(JPA/Mongo/Redis 어댑터), `RedisSessionLocationAdapterTest` 등 |
 | **E2E(엔드포인트)** | 컨트롤러~보안~변환까지 요청 흐름 | `@SpringBootTest` + `@AutoConfigureMockMvc`/`WebTestClient`, 외부 의존은 mock | 대개 없음(mock) | gateway `ReactiveSecurityE2ETest`, oauth2-client `AuthLogoutE2ETest` |
-| **부팅 스모크(Boot Smoke)** | 실행 서비스의 **전체 ApplicationContext**가 실제 설정으로 끝까지 뜨는지 | `@SpringBootTest`(진짜 `Main`) | Testcontainers + 실제 `git-config-repo` 설정 | 각 실행 모듈 `BootSmokeTest`(12개) |
+| **부팅 스모크(Boot Smoke)** | 실행 서비스의 **전체 ApplicationContext**가 실제 설정으로 끝까지 뜨는지 | `@SpringBootTest`(진짜 `Main`) | Testcontainers + 실제 `git-config-repo` 설정 | 각 실행 모듈 `BootSmokeTest`(13개) |
 
 핵심 구분:
 - **통합/E2E는 `@SpringBootTest(classes = {...})`로 필요한 빈만 올린다** — 전체 컴포넌트 스캔/자동설정을 타지 않으므로 빠르지만, 자동설정·컴포넌트 스캔·`@Conditional`·빈 와이어링 오류는 **잡지 못한다**.
@@ -144,7 +144,7 @@
 | user | ✓ | ✗ | ✓ | ✓ | 어댑터 테스트는 mock 기반(단위). E2E는 `UserControllerWebMvcTest` |
 | chat | ✓ | ✓ | ✓ | ✓ | Mongo/Redis 어댑터·리포지토리 Testcontainer 통합 |
 | market | ✓ | ✗ | ✓ | ✓ | JPA 어댑터는 mock(단위). DB 통합은 부팅 스모크로만 |
-| market-detection | ✓ | ✓ | — | ✓ | Kafka Streams `TopologyTestDriver`·Upbit 외부 통합. 웹 없음(E2E 해당 없음) |
+| market-detection | ✓ | ✓ | — | ✓ | 도메인 계산 단위 + Streams `TopologyTestDriver`. 수집 테스트는 upbit-connector로 이동 |
 | notification | ✓ | ✓ | ✓ | ✓ | Mongo 리포지토리 Testcontainer 통합 |
 | websocket-gateway | ✓ | ✗ | ✗ | ✓ | 어댑터·세션 캐시 단위. 통합/E2E 미보유 |
 | oauth2-authorization-server | ✓ | ✓ | ✓ | ✓ | Redis 어댑터 통합, 토큰 엔드포인트 통합/E2E |
@@ -153,6 +153,7 @@
 | spring-cloud-config | ✓ | ✗ | ✓ | ✓ | Vault Transit 서명·JWKS 단위, `JwksControllerTest` E2E |
 | outbox-poller | ✓ | ✗ | ✗ | ✓ | 스케줄러·발행 단위 |
 | spring-cloud-eureka-server | ✗ | ✗ | ✗ | ✓ | 자체 로직 없음 → 부팅 스모크만 |
+| upbit-connector | ✓ | ✓ | ✗ | ✓ | 종목별 7초 최신값·느린 발행 latest 1개는 `StepVerifier` 가상 시계, 발행 wire 계약은 Kafka Testcontainer |
 | common-* | ✓ | ✓ | ✓ | — | 라이브러리(실행 모듈 아님). ReadReplica·RedisCluster 통합, actuator WebFlux E2E, ArchUnit |
 
 - ✓ 있음 / ✗ 없음 / △ 부분(slice) / — 해당 없음.

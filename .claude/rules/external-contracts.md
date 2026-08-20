@@ -30,6 +30,10 @@
 ### Kafka
 - topic/binding/destination/header/`__TypeId__`/payload 변경은 producer·consumer 타입 일치와 DLQ 영향을 함께 본다.
 - 헤더 계약: `transaction_id`, `dlq_id`, `__TypeId__`, `KafkaHeaders.KEY`.
+- **`__TypeId__`는 바인딩 구성에 따라 wire까지 가지 않는다.** `KafkaEventFactory`가 Spring 메시지에 넣더라도, 바인딩에 `value.serializer`(JsonSerializer)를 지정하면 직렬화기가 타입 헤더 소유권을 가져가 값이 사라지거나 payload 런타임 클래스로 덮인다(`spring.json.add.type.headers=true`인 경우). 오버라이드가 없는 바인딩(payload = JSON 문자열, binder 기본 StringSerializer)에서만 넣은 값이 그대로 전달된다.
+  - 헤더 기반 역직렬화: outbox 계열(chat·notification 소비자, `spring.json.trusted.packages: "*"`).
+  - 선언 타입 기반 역직렬화: `upbit-ticker-event`(Kafka Streams 함수 시그니처 타입). 이 토픽 소비자는 헤더에 의존하지 않는다.
+  - 실측 근거와 재현 테스트: `docs/modules/UPBIT_CONNECTOR.md` §6.1, `KafkaUpbitTickerPublishIntegrationTest`.
 - 직접 발행보다 Outbox 흐름(domain event → Outbox → poller → Kafka)을 우선 보존한다.
 
 ### Redis

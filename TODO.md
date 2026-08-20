@@ -82,10 +82,6 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 
 ### CI/CD (공통)
 
-#### 4.1 배포 대상 누락
-`cd.yml` 배포 대상 드롭다운에 `notification-service`, `market-detection` 없음(둘 다 Dockerfile/이미지 존재). 배포 갭 확인 필요.
-`[출처: SERVICE_FLOWS.md #7, ARCHITECTURE.md #5, docs/CI_CD.md §3]`
-
 #### 4.7 fork PR 은 이미지 승격 경로를 못 탄다
 `ci.yml` 의 머지 승격은 PR 실행이 `pr-<번호>` 이미지를 레지스트리에 push 해둔 것을 전제로 한다. **fork PR 은 GitHub 이 시크릿을 주지 않아 push 가 불가능**하므로(보안 설계) 빌드만 하고 끝나며, 머지 시 승격 대상이 없어 풀빌드로 떨어진다. 현재는 모든 PR 이 같은 저장소 브랜치에서 오므로 실사용 영향이 없다.
 
@@ -97,6 +93,41 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 
 도입하려면 룰셋에 merge queue 를 설정하고 `auto-pr.sh` 훅의 auto-merge 흐름(`gh pr merge --auto --squash`)과 맞물리는 부분을 함께 손봐야 한다. 승격 로직(`merge-ci` 의 `Resolve promotion source`)을 제거할 수 있는지도 함께 판단한다. 지금 구조가 동작하고 있으므로 급하지 않다.
 `[출처: docs/CI_CD.md §2.1 / #207 설계 논의]`
+
+#### 4.9 upbit-connector 첫 배포 전 초기화 필요
+`cd.yml` 배포 대상 등록과 infra 저장소의 safe-recreate 스크립트는 추가됐다. 다만 스크립트가 rollback 기준으로 읽는 `service/.deploy/upbit-connector.current-image`(git 미추적)가 러너에 없으면 **첫 배포가 실패한다**. 최초 1회 현재 이미지 다이제스트로 생성해야 한다(스크립트가 안내 메시지를 출력한다). 생성 시점·값 확인 필요.
+`[출처: docs/modules/UPBIT_CONNECTOR.md §10]`
+
+#### 4.11 upbit-connector REST 조회 API 미구현(2단계)
+`upbit-connector`는 현재 WebSocket 수집·Kafka 발행만 한다. 도입 당시 합의한 2단계 — **Upbit REST 조회(캔들·호가 등)를 조합해 응답하는 API** — 는 아직 없다. 프론트 차트에 필요한 과거 데이터를 줄 곳이 없는 상태가 유지된다.
+- 착수 시 함께 볼 것: Upbit REST 요청 제한(공식 문서 기준 확인 필요)과 그 구현 위치, 응답 캐시(Redis reactive 여부), Gateway route·CORS(외부 계약 → `.claude/rules/external-contracts.md`).
+- **예외 처리 계층이 없다.** 이 서비스는 HTTP 엔드포인트가 없어 지금은 필요 없지만, REST를 열면 응답 형식을 맞출 곳이 필요하다. `common-web/GlobalExceptionHandler`는 MVC 어댑터(`*-adapter-in`)만 쓰고 서블릿 계열 예외를 다루므로 WebFlux에서 그대로 재사용할지, WebFlux 전용 advice(또는 `ErrorWebExceptionHandler`)를 둘지 확인 필요. `common-grpc`의 gRPC advice는 gRPC 서버가 없어 무관.
+- 설계 메모: 캔들은 `to` 파라미터로 과거를 거슬러 여러 번 호출해야 하며 `Flux.expand`로 표현 가능. 동일 구간 동시 요청은 `Mono.cache()`로 합칠 수 있다. 둘 다 미검증 아이디어다.
+`[출처: docs/modules/UPBIT_CONNECTOR.md §2·§6 / 모듈 도입 논의]`
+
+#### 4.12 에러를 로그로만 삼키는 지점에 알림 경로가 없다
+여러 지점이 예외를 잡아 `log.error`만 남기고 흐름을 이어간다. 로그는 남지만 **아무도 모른다**. 현재 모니터링 스택은 Prometheus + Grafana + exporter뿐이고 **Alertmanager도 alert 룰도 없다**(infra 저장소 `monitoring/`).
+
+**방식 결정 필요.** 일반적인 선택지는 셋이다.
+1. **메트릭 기반**(권장): 앱은 실패를 Micrometer 카운터로만 올리고, Prometheus 스크랩 → Grafana Alerting 또는 Alertmanager가 임계·지속시간 룰로 판단해 Slack 등으로 발송. 알림 폭주 억제(그룹핑·억제·무음)와 채널 변경이 앱 재배포와 분리된다. 이 저장소는 이미 Prometheus/Grafana가 있어 추가 비용이 가장 작다.
+2. **로그 기반**: 수집기(Loki/ELK)에서 ERROR 패턴으로 알림. 이 저장소는 로그·트레이스 스택을 제거해 메트릭 전용이라 새 스택 도입이 선행된다.
+3. **앱에서 직접 Slack webhook 호출**: 구현은 가장 짧지만 재시도·레이트리밋·중복 억제가 앱 책임이 되고, 장애 시 알림이 함께 죽는다. 지양.
+
+**적용 대상**(전체 스캔 결과. `log.error`만 남기고 계속 진행하는 지점)
+
+| 위치 | 상황 | 지금 | 알림이 필요한 이유 |
+|---|---|---|---|
+| `upbit-connector` `UpbitTickerCollectStarter.logStreamTermination` | 수집 스트림 종료 | 로그 | **수집 전면 중단**. 재구독 없이 끝나 시세가 끊긴다 |
+| `upbit-connector` `UpbitTickerCollectService.logPublishFailure` | ticker Kafka 발행 실패 | 로그 후 계속 | 지속되면 탐지 입력이 비는데 서비스는 살아 있어 보인다 |
+| `upbit-connector` `UpbitWebsocketTickerStreamAdapter.logRetry` | WS 재연결 시도 | 로그 | 반복되면 Upbit 장애·차단 징후. 1회는 정상, 지속이 신호 |
+| `common-outbox` `OutboxEventListListener` | 직렬화·DB 저장 실패 | 로그 | **이벤트 유실**. Outbox에 안 들어가면 재발행 경로가 없다 |
+| `common-outbox` `DlqEventListListener` | DLQ 적재 실패 | 로그 | 마지막 안전망이 뚫린다 |
+| `chat-application` `ChatMessageEventService` · `ChatRoomEventService` | 보상(recover) 실패 | 로그 | 캐시-우선 쓰기의 정합성 복구가 실패한 상태로 남는다 |
+| `chat-adapter-in` `GrpcChatMessageExceptionAdvice` | 보상 실패 | 로그 | 위와 같음 |
+| `websocket-gateway` `Stomp*Adapter` 3종 | STOMP 푸시 실패 | 로그 | 사용자가 알림·메시지를 못 받는데 서버는 정상으로 보인다 |
+
+착수 시: 각 지점에 카운터를 먼저 심고(이름 규약 필요), 그 다음 룰·채널을 정한다. 카운터 없이 룰부터 만들 수 없다.
+`[출처: 2026-08-19 전체 `log.error` 스캔 / infra `monitoring/` 구성 확인]`
 
 ### oauth2-authorization-server
 

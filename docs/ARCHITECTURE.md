@@ -15,13 +15,13 @@
 - 인프라: Eureka(서비스 디스커버리), Spring Cloud Config(git + Vault), gRPC(net.devh), Kafka(Spring Cloud Stream / Kafka Streams), MySQL, MongoDB, Redis Cluster + Redisson
 - 주요 라이브러리 버전: gRPC 1.64.0 / protobuf 3.25.3 / grpc-spring 3.1.0.RELEASE / Kafka 3.8.0 / Redisson 3.40.0 / Spring Vault 4.0.2 / OkHttp 4.12.0 / Caffeine 3.1.8 / ArchUnit 1.4.2 / Testcontainers 1.21.0 (`gradle/libs.versions.toml`)
 
-발견된 Gradle 프로젝트: 루트 포함 **77개**(root + 76 subproject, `settings.gradle`). 실행 가능한 Spring Boot 애플리케이션은 **12개**다.
+발견된 Gradle 프로젝트: 루트 포함 **88개**(root + 87 subproject, `./gradlew projects` 실측). 실행 가능한 Spring Boot 애플리케이션은 **13개**다.
 
 ---
 
 ## 2. 시스템 구성
 
-12개 실행 서비스와 인프라 구성 요소는 다음과 같다.
+13개 실행 서비스와 인프라 구성 요소는 다음과 같다. 이 브랜치는 수집 책임 이관의 과도기라 `upbit-connector`와 기존 `market-detection` 수집기가 모두 `upbit-ticker-event`를 발행하며, 후속 이관 브랜치에서 기존 producer를 제거한다.
 
 ```
                          [ Frontend / Client ]
@@ -38,7 +38,9 @@
    oauth2-authorization-server (gRPC auth.v1)   ...
              │
    ───────────────────────── 비동기(Kafka) ─────────────────────────
-   market-detection → (price-alert-detected-event) → notification → (web-notification-broadcast-event) → websocket-gateway
+   upbit-connector ─┐
+                    ├→ (upbit-ticker-event) → market-detection → (price-alert-detected-event) → notification → (web-notification-broadcast-event) → websocket-gateway
+   market-detection legacy collector ─┘
    각 서비스 Outbox → outbox-poller → Kafka → 소비 서비스
 
    인프라: spring-cloud-eureka-server(디스커버리) · spring-cloud-config(Config+Vault)
@@ -92,7 +94,7 @@
 
 ## 4. 서비스 카탈로그
 
-실행 애플리케이션 12개. 클래스는 모두 `org.example.*.Main`(`@SpringBootApplication`). **서버 port는 로컬 yml이 아니라 원격 Config(`git-config-repo`)에서 주입되므로 로컬 코드만으로는 확인 불가**이며, 예외로 `spring-cloud-config`만 `server.port: 8888`을 로컬에 명시한다.
+실행 애플리케이션 13개. 클래스는 모두 `org.example.*.Main`(`@SpringBootApplication`). **서버 port는 로컬 yml이 아니라 원격 Config(`git-config-repo`)에서 주입되므로 로컬 코드만으로는 확인 불가**이며, 예외로 `spring-cloud-config`만 `server.port: 8888`을 로컬에 명시한다.
 
 | 서비스 | 실행 모듈 | app name | 저장소/외부 | gRPC 서버 | gRPC 클라이언트 소비 |
 |---|---|---|---|---|---|
@@ -103,11 +105,12 @@
 | chat | chat-bootstrap | chat-service | MongoDB, Redis | `chatmessage.v1` | — |
 | websocket-gateway | …-bootstrap | websocket-gateway | Redis | — | `chatmessage.v1` |
 | market | market-bootstrap | market-service | MySQL | `market.v1` | — |
-| market-detection | …-bootstrap | market-detection | Upbit WebSocket | — | `market.v1` |
+| market-detection | …-bootstrap | market-detection | Upbit WebSocket, Kafka Streams 상태 | — | `market.v1` |
 | notification | notification-bootstrap | notification-service | MongoDB | — | `market.v1` |
 | outbox-poller | (단일) | outbox-poller | MySQL, Kafka | — | — |
 | spring-cloud-config | …-bootstrap | (config server) | git, Vault | — | — |
 | spring-cloud-eureka-server | (단일) | eureka-server | — | — | — |
+| upbit-connector | …-bootstrap | upbit-connector | Upbit WebSocket | — | `market.v1` |
 
 특이 애노테이션: chat/outbox-poller `@EnableScheduling`, spring-cloud-config `@EnableConfigServer`, eureka-server `@EnableEurekaServer`.
 
@@ -120,11 +123,12 @@
 - **chat**: 채팅방/메시지. MongoDB + Redis 캐시, gRPC `chatmessage.v1`, Outbox → Kafka, DLQ 소비. 쓰기는 캐시-우선 + Outbox, 영속은 Kafka consumer가 비동기 수행. (`chat/chat-adapter-in`, `chat/chat-adapter-out/.../persistence/MongoChatMessageAdapter.java`) — **상세: `docs/modules/CHAT.md`**
 - **websocket-gateway**: STOMP 게이트웨이. `chatmessage.v1` gRPC 클라이언트, Kafka broadcast consumer(인스턴스별 group) → 로컬 세션 보유자에게 STOMP push, 세션 위치 로컬+Redis(`{session}`). (`websocket-gateway/.../adapter/in/websocket/`, `.../adapter/in/stream/KafkaWebsocketGatewayBinder.java`) — **상세: `docs/modules/WEBSOCKET_GATEWAY.md`**
 - **market**: 마켓 카탈로그·가격알림 설정. MySQL, gRPC `market.v1`(MarketService, PriceAlertSettingService), Caffeine 캐시 + `market-broadcast-event`로 인스턴스별 캐시 무효화. (`market/market-adapter-in/.../grpc/`) — **상세: `docs/modules/MARKET.md`**
-- **market-detection**: Upbit WebSocket 수집 + Kafka Streams 변동률 탐지 → `PriceAlertDetectedEvent` 발행. 축소형(-bootstrap/-contract), market gRPC로 구독 대상 조회. (`market-detection/.../upbit/`, `.../adapter/in/stream/KafkaMarketDetectionBinder.java`) — **상세: `docs/modules/MARKET_DETECTION.md`**
+- **market-detection**: 기존 Upbit 수집·worker 발행과 Kafka Streams 변동률 탐지를 함께 수행한다. 이 브랜치에서는 `upbit-connector`와 같은 토픽을 발행하며, 후속 이관 브랜치가 수집 코드를 제거한다. (`market-detection-bootstrap/.../upbit/`, `.../adapter/in/stream/KafkaMarketDetectionBinder.java`) — **상세: `docs/modules/MARKET_DETECTION.md`**
 - **notification**: 알림 생성·저장·전달. Kafka consumer(`price-alert-detected-event`), MongoDB, `market.v1`(수신자 조회) gRPC 클라이언트, Outbox → `web-notification-broadcast-event`. (`notification/.../adapter/in/stream/KafkaNotificationBinder.java`, `notification/notification-adapter-out/.../grpc/PriceAlertRecipientQueryAdapter.java`) — **상세: `docs/modules/NOTIFICATION.md`**
 - **outbox-poller**: 모든 서비스의 Outbox/DLQ 레코드를 폴링 → Kafka 발행. `EventPublisherPort` 빈 보유 유일 서비스, dispatchType별(GENERAL/BROADCAST) 분리 폴링. (`outbox-poller/.../outbox/OutboxEventScheduler.java`, `.../infra/event/KafkaEventPublisher.java`) — **상세: `docs/modules/OUTBOX_POLLER.md`**
 - **spring-cloud-config**: Config Server(git + Vault), JWKS 엔드포인트, Vault Transit 서명 대행. (`spring-cloud-config/.../jwks/adapter/in/JwksController.java`, `-adapter-out/.../vault/`) — **상세: `docs/modules/SPRING_CLOUD_CONFIG.md`**
 - **spring-cloud-eureka-server**: 서비스 디스커버리(HTTP `lb://` + gRPC metadata 기반). (`spring-cloud-eureka-server/.../Main.java`, `git-config-repo/infrastructure/eureka-{server,client}.yml`) — **상세: `docs/modules/EUREKA_SERVER.md`**
+- **upbit-connector**: Upbit 외부 API 통신 전담 WebFlux 서비스. Reactor Netty로 실시간 시세를 수집해 종목별 스로틀을 적용하고 `upbit-ticker-event`로 발행한다(market-detection 소비). (`upbit-connector/upbit-connector-adapter-out/.../UpbitWebsocketTickerStreamAdapter.java`, `-application/.../UpbitTickerCollectService.java`) — **상세: `docs/modules/UPBIT_CONNECTOR.md`**
 
 ---
 
@@ -176,7 +180,7 @@ proto 4개(`protobuf/src/main/proto/**`)와 서버/클라이언트 매핑:
 
 | proto | 서버 구현 모듈 | 클라이언트 소비 모듈 |
 |---|---|---|
-| `market.v1`(MarketService.GetEnabledMarkets, PriceAlertSettingService.FindReceiverIds) | market-adapter-in | notification-adapter-out, market-detection, market 자체 |
+| `market.v1`(MarketService.GetEnabledMarkets, PriceAlertSettingService.FindReceiverIds) | market-adapter-in | notification-adapter-out, market-detection, upbit-connector, market 자체 |
 | `chatmessage.v1`(save, HardDelete) | chat-adapter-in | websocket-gateway-adapter-out |
 | `user.v1`(FindByEmail, SignUpOauth2) | user-adapter-in | oauth2-authorization-server, oauth2-client |
 | `auth.v1`(Access/Refresh/Blacklist/AuthorizedClient) | oauth2-authorization-server-adapter-in | spring-cloud-api-gateway, oauth2-client |
@@ -187,8 +191,8 @@ proto 4개(`protobuf/src/main/proto/**`)와 서버/클라이언트 매핑:
 
 - 공통 설정: `git-config-repo/infrastructure/kafka.yml`(멱등 producer acks=all, JsonDeserializer, isolation read_committed).
 - 이벤트 헤더 계약(`common-core/KafkaHeaderKey`): `transaction_id`, `__TypeId__`, `dlq_id`, `KafkaHeaders.KEY`(partition key).
-- 토픽 카탈로그(`common-core/KafkaTopic`): `chatroom-event(.dlq)`, `chatroom-broadcast-event`, `chatmessage-event(.dlq)`, `chatmessage-broadcast-event`, `notification-event(.dlq)`, `web-notification-broadcast-event`, `market-broadcast-event`, `price-alert-detected-event`. market-detection 내부: `upbit-ticker-event`(worker publisher 출력이자 Kafka Streams 입력).
-- Kafka Streams: `market-detection`의 `KafkaMarketDetectionBinder` + `UpbitTickerProcessor`(WindowStore `upbit-ticker-store`로 이동평균·변동률 계산).
+- 토픽 카탈로그(`common-core/KafkaTopic`): `chatroom-event(.dlq)`, `chatroom-broadcast-event`, `chatmessage-event(.dlq)`, `chatmessage-broadcast-event`, `notification-event(.dlq)`, `web-notification-broadcast-event`, `market-broadcast-event`, `price-alert-detected-event`. `upbit-ticker-event`는 `upbit-connector`와 기존 market-detection worker가 함께 발행하고 market-detection Kafka Streams가 소비한다(후속 이관에서 producer 단일화).
+- Kafka Streams: `market-detection`의 `KafkaMarketDetectionBinder` + `UpbitTickerProcessor`가 WindowStore `upbit-ticker-store`에 표본을 저장하고 이동평균·변동률을 계산한다.
 
 ### 7.3 REST
 
@@ -243,7 +247,7 @@ Spring `ApplicationEventPublisher`를 직접 쓰지 않고 `EventUtils.raise(lis
 - Config Server 백엔드: git(`${CONFIG_REPO_URI}`, 검색 경로 root/`dynamic`/`infrastructure`, label `main`) + Vault(AppRole, KV v2 `secret`, Transit 서명). (`spring-cloud-config/.../bootstrap/src/main/resources/application.yml`)
 - 설정 저장소 `git-config-repo/`:
   - `application.yml`: 모든 Config Client에 공통 병합되는 URI 레지스트리와 공유 REST/WebSocket 경로 계약
-  - `dynamic/`(12): `api-gateway.yml`, `chat-service.yml`, `idgen.yml`, `jwt.yml`, `market-detection.yml`, `market-service.yml`, `notification-service.yml`, `oauth2-authorization-server.yml`, `oauth2-client.yml`, `outbox-poller.yml`, `user-service.yml`, `websocket-gateway.yml`
+  - `dynamic/`(13): `api-gateway.yml`, `chat-service.yml`, `idgen.yml`, `jwt.yml`, `market-detection.yml`, `market-service.yml`, `notification-service.yml`, `oauth2-authorization-server.yml`, `oauth2-client.yml`, `outbox-poller.yml`, `upbit-connector.yml`, `user-service.yml`, `websocket-gateway.yml`
   - `infrastructure/`(8): `eureka-client.yml`, `eureka-server.yml`, `frontend.yml`, `kafka.yml`, `mongo.yml`, `monitoring.yml`, `mysql.yml`, `redis.yml`
 - 실제 secret은 git-config-repo에 커밋되지 않고 `${...}` 플레이스홀더만 존재(Vault에서 주입). 보안 상세는 `.claude/rules/security.md` 참고.
 
@@ -257,7 +261,7 @@ Spring `ApplicationEventPublisher`를 직접 쓰지 않고 `EventUtils.raise(lis
 - CI task(루트 `build.gradle`): 서비스별 `chatCi`·`userCi`·`marketCi`·`notificationCi`·`oauth2AuthorizationServerCi`·`oauth2ClientCi`·`websocketGatewayCi`·`gatewayCi`·`springCloudConfigCi`·`marketDetectionCi`·`outboxPollerCi`·`eurekaServerCi`, 전체 집계 `serviceCi`. 각 CI가 `:common:common-arch-test:test`(ArchUnit)를 포함. `commonCi`/`protobufCi`는 없음.
 - 영향 모듈 계산: `scripts/ci/affected_modules.py`(CLI)와 `affected_modules_core.py`(계산 로직)가 변경 파일 → 영향 모듈 → Gradle/Docker 대상을 산출.
 - GitHub Actions 8개(`.github/workflows/`): `ci-pr.yml`(PR 검증), `ci-merge.yml`(머지 승격/fallback), `ci-full-rebuild.yml`(수동 전체 재빌드), `cd.yml`(수동 배포), `pr-cleanup.yml`, `spring-cloud-config-bus.yml`, `production-environment-test.yml`, `self-hosted-runner-test.yml`.
-- Dockerfile 12개(bootstrap/단일 실행 모듈마다, `FROM eclipse-temurin:17-jre`). **repo 내 docker-compose 파일은 없음**(compose는 별도 infra repo).
+- Dockerfile 13개(bootstrap/단일 실행 모듈마다, `FROM eclipse-temurin:17-jre`). **repo 내 docker-compose 파일은 없음**(compose는 별도 infra repo).
 - proto 생성: `protobuf` 모듈이 `com.google.protobuf`로 stub 생성 후 `protos`를 mavenLocal에 publish.
 
 ---

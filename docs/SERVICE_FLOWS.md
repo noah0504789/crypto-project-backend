@@ -173,14 +173,19 @@ outbox-poller:
 ## 11. Upbit WebSocket 데이터 수집 — 구현됨
 
 ```
-Upbit WebSocket (OkHttp)
- → UpbitWebsocketClientStarter / UpbitWebsocketListener / UpbitWebsocketService (ticker 구독·역직렬화)
- → UpbitTickerCoalescingBuffer (종목별 최신 ticker + shared ready key queue)
- → UpbitTickerPublisher worker pool (BlockingQueue.take, StreamBridge)
+market gRPC GetEnabledMarkets (boundedElastic)
+ → Upbit WebSocket (Reactor Netty)
+ → UpbitWebsocketTickerStreamAdapter (ticker 구독·역직렬화·재연결)
+ → UpbitTickerCollectService (종목별 sample + onBackpressureLatest)
+ → KafkaUpbitTickerPublishAdapter (StreamBridge, boundedElastic)
  → Kafka(upbit-ticker-event)
 ```
 
-근거: `market-detection/market-detection-bootstrap/.../upbit/{UpbitWebsocketClientStarter,UpbitWebsocketListener,UpbitWebsocketService,UpbitTickerCoalescingBuffer,UpbitTickerPublisher}.java`.
+근거: `upbit-connector/upbit-connector-adapter-out/.../upbit/{UpbitWebsocketTickerStreamAdapter,UpbitTickerCollectStarter,KafkaUpbitTickerPublishAdapter}.java`, `upbit-connector-application/.../UpbitTickerCollectService.java`.
+
+종목별 첫 ticker로 Flux 그룹이 만들어진 시점부터 7초 구간을 세며, 각 구간의 최신값 최대 1개만 발행한다. Kafka가 느리면 같은 종목의 대기값은 최신 하나로 교체되지만, 실제 Kafka 발행 완료 시점 기준의 정확한 7초 간격을 보장하는 정책은 아니다(→ `docs/modules/UPBIT_CONNECTOR.md` §4.1).
+
+> 이 브랜치에는 기존 `market-detection`의 OkHttp·coalescing buffer·worker producer도 남아 있어 같은 토픽을 함께 발행한다. 후속 수집 이관 브랜치가 기존 producer를 제거한다.
 
 ---
 

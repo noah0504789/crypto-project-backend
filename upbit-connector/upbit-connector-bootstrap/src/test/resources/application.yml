@@ -1,0 +1,35 @@
+# 스모크 테스트 전용. main의 application.yml(Config Server import)을 test classpath에서 덮어써,
+# Config Server 대신 실제 git-config-repo 파일을 직접 import 한다(${smoke.config.repo}는 Gradle이 주입).
+spring:
+  application.name: upbit-connector
+  config:
+    import:
+      - optional:file:${smoke.config.repo}/application.yml
+      - optional:file:${smoke.config.repo}/infrastructure/eureka-client.yml
+      - optional:file:${smoke.config.repo}/infrastructure/kafka.yml
+      - optional:file:${smoke.config.repo}/infrastructure/monitoring.yml
+      - optional:file:${smoke.config.repo}/dynamic/upbit-connector.yml
+  cloud:
+    config:
+      enabled: false
+    bus:
+      enabled: false
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+# eureka-client.yml의 instance metadata가 참조하는 값. 이 서비스는 gRPC 서버를 열지 않는다.
+grpc:
+  server:
+    port: 0
+
+deployment:
+  control-token: smoke-test
+
+# 스모크는 컨텍스트 부팅만 검증한다. 실제 Upbit WebSocket에 접속하지 않도록 수집기를 끈다.
+upbit:
+  websocket:
+    enabled: false

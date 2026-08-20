@@ -120,7 +120,7 @@ GitHub Actions 캐시는 브랜치 스코프라 **PR 이 만든 캐시를 머지
 **수동 전용 운영 배포**. self-hosted 러너 `[local, backend]` + `environment: production`(승인 게이트).
 
 - 입력:
-  - `service`: 배포 대상(choice, 아래 10종)
+  - `service`: 배포 대상(choice, 13종)
   - `image_tag`: 배포할 Docker 태그(기본 `latest`)
   - `scale`: blue/green 서비스의 목표 컨테이너 수(`current` 또는 `1`~`5`). recreate 계열은 무시됨.
 - 흐름: 입력 출력 → Docker 접근 확인 → infra 저장소 갱신(`INFRA_REPO_DIR`에서 `git pull --ff-only`) → `$INFRA_REPO_DIR/service`에서 서비스별 배포 스크립트 실행.
@@ -147,7 +147,7 @@ GitHub Actions 캐시는 브랜치 스코프라 **PR 이 만든 캐시를 머지
 예: `git-config-repo/dynamic/market-detection.yml`의 변동률 임계값이나 `api-gateway.yml`의 라우팅/CORS를 바꿔 main에 push하면, 재배포 없이 실행 중인 인스턴스가 새 값을 재로딩한다.
 
 ### 어떻게 동작하나
-- 실행 서비스 11개(**eureka-server 제외**)와 Config Server가 모두 `spring-cloud-starter-bus-kafka`를 포함해 **같은 Kafka Bus에 연결**돼 있다(각 `*-bootstrap/build.gradle`).
+- 실행 서비스 11개(**eureka-server·upbit-connector 제외**)와 Config Server가 모두 `spring-cloud-starter-bus-kafka`를 포함해 **같은 Kafka Bus에 연결**돼 있다(각 `*-bootstrap/build.gradle`). `upbit-connector`는 수집 파이프라인이 기동 시 조립돼 busrefresh로 값이 바뀌지 않으므로 의도적으로 제외했다(→ `docs/modules/UPBIT_CONNECTOR.md` §7.1).
 - Config Server는 busrefresh 액추에이터를 노출한다(`management.endpoints.web.exposure.include: health,info,busrefresh`).
 - `POST /actuator/busrefresh` → Config Server가 `RefreshRemoteApplicationEvent`를 Kafka Bus로 **브로드캐스트** → Bus에 붙은 모든 서비스가 수신 → 각자 Config Server에서 설정을 **재조회**하고 빈을 리바인딩한다. (로컬 `/actuator/refresh`가 호출된 단일 인스턴스만 갱신하는 것과 달리, `busrefresh`는 bus 전체에 전파된다.)
 - 갱신되는 값은 `@ConfigurationProperties` 바인딩(예: `*Properties`)이다. 이 코드베이스는 `@RefreshScope`를 쓰지 않으므로(0건), refresh 시 `@ConfigurationProperties` 리바인딩으로 반영된다.
@@ -188,10 +188,10 @@ git-config-repo/dynamic/*.yml 수정 → main push
 - GitHub Secrets: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`(태그 삭제를 위해 **Read/Write/Delete** 스코프), `DEPLOY_TOKEN`, `VAULT_ROLE_ID`, `VAULT_SECRET_ID`.
 - GitHub Variables(vars): `INFRA_REPO_DIR`, `CONFIG_REPO_URI`, `CONFIG_SERVER_URL`.
 - CI 스크립트(`scripts/ci/`): `affected_modules.py`는 유일한 CLI 엔트리, `affected_modules_core.py`는 계산 로직이다. 변경 파일 → 영향 모듈 → Gradle task(`--mode build`) 또는 Docker 대상(`--mode docker`)을 산출한다.
-- Dockerfile: 각 실행 모듈 디렉토리(`docs/ARCHITECTURE.md §10`, 12개). docker-compose·배포 스크립트는 별도 infra 저장소.
+- Dockerfile: 각 실행 모듈 디렉토리(`docs/ARCHITECTURE.md §10`, 13개). docker-compose·배포 스크립트는 별도 infra 저장소.
 
 ## 7. 확인 필요
 
 확인 필요·미결 항목의 단일 관리처는 `TODO.md`다(이 문서는 번호만 참조).
 
-- CD 배포 대상 드롭다운(`cd.yml`)에 `notification`·`market-detection` 없음 → **TODO 4.1 배포 대상 누락**.
+- CD 배포 대상 드롭다운(`cd.yml`)은 실행 서비스 13종을 모두 포함한다(2026-08-19 확인).
