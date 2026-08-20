@@ -13,7 +13,7 @@ public class GrpcBlacklistTokenClientAdapter {
 
     public Mono<Boolean> existsByAccessToken(String accessToken) {
         return Mono.defer(() -> Mono.fromFuture(
-                authorizationServerClient.existsBlacklistAsync(accessToken)
-        ));
+                authorizationServerClient.existsBlacklist(accessToken)
+        )).map(response -> response.getValue());
     }
 }

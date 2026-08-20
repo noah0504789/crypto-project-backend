@@ -1,6 +1,7 @@
 package org.example.oauth2.client.token.adapter.out.grpc;
 
 import lombok.RequiredArgsConstructor;
+import org.example.common.grpc.client.GrpcFutures;
 import org.example.oauth2.authorizationserver.client.Oauth2AuthorizationServerClient;
 import org.example.oauth2.client.token.application.port.out.AuthServerTokenPort;
 import org.springframework.stereotype.Service;
@@ -15,17 +16,21 @@ public class GrpcAuthServerTokenAdapter implements AuthServerTokenPort {
 
     @Override
     public String findAccessToken(String clientRegistrationId, String username) {
-        return authorizationServerClient.findAccessToken(clientRegistrationId, username);
+        return GrpcFutures.join(
+                authorizationServerClient.findAccessToken(clientRegistrationId, username))
+                .getValue();
     }
 
     @Override
     public String findRefreshToken(String clientRegistrationId, String username) {
-        return authorizationServerClient.findRefreshToken(clientRegistrationId, username);
+        return GrpcFutures.join(
+                authorizationServerClient.findRefreshToken(clientRegistrationId, username))
+                .getValue();
     }
 
     @Override
     public boolean registerBlacklist(String accessToken) {
-        return authorizationServerClient.registerBlacklist(accessToken);
+        return GrpcFutures.join(authorizationServerClient.registerBlacklist(accessToken)).getValue();
     }
 
     @Override
@@ -36,11 +41,13 @@ public class GrpcAuthServerTokenAdapter implements AuthServerTokenPort {
             String accessToken,
             String refreshToken
     ) {
-        return authorizationServerClient.saveTokens(clientRegistrationId, email, claims, accessToken, refreshToken);
+        return GrpcFutures.join(authorizationServerClient.saveTokens(
+                        clientRegistrationId, email, claims, accessToken, refreshToken))
+                .getValue();
     }
 
     @Override
     public boolean removeTokens(String email) {
-        return authorizationServerClient.removeTokens(email);
+        return GrpcFutures.join(authorizationServerClient.removeTokens(email)).getValue();
     }
 }
