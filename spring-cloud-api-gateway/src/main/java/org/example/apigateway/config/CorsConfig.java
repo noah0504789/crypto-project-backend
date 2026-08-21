@@ -30,6 +30,10 @@ public class CorsConfig {
         config.setAllowCredentials(true);
         config.addExposedHeader("Authorization");
         config.addExposedHeader("Set-Cookie");
+        config.addExposedHeader("X-RateLimit-Remaining");
+        config.addExposedHeader("X-RateLimit-Replenish-Rate");
+        config.addExposedHeader("X-RateLimit-Burst-Capacity");
+        config.addExposedHeader("X-RateLimit-Requested-Tokens");
         config.setMaxAge(3600L);
         return config;
     }
