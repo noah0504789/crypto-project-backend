@@ -257,7 +257,7 @@ Spring `ApplicationEventPublisher`를 직접 쓰지 않고 `EventUtils.raise(lis
 > GitHub Actions 워크플로우 8개(CI·CD·config bus refresh·운영 테스트·정리)의 트리거·단계·배포 전략 상세는 **`docs/CI_CD.md`**.
 
 - 확인한 `build.gradle` 78개, `application*.yml` 계열 24개(런타임 12 + 테스트 12).
-- CI task(루트 `build.gradle`): 서비스별 `chatCi`·`userCi`·`marketCi`·`notificationCi`·`oauth2AuthorizationServerCi`·`oauth2ClientCi`·`websocketGatewayCi`·`gatewayCi`·`springCloudConfigCi`·`marketDetectionCi`·`outboxPollerCi`·`eurekaServerCi`, 전체 집계 `serviceCi`. 각 CI가 `:common:common-arch-test:test`(ArchUnit)를 포함. `commonCi`/`protobufCi`는 없음.
+- CI task(루트 `build.gradle`): 서비스별 `chatCi`·`userCi`·`marketCi`·`notificationCi`·`oauth2AuthorizationServerCi`·`oauth2ClientCi`·`websocketGatewayCi`·`apiGatewayCi`·`springCloudConfigCi`·`marketDetectionCi`·`outboxPollerCi`·`eurekaServerCi`, 전체 집계 `serviceCi`. 각 CI가 `:common:common-arch-test:test`(ArchUnit)를 포함. `commonCi`/`protobufCi`는 없음.
 - 영향 모듈 계산: `scripts/ci/affected_modules.py`(CLI)와 `affected_modules_core.py`(계산 로직)가 변경 파일 → 영향 모듈 → Gradle/Docker 대상을 산출.
 - GitHub Actions 8개(`.github/workflows/`): `ci-pr.yml`(PR 검증), `ci-merge.yml`(머지 승격/fallback), `ci-full-rebuild.yml`(수동 전체 재빌드), `cd.yml`(수동 배포), `pr-cleanup.yml`, `spring-cloud-config-bus.yml`, `production-environment-test.yml`, `self-hosted-runner-test.yml`.
 - Dockerfile 13개(bootstrap/단일 실행 모듈마다, `FROM eclipse-temurin:17-jre`). **repo 내 docker-compose 파일은 없음**(compose는 별도 infra repo).

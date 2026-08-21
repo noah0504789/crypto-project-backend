@@ -306,7 +306,7 @@ Gateway가 생성·추가하는 헤더는 다음과 같다. Route·인증·Rate 
 
 - 컴파일: `./gradlew :spring-cloud-api-gateway:compileJava`
 - 테스트: `./gradlew :spring-cloud-api-gateway:test`
-- 서비스 CI: `./gradlew gatewayCi`(루트 `build.gradle:16,48` — `:spring-cloud-api-gateway:build` 포함, 전체 집계 `serviceCi`에도 포함)
+- 서비스 CI: `./gradlew apiGatewayCi`(루트 `build.gradle` — `:spring-cloud-api-gateway:build` 포함, 전체 집계 `serviceCi`에도 포함)
 
 전체 build, 전체 test, `bootRun`, 애플리케이션 실행, 배포는 이 문서 작성 과정에서 실행하지 않았다.
 
