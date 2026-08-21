@@ -44,6 +44,7 @@ api-path:
   auth:
     pattern: /auth/**
     logout: /auth/logout
+    refresh: /auth/refresh
   user:
     base: /user
     sign-up: /sign-up
@@ -75,7 +76,7 @@ api-path:
     notifications-pattern: /notifications/**
   oauth2:
     authorization-base-uri: /oauth2/authorization
-    authorization-pattern: /oauth2/**
+    authorization-pattern: /oauth2/authorization/**
     login-callback-pattern: /login/oauth2/code/**
     login-callback-base-uri: /login/oauth2/code/*
     login-failure-redirect-uri: /login?error
@@ -102,3 +103,21 @@ app:
   grpc:
     oauth2-authorization-server-client:
       deadline: 3500ms
+
+gateway:
+  rate-limit:
+    sign-up: &per-minute
+      replenish-rate: 5
+      burst-capacity: 120
+      requested-tokens: 60
+    oauth2-authorization: *per-minute
+    oauth2-callback: *per-minute
+    token-refresh: *per-minute
+    logout: *per-minute
+    websocket-handshake: &per-second
+      replenish-rate: 2
+      burst-capacity: 5
+      requested-tokens: 1
+    command: *per-second
+    query: *per-second
+    public-query: *per-second
