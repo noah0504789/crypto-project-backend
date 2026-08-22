@@ -14,6 +14,8 @@ import org.example.websocket.gateway.chatmessage.application.service.result.Chat
 import org.example.websocket.gateway.chatmessage.application.service.result.ChatMessageSendResult;
 import org.springframework.stereotype.Service;
 
+import java.util.concurrent.Executor;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -22,15 +24,17 @@ public class ChatMessageSendService implements ChatMessageSendUseCase {
     private final ChatMessageCommandPort chatMessageCommandPort;
     private final ChatMessageAckPort chatMessageAckPort;
     private final ChatMessageMetricsPort chatMessageMetricsPort;
+    private final Executor chatMessageAckExecutor;
 
+    // 콜백 실행 스레드를 명시한다. 생략하면 gRPC 응답 스레드(상한 없는 캐시 풀)에서 돈다.
     @Override
     public void send(ChatMessageSendCommand command) {
         chatMessageCommandPort.save(command)
-                .thenAccept(result -> sendSuccessAck(command, result))
-                .exceptionally(error -> {
+                .thenAcceptAsync(result -> sendSuccessAck(command, result), chatMessageAckExecutor)
+                .exceptionallyAsync(error -> {
                     handleSaveError(command, error);
                     return null;
-                });
+                }, chatMessageAckExecutor);
     }
 
     private void sendSuccessAck(ChatMessageSendCommand command, ChatMessageSendResult result) {

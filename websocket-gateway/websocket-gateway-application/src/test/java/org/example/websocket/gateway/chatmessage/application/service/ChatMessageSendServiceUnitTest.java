@@ -10,11 +10,11 @@ import org.example.websocket.gateway.chatmessage.application.service.command.Cha
 import org.example.websocket.gateway.chatmessage.application.service.result.ChatMessageAckResult;
 import org.example.websocket.gateway.chatmessage.application.service.result.ChatMessageHardDeleteResult;
 import org.example.websocket.gateway.chatmessage.application.service.result.ChatMessageSendResult;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -39,8 +39,17 @@ class ChatMessageSendServiceUnitTest {
     @Mock
     private ChatMessageMetricsPort chatMessageMetricsPort;
 
-    @InjectMocks
     private ChatMessageSendService sut;
+
+    @BeforeEach
+    void setUp() {
+        sut = new ChatMessageSendService(
+                chatMessageCommandPort,
+                chatMessageAckPort,
+                chatMessageMetricsPort,
+                Runnable::run
+        );
+    }
 
     @Test
     @DisplayName("save 성공 시 writer에게 성공 ACK를 전송한다")

@@ -8,6 +8,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import java.util.concurrent.ThreadPoolExecutor;
+
 @EnableAsync
 @Configuration
 public class ExecutorConfig {
@@ -58,18 +60,21 @@ public class ExecutorConfig {
         return executor;
     }
 
-    @Bean("chatSaveExecutor")
-    public ThreadPoolTaskExecutor chatSaveExecutor(MeterRegistry registry) {
+    // gRPC save 응답 콜백(ACK 전송)이 도는 풀. 지정하지 않으면 gRPC 기본 캐시 풀에서 돌아
+    // 부하 시 스레드가 상한 없이 늘어난다. 큐가 차면 호출 스레드가 직접 처리해 ACK를 버리지 않는다.
+    @Bean("chatMessageAckExecutor")
+    public ThreadPoolTaskExecutor chatMessageAckExecutor(MeterRegistry registry) {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setThreadNamePrefix("chat-save-");
+        executor.setThreadNamePrefix("chat-message-ack-");
         executor.setCorePoolSize(8);
         executor.setMaxPoolSize(16);
-        executor.setQueueCapacity(500);
+        executor.setQueueCapacity(2000);
         executor.setKeepAliveSeconds(60);
         executor.setAllowCoreThreadTimeOut(true);
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.initialize();
 
-//        ExecutorServiceMetrics.monitor(registry, executor.getThreadPoolExecutor(), "stomp.broker", Tags.empty());
+        ExecutorServiceMetrics.monitor(registry, executor.getThreadPoolExecutor(), "chat.message.ack", Tags.empty());
 
         return executor;
     }
