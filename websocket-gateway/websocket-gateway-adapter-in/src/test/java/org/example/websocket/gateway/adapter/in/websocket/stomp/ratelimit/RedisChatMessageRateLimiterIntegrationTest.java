@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.example.websocket.gateway.adapter.in.websocket.config.RedisScriptConfig;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ContextConfiguration;
@@ -55,7 +56,7 @@ class RedisChatMessageRateLimiterIntegrationTest {
 
     @EnableAutoConfiguration
     @EnableConfigurationProperties(ChatMessageRateLimitProperties.class)
-    @Import(RedisChatMessageRateLimiter.class)
+    @Import({RedisChatMessageRateLimiter.class, RedisScriptConfig.class})
     static class TestApplication {
     }
 }

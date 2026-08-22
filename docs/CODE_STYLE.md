@@ -428,6 +428,10 @@ enum을 우선 사용할 값:
 - cluster hash tag를 임의 변경하지 않는다.
 - TTL이 필요한 key와 영구 index key를 구분한다.
 - Lua script는 원자성 요구가 있는 곳에만 사용한다.
+- **Lua script를 Java 문자열에 인라인하지 않는다.** `src/main/resources/META-INF/scripts/<name>.lua`에 두고
+  `@Bean("<name>_lua") RedisScript.of(new ClassPathResource("META-INF/scripts/<name>.lua"), <반환타입>.class)`로 등록해 주입받는다.
+  인라인하면 문법 강조·diff·재사용이 모두 죽고, 스크립트가 바뀔 때 클래스가 함께 바뀐다.
+  선례: `chat/chat-adapter-out/.../infra/config/RedisConfig.java`, `websocket-gateway/.../adapter/in/websocket/config/RedisScriptConfig.java`.
 - key 인자 수, hash tag, TTL 정책은 단위 테스트를 작성한다.
 - cache fail-open은 조회에 제한한다. command 실패를 조용히 무시하지 않는다.
 

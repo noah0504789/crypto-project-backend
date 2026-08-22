@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
@@ -19,6 +20,9 @@ import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class RedisChatMessageRateLimiterUnitTest {
+
+    private static final RedisScript<Long> CHAT_MESSAGE_RATE_LIMIT_LUA =
+            RedisScript.of(new ClassPathResource("META-INF/scripts/chatMessageRateLimit.lua"), Long.class);
 
     @Mock
     private StringRedisTemplate redisTemplate;
@@ -71,7 +75,7 @@ class RedisChatMessageRateLimiterUnitTest {
     @SuppressWarnings("unchecked")
     void isAllowed_shouldBypassRedisWhenDisabled() {
         ChatMessageRateLimitProperties properties = new ChatMessageRateLimitProperties(false, null, null);
-        RedisChatMessageRateLimiter rateLimiter = new RedisChatMessageRateLimiter(redisTemplate, properties);
+        RedisChatMessageRateLimiter rateLimiter = new RedisChatMessageRateLimiter(redisTemplate, properties, CHAT_MESSAGE_RATE_LIMIT_LUA);
 
         boolean allowed = rateLimiter.isAllowed("user-1", "room-1");
 
@@ -86,6 +90,6 @@ class RedisChatMessageRateLimiterUnitTest {
                 new ChatMessageRateLimitProperties.Bucket(1, 3),
                 new ChatMessageRateLimitProperties.Bucket(30, 10)
         );
-        return new RedisChatMessageRateLimiter(redisTemplate, properties);
+        return new RedisChatMessageRateLimiter(redisTemplate, properties, CHAT_MESSAGE_RATE_LIMIT_LUA);
     }
 }
