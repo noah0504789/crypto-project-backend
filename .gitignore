@@ -24,6 +24,9 @@ __pycache__/
 .pytest_cache/
 .venv/
 
+# 부하테스트 등 로컬 실행 인증정보
+*.env
+
 # claude
 .claude/settings.local.json
 .claude/pr-draft.md
