@@ -77,6 +77,15 @@ websocket:
     ttl: 3m
 
 app:
+  rate-limit:
+    chat-message:
+      enabled: true
+      user:
+        replenish-rate: 3
+        burst-capacity: 5
+      room:
+        replenish-rate: 30
+        burst-capacity: 10
   grpc:
     chat-client:
       deadline: 10s
