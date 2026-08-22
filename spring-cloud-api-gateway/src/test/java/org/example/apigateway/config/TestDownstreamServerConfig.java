@@ -11,6 +11,7 @@ import reactor.netty.http.server.HttpServer;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 @TestConfiguration
@@ -29,18 +30,31 @@ public class TestDownstreamServerConfig {
         private final AtomicReference<CapturedRequest> lastUserRequest = new AtomicReference<>();
         private final AtomicReference<CapturedRequest> lastChatRequest = new AtomicReference<>();
         private final AtomicReference<CapturedRequest> lastOauth2ClientRequest = new AtomicReference<>();
+        private final AtomicInteger userRequestCount = new AtomicInteger();
+        private final AtomicInteger chatRequestCount = new AtomicInteger();
+        private final AtomicInteger oauth2ClientRequestCount = new AtomicInteger();
 
         private final DisposableServer userServer;
         private final DisposableServer chatServer;
         private final DisposableServer oauth2ClientServer;
 
         public TestDownstreamServers(ObjectMapper objectMapper) {
-            this.userServer = startServer("user-service", lastUserRequest, objectMapper);
-            this.chatServer = startServer("chat-service", lastChatRequest, objectMapper);
-            this.oauth2ClientServer = startServer("oauth2-client", lastOauth2ClientRequest, objectMapper);
+            this.userServer = startServer("user-service", lastUserRequest, userRequestCount, objectMapper);
+            this.chatServer = startServer("chat-service", lastChatRequest, chatRequestCount, objectMapper);
+            this.oauth2ClientServer = startServer(
+                    "oauth2-client",
+                    lastOauth2ClientRequest,
+                    oauth2ClientRequestCount,
+                    objectMapper
+            );
         }
 
-        private DisposableServer startServer(String serviceName, AtomicReference<CapturedRequest> holder, ObjectMapper objectMapper) {
+        private DisposableServer startServer(
+                String serviceName,
+                AtomicReference<CapturedRequest> holder,
+                AtomicInteger requestCount,
+                ObjectMapper objectMapper
+        ) {
             return HttpServer.create()
                     .host("localhost")
                     .port(0)
@@ -53,6 +67,7 @@ public class TestDownstreamServerConfig {
                         );
 
                         holder.set(capturedRequest);
+                        requestCount.incrementAndGet();
 
                         Map<String, Object> body = Map.of(
                                 "service", serviceName,
@@ -101,10 +116,17 @@ public class TestDownstreamServerConfig {
             return lastOauth2ClientRequest.get();
         }
 
+        public int userRequestCount() {
+            return userRequestCount.get();
+        }
+
         public void reset() {
             lastUserRequest.set(null);
             lastChatRequest.set(null);
             lastOauth2ClientRequest.set(null);
+            userRequestCount.set(0);
+            chatRequestCount.set(0);
+            oauth2ClientRequestCount.set(0);
         }
 
         @PreDestroy

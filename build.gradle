@@ -41,7 +41,7 @@ tasks.register("serviceCi") {
             "oauth2AuthorizationServerCi",
             "oauth2ClientCi",
             "springCloudConfigCi",
-            "gatewayCi",
+            "apiGatewayCi",
             "marketCi",
             "marketDetectionCi",
             "upbitConnectorCi",
@@ -74,7 +74,7 @@ tasks.register("eurekaServerCi") {
     )
 }
 
-tasks.register("gatewayCi") {
+tasks.register("apiGatewayCi") {
     group = "verification"
     description = "Runs build and tests for spring cloud api gateway"
 

@@ -1,15 +1,16 @@
 # API_GATEWAY — spring-cloud-api-gateway 상세 기준 문서
 
 > - **문서 상태**: 검증 완료
-> - **기준 브랜치**: `fix/api-gateway-reactive-blacklist`
-> - **기준 일자**: 2026-08-20
+> - **기준 브랜치**: `feat/api-gateway-redis-rate-limiter`
+> - **기준 일자**: 2026-08-21
 > - **검증 기준**: 실제 애플리케이션 코드 및 Config Repository(`git-config-repo/`)
 > - **재검증 조건**: 아래 중 하나라도 변경되면 이 문서를 다시 검증한다.
 >   - Route(`ReactiveRouteConfig`) 변경
 >   - Security matcher(`ReactiveSecurityConfig.authorizeExchange`) 변경
 >   - JWT 검증 체인(`ReactiveJwtDecoderConfig`) 변경
 >   - CORS 설정(`CorsConfig`) 변경
->   - Config Server의 `api-gateway.yml` 또는 `jwt.yml` 변경
+>   - Rate Limit 설정(`RateLimitConfig`, `GatewayRateLimitProperties`) 변경
+>   - Config Server의 `api-gateway.yml`, `jwt.yml` 또는 `redis.yml` 변경
 
 ## 1. 문서 목적과 기준 시점
 
@@ -17,16 +18,16 @@
 
 ## 2. 모듈 역할
 
-Reactive Spring Cloud Gateway 기반 OAuth2 Resource Server. 외부 HTTP·WebSocket 요청의 단일 진입점으로, JWT 검증·사용자 식별 헤더 전파·라우팅·CORS·공개 경로 제어를 담당한다. 하위 서비스(user/chat/oauth2-client/websocket-gateway)의 비즈니스 로직은 다루지 않는다.
+Reactive Spring Cloud Gateway 기반 OAuth2 Resource Server. 외부 HTTP·WebSocket 요청의 단일 진입점으로, JWT 검증·Redis 기반 요청 속도 제한·사용자 식별 헤더 전파·라우팅·CORS·공개 경로 제어를 담당한다. 하위 서비스의 비즈니스 로직은 다루지 않는다.
 
 ## 3. 실행 구조와 주요 의존성
 
 - Gradle 경로: `:spring-cloud-api-gateway` (단일 프로젝트, 서브모듈 분리 없음). 근거: `settings.gradle:55`.
 - 실행 클래스: `org.example.apigateway.Main`(`@SpringBootApplication(scanBasePackages="org.example")`). 근거: `spring-cloud-api-gateway/src/main/java/org/example/apigateway/Main.java`.
 - 배포 대상: `build.gradle:5` `ext.dockerImageName = "crypto-spring-cloud-api-gateway"`. `Dockerfile`(`FROM eclipse-temurin:17-jre`, `EXPOSE 8000`).
-- 주요 의존성(`build.gradle`): `spring-cloud-gateway`, `spring-cloud-loadbalancer`, `spring-boot-starter-webflux`, `spring-boot-starter-security` + `spring-security-oauth2-resource-server`/`-jose`, `spring-cloud-config-client`, `spring-cloud-eureka-client`, `spring-cloud-starter-bus-kafka`, `grpc-netty` + `grpc-client-spring-boot-starter`, `common:common-core`, `common:common-actuator-webflux`, `oauth2-authorization-server:oauth2-authorization-server-client`.
+- 주요 의존성(`build.gradle`): `spring-cloud-gateway`, `spring-cloud-loadbalancer`, `spring-boot-starter-webflux`, `spring-boot-starter-data-redis-reactive`, `spring-boot-starter-security` + `spring-security-oauth2-resource-server`/`-jose`, `spring-cloud-config-client`, `spring-cloud-eureka-client`, `spring-cloud-starter-bus-kafka`, `grpc-netty` + `grpc-client-spring-boot-starter`, `common:common-core`, `common:common-validation`, `common:common-actuator-webflux`, `oauth2-authorization-server:oauth2-authorization-server-client`.
 - 포트: `8000`. Config Server 원격 설정 `git-config-repo/dynamic/api-gateway.yml:2` `server.port: 8000` + HTTP/2·SSL(PKCS12 keystore) 활성(`api-gateway.yml:3-11`). `Dockerfile`의 `EXPOSE 8000`과 일치.
-- Config Server 연동: `spring-cloud-api-gateway/src/main/resources/application.yml:3` `spring.config.import: configserver:http://crypto-spring-cloud-config:8888`, `application.yml:6` `spring.cloud.config.name: api-gateway,eureka-client,jwt,frontend,kafka,monitoring`. 공유 `api-contract.*`는 Config Repository 루트 `application.yml`에서 자동 병합된다.
+- Config Server 연동: `spring-cloud-api-gateway/src/main/resources/application.yml:3` `spring.config.import: configserver:http://crypto-spring-cloud-config:8888`, `application.yml:6` `spring.cloud.config.name: api-gateway,eureka-client,jwt,frontend,kafka,monitoring,redis`. 공유 `api-contract.*`는 Config Repository 루트 `application.yml`에서 자동 병합된다.
 - Eureka Client: 의존성 `spring-cloud-eureka-client` + `git-config-repo/infrastructure/eureka-client.yml`(defaultZone, lease 설정). Route도 `lb://<서비스명>` 형식으로 Eureka 등록 이름을 참조한다.
 
 ## 4. 주요 클래스와 책임
@@ -37,6 +38,8 @@ Reactive Spring Cloud Gateway 기반 OAuth2 Resource Server. 외부 HTTP·WebSoc
 | `ReactiveSecurityConfig` | `src/main/java/org/example/apigateway/config/ReactiveSecurityConfig.java` | `SecurityWebFilterChain`, 경로별 인가, 403 응답 |
 | `ReactiveJwtDecoderConfig` | `src/main/java/org/example/apigateway/config/ReactiveJwtDecoderConfig.java` | JWKS 기반 로컬 검증기와 비동기 blacklist 검증기를 조합 |
 | `CorsConfig` | `src/main/java/org/example/apigateway/config/CorsConfig.java` | CORS 정책 Bean 3종 |
+| `RateLimitConfig` | `src/main/java/org/example/apigateway/ratelimit/RateLimitConfig.java` | IP/User KeyResolver와 Route별 `RedisRateLimiter` Bucket 등록 |
+| `GatewayRateLimitProperties` | `src/main/java/org/example/apigateway/ratelimit/GatewayRateLimitProperties.java` | `gateway.rate-limit.*` 설정 바인딩·양수/Bucket 용량 검증 |
 | `IdentityPropagationGlobalFilter` | `src/main/java/org/example/apigateway/filter/IdentityPropagationGlobalFilter.java` | 일반 HTTP 요청의 클라이언트 `X-User-Id`·`X-From` 제거 + 검증된 JWT `id`로 `X-User-Id` 전파(`GlobalFilter`, `HIGHEST_PRECEDENCE`) |
 | `WebsocketHandshakeAuthWebFilter` | `src/main/java/org/example/apigateway/filter/WebsocketHandshakeAuthWebFilter.java` | WebSocket 핸드셰이크 전용 쿼리 토큰 인증(`WebFilter`, `@Order(-1000)`) |
 | `BlacklistTokenService` | `src/main/java/org/example/apigateway/oauth2/application/service/BlacklistTokenService.java` | `Mono<Boolean>` 기반 블랙리스트 조회 유스케이스 |
@@ -56,6 +59,8 @@ Reactive Spring Cloud Gateway 기반 OAuth2 Resource Server. 외부 HTTP·WebSoc
       Authorization: Bearer <JWT> 헤더에서 토큰 추출(Spring Security 기본 리졸버)
   → [식별 전파] IdentityPropagationGlobalFilter
       exchange.getPrincipal()의 JwtAuthenticationToken → tokenAttributes["id"] → X-User-Id 헤더 set
+  → [속도 제한] RequestRateLimiter → KeyResolver(IP 또는 JWT id) → RedisRateLimiter
+      허용: 다음 Route 필터 실행 / 거부: 429 Too Many Requests
   → [Route 필터] X-From: gateway 추가, (user/chat만) rewritePath, X-Gateway: reactive 응답 추가
   → [전달] Spring Cloud LoadBalancer가 lb://<서비스명>을 Eureka 인스턴스로 해석해 프록시
   → [응답] 정상 응답 그대로 반환 / 401(인증 실패, 기본 처리) / 403(인가 실패, writeError 커스텀)
@@ -74,6 +79,7 @@ Reactive Spring Cloud Gateway 기반 OAuth2 Resource Server. 외부 HTTP·WebSoc
       jwtDecoder.decode(accessToken) 실패 → 401
       id claim 없음/공백 → 401
       성공 → X-User-Id 헤더 set + ReactiveSecurityContextHolder에 JwtAuthenticationToken 주입
+  → RequestRateLimiter가 JWT id 기준으로 handshake 속도 제한
   → ReactiveRouteConfig.websocketGatewayRoutes로 lb:ws://websocket-gateway 또는 lb://websocket-gateway 전달
 ```
 근거: `WebsocketHandshakeAuthWebFilter.java`, `ReactiveRouteConfig.java:49-79`. 쿼리 파라미터 이름은 `AuthTokenKey.ACCESS_TOKEN_QUERY`(`common-core/.../enums/AuthTokenKey.java`) = `access_token`.
@@ -104,7 +110,7 @@ Reactive Spring Cloud Gateway 기반 OAuth2 Resource Server. 외부 HTTP·WebSoc
 | 3 | `/oauth2/**`, `/login/oauth2/code/**` | permitAll |
 | 4 | `GET /ws/info/**` | permitAll |
 | 5 | `/msg/**` | permitAll |
-| 6 | `GET /user/me`, `GET /user/*/profile` | `hasRole(USER)` |
+| 6 | `GET /user/me/profile`, `GET /user/*/profile` | `hasRole(USER)` |
 | 7 | `GET /ws/**`, `/ws-native`, `/ws-native/**` | `hasRole(USER)` |
 | 8 | `GET /chat/rooms/me`, `GET /chat/room/me/*` | `hasRole(USER)` |
 | 9 | `/chat/room/*/members`, `/chat/room/*/activity` | `hasRole(USER)` |
@@ -122,39 +128,79 @@ Reactive Spring Cloud Gateway 기반 OAuth2 Resource Server. 외부 HTTP·WebSoc
 
 ## 9. Route 계약 표
 
-`ReactiveRouteConfig`는 `RouteLocator` Bean 6개(`oauth2ClientRoutes`, `userRoutes`, `marketRoutes`, `notificationRoutes`, `websocketGatewayRoutes`, `chatRoutes`)를 정의한다. 이 중 `websocketGatewayRoutes` 하나에 개별 Route 4건이 포함되어, 아래 표의 행 수는 Bean 개수(6개)보다 많다.
+`ReactiveRouteConfig`는 `RouteLocator` Bean 6개(`oauth2ClientRoutes`, `userRoutes`, `marketRoutes`, `notificationRoutes`, `websocketGatewayRoutes`, `chatRoutes`)를 정의한다. 각 Bean은 Rate Limit 대상의 구체적인 Path+Method Route를 먼저 선언하고, 기존 광역 Path Route를 마지막 fallback으로 유지한다.
 
 | 외부 경로 | 대상 서비스 | URI/Service ID | 적용 필터 | 인증 필요 | 근거 |
 |---|---|---|---|---|---|
-| `/oauth2/**`, `/login/oauth2/code/*`, `/auth/**` | oauth2-client | `lb://oauth2-client` | `X-From` 추가, `X-Gateway` 응답 추가 | 아니오 | `ReactiveRouteConfig.oauth2ClientRoutes` |
-| `/user/**` | user-service | `lb://user-service` | `X-From` 추가, `rewritePath(/user(?<seg>/.*)?$ → /api/v1/user${seg})`, `X-Gateway` 응답 | `GET /user/me`,`/user/*/profile`만 `hasRole(USER)` | `ReactiveRouteConfig.userRoutes` |
+| `/oauth2/**`, `/login/oauth2/code/*`, `/auth/**` | oauth2-client | `lb://oauth2-client` | 대상 Path+Method는 `RequestRateLimiter`, 공통 `X-From`·`X-Gateway` | 아니오 | `ReactiveRouteConfig.oauth2ClientRoutes` |
+| `/user/**` | user-service | `lb://user-service` | 대상 Path+Method는 `RequestRateLimiter`, 공통 `X-From`·rewrite·`X-Gateway` | `GET /user/me/profile`,`/user/*/profile`만 `hasRole(USER)` | `ReactiveRouteConfig.userRoutes` |
 | `/markets`,`/markets/**`,`/price-alerts`,`/price-alerts/**` | market-service | `lb://market-service` | `X-From` 추가, `rewritePath(/(?<seg>.*) → /api/v1/${seg})`, `X-Gateway` 응답 | `GET /markets`는 permitAll, `/price-alerts/**`는 `hasRole(USER)` | `ReactiveRouteConfig.marketRoutes` |
 | `/notifications`,`/notifications/**` | notification-service | `lb://notification-service` | `X-From` 추가, `rewritePath(/(?<seg>.*) → /api/v1/${seg})`, `X-Gateway` 응답 | `hasRole(USER)` | `ReactiveRouteConfig.notificationRoutes` |
-| `/ws-native`, `/ws-native/**`(upgrade) | websocket-gateway | `lb:ws://websocket-gateway` | 없음 | `GET`만 `hasRole(USER)` + 핸드셰이크 인증 | `websocketGatewayRoutes("ws-native-upgrade")` |
-| `/ws/**` + `Upgrade: websocket` 헤더 | websocket-gateway | `lb:ws://websocket-gateway` | 없음 | 동일 | `websocketGatewayRoutes("ws-upgrade")` |
+| `/ws-native`, `/ws-native/**`(upgrade) | websocket-gateway | `lb:ws://websocket-gateway` | `RequestRateLimiter` | `GET`만 `hasRole(USER)` + 핸드셰이크 인증 | `websocketGatewayRoutes("ws-native-upgrade")` |
+| `/ws/**` + `Upgrade: websocket` 헤더 | websocket-gateway | `lb:ws://websocket-gateway` | `RequestRateLimiter` | 동일 | `websocketGatewayRoutes("ws-upgrade")` |
 | `/ws/**`,`/ws-native`,`/ws-native/**`(HTTP) | websocket-gateway | `lb://websocket-gateway` | `dedupeResponseHeader`(CORS 3종) | `GET /ws/info/**`는 permitAll, 나머지 `GET`은 `hasRole(USER)` | `websocketGatewayRoutes("ws-http")` |
 | `/msg/**` | websocket-gateway | `lb://websocket-gateway` | 없음 | 아니오 | `websocketGatewayRoutes("sockjs-route")` |
 | `/chat/**` | chat-service | `lb://chat-service` | `X-From` 추가, `rewritePath(/chat(?<seg>/.*)?$ → /api/v1/chat${seg})`, `X-Gateway` 응답 | 일부 `GET`만 `hasRole(USER)`(§8 참고), 나머지 permitAll | `ReactiveRouteConfig.chatRoutes` |
 | `POST /internal/deployment/**` | Gateway 자신 | N/A(Route 아님, 로컬 컨트롤러) | `DeploymentControlAuthWebFilter`(`X-Deploy-Token`) | JWT는 permitAll, Deploy Token 별도 필요 | `ReactiveSecurityConfig.java:56`, `common/common-actuator-webflux/.../DeploymentControlAuthWebFilter.java` |
 | `/actuator/**` | Gateway 자신 | N/A | 없음 | 아니오 | `ReactiveSecurityConfig.java:78` |
 
+### 9.1 Redis Rate Limit 적용 표
+
+설정 수치는 `허용 속도 / 순간 허용량`으로 읽는다. 분 단위 정책은 Spring Cloud Gateway 권장 방식대로 `requestedTokens=60`을 사용한다. 예를 들어 회원가입의 `replenish=5, requested=60, burst=120`은 평균 `5회/분`, 순간 `2회`다.
+
+| 우선순위 | 실제 적용 대상 | Gateway Route | Key | 초기 제한 | 판단/상태 |
+|---|---|---|---|---|---|
+| 1 | `POST /user/sign-up` | `user-sign-up-route` | 직접 연결 IP | 5회/분, 순간 2회 | 적용 |
+| 1 | `GET /oauth2/authorization/**` | `oauth2-authorization-route` | 직접 연결 IP | 10회/분, 순간 3회 | 적용 |
+| 1 | `GET /login/oauth2/code/*` | `oauth2-callback-route` | 직접 연결 IP | 20회/분, 순간 5회 | 적용. Provider callback 재시도를 고려해 진입보다 느슨함 |
+| 1 | `POST /auth/refresh` | `token-refresh-route` | 직접 연결 IP | 10회/분, 순간 3회 | 적용. Refresh Token 원문은 Key로 저장하지 않음 |
+| 1 | `POST /auth/logout` | `logout-route` | JWT `id`, 없으면 IP | 1회/초, 순간 5회 | 적용 |
+| 1 | `/ws-native`, `/ws/** + Upgrade:websocket` | `ws-native-upgrade`, `ws-upgrade` | JWT `id` | 2회/초, 순간 5회 | handshake에 적용. SockJS HTTP transport는 제외 |
+| 1 | 채팅방 생성·수정·삭제·멤버·활동 Command REST | `chat-command-route` | JWT `id` | 2회/초, 순간 5회 | 적용 |
+| 1 | STOMP `/msg/chat.send` | 연결 수립 후 websocket-gateway 내부 처리 | JWT `id` 후보 | 미설정 | HTTP Gateway 필터 대상이 아님. STOMP ChannelInterceptor/애플리케이션 limiter 별도 설계 필요 |
+| 2 | `GET /chat/rooms/me`, 방/메시지 조회 | `chat-query-route` | JWT `id` | 10회/초, 순간 20회 | 적용 |
+| 2 | `PATCH /user/me/profile` | `user-command-route` | JWT `id` | 2회/초, 순간 5회 | 적용 |
+| 2 | `GET /user/me/profile`, `GET /user/{publicId}/profile` | `user-query-route` | JWT `id` | 10회/초, 순간 20회 | 적용 |
+| 2 | `PUT /price-alerts/me` | `market-command-route` | JWT `id` | 2회/초, 순간 5회 | 적용 |
+| 2 | `GET /price-alerts/me` | `market-query-route` | JWT `id` | 10회/초, 순간 20회 | 적용 |
+| 2 | `GET /notifications/me`, 알림 조회 | `notification-query-route` | JWT `id` | 10회/초, 순간 20회 | 적용 |
+| 2 | `PATCH /notifications/{id}/read` | `notification-command-route` | JWT `id` | 2회/초, 순간 5회 | 적용 |
+| 3 | `GET /markets`, `GET /markets/**`, `GET /chat/rooms/popular` | `*-public-query-route` | 직접 연결 IP | 20회/초, 순간 40회 | 공개 조회 공통 초기 정책 |
+| - | Kafka, 서비스 간 gRPC, Upbit 수집, Outbox Poller | Gateway를 통과하지 않음 | - | - | 대상 아님 |
+| - | `/actuator/**` | Gateway 로컬 관리 API | - | - | Rate Limit보다 네트워크 접근 제어 대상 |
+
+KeyResolver 정책은 다음과 같다.
+
+- `user`: 검증된 `JwtAuthenticationToken`의 principal name이 아니라 `id` claim을 사용하고 `user:` prefix를 붙인다.
+- `ip`: 현재 Gateway 앞에 신뢰 Proxy/LB가 없으므로 TCP remote address를 사용하고 `ip:` prefix를 붙인다. 임의의 `X-Forwarded-For`는 신뢰하지 않는다. 추후 고정된 Proxy가 추가되면 `XForwardedRemoteAddressResolver.maxTrustedIndex(n)`으로 전환하며 `trustAll()`은 사용하지 않는다.
+- `userOrIp`: JWT `id`가 있으면 user, 없으면 IP로 fallback한다.
+- Spring 구현의 Redis key에는 Route ID도 포함되므로 같은 사용자라도 회원가입·조회·Command Bucket은 서로 분리된다.
+
+운영 특성:
+
+- 제한 초과는 body 없는 `429 Too Many Requests`이며 `X-RateLimit-Remaining`, `X-RateLimit-Replenish-Rate`, `X-RateLimit-Burst-Capacity`, `X-RateLimit-Requested-Tokens`를 반환한다.
+- Redis 조회 오류는 Spring Cloud Gateway `RedisRateLimiter` 구현상 fail-open이다. 요청 가용성은 유지되지만 보호가 사라지므로 Redis 오류 로그와 429 비율을 모니터링해야 한다.
+- `gateway.rate-limit.*`는 Bean 생성 시 Route별 설정 Map으로 복사된다. Config Server 값만 갱신해서는 기존 인스턴스에 반영되지 않으므로 초기 구현에서는 Gateway 재시작이 필요하다.
+- Redis Cluster 연결은 Config 조합의 `redis` 프로파일(`git-config-repo/infrastructure/redis.yml`)을 사용한다.
+
 **oauth2-authorization-server로 향하는 HTTP Route는 없다.** 연결은 공용 `Oauth2AuthorizationServerClient.existsBlacklist`가 수행하는 `auth.v1.BlacklistTokenService/Exists` gRPC 호출뿐이며, `grpc.client.oauth2-authorization-server-client.address`는 공통 `application.yml`의 `uri.discovery.oauth2-authorization-server`를 참조한다.
 
 ## 10. Header 및 Path Rewrite 계약
 
-Gateway가 생성·추가하는 헤더는 다음 세 가지다. 셋 다 Route 필터 또는 인증 필터에서 코드로 추가되며, 이 문서에서 "Gateway가 생성하는 헤더"라고 하면 이 목록을 가리킨다.
+Gateway가 생성·추가하는 헤더는 다음과 같다. Route·인증·Rate Limit 필터에서 생성된다.
 
 | 헤더 | 방향 | 추가 위치 | 값의 근거 |
 |---|---|---|---|
-| `X-From: gateway` | 요청 | `ReactiveRouteConfig`(`addRequestHeader`, `ReactiveRouteConfig.java:26,40,87`) | 고정 문자열. oauth2-client/user/chat route에서 추가, websocket-gateway route에는 없음 |
-| `X-Gateway: reactive` | 응답 | `ReactiveRouteConfig`(`addResponseHeader`) | 고정 문자열. oauth2-client/user/chat route에서 추가 |
+| `X-From: gateway` | 요청 | `ReactiveRouteConfig`(`addRequestHeader`) | 고정 문자열. REST 하위 서비스 route에서 추가, websocket-gateway route에는 없음 |
+| `X-Gateway: reactive` | 응답 | `ReactiveRouteConfig`(`addResponseHeader`) | 고정 문자열. REST 하위 서비스 route에서 추가 |
 | `X-User-Id`(`HttpHeaderKey.USER_ID`) | 요청 | 일반 HTTP: `IdentityPropagationGlobalFilter`. WebSocket: `WebsocketHandshakeAuthWebFilter` | 검증된 JWT의 `id` claim에서만 생성(§5, §6) |
+| `X-RateLimit-*` 4종 | 응답 | `RequestRateLimiterGatewayFilterFactory` | 남은 token과 Route Bucket의 replenish/burst/requested token 값(§9.1) |
 
 `X-User-Id`는 일반 HTTP와 WebSocket에서 서로 다른 필터 체인(`GlobalFilter` vs `WebFilter`)이 독립적으로 주입한다는 점이 차이다. 두 경로 모두 값의 출처는 검증된 JWT의 `id` claim으로 동일하다.
 
 **클라이언트가 같은 이름으로 헤더를 직접 보낸 경우**: `IdentityPropagationGlobalFilter`(`Ordered.HIGHEST_PRECEDENCE`)가 **모든 요청 입구에서 클라이언트가 보낸 `X-User-Id`·`X-From`을 먼저 제거**하고, 인증된 경우에만 JWT `id`로 `X-User-Id`를 다시 `set`한다. 따라서 `permitAll`·미인증 경로로 위조 헤더를 보내도 하위 서비스로 새지 않는다(게이트웨이 **경유** 스푸핑 차단). 게이트웨이를 **우회**한 서비스 직접 접근 차단은 별개 방어(인프라: 서비스 포트 host-local 바인딩 + 방화벽) — infra `TODO.md` "보안 · 네트워크 노출".
 
-- Path Rewrite: `user`, `chat` route만 `/api/{userApiVersion|chatApiVersion}/...`로 rewrite(`api-path.route.user-api-version=v1`, `chat-api-version=v1`, `git-config-repo/dynamic/api-gateway.yml:48-50`). `oauth2-client`, `websocket-gateway` route는 rewrite 없이 그대로 전달.
+- Path Rewrite: `user`, `chat`, `market`, `notification` route는 `/api/{serviceApiVersion}/...`로 rewrite한다. `oauth2-client`, `websocket-gateway` route는 rewrite 없이 그대로 전달.
 - Query Parameter Token: WebSocket 핸드셰이크 전용 `?access_token=`(§6). 일반 REST에는 쿼리 토큰 사용 없음.
 - Cookie: Gateway 코드에서 쿠키를 직접 다루는 로직 없음(그대로 프록시). Refresh 쿠키 속성 자체는 oauth2-client 책임 범위(이 문서 범위 밖).
 
@@ -163,11 +209,11 @@ Gateway가 생성·추가하는 헤더는 다음 세 가지다. 셋 다 Route �
 ### user-service
 - Route: `/user/**` → `lb://user-service`, rewrite `→ /api/v1/user${seg}`.
 - 전달 인증 정보: `X-User-Id`(인증된 경우만), `X-From: gateway`.
-- 공유 계약: `X-User-Id` 헤더, path rewrite 버전(`v1`), `GET /user/me`·`/user/*/profile`의 gateway 레벨 `hasRole(USER)` 강제.
+- 공유 계약: `X-User-Id` 헤더, path rewrite 버전(`v1`), `GET /user/me/profile`·`/user/*/profile`의 gateway 레벨 `hasRole(USER)` 강제.
 
 ### oauth2-client
-- Route: `/oauth2/**`, `/login/oauth2/code/*`, `/auth/**` → `lb://oauth2-client`(permitAll, JWT 미검증 프록시).
-- 전달 인증 정보: 없음(이 경로들은 gateway에서 인증하지 않음).
+- Route: `/oauth2/**`, `/login/oauth2/code/*`, `/auth/**` → `lb://oauth2-client`(인가 규칙은 permitAll이며 Bearer JWT가 제공된 요청은 Resource Server 인증 필터가 처리 가능).
+- 전달 인증 정보: 로그인·callback·refresh는 없음. 로그아웃은 유효한 Bearer JWT가 있으면 Rate Limit user key에 `id`를 사용하고, 없으면 IP로 fallback한다.
 - 공유 계약: 로그인/콜백/로그아웃 경로 이름.
 
 ### oauth2-authorization-server
@@ -212,7 +258,7 @@ Gateway가 생성·추가하는 헤더는 다음 세 가지다. 셋 다 Route �
 - Methods: `OPTIONS, GET, POST, PUT, PATCH, DELETE` (**DELETE 포함**).
 - Headers: `*`(모두 허용).
 - `allowCredentials: true`.
-- Exposed headers: `Authorization`, `Set-Cookie`.
+- Exposed headers: `Authorization`, `Set-Cookie`, `X-RateLimit-Remaining`, `X-RateLimit-Replenish-Rate`, `X-RateLimit-Burst-Capacity`, `X-RateLimit-Requested-Tokens`.
 - `maxAge: 3600`.
 - 적용 대상: `/**`(`UrlBasedCorsConfigurationSource`).
 
@@ -223,6 +269,7 @@ Gateway가 생성·추가하는 헤더는 다음 세 가지다. 셋 다 Route �
 | 일반 HTTP 인증 실패(401) | Spring Security `oauth2ResourceServer` 기본 처리(커스텀 `AuthenticationEntryPoint` 미설정) | `ReactiveSecurityConfig.java` 전체(커스텀 코드 없음) |
 | 일반 HTTP 인가 실패(403) | 커스텀 `accessDeniedHandler` — CORS 헤더 재설정 + JSON body(`timestamp`,`status`,`error:"FORBIDDEN"`,`message`,`path`) | `ReactiveSecurityConfig.java:91-92,108-148` |
 | WebSocket 핸드셰이크 인증 실패(401) | `WebsocketHandshakeAuthWebFilter.unauthorized` — 상태코드만 설정, JSON body 없음 | `WebsocketHandshakeAuthWebFilter.java:97-100` |
+| Rate Limit 초과(429) | `RequestRateLimiterGatewayFilterFactory` — 상태코드와 Rate Limit 헤더 설정, body 없음 | `ReactiveRouteConfig`, `RateLimitConfig` |
 | 배포 제어 인증 실패(401) | `DeploymentControlAuthWebFilter` — `{"message":"Unauthorized deployment control request"}` | `common/common-actuator-webflux/.../DeploymentControlAuthWebFilter.java` |
 
 세 인증 실패 처리(일반 401 / WebSocket 401 / 배포 제어 401)는 서로 다른 필터·바디 형식을 사용하며 통일되어 있지 않다.
@@ -233,6 +280,8 @@ Gateway가 생성·추가하는 헤더는 다음 세 가지다. 셋 다 Route �
 |---|---|
 | `endpoint/ReactiveSecurityE2ETest` | 토큰 없음 401, role 없음 403(JSON body), `/auth/logout` permitAll 라우팅, `/price-alerts/me`·`/notifications/me` 401/403 |
 | `endpoint/ReactiveRouteE2ETest` | `/user/me` rewrite+라우팅, `/chat/rooms/me` rewrite+라우팅, `/auth/logout` 라우팅 |
+| `endpoint/ProductionRateLimitE2ETest` | production Route + 실제 Redis에서 허용 응답의 Rate Limit 헤더와 burst 초과 429 |
+| `endpoint/RateLimitFailOpenE2ETest` | Redis 연결 예외 시 fail-open 응답 헤더와 user-service downstream 전달 |
 | `endpoint/IdentityPropagationE2ETest` | id claim 있음/없음 전파, permitAll 경로 클라이언트 `X-User-Id` strip, 인증 요청 위조 `X-User-Id` override |
 | `endpoint/GatewayCorsConfigTest` | CORS Origin 허용(테스트 전용 wildcard `TestGatewayCorsConfig`로 실제 `CorsConfig` 대체) |
 | `filter/IdentityPropagationGlobalFilterTest` | 필터 단위 동작 |
@@ -241,6 +290,11 @@ Gateway가 생성·추가하는 헤더는 다음 세 가지다. 셋 다 Route �
 | `validator/ReactiveBlacklistTokenValidatorUnitTest` | 블랙리스트 없음→성공, 있음→`invalid_token` 실패, gRPC 오류 전파 |
 | `oauth2/adapter/out/grpc/GrpcBlacklistTokenClientAdapterUnitTest` | 구독 전 공용 client 호출 없음, 성공·오류·구독 취소 전파 |
 | `validator/RequiredUserIdClaimValidatorTest` | id claim 있음/없음/빈문자열/null |
+| `ratelimit/GatewayKeyResolversUnitTest` | 직접 연결 IP, JWT `id`, user→IP fallback Key 해석 |
+| `ratelimit/RateLimitConfigUnitTest` | Rate Limit 대상 Route ID와 Bucket 설정 등록 |
+| `ratelimit/RedisRateLimiterIntegrationTest` | 실제 Redis에서 회원가입 순간 2건 허용·3번째 거부 |
+| `config/CorsConfigUnitTest` | 브라우저에 `X-RateLimit-*` 4종 노출 |
+| `config/ProductionApiPathConfigBindingUnitTest` | 운영 API path 및 `gateway.rate-limit.*` 설정 바인딩 |
 
 **테스트 공백**
 - issuer 검증 자체(`JwtValidators.createDefaultWithIssuer`)의 실패 케이스 단위 테스트 없음.
@@ -252,7 +306,7 @@ Gateway가 생성·추가하는 헤더는 다음 세 가지다. 셋 다 Route �
 
 - 컴파일: `./gradlew :spring-cloud-api-gateway:compileJava`
 - 테스트: `./gradlew :spring-cloud-api-gateway:test`
-- 서비스 CI: `./gradlew gatewayCi`(루트 `build.gradle:16,48` — `:spring-cloud-api-gateway:build` 포함, 전체 집계 `serviceCi`에도 포함)
+- 서비스 CI: `./gradlew apiGatewayCi`(루트 `build.gradle` — `:spring-cloud-api-gateway:build` 포함, 전체 집계 `serviceCi`에도 포함)
 
 전체 build, 전체 test, `bootRun`, 애플리케이션 실행, 배포는 이 문서 작성 과정에서 실행하지 않았다.
 

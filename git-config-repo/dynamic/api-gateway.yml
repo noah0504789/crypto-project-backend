@@ -23,6 +23,8 @@ api-path:
   options-pattern: /**
   auth:
     pattern: ${api-contract.auth.pattern}
+    logout: ${api-contract.auth.logout}
+    refresh: ${api-contract.auth.refresh}
   user:
     base: ${api-contract.user.base}
     sign-up: ${api-contract.user.sign-up}
@@ -30,6 +32,7 @@ api-path:
     profile: ${api-contract.user.profile}
   chat:
     pattern: ${api-contract.chat.pattern}
+    rooms-popular: ${api-contract.chat.base}${api-contract.chat.rooms-popular}
     rooms-me: ${api-contract.chat.rooms-me-path}
     room-create: ${api-contract.chat.room-create-path}
     room-pattern: ${api-contract.chat.room-pattern}
@@ -47,6 +50,7 @@ api-path:
     notifications-pattern: ${api-contract.notification.pattern}
   oauth2:
     pattern: ${api-contract.oauth2.pattern}
+    authorization-pattern: ${api-contract.oauth2.authorization-pattern}
     login-callback-pattern: ${api-contract.oauth2.login-callback-pattern}
     login-callback-base-uri: ${api-contract.oauth2.login-callback-base-uri}
   websocket:
@@ -61,6 +65,45 @@ api-path:
     chat-api-version: v1
     market-api-version: v1
     notification-api-version: v1
+
+gateway:
+  rate-limit:
+    sign-up:
+      replenish-rate: 5
+      burst-capacity: 120
+      requested-tokens: 60
+    oauth2-authorization:
+      replenish-rate: 10
+      burst-capacity: 180
+      requested-tokens: 60
+    oauth2-callback:
+      replenish-rate: 20
+      burst-capacity: 300
+      requested-tokens: 60
+    token-refresh:
+      replenish-rate: 10
+      burst-capacity: 180
+      requested-tokens: 60
+    logout:
+      replenish-rate: 20
+      burst-capacity: 100
+      requested-tokens: 20
+    websocket-handshake:
+      replenish-rate: 2
+      burst-capacity: 5
+      requested-tokens: 1
+    command:
+      replenish-rate: 2
+      burst-capacity: 5
+      requested-tokens: 1
+    query:
+      replenish-rate: 10
+      burst-capacity: 20
+      requested-tokens: 1
+    public-query:
+      replenish-rate: 20
+      burst-capacity: 40
+      requested-tokens: 1
 
 app:
   grpc:
