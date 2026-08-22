@@ -3,16 +3,18 @@ import { check } from 'k6';
 import { Counter, Rate, Trend } from 'k6/metrics';
 import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.1/index.js';
 
-// ===== fixed values =====
-const server_host = 'potato-volume-finger-universal.trycloudflare.com';
-const room_id = '69e509b7f611e464a27a6267';
+// Runtime target and credentials are supplied by the CLI. Do not commit real tokens.
+const ws_base_url = (__ENV.WS_BASE_URL || 'wss://localhost:8000').replace(/\/$/, '');
+const stomp_host = __ENV.STOMP_HOST || ws_base_url.replace(/^wss?:\/\//, '');
+const origin = __ENV.ORIGIN || 'http://localhost:5173';
+const room_id = __ENV.ROOM_ID || '';
 
 // ===== tokens from env =====
-const token_user_1 = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im15LWF1dGhvcml6YXRpb24tc2VydmVyLWp3dDoxIn0.eyJzdWIiOiJub2FoMDk2OUBnbWFpbC5jb20iLCJhdWQiOlsibXktY2xpZW50LWlkIl0sIm5iZiI6MTc3ODIyMjE0Miwicm9sZXMiOlsiUk9MRV9VU0VSIl0sImlzcyI6Imh0dHA6Ly9jcnlwdG8tb2F1dGgyLWF1dGhvcml6YXRpb24tc2VydmVyOjkwMDAiLCJpZCI6IjI0YjI1OWRiLTQ1NWQtNDhiOS04ZWVhLTllODQzNzQ5Mzg1OSIsImV4cCI6MTc3ODgyNjk0MiwiaWF0IjoxNzc4MjIyMTQyLCJqdGkiOiJiZjZlOWEzMS1jMTcyLTQ0MzMtYmM5Yy1jM2FmNjNjOGQ2YWUifQ.VHQWmx3oy30-yuetnlMRJsF0imOo49GFXDjvlQnMNop3RXLa0t6v2QdhH-PkkqHFH9PYvlzPW_iT8w_WJkPiyDT7yCNU5f1XYnyBnEhrNmS8wjYRop4eHz-GlNfzTNzBTyaL1PoDd69zzOCFS6NMlgXR5NRsLZ9nTjAl0qfJsSL-GRj9BPalSuuYwbjL6v8yo9JX-0FshJ7tXroZMFm2xAzeUQuWpmV9t1wOBn1MWYvs4eD7Xp2T77UzX19CL95WkpEcpHAS95DNO4oFsKmM13AP6rLoiaS4iWw2Ct-KjbGlotRThIz0ZnJ4NGkTV6AI7rWpGCIUMsPf09kkL4Zu0A';
-const token_user_2 = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im15LWF1dGhvcml6YXRpb24tc2VydmVyLWp3dDoxIn0.eyJzdWIiOiJub2FoMDUwNEBrYWthby5jb20iLCJhdWQiOlsibXktY2xpZW50LWlkIl0sIm5iZiI6MTc3ODIyMjA1Miwicm9sZXMiOlsiUk9MRV9VU0VSIl0sImlzcyI6Imh0dHA6Ly9jcnlwdG8tb2F1dGgyLWF1dGhvcml6YXRpb24tc2VydmVyOjkwMDAiLCJpZCI6ImI0MjE4OTU5LTQ3ZGMtNDIxMC1hZWUzLWQ3NTIxMTVmNDhhYyIsImV4cCI6MTc3ODgyNjg1MiwiaWF0IjoxNzc4MjIyMDUyLCJqdGkiOiJjZWJkN2Q2Ni1hNmZhLTRkNmItYThiMi1jNGFkYTMyMDUzYzUifQ.T57dLfq1LVJtTHDcYUkm4LmoUjP_JJyNoWwv9UuKWPuKWIcEmtZaTMDSssbGw9UwI6n-No_6k4Dx-obtp6NXcqgFishfF8K9qMxngK8rzQjmg9z_bDAjLZ7HbcTojPCwsEhGBFIILa4UXCaUfa4pxYfBSkQVfT7M_Lml7gwos2CZw1Rg4xOxrvNTcQLzGTNJnLsMsNSZ_N_ilWdlr2jiSy1-Bh22Ng4jQ9l12wxjtqXds2iMGIFPSyL3CQvd_UuESODxj0_CDTcq8_lsSBWlByzIKgrQyACBQWz6v6mg478TfUZVKOv5e5cd2Vn_EMOXHtdddt-56roykOVoEOZGcA';
+const token_user_1 = __ENV.TOKEN_USER_1 || '';
+const token_user_2 = __ENV.TOKEN_USER_2 || '';
 
-const writer_id_1 = '24b259db-455d-48b9-8eea-9e8437493859';
-const writer_id_2 = 'b4218959-47dc-4210-aee3-d752115f48ac';
+const writer_id_1 = __ENV.WRITER_ID_1 || '';
+const writer_id_2 = __ENV.WRITER_ID_2 || '';
 
 // ===== native websocket endpoint =====
 const ws_base_path = '/ws-native';
@@ -23,15 +25,15 @@ const ack_destination = '/user/queue/chat/ack';
 const broadcast_destination = `/topic/chat/${room_id}`;
 
 // ===== test config =====
-const num_vus = 130;
-const num_msgs_per_user = 10;
-const send_interval_ms = 1000;
+const num_vus = Number(__ENV.VUS || 130);
+const num_msgs_per_user = Number(__ENV.MESSAGE_COUNT || 10);
+const send_interval_ms = Number(__ENV.MESSAGE_INTERVAL_MS || 1000);
 
-const subscribe_settling_ms = 15000;
-const ack_timeout_ms = 10000;
-const broadcast_timeout_ms = 10000;
-const broadcast_collect_window_ms = 30000;
-const wait_connected_ms = 15000;
+const subscribe_settling_ms = Number(__ENV.START_DELAY_MS || 15000);
+const ack_timeout_ms = Number(__ENV.ACK_TIMEOUT_MS || 10000);
+const broadcast_timeout_ms = Number(__ENV.BROADCAST_TIMEOUT_MS || 10000);
+const broadcast_collect_window_ms = Number(__ENV.COLLECT_WINDOW_MS || 30000);
+const wait_connected_ms = Number(__ENV.WAIT_CONNECTED_MS || 15000);
 
 const force_close_ms =
   subscribe_settling_ms +
@@ -52,6 +54,7 @@ const subscribe_frame_count = new Counter('subscribe_frame_count');
 const send_count = new Counter('send_count');
 
 const ack_ok_count = new Counter('ack_ok_count');
+const ack_failed_count = new Counter('ack_failed_count');
 const ack_timeout_count = new Counter('ack_timeout_count');
 const ack_ok_rate = new Rate('ack_ok_rate');
 const ack_latency_ms = new Trend('ack_latency_ms', true);
@@ -68,7 +71,7 @@ const broadcast_duplicate_count = new Counter('broadcast_duplicate_count');
 // ===== k6 options =====
 export const options = {
   scenarios: {
-    native_burst_message_130: {
+    chat_message_fanout_native: {
       executor: 'per-vu-iterations',
       vus: num_vus,
       iterations: 1,
@@ -179,16 +182,13 @@ export default function () {
   const access_token = is_user_1 ? token_user_1 : token_user_2;
   const writer_id = is_user_1 ? writer_id_1 : writer_id_2;
 
-  if (!access_token) {
-    throw new Error('TOKEN_USER_1 또는 TOKEN_USER_2 환경변수가 비어 있음');
+  if (!room_id || !access_token || !writer_id) {
+    throw new Error('ROOM_ID, TOKEN_USER_1/2, WRITER_ID_1/2를 실행 환경에 설정해야 함');
   }
 
   // 브라우저 Native WebSocket 요청과 맞춤.
   // access_token은 query string으로만 전달.
-  const url =
-    `wss://${server_host}` +
-    `${ws_base_path}` +
-    `?access_token=${access_token}`;
+  const url = `${ws_base_url}${ws_base_path}?access_token=${encodeURIComponent(access_token)}`;
 
   let websocket_opened = false;
   let connect_sent = false;
@@ -247,11 +247,18 @@ export default function () {
     }
   }
 
-  function mark_ack(msg_id) {
+  // 서버는 실패도 ACK로 응답한다(success=false, errorCode). 성공 ACK만 성공률에 넣는다.
+  function mark_ack(msg_id, body_obj) {
     if (!pending_ack.has(msg_id)) return;
 
     const started_at = pending_ack.get(msg_id);
     pending_ack.delete(msg_id);
+
+    if (body_obj?.success !== true) {
+      ack_failed_count.add(1);
+      ack_ok_rate.add(false);
+      return;
+    }
 
     ack_ok_count.add(1);
     ack_ok_rate.add(true);
@@ -292,7 +299,7 @@ export default function () {
   // Authorization, X-User-Id, Sec-WebSocket-Protocol은 넣지 않음.
   const params = {
     headers: {
-      Origin: 'http://localhost:5500',
+      Origin: origin,
       Pragma: 'no-cache',
       'Cache-Control': 'no-cache',
       'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
@@ -327,8 +334,8 @@ export default function () {
 
         sent += 1;
 
-        const msg_id = `k6-native-${vu}-${sent}-${Date.now()}`;
-        const content = `CID:${msg_id}|native-burst-message-${vu}-${sent}`;
+        const msg_id = `chat-message-fanout-native-${vu}-${sent}-${Date.now()}`;
+        const content = `CID:${msg_id}|chat-message-fanout-native-${vu}-${sent}`;
         const now = Date.now();
 
         pending_ack.set(msg_id, now);
@@ -363,7 +370,7 @@ export default function () {
         const connect_frame = build_stomp_frame('CONNECT', {
           'accept-version': '1.2',
           'heart-beat': '10000,10000',
-          host: server_host,
+          host: stomp_host,
         });
 
         socket.send(connect_frame);
@@ -380,13 +387,13 @@ export default function () {
       for (const frame_text of frames) {
         if (typeof frame_text !== 'string') continue;
 
-        if (frame_text.includes('ERROR')) {
+        const frame = parse_stomp_frame(frame_text);
+
+        if (frame.command === 'ERROR') {
           console.log(`[VU ${vu}] STOMP ERROR=${frame_text}`);
           finalize(socket, 'stomp_error');
           return;
         }
-
-        const frame = parse_stomp_frame(frame_text);
 
         if (frame.command === 'CONNECTED') {
           if (!stomp_connected) {
@@ -447,18 +454,16 @@ export default function () {
           frame.headers['simpDestination'] ||
           '';
 
+        const is_ack_payload = body_obj?.success !== undefined || body_obj?.errorCode !== undefined;
+
         if (destination === ack_destination) {
-          mark_ack(msg_id);
+          mark_ack(msg_id, body_obj);
         } else if (destination === broadcast_destination) {
           mark_broadcast_delivery(msg_id);
-        } else {
-          if (pending_ack.has(msg_id)) {
-            mark_ack(msg_id);
-          }
-
-          if (body_obj?.content?.includes?.('CID:')) {
-            mark_broadcast_delivery(msg_id);
-          }
+        } else if (is_ack_payload) {
+          mark_ack(msg_id, body_obj);
+        } else if (body_obj?.content?.includes?.('CID:')) {
+          mark_broadcast_delivery(msg_id);
         }
       }
     });
@@ -573,7 +578,7 @@ export function handleSummary(data) {
   });
 
   const clean_result = `
-========== clean_native_broadcast_result ==========
+========== chat_message_fanout_native_result ==========
 
 send_count: ${format_number(total_send_count)}
 subscribe_frame_count: ${format_number(total_subscribe_frame_count)}

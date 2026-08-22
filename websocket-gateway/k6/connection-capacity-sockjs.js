@@ -1,21 +1,23 @@
 import ws from 'k6/ws';
 import { check, sleep } from 'k6';
 
-// ===== 고정값 =====
-const SERVER_HOST = 'wiring-showtimes-growth-queen.trycloudflare.com';
-const SERVER_PORT = '443';
-const ROOM_ID = '69e509b7f611e464a27a6267';
+// 실행 대상과 인증정보는 CLI 환경변수로 전달한다.
+const WS_BASE_URL = (__ENV.WS_BASE_URL || 'wss://localhost:8000').replace(/\/$/, '');
+const ROOM_ID = __ENV.ROOM_ID || '';
 
-const TOKEN_USER1 = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im15LWF1dGhvcml6YXRpb24tc2VydmVyLWp3dDoxIn0.eyJzdWIiOiJub2FoMDk2OUBnbWFpbC5jb20iLCJhdWQiOlsibXktY2xpZW50LWlkIl0sIm5iZiI6MTc3NzYxNjc5MSwicm9sZXMiOlsiUk9MRV9VU0VSIl0sImlzcyI6Imh0dHA6Ly9jcnlwdG8tb2F1dGgyLWF1dGhvcml6YXRpb24tc2VydmVyOjkwMDAiLCJpZCI6IjI0YjI1OWRiLTQ1NWQtNDhiOS04ZWVhLTllODQzNzQ5Mzg1OSIsImV4cCI6MTc3ODIyMTU5MSwiaWF0IjoxNzc3NjE2NzkxLCJqdGkiOiI4ODJkYjc1YS02ZmY1LTQwMjMtODVmNC1lZThhYzdhNDVjNjYifQ.eVELi052LvHBtB1ZGCcWm5be-sFTy1eGgXWtoDe84FdPItx-KrmYDypqSNksOAWEtSbVZVc5q91jO2SxNQr485xTAlGk8FPcEsF-a0lioXCDF6ZXCiYlJxlLiirYrD0IFyU8eZOsijzmwOmk12COd2IqbA2kA9CtJt0X1_gNA8JDk4HZfvoCu4EuWzm7n_bQYDKgbDT-mSHavcqtRPIywf-MMkn3IvvtbjDBWiV7z7wEMTqyNzRZzrVxrkTsH88xknyry7m-3KZ6-8O0vJ4tFifeC5IsfjowmiZdsIP41OF6DsUmuMJSvSbf44djN_iDJPoflPJR_M6IITNAX-qvEw';
-const TOKEN_USER2 = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im15LWF1dGhvcml6YXRpb24tc2VydmVyLWp3dDoxIn0.eyJzdWIiOiJub2FoMDUwNEBrYWthby5jb20iLCJhdWQiOlsibXktY2xpZW50LWlkIl0sIm5iZiI6MTc3NzYxNjcyNiwicm9sZXMiOlsiUk9MRV9VU0VSIl0sImlzcyI6Imh0dHA6Ly9jcnlwdG8tb2F1dGgyLWF1dGhvcml6YXRpb24tc2VydmVyOjkwMDAiLCJpZCI6ImI0MjE4OTU5LTQ3ZGMtNDIxMC1hZWUzLWQ3NTIxMTVmNDhhYyIsImV4cCI6MTc3ODIyMTUyNiwiaWF0IjoxNzc3NjE2NzI2LCJqdGkiOiI5NTVhODBlZC1mNjE2LTQ0ZDMtODNiNi1iYjc4OTNkYzFjMGIifQ.RnNMF8IkUOBqa8fsf5Kh82p11pQGfZUVIVG6CCHEtazGC-UONNloGyXurrpUnU3Yh2zv0Ke9xEb7-Ae7ukR6eCVGTL3gRUy3xBmgRgu0hlGeF4MwFI9YY2R0Uf9oghmkHck84DkQiqopOK9bYwPc-frtMjzw1Hu4mbxH7ZzANl2z5vqDf_LVFF9S1hl3GoVwqi9-SNnT0NNfFTwqsX218izYY59QaMF__qXEVdPMENZSk2rCiM4JaMEIE3xNBsxNEDa7v7YzXVwpvCLRaxdQanA0dDwQW1fp0mQvINR-eVrZXLSdK42hGaiHOX4vCFhehCG3PHJ2AOryVqPa-nQLdw';
+const TOKEN_USER1 = __ENV.TOKEN_USER_1 || '';
+const TOKEN_USER2 = __ENV.TOKEN_USER_2 || '';
 
-const WRITER_ID_1 = '24b259db-455d-48b9-8eea-9e8437493859';
-const WRITER_ID_2 = 'b4218959-47dc-4210-aee3-d752115f48ac';
+const WRITER_ID_1 = __ENV.WRITER_ID_1 || '';
+const WRITER_ID_2 = __ENV.WRITER_ID_2 || '';
 
 // ===== 테스트 조건 =====
-const NUM_VUS = 2000;
-const HOLD_SECONDS = 20;
-const WAIT_CONNECTED_MS = 15000;
+const NUM_VUS = Number(__ENV.VUS || 2000);
+const RAMP_UP = __ENV.RAMP_UP || '10s';
+const HOLD_DURATION = __ENV.HOLD_DURATION || '20s';
+const RAMP_DOWN = __ENV.RAMP_DOWN || '5s';
+const HOLD_SECONDS = Number(__ENV.HOLD_SECONDS || 20);
+const WAIT_CONNECTED_MS = Number(__ENV.WAIT_CONNECTED_MS || 15000);
 
 // ===== 디버그 =====
 const DEBUG_VUS = new Set([1, 2, 3, 4]);
@@ -30,12 +32,12 @@ const connectedVus = new Set();
 // ===== k6 시나리오 =====
 export const options = {
   scenarios: {
-    connect_only_2000: {
+    connection_capacity_sockjs: {
       executor: 'ramping-vus',
       stages: [
-        { duration: '10s', target: NUM_VUS },
-        { duration: '20s', target: NUM_VUS },
-        { duration: '5s', target: 0 },
+        { duration: RAMP_UP, target: NUM_VUS },
+        { duration: HOLD_DURATION, target: NUM_VUS },
+        { duration: RAMP_DOWN, target: 0 },
       ],
       gracefulRampDown: '5s',
     },
@@ -117,13 +119,16 @@ export default function () {
   const accessToken = isUser1 ? TOKEN_USER1 : TOKEN_USER2;
   const writerId = isUser1 ? WRITER_ID_1 : WRITER_ID_2;
 
+  if (!ROOM_ID || !accessToken || !writerId) {
+    throw new Error('ROOM_ID, TOKEN_USER_1/2, WRITER_ID_1/2를 실행 환경에 설정해야 함');
+  }
+
   const sockJsServerId = randomInt(0, 999);
   const sockJsSessionId = randomString(8);
 
   const url =
-    `wss://${SERVER_HOST}:${SERVER_PORT}` +
-    `${WS_BASE_PATH}/${sockJsServerId}/${sockJsSessionId}/websocket` +
-    `?access_token=${accessToken}`;
+    `${WS_BASE_URL}${WS_BASE_PATH}/${sockJsServerId}/${sockJsSessionId}/websocket` +
+    `?access_token=${encodeURIComponent(accessToken)}`;
 
   let sockJsOpened = false;
   let connectSent = false;
@@ -203,14 +208,16 @@ export default function () {
             continue;
           }
 
-          if (msg.includes('CONNECTED')) {
+          const command = String(msg).split('\n')[0].trim();
+
+          if (command === 'CONNECTED') {
             stompConnected = true;
 
             debugLog(vu, `[VU ${vu}] STOMP CONNECTED`);
 
             const subscribeFrame = buildStompFrame('SUBSCRIBE', {
               id: `sub-${vu}`,
-              destination: `/topic/chat/room/${ROOM_ID}`,
+              destination: `/topic/chat/${ROOM_ID}`,
               ack: 'auto',
             });
 
@@ -237,7 +244,7 @@ export default function () {
             return;
           }
 
-          if (msg.includes('ERROR')) {
+          if (command === 'ERROR') {
             console.log(`[VU ${vu}] STOMP ERROR=${msg}`);
             finalize(socket, 'stomp-error');
             return;
