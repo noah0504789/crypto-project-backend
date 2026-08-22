@@ -74,7 +74,11 @@ class RedisChatMessageRateLimiterUnitTest {
     @DisplayName("정책이 비활성화되면 Redis를 호출하지 않는다")
     @SuppressWarnings("unchecked")
     void isAllowed_shouldBypassRedisWhenDisabled() {
-        ChatMessageRateLimitProperties properties = new ChatMessageRateLimitProperties(false, null, null);
+        ChatMessageRateLimitProperties properties = new ChatMessageRateLimitProperties(
+                false,
+                new ChatMessageRateLimitProperties.Bucket(3, 5),
+                new ChatMessageRateLimitProperties.Bucket(30, 10)
+        );
         RedisChatMessageRateLimiter rateLimiter = new RedisChatMessageRateLimiter(redisTemplate, properties, CHAT_MESSAGE_RATE_LIMIT_LUA);
 
         boolean allowed = rateLimiter.isAllowed("user-1", "room-1");

@@ -1,25 +1,19 @@
 package org.example.websocket.gateway.adapter.in.websocket.stomp.ratelimit;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
+// 기본값을 코드에 두지 않는다. 키 오타·누락 시 기동을 실패시켜 설정 오류를 배포 시점에 드러낸다.
 @Validated
 @ConfigurationProperties(prefix = "app.rate-limit.chat-message")
 public record ChatMessageRateLimitProperties(
-        boolean enabled,
-        @Valid Bucket user,
-        @Valid Bucket room
+        @NotNull Boolean enabled,
+        @Valid @NotNull Bucket user,
+        @Valid @NotNull Bucket room
 ) {
-
-    private static final Bucket DEFAULT_USER_BUCKET = new Bucket(3, 5);
-    private static final Bucket DEFAULT_ROOM_BUCKET = new Bucket(30, 10);
-
-    public ChatMessageRateLimitProperties {
-        user = user == null ? DEFAULT_USER_BUCKET : user;
-        room = room == null ? DEFAULT_ROOM_BUCKET : room;
-    }
 
     public record Bucket(
             @Positive long replenishRate,
