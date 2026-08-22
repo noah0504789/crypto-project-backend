@@ -129,7 +129,7 @@
 
 - application: `ChatMessageSendServiceTest`, `LocalSessionCacheTest`
 - adapter-out: `GrpcChatMessageCommandAdapterTest`, `RedisSessionLocationAdapterTest`
-- 부하: `chat_ws_gw_stress_test_result`(리포지토리 루트, k6 계열 산출물)
+- 부하: `chat/load-test-results/chatmessage/websocket-gateway`(k6 원본 결과·Grafana 대시보드·해석)
 
 ## 11. 컴파일 · 테스트 · CI 명령
 

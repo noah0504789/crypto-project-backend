@@ -1,0 +1,58 @@
+     ✓ websocket open received
+     ✓ stomp connected
+     ✓ ws upgrade status is 101
+
+     ack_latency_ms........................: avg=4.53s  min=95ms     med=5.11s  p(90)=7.87s  p(95)=8.52s  p(99)=9.85s  max=10.15s
+     ack_ok_count..........................: 1002    10.839526/s
+     ack_ok_rate...........................: 50.10%  ✓ 1002        ✗ 998   
+     ack_timeout_count.....................: 998     10.796254/s
+     broadcast_delivery_late_count.........: 263810  2853.867504/s
+     broadcast_delivery_latency_ms.........: avg=19.64s min=230ms    med=21.62s p(90)=30.87s p(95)=31.58s p(99)=32.32s max=33.48s
+     broadcast_delivery_missing_count......: 61400   664.218433/s
+     broadcast_delivery_ok_count...........: 338600  3662.93748/s
+     broadcast_delivery_timeout_ok_count...: 74790   809.069977/s
+     broadcast_delivery_timeout_ok_rate....: 18.69%  ✓ 74790       ✗ 325210
+     broadcast_expected_total_count........: 400000  4327.155913/s
+     checks................................: 100.00% ✓ 600         ✗ 0     
+     connect_frame_count...................: 200     2.163578/s
+     data_received.........................: 178 MB  1.9 MB/s
+     data_sent.............................: 1.2 MB  13 kB/s
+     iteration_duration....................: avg=1m32s  min=1m32s    med=1m32s  p(90)=1m32s  p(95)=1m32s  p(99)=1m32s  max=1m32s 
+     iterations............................: 200     2.163578/s
+     send_count............................: 2000    21.63578/s
+     subscribe_frame_count.................: 400     4.327156/s
+     vus...................................: 200     min=200       max=200 
+     vus_max...............................: 200     min=200       max=200 
+     ws_connecting.........................: avg=1.11s  min=986.45ms med=1.07s  p(90)=1.31s  p(95)=1.35s  p(99)=1.37s  max=1.38s 
+     ws_msgs_received......................: 440240  4762.467798/s
+     ws_msgs_sent..........................: 2600    28.126513/s
+     ws_session_duration...................: avg=1m32s  min=1m32s    med=1m32s  p(90)=1m32s  p(95)=1m32s  p(99)=1m32s  max=1m32s 
+     ws_sessions...........................: 200     2.163578/s
+
+========== clean_native_broadcast_result ==========
+
+send_count: 2,000
+subscribe_frame_count: 400
+
+broadcast:
+- total_count: 338,600 / 400,000 (84.65%)
+- late_total_count: 263,810 / 400,000 (65.95%)
+- missing_total_count: 61,400 / 400,000 (15.35%)
+- duplicate_total_count: 0 / 400,000 (0.00%)
+
+- ok_rate_per_user: 373.95 / 2,000 (18.70%)
+- timeout_rate_per_user: 1,626.05 / 2,000 (81.30%)
+- duplicate_per_user: 0
+
+- latency_ms:
+  avg=19,645.15ms
+  p90=30,875ms
+  p95=31,582ms
+  p99=32,327ms
+  max=33,481ms
+
+============================================
+
+
+running (01m32.4s), 000/200 VUs, 200 complete and 0 interrupted iterations
+native_burst_message_130 ✓ [======================================] 200 VUs  01m32.4s/10m0s  200/200 iters, 1 per VU
