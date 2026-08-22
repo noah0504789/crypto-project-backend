@@ -13,7 +13,7 @@ public record ChatMessageRateLimitProperties(
         @Valid Bucket room
 ) {
 
-    private static final Bucket DEFAULT_USER_BUCKET = new Bucket(1, 3);
+    private static final Bucket DEFAULT_USER_BUCKET = new Bucket(3, 5);
     private static final Bucket DEFAULT_ROOM_BUCKET = new Bucket(30, 10);
 
     public ChatMessageRateLimitProperties {

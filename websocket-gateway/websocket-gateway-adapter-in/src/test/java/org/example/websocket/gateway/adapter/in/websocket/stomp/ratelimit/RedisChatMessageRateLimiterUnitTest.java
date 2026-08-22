@@ -87,7 +87,7 @@ class RedisChatMessageRateLimiterUnitTest {
     private RedisChatMessageRateLimiter enabledRateLimiter() {
         ChatMessageRateLimitProperties properties = new ChatMessageRateLimitProperties(
                 true,
-                new ChatMessageRateLimitProperties.Bucket(1, 3),
+                new ChatMessageRateLimitProperties.Bucket(3, 5),
                 new ChatMessageRateLimitProperties.Bucket(30, 10)
         );
         return new RedisChatMessageRateLimiter(redisTemplate, properties, CHAT_MESSAGE_RATE_LIMIT_LUA);

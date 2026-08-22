@@ -81,8 +81,8 @@ app:
     chat-message:
       enabled: true
       user:
-        replenish-rate: 1
-        burst-capacity: 3
+        replenish-rate: 3
+        burst-capacity: 5
       room:
         replenish-rate: 30
         burst-capacity: 10
