@@ -17,7 +17,7 @@ Gradle을 실행하고 **결과만** 보고한다. 로그 본문을 호출자에
 2. `./gradlew :<service>:<submodule>:test` — 해당 서브모듈 테스트
 3. `./gradlew <service>Ci` — 서비스 전체(빌드+테스트+ArchUnit). 시간이 걸린다
 
-존재하는 서비스 CI task: `chatCi` `userCi` `marketCi` `notificationCi` `oauth2AuthorizationServerCi` `oauth2ClientCi` `websocketGatewayCi` `gatewayCi` `springCloudConfigCi` `marketDetectionCi` `outboxPollerCi` `eurekaServerCi`. **`commonCi`·`protobufCi`는 없다.**
+존재하는 서비스 CI task: `chatCi` `userCi` `marketCi` `notificationCi` `oauth2AuthorizationServerCi` `oauth2ClientCi` `websocketGatewayCi` `apiGatewayCi` `springCloudConfigCi` `marketDetectionCi` `outboxPollerCi` `eurekaServerCi`. **`commonCi`·`protobufCi`는 없다.**
 
 모듈/task가 있는지 모르면 먼저 확인한다: `./gradlew projects`, `./gradlew :<module>:tasks --all`.
 

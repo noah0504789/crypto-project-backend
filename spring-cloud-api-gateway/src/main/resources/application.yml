@@ -3,5 +3,5 @@ spring:
   config.import: configserver:http://crypto-spring-cloud-config:8888
   cloud:
     config:
-      name: api-gateway,eureka-client,jwt,frontend,kafka,monitoring
+      name: api-gateway,eureka-client,jwt,frontend,kafka,monitoring,redis
       label: main

@@ -27,7 +27,7 @@ public record ApiPathProperties(
             String infoPattern
     ) {}
     public record Stomp(String applicationDestinationPrefix, String userDestinationPrefix) {}
-    public record Auth(String pattern, String logout) {}
+    public record Auth(String pattern, String logout, String refresh) {}
     public record OAuth2(
             String authorizationBaseUri,
             String authorizationPattern,

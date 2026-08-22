@@ -47,7 +47,7 @@
 
 - 컴파일: `./gradlew :spring-cloud-api-gateway:compileJava`
 - 테스트: `./gradlew :spring-cloud-api-gateway:test`
-- 서비스 CI: `./gradlew gatewayCi` (루트 `build.gradle`에 정의, `:spring-cloud-api-gateway:build` 포함)
+- 서비스 CI: `./gradlew apiGatewayCi` (루트 `build.gradle`에 정의, `:spring-cloud-api-gateway:build` 포함)
 
 전체 build, 전체 test, `bootRun`, 애플리케이션 실행, 배포는 명시적 요청 없이 수행하지 않는다.
 

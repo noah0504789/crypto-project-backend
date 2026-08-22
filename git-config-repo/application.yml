@@ -63,6 +63,7 @@ api-contract:
   oauth2:
     base: /oauth2
     authorization-base: ${api-contract.oauth2.base}/authorization
+    authorization-pattern: ${api-contract.oauth2.authorization-base}/**
     pattern: ${api-contract.oauth2.base}/**
     login-callback-base: /login/oauth2/code
     login-callback-pattern: ${api-contract.oauth2.login-callback-base}/**

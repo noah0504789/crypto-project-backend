@@ -43,7 +43,7 @@
 | `scripts/ci/`·affected CI | 실제 base/head 기준 `--mode build --include-arch-test` 및 `--mode docker` 산출 비교 | workflow의 affected 계산과 조건 정적 검토 | PR의 `ci-pr.yml` affected CI |
 | 문서·Harness 지침만 | `git diff --check`, 경로·명령 존재 확인 | 참조하는 가장 좁은 Gradle task 또는 pytest | 코드/CI 동작 변경이 없으면 추가 build 불필요 |
 
-`<service>Ci`는 `chatCi`, `userCi`, `marketCi`, `notificationCi`, `oauth2AuthorizationServerCi`, `oauth2ClientCi`, `websocketGatewayCi`, `gatewayCi`, `springCloudConfigCi`, `marketDetectionCi`, `outboxPollerCi`, `eurekaServerCi` 중 영향 서비스에 맞는 task다.
+`<service>Ci`는 `chatCi`, `userCi`, `marketCi`, `notificationCi`, `oauth2AuthorizationServerCi`, `oauth2ClientCi`, `websocketGatewayCi`, `apiGatewayCi`, `springCloudConfigCi`, `marketDetectionCi`, `outboxPollerCi`, `eurekaServerCi` 중 영향 서비스에 맞는 task다.
 
 ## 4. 실행 순서와 실패 처리
 

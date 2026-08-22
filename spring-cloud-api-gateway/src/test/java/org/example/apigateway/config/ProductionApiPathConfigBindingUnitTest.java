@@ -1,5 +1,6 @@
 package org.example.apigateway.config;
 
+import org.example.apigateway.ratelimit.GatewayRateLimitProperties;
 import org.example.common.properties.ApiPathProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -32,13 +33,31 @@ class ProductionApiPathConfigBindingUnitTest {
                 .orElseThrow(() -> new IllegalStateException("Cannot bind api-path"));
 
         assertThat(properties.user().mePath()).isEqualTo("/user/me/profile");
+        assertThat(properties.auth().refresh()).isEqualTo("/auth/refresh");
         assertThat(properties.user().profilePattern()).isEqualTo("/user/*/profile");
+        assertThat(properties.chat().roomsPopular()).isEqualTo("/chat/rooms/popular");
         assertThat(properties.chat().roomsMe()).isEqualTo("/chat/rooms/me");
         assertThat(properties.chat().roomMembersPattern()).isEqualTo("/chat/room/*/members");
         assertThat(properties.market().priceAlertsPattern()).isEqualTo("/price-alerts/**");
         assertThat(properties.notification().notificationsPattern()).isEqualTo("/notifications/**");
         assertThat(properties.oauth2().loginCallbackPattern()).isEqualTo("/login/oauth2/code/**");
+        assertThat(properties.oauth2().authorizationPattern()).isEqualTo("/oauth2/authorization/**");
         assertThat(properties.websocket().msgPattern()).isEqualTo("/msg/**");
+    }
+
+    @Test
+    @DisplayName("게이트웨이 Rate Limit 정책은 운영 설정에서 Bucket 단위로 바인딩된다")
+    void rateLimitPolicy_shouldBindFromGatewayConfig() throws IOException {
+        StandardEnvironment environment = environmentWith("git-config-repo/dynamic/api-gateway.yml");
+
+        GatewayRateLimitProperties properties = Binder.get(environment)
+                .bind("gateway.rate-limit", Bindable.of(GatewayRateLimitProperties.class))
+                .orElseThrow(() -> new IllegalStateException("Cannot bind gateway.rate-limit"));
+
+        assertThat(properties.signUp().replenishRate()).isEqualTo(5);
+        assertThat(properties.signUp().requestedTokens()).isEqualTo(60);
+        assertThat(properties.websocketHandshake().burstCapacity()).isEqualTo(5);
+        assertThat(properties.query().replenishRate()).isEqualTo(10);
     }
 
     @Test

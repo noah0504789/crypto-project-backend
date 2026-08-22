@@ -57,7 +57,7 @@ class WebsocketHandshakeAuthWebFilterUnitTest {
         return new ApiPathProperties(
                 new ApiPathProperties.Websocket("/ws", "/ws-native", "/ws", "/ws-native", "/ws-native/**", "/ws/**", "/msg/**", "/ws/info/**"),
                 new ApiPathProperties.Stomp("/msg", "/user"),
-                new ApiPathProperties.Auth("/auth/**", "/auth/logout"),
+                new ApiPathProperties.Auth("/auth/**", "/auth/logout", "/auth/refresh"),
                 new ApiPathProperties.OAuth2("/oauth2/authorization", "/oauth2/**", "/login/oauth2/code/**", "/login/oauth2/code", "/login?error", "/oauth2/**"),
                 new ApiPathProperties.Chat(
                         "/chat/**",
