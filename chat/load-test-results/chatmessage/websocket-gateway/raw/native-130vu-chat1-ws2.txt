@@ -1,0 +1,53 @@
+     ✓ websocket open received
+     ✓ stomp connected
+     ✓ ws upgrade status is 101
+
+     ack_latency_ms........................: avg=2.53s    min=38ms     med=2.29s    p(90)=4.47s  p(95)=4.84s  p(99)=5.47s  max=8.48s 
+     ack_ok_count..........................: 949     16.563355/s
+     ack_ok_rate...........................: 73.00%  ✓ 949         ✗ 351  
+     ack_timeout_count.....................: 351     6.126172/s
+     broadcast_delivery_late_count.........: 39337   686.567639/s
+     broadcast_delivery_latency_ms.........: avg=6.78s    min=155ms    med=6.15s    p(90)=14.57s p(95)=15.98s p(99)=16.95s max=18.02s
+     broadcast_delivery_ok_count...........: 169000  2949.638533/s
+     broadcast_delivery_timeout_ok_count...: 129663  2263.070894/s
+     broadcast_delivery_timeout_ok_rate....: 76.72%  ✓ 129663      ✗ 39337
+     broadcast_expected_total_count........: 169000  2949.638533/s
+     checks................................: 100.00% ✓ 390         ✗ 0    
+     connect_frame_count...................: 130     2.268953/s
+     data_received.........................: 87 MB   1.5 MB/s
+     data_sent.............................: 807 kB  14 kB/s
+     iteration_duration....................: avg=57.03s   min=56.92s   med=57s      p(90)=57.19s p(95)=57.21s p(99)=57.25s max=57.28s
+     iterations............................: 130     2.268953/s
+     send_count............................: 1300    22.689527/s
+     subscribe_frame_count.................: 260     4.537905/s
+     vus...................................: 128     min=128       max=130
+     vus_max...............................: 130     min=130       max=130
+     ws_connecting.........................: avg=995.74ms min=906.19ms med=926.59ms p(90)=1.16s  p(95)=1.18s  p(99)=1.2s   max=1.26s 
+     ws_msgs_received......................: 212190  3703.454439/s
+     ws_msgs_sent..........................: 1690    29.496385/s
+     ws_session_duration...................: avg=57.03s   min=56.92s   med=57s      p(90)=57.19s p(95)=57.21s p(99)=57.25s max=57.28s
+     ws_sessions...........................: 130     2.268953/s
+
+========== clean_native_broadcast_result ==========
+
+send_count: 1,300
+subscribe_frame_count: 260
+
+broadcast:
+- total_count: 169,000 / 169,000 (100.00%)
+- late_total_count: 39,337 / 169,000 (23.28%)
+- missing_total_count: 0 / 169,000 (0.00%)
+- duplicate_total_count: 0 / 169,000 (0.00%)
+
+- ok_rate_per_user: 997.41 / 1,300 (76.72%)
+- timeout_rate_per_user: 302.59 / 1,300 (23.28%)
+- duplicate_per_user: 0
+
+- latency_ms:
+  avg=6,783.47ms
+  p90=14,572ms
+  p95=15,984ms
+  p99=16,959ms
+  max=18,020ms
+
+============================================

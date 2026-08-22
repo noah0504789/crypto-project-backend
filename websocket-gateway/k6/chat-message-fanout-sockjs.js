@@ -3,35 +3,44 @@ import { check } from 'k6';
 import { Counter, Rate, Trend } from 'k6/metrics';
 import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.1/index.js';
 
-// ===== fixed values =====
-const server_host = 'potato-volume-finger-universal.trycloudflare.com';
-const room_id = '69e509b7f611e464a27a6267';
+// Runtime target and credentials are supplied by the CLI. Do not commit real tokens.
+const ws_base_url = (__ENV.WS_BASE_URL || 'wss://localhost:8000').replace(/\/$/, '');
+const room_id = __ENV.ROOM_ID || '';
 
-// ===== tokens from env =====
-const token_user_1 = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im15LWF1dGhvcml6YXRpb24tc2VydmVyLWp3dDoxIn0.eyJzdWIiOiJub2FoMDk2OUBnbWFpbC5jb20iLCJhdWQiOlsibXktY2xpZW50LWlkIl0sIm5iZiI6MTc3ODIyMjE0Miwicm9sZXMiOlsiUk9MRV9VU0VSIl0sImlzcyI6Imh0dHA6Ly9jcnlwdG8tb2F1dGgyLWF1dGhvcml6YXRpb24tc2VydmVyOjkwMDAiLCJpZCI6IjI0YjI1OWRiLTQ1NWQtNDhiOS04ZWVhLTllODQzNzQ5Mzg1OSIsImV4cCI6MTc3ODgyNjk0MiwiaWF0IjoxNzc4MjIyMTQyLCJqdGkiOiJiZjZlOWEzMS1jMTcyLTQ0MzMtYmM5Yy1jM2FmNjNjOGQ2YWUifQ.VHQWmx3oy30-yuetnlMRJsF0imOo49GFXDjvlQnMNop3RXLa0t6v2QdhH-PkkqHFH9PYvlzPW_iT8w_WJkPiyDT7yCNU5f1XYnyBnEhrNmS8wjYRop4eHz-GlNfzTNzBTyaL1PoDd69zzOCFS6NMlgXR5NRsLZ9nTjAl0qfJsSL-GRj9BPalSuuYwbjL6v8yo9JX-0FshJ7tXroZMFm2xAzeUQuWpmV9t1wOBn1MWYvs4eD7Xp2T77UzX19CL95WkpEcpHAS95DNO4oFsKmM13AP6rLoiaS4iWw2Ct-KjbGlotRThIz0ZnJ4NGkTV6AI7rWpGCIUMsPf09kkL4Zu0A';
-const token_user_2 = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im15LWF1dGhvcml6YXRpb24tc2VydmVyLWp3dDoxIn0.eyJzdWIiOiJub2FoMDUwNEBrYWthby5jb20iLCJhdWQiOlsibXktY2xpZW50LWlkIl0sIm5iZiI6MTc3ODIyMjA1Miwicm9sZXMiOlsiUk9MRV9VU0VSIl0sImlzcyI6Imh0dHA6Ly9jcnlwdG8tb2F1dGgyLWF1dGhvcml6YXRpb24tc2VydmVyOjkwMDAiLCJpZCI6ImI0MjE4OTU5LTQ3ZGMtNDIxMC1hZWUzLWQ3NTIxMTVmNDhhYyIsImV4cCI6MTc3ODgyNjg1MiwiaWF0IjoxNzc4MjIyMDUyLCJqdGkiOiJjZWJkN2Q2Ni1hNmZhLTRkNmItYThiMi1jNGFkYTMyMDUzYzUifQ.T57dLfq1LVJtTHDcYUkm4LmoUjP_JJyNoWwv9UuKWPuKWIcEmtZaTMDSssbGw9UwI6n-No_6k4Dx-obtp6NXcqgFishfF8K9qMxngK8rzQjmg9z_bDAjLZ7HbcTojPCwsEhGBFIILa4UXCaUfa4pxYfBSkQVfT7M_Lml7gwos2CZw1Rg4xOxrvNTcQLzGTNJnLsMsNSZ_N_ilWdlr2jiSy1-Bh22Ng4jQ9l12wxjtqXds2iMGIFPSyL3CQvd_UuESODxj0_CDTcq8_lsSBWlByzIKgrQyACBQWz6v6mg478TfUZVKOv5e5cd2Vn_EMOXHtdddt-56roykOVoEOZGcA';
+// ===== tokens =====
+const token_user_1 = __ENV.TOKEN_USER_1 || '';
+const token_user_2 = __ENV.TOKEN_USER_2 || '';
 
-const writer_id_1 = '24b259db-455d-48b9-8eea-9e8437493859';
-const writer_id_2 = 'b4218959-47dc-4210-aee3-d752115f48ac';
-
-// ===== native websocket endpoint =====
-const ws_base_path = '/ws-native';
+const writer_id_1 = __ENV.WRITER_ID_1 || '';
+const writer_id_2 = __ENV.WRITER_ID_2 || '';
 
 // ===== stomp destinations =====
+const ws_base_path = '/ws';
 const send_destination = '/msg/chat.send';
 const ack_destination = '/user/queue/chat/ack';
 const broadcast_destination = `/topic/chat/${room_id}`;
 
 // ===== test config =====
-const num_vus = 200;
-const num_msgs_per_user = 10;
-const send_interval_ms = 1000;
+// k6 프로세스 분리 실행용
+// 예: INSTANCE_NAME=k6-a LOCAL_VUS=65 TOTAL_VUS=130 k6 run ...
+const instance_name = __ENV.INSTANCE_NAME || 'k6-a';
 
-const subscribe_settling_ms = 20000;
-const ack_timeout_ms = 10000;
-const broadcast_timeout_ms = 10000;
-const broadcast_collect_window_ms = 60000;
-const wait_connected_ms = 20000;
+const local_vus = Number(__ENV.LOCAL_VUS || __ENV.VUS || 130);
+const total_vus = Number(__ENV.TOTAL_VUS || __ENV.VUS || local_vus);
+
+const num_vus = local_vus;
+const num_msgs_per_user = Number(__ENV.MESSAGE_COUNT || 10);
+const send_interval_ms = Number(__ENV.MESSAGE_INTERVAL_MS || 1000);
+
+// 두 프로세스가 모두 접속/구독 완료할 시간 확보
+const subscribe_settling_ms = Number(__ENV.START_DELAY_MS || 10000);
+
+const ack_timeout_ms = Number(__ENV.ACK_TIMEOUT_MS || 10000);
+const broadcast_timeout_ms = Number(__ENV.BROADCAST_TIMEOUT_MS || 10000);
+
+// 지연/유실 구분 위해 60초 권장
+const broadcast_collect_window_ms = Number(__ENV.COLLECT_WINDOW_MS || 60000);
+const wait_connected_ms = Number(__ENV.WAIT_CONNECTED_MS || 20000);
 
 const force_close_ms =
   subscribe_settling_ms +
@@ -39,12 +48,14 @@ const force_close_ms =
   broadcast_collect_window_ms +
   10000;
 
-const expected_broadcast_per_user = num_vus * num_msgs_per_user;
+// 각 k6 프로세스는 65명만 실행하지만,
+// 같은 방 전체에서는 TOTAL_VUS명이 메시지를 보내므로 기대 broadcast는 TOTAL_VUS 기준
+const expected_broadcast_per_user = total_vus * num_msgs_per_user;
 const expected_broadcast_total = num_vus * expected_broadcast_per_user;
 
 // ===== debug =====
 const debug_vus = new Set([1]);
-const debug_limit = 800;
+const debug_limit = 500;
 
 // ===== custom metrics =====
 const connect_frame_count = new Counter('connect_frame_count');
@@ -52,6 +63,7 @@ const subscribe_frame_count = new Counter('subscribe_frame_count');
 const send_count = new Counter('send_count');
 
 const ack_ok_count = new Counter('ack_ok_count');
+const ack_failed_count = new Counter('ack_failed_count');
 const ack_timeout_count = new Counter('ack_timeout_count');
 const ack_ok_rate = new Rate('ack_ok_rate');
 const ack_latency_ms = new Trend('ack_latency_ms', true);
@@ -63,22 +75,39 @@ const broadcast_delivery_late_count = new Counter('broadcast_delivery_late_count
 const broadcast_delivery_missing_count = new Counter('broadcast_delivery_missing_count');
 const broadcast_delivery_timeout_ok_rate = new Rate('broadcast_delivery_timeout_ok_rate');
 const broadcast_delivery_latency_ms = new Trend('broadcast_delivery_latency_ms', true);
+
+// 중복 여부 진단용
 const broadcast_duplicate_count = new Counter('broadcast_duplicate_count');
 
 // ===== k6 options =====
 export const options = {
   scenarios: {
-    native_burst_message_130: {
+    chat_message_fanout_sockjs: {
       executor: 'per-vu-iterations',
       vus: num_vus,
       iterations: 1,
-      maxDuration: '10m',
+      maxDuration: '12m',
     },
   },
   summaryTrendStats: ['avg', 'min', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
 };
 
 // ===== utils =====
+function random_int(min, max_inclusive) {
+  return Math.floor(Math.random() * (max_inclusive - min + 1)) + min;
+}
+
+function random_string(length) {
+  const chars = 'abcdefghijklmnopqrstuvwxyz';
+  let out = '';
+
+  for (let i = 0; i < length; i++) {
+    out += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  return out;
+}
+
 function debug_log(vu, message) {
   if (!debug_vus.has(vu)) return;
 
@@ -97,27 +126,43 @@ function build_stomp_frame(command, headers = {}, body = '') {
   return frame;
 }
 
-function split_stomp_frames(raw) {
+function sock_js_wrap(stomp_frame) {
+  return JSON.stringify([stomp_frame]);
+}
+
+function parse_sock_js_data(raw) {
   const text = String(raw);
 
-  if (text === '\n' || text.trim() === '') {
-    return [];
+  if (text === 'o') return { type: 'open' };
+  if (text === 'h') return { type: 'heartbeat' };
+
+  if (text.startsWith('c[') || text.startsWith('c')) {
+    return { type: 'close', raw: text };
   }
 
-  return text
-    .split('\u0000')
-    .map((part) => part.trimStart())
-    .filter((part) => part.length > 0)
-    .map((part) => `${part}\u0000`);
+  if (text.startsWith('a[')) {
+    try {
+      const arr = JSON.parse(text.slice(1));
+      return { type: 'array', messages: Array.isArray(arr) ? arr : [] };
+    } catch (error) {
+      return { type: 'invalid_array', raw: text, error: String(error) };
+    }
+  }
+
+  if (
+    text.startsWith('CONNECTED') ||
+    text.startsWith('MESSAGE') ||
+    text.startsWith('ERROR') ||
+    text.startsWith('RECEIPT')
+  ) {
+    return { type: 'array', messages: [text] };
+  }
+
+  return { type: 'unknown', raw: text };
 }
 
 function parse_stomp_frame(frame_text) {
-  let text = String(frame_text);
-
-  if (text.endsWith('\u0000')) {
-    text = text.slice(0, -1);
-  }
-
+  const text = String(frame_text);
   const lines = text.split('\n');
   const command = (lines[0] || '').trim();
 
@@ -139,7 +184,11 @@ function parse_stomp_frame(frame_text) {
     }
   }
 
-  const body = lines.slice(i).join('\n');
+  let body = lines.slice(i).join('\n');
+
+  if (body.endsWith('\u0000')) {
+    body = body.slice(0, -1);
+  }
 
   return { command, headers, body, raw: text };
 }
@@ -179,18 +228,18 @@ export default function () {
   const access_token = is_user_1 ? token_user_1 : token_user_2;
   const writer_id = is_user_1 ? writer_id_1 : writer_id_2;
 
-  if (!access_token) {
-    throw new Error('TOKEN_USER_1 또는 TOKEN_USER_2 환경변수가 비어 있음');
+  if (!room_id || !access_token || !writer_id) {
+    throw new Error('ROOM_ID, TOKEN_USER_1/2, WRITER_ID_1/2를 실행 환경에 설정해야 함');
   }
 
-  // 브라우저 Native WebSocket 요청과 맞춤.
-  // access_token은 query string으로만 전달.
-  const url =
-    `wss://${server_host}` +
-    `${ws_base_path}` +
-    `?access_token=${access_token}`;
+  const sock_js_server_id = random_int(0, 999);
+  const sock_js_session_id = random_string(8);
 
-  let websocket_opened = false;
+  const url =
+    `${ws_base_url}${ws_base_path}/${sock_js_server_id}/${sock_js_session_id}/websocket` +
+    `?access_token=${encodeURIComponent(access_token)}`;
+
+  let sock_js_opened = false;
   let connect_sent = false;
   let stomp_connected = false;
   let send_started = false;
@@ -231,27 +280,34 @@ export default function () {
     }
 
     check(null, {
-      'websocket open received': () => websocket_opened,
+      'sockjs open received': () => sock_js_opened,
       'stomp connected': () => stomp_connected,
     });
 
     debug_log(
       vu,
-      `[VU ${vu}] finalize reason=${reason}, sent=${sent}, broadcast_received=${received}, broadcast_missing=${missing}, expected=${expected_broadcast_per_user}`
+      `[${instance_name} VU ${vu}] finalize reason=${reason}, sent=${sent}, broadcast_received=${received}, broadcast_missing=${missing}, expected=${expected_broadcast_per_user}`
     );
 
     try {
       socket.close();
     } catch (error) {
-      debug_log(vu, `[VU ${vu}] close error=${JSON.stringify(error)}`);
+      debug_log(vu, `[${instance_name} VU ${vu}] close error=${JSON.stringify(error)}`);
     }
   }
 
-  function mark_ack(msg_id) {
+  // 서버는 실패도 ACK로 응답한다(success=false, errorCode). 성공 ACK만 성공률에 넣는다.
+  function mark_ack(msg_id, body_obj) {
     if (!pending_ack.has(msg_id)) return;
 
     const started_at = pending_ack.get(msg_id);
     pending_ack.delete(msg_id);
+
+    if (body_obj?.success !== true) {
+      ack_failed_count.add(1);
+      ack_ok_rate.add(false);
+      return;
+    }
 
     ack_ok_count.add(1);
     ack_ok_rate.add(true);
@@ -288,25 +344,14 @@ export default function () {
     }
   }
 
-  // 브라우저 요청과 최대한 유사하게 맞춤.
-  // Authorization, X-User-Id, Sec-WebSocket-Protocol은 넣지 않음.
-  const params = {
-    headers: {
-      Origin: 'http://localhost:5500',
-      Pragma: 'no-cache',
-      'Cache-Control': 'no-cache',
-      'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
-    },
-  };
-
-  const res = ws.connect(url, params, function (socket) {
+  const res = ws.connect(url, {}, function (socket) {
     function start_sending() {
       if (send_started) return;
       send_started = true;
 
       debug_log(
         vu,
-        `[VU ${vu}] start_sending messages_per_user=${num_msgs_per_user}, expected_broadcast_per_user=${expected_broadcast_per_user}, expected_broadcast_total=${expected_broadcast_total}`
+        `[${instance_name} VU ${vu}] start_sending local_vus=${local_vus}, total_vus=${total_vus}, messages_per_user=${num_msgs_per_user}, expected_broadcast_per_user=${expected_broadcast_per_user}, expected_broadcast_total=${expected_broadcast_total}`
       );
 
       socket.setInterval(function () {
@@ -315,7 +360,7 @@ export default function () {
         if (sent >= num_msgs_per_user) {
           if (!all_messages_queued) {
             all_messages_queued = true;
-            debug_log(vu, `[VU ${vu}] all_send_frames_queued`);
+            debug_log(vu, `[${instance_name} VU ${vu}] all_send_frames_queued`);
 
             socket.setTimeout(function () {
               finalize(socket, 'broadcast_collect_window_complete');
@@ -327,8 +372,8 @@ export default function () {
 
         sent += 1;
 
-        const msg_id = `k6-native-${vu}-${sent}-${Date.now()}`;
-        const content = `CID:${msg_id}|native-burst-message-${vu}-${sent}`;
+        const msg_id = `${instance_name}-${vu}-${sent}-${Date.now()}`;
+        const content = `CID:${msg_id}|chat-message-fanout-sockjs-${instance_name}-${vu}-${sent}`;
         const now = Date.now();
 
         pending_ack.set(msg_id, now);
@@ -350,68 +395,91 @@ export default function () {
           JSON.stringify(body_obj)
         );
 
-        socket.send(send_frame);
-        debug_log(vu, `[VU ${vu}] sent_message ${sent}/${num_msgs_per_user}, msg_id=${msg_id}`);
+        socket.send(sock_js_wrap(send_frame));
+        debug_log(vu, `[${instance_name} VU ${vu}] sent_message ${sent}/${num_msgs_per_user}, msg_id=${msg_id}`);
       }, send_interval_ms);
     }
 
     socket.on('open', function () {
-      websocket_opened = true;
-      debug_log(vu, `[VU ${vu}] websocket_open`);
-
-      if (!connect_sent) {
-        const connect_frame = build_stomp_frame('CONNECT', {
-          'accept-version': '1.2',
-          'heart-beat': '10000,10000',
-          host: server_host,
-        });
-
-        socket.send(connect_frame);
-        connect_sent = true;
-        connect_frame_count.add(1);
-
-        debug_log(vu, `[VU ${vu}] sent_connect`);
-      }
+      debug_log(vu, `[${instance_name} VU ${vu}] websocket_open`);
     });
 
     socket.on('message', function (raw) {
-      const frames = split_stomp_frames(raw);
+      const parsed = parse_sock_js_data(raw);
 
-      for (const frame_text of frames) {
-        if (typeof frame_text !== 'string') continue;
+      if (parsed.type === 'open') {
+        sock_js_opened = true;
 
-        if (frame_text.includes('ERROR')) {
-          console.log(`[VU ${vu}] STOMP ERROR=${frame_text}`);
-          finalize(socket, 'stomp_error');
-          return;
+        if (!connect_sent) {
+          const connect_frame = build_stomp_frame('CONNECT', {
+            'accept-version': '1.2',
+            'heart-beat': '10000,10000',
+            writerId: writer_id,
+          });
+
+          socket.send(sock_js_wrap(connect_frame));
+          connect_sent = true;
+          connect_frame_count.add(1);
+
+          debug_log(vu, `[${instance_name} VU ${vu}] sent_connect`);
         }
 
-        const frame = parse_stomp_frame(frame_text);
+        return;
+      }
+
+      if (parsed.type === 'heartbeat') {
+        return;
+      }
+
+      if (parsed.type === 'close') {
+        debug_log(vu, `[${instance_name} VU ${vu}] sockjs_close_frame=${parsed.raw}`);
+        finalize(socket, 'sockjs_close_frame');
+        return;
+      }
+
+      if (parsed.type === 'invalid_array') {
+        debug_log(vu, `[${instance_name} VU ${vu}] invalid_sockjs_array error=${parsed.error}, raw=${parsed.raw}`);
+        return;
+      }
+
+      if (parsed.type === 'unknown') {
+        debug_log(vu, `[${instance_name} VU ${vu}] unknown_sockjs_frame=${parsed.raw}`);
+        return;
+      }
+
+      if (parsed.type !== 'array') {
+        return;
+      }
+
+      for (const msg of parsed.messages) {
+        if (typeof msg !== 'string') continue;
+
+        const frame = parse_stomp_frame(msg);
 
         if (frame.command === 'CONNECTED') {
           if (!stomp_connected) {
             stomp_connected = true;
 
             const subscribe_ack_frame = build_stomp_frame('SUBSCRIBE', {
-              id: `ack-${vu}`,
+              id: `ack-${instance_name}-${vu}`,
               destination: ack_destination,
               ack: 'auto',
             });
 
             const subscribe_broadcast_frame = build_stomp_frame('SUBSCRIBE', {
-              id: `broadcast-${vu}`,
+              id: `broadcast-${instance_name}-${vu}`,
               destination: broadcast_destination,
               ack: 'auto',
             });
 
-            socket.send(subscribe_ack_frame);
-            socket.send(subscribe_broadcast_frame);
+            socket.send(sock_js_wrap(subscribe_ack_frame));
+            socket.send(sock_js_wrap(subscribe_broadcast_frame));
 
             subscribe_frame_count.add(2);
 
             debug_log(
               vu,
-              `[VU ${vu}] stomp_connected_and_subscribed ack=${ack_destination}, broadcast=${broadcast_destination}`
+              `[${instance_name} VU ${vu}] stomp_connected_and_subscribed ack=${ack_destination}, broadcast=${broadcast_destination}`
             );
 
             socket.setTimeout(function () {
@@ -422,23 +490,27 @@ export default function () {
           continue;
         }
 
-        if (frame.command !== 'MESSAGE') {
-          continue;
+        if (frame.command === 'ERROR') {
+          console.log(`[${instance_name} VU ${vu}] STOMP ERROR=${msg}`);
+          finalize(socket, 'stomp_error');
+          return;
         }
+
+        if (frame.command !== 'MESSAGE') continue;
 
         let body_obj = null;
 
         try {
           body_obj = JSON.parse(frame.body);
         } catch (_) {
-          debug_log(vu, `[VU ${vu}] failed_to_parse_message_body body=${frame.body}`);
+          debug_log(vu, `[${instance_name} VU ${vu}] failed_to_parse_message_body body=${frame.body}`);
           continue;
         }
 
         const msg_id = resolve_message_id(body_obj);
 
         if (!msg_id) {
-          debug_log(vu, `[VU ${vu}] message_has_no_client_message_id_or_cid body=${frame.body}`);
+          debug_log(vu, `[${instance_name} VU ${vu}] message_has_no_client_message_id_or_cid body=${frame.body}`);
           continue;
         }
 
@@ -447,28 +519,26 @@ export default function () {
           frame.headers['simpDestination'] ||
           '';
 
+        const is_ack_payload = body_obj?.success !== undefined || body_obj?.errorCode !== undefined;
+
         if (destination === ack_destination) {
-          mark_ack(msg_id);
+          mark_ack(msg_id, body_obj);
         } else if (destination === broadcast_destination) {
           mark_broadcast_delivery(msg_id);
-        } else {
-          if (pending_ack.has(msg_id)) {
-            mark_ack(msg_id);
-          }
-
-          if (body_obj?.content?.includes?.('CID:')) {
-            mark_broadcast_delivery(msg_id);
-          }
+        } else if (is_ack_payload) {
+          mark_ack(msg_id, body_obj);
+        } else if (body_obj?.content?.includes?.('CID:')) {
+          mark_broadcast_delivery(msg_id);
         }
       }
     });
 
     socket.on('close', function () {
-      debug_log(vu, `[VU ${vu}] socket_closed`);
+      debug_log(vu, `[${instance_name} VU ${vu}] socket_closed`);
     });
 
     socket.on('error', function (error) {
-      console.log(`[VU ${vu}] websocket_error=${JSON.stringify(error)}`);
+      console.log(`[${instance_name} VU ${vu}] websocket_error=${JSON.stringify(error)}`);
       finalize(socket, 'websocket_error');
     });
 
@@ -489,7 +559,7 @@ export default function () {
     socket.setTimeout(function () {
       if (!stomp_connected) {
         console.log(
-          `[VU ${vu}] timeout_waiting_connected websocket_opened=${websocket_opened}, connect_sent=${connect_sent}`
+          `[${instance_name} VU ${vu}] timeout_waiting_connected sock_js_opened=${sock_js_opened}, connect_sent=${connect_sent}, session=${sock_js_session_id}`
         );
 
         finalize(socket, 'timeout_waiting_connected');
@@ -498,7 +568,7 @@ export default function () {
 
     socket.setTimeout(function () {
       if (!finalized) {
-        console.log(`[VU ${vu}] force_close_timeout`);
+        console.log(`[${instance_name} VU ${vu}] force_close_timeout`);
         finalize(socket, 'force_close_timeout');
       }
     }, force_close_ms);
@@ -510,7 +580,7 @@ export default function () {
 
   if (!res || res.status !== 101) {
     console.log(
-      `[VU ${vu}] upgrade_failed path=${ws_base_path}, status=${res && res.status}, error=${res && JSON.stringify(res.error)}`
+      `[${instance_name} VU ${vu}] upgrade_failed status=${res && res.status}, error=${res && JSON.stringify(res.error)}`
     );
   }
 }
@@ -573,7 +643,15 @@ export function handleSummary(data) {
   });
 
   const clean_result = `
-========== clean_native_broadcast_result ==========
+========== chat_message_fanout_sockjs_result (${instance_name}) ==========
+
+config:
+- instance_name: ${instance_name}
+- local_vus: ${format_number(local_vus)}
+- total_vus: ${format_number(total_vus)}
+- messages_per_user: ${format_number(num_msgs_per_user)}
+- start_delay_ms: ${format_number(subscribe_settling_ms)}
+- collect_window_ms: ${format_number(broadcast_collect_window_ms)}
 
 send_count: ${format_number(total_send_count)}
 subscribe_frame_count: ${format_number(total_subscribe_frame_count)}
