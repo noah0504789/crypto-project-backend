@@ -86,6 +86,7 @@ broker 큐는 **팬아웃 이전** 메시지를 세고 outbound 큐는 **팬아�
 
 ## 관련 근거
 
+- 실패 경로 전체 표(거절이 어디서 무엇을 잃는가): [`../SERVICE_FLOWS.md` §15](../SERVICE_FLOWS.md). **거절 카운터는 `pool` 태그로 분리해 읽는다** — broker 1건은 방 전원, outbound 1건은 1명이다.
 - 측정 원본: `chat/load-test-results/chatmessage/websocket-gateway/README.md`
 - 후속 과제: `TODO.md` 5.3(팬아웃 처리량), 5.4(재측정 보정)
 - 설정: `git-config-repo/dynamic/websocket-gateway.yml`, `git-config-repo/dynamic/chat-service.yml`, `git-config-repo/infrastructure/mysql.yml`

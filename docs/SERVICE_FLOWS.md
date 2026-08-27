@@ -239,3 +239,76 @@ notification KafkaNotificationBinder.priceAlertDetectedEventConsumer (price-aler
 근거: `notification/notification-adapter-in/.../stream/KafkaNotificationBinder.java`, `notification/notification-application/.../service/PriceAlertNotificationCommandService.java`, `notification/notification-adapter-out/.../grpc/PriceAlertRecipientQueryAdapter.java`, `websocket-gateway/.../adapter/in/stream/KafkaWebsocketGatewayBinder.java`.
 
 ---
+
+## 15. 채팅 메시지 실패 경로 — 구현됨
+
+부하 결과를 읽으려면 "무엇이 어디서 사라지는가"가 한곳에 있어야 한다. 실패 처리는 `StompChatMessageExceptionHandler`·`ChatMessageSendService`·`ChatMessageCommandService`·`ChatMessageEventService`·`OutboxService`·`ExecutorConfig`에 흩어져 있다.
+
+경계는 **chat gRPC `save` 성공 지점**이고, 그 전후로 성질이 완전히 다르다.
+
+### 15.1 저장 전 실패 — 데이터가 남지 않는다(재전송으로 해결)
+
+| 실패 | 발신자 통보 | 재시도·보상 |
+|---|---|---|
+| **inbound 큐 거절** | **없음(침묵)** | 없음 |
+| Rate Limit 초과 | `RATE_LIMIT_EXCEEDED` (`clientMessageId` 포함) | — |
+| 요청 검증 실패 | `VALIDATION_ERROR` (**`clientMessageId=null`**) | — |
+| 그 외 예외 | `SERVER_ERROR` (**`clientMessageId=null`**) | — |
+| chat outbox 기록 일시 실패 | 재시도 소진 후 거절 ACK | `@Retryable(TemporaryOutboxPersistenceException)` → 소진 시 예외가 gRPC로 전파 |
+| gRPC `DEADLINE_EXCEEDED` | 거절 ACK | `hardDelete` 보상(저장됐을 수 있는 메시지 제거) |
+| gRPC 그 외 코드 | 거절 ACK | 보상 없음 |
+
+- `@ControllerAdvice StompChatMessageExceptionHandler`의 `@MessageExceptionHandler(Exception.class)`가 컨트롤러 진입 이후의 예외를 모두 잡아 `/queue/chat/ack`로 알린다. **inbound 큐 거절만 이 그물에 안 걸린다** — 핸들러 진입 전에 executor가 버리기 때문이다(`stomp.executor.rejected{pool="inbound"}`로만 관측된다).
+- **검증·서버 오류 ACK는 `clientMessageId`가 `null`이다**(`StompChatMessageAckResponse.ofFailure(null, ...)`). 발신자는 실패했다는 사실만 알고 **어느 메시지가 실패했는지 짚지 못한다.** Rate Limit ACK만 `clientMessageId`를 담는다.
+- `ChatMessageCommandService.save`에는 `@Recover`가 **없다**(이 클래스의 `@Recover`는 `hardDelete`용 `TemporaryChatPersistenceException` 시그니처다). 재시도가 소진되면 예외가 `@GrpcAdvice`를 거쳐 gRPC 오류가 되고, 게이트웨이 `ChatMessageSendService.handleSaveError`가 거절 ACK를 보낸다.
+- `save`는 Mongo에 쓰지 않는다. outbox 기록 + Redis 캐시 반영만 하고 Mongo 영속은 consumer 몫이다(§9) — Mongo 저장 실패는 15.2에 속한다.
+
+### 15.2 저장 후 실패 — 데이터는 있고 발신자는 성공 ACK를 받았다
+
+| 실패 | 영향 범위 | 복구 |
+|---|---|---|
+| Redis 캐시 반영 실패 | 캐시만 | 조회 시 `*QueryRepairService`가 Mongo에서 재적재 |
+| **outbox `FAILED`** | **전원** | **없음**(→ `TODO.md` 4.6) |
+| Kafka 발행 재시도 중 | 지연 | outbox-poller 재시도 |
+| **broker 큐 거절** | **방 전원** | 없음 |
+| **outbound 큐 거절** | **수신자 1명** | 없음 |
+| consumer 처리 실패 | 해당 이벤트 | `@Retryable` 소진 → `@Recover`가 DLQ 발행 |
+| 로컬 세션 없음 | — | 정상(다중 인스턴스 설계) |
+
+### 15.3 표에서 읽어야 할 것
+
+**(1) `outbox FAILED`는 종착역이다.** `OutboxStatus.FAILED`를 쓰는 곳은 `JpaOutbox.markFailed()` 하나뿐이고, poller는 `PENDING`만 조회한다(`OutboxService.publishPending`). **쓰기만 하고 아무도 다시 읽지 않는다.** DLQ로도 넘어가지 않는다 — DLQ(`JpaDlq`)는 consumer 실패용이라 별개 경로다.
+
+```
+Mongo 저장 성공 + 발신자 성공 ACK
+  → Kafka 발행 재시도 소진 → FAILED
+  → 아무도 못 받고 재시도도 안 된다
+```
+
+이미 **TODO 4.6**(`FAILED` Outbox 재처리 경로 추가)으로 관리 중이다.
+
+**(2) broker 거절은 outbound 거절보다 방 인원 배 무겁다.** broker 큐는 팬아웃 **이전** 메시지를, outbound 큐는 팬아웃 **이후** 전송을 센다.
+
+```
+broker   1건 버림 = 방 전원이 못 받음
+outbound 1건 버림 = 1명이 못 받음
+```
+
+300명 방이면 300배다. **부하 결과에서 `stomp.executor.rejected`를 합산하면 안 된다.** `pool` 태그로 분리해 읽고, broker 건수는 방 인원을 곱해 환산한다.
+
+**(3) inbound 거절과 outbound 거절은 의미가 다르다.**
+
+```
+inbound  = 저장도 안 됨. 발신자는 ACK 타임아웃으로만 인지
+outbound = 저장은 됐고 전달만 실패. 발신자는 성공한 줄 안다
+```
+
+k6의 ACK 타임아웃 건수가 부풀면 원인이 둘(inbound에서 잘림 / ACK 지연)이라 `stomp.executor.rejected{pool="inbound"}`로 갈라야 한다. 거절 시 발신자에게 알리지 않는 동작은 기존 `AbortPolicy`와 같아 회귀가 아니다.
+
+### 15.4 이 표가 다루지 않는 것
+
+WebSocket 핸드셰이크 실패, Kafka consumer 리밸런스 중 유실, Inbox 멱등 경로, DLQ consumer 자체 실패는 범위 밖이다.
+
+근거: `websocket-gateway/.../stomp/exception/StompChatMessageExceptionHandler.java`, `websocket-gateway/.../config/ExecutorConfig.java`, `websocket-gateway/.../chatmessage/application/service/ChatMessageSendService.java`, `chat/chat-application/.../service/{ChatMessageCommandService,ChatMessageEventService}.java`, `common/common-outbox/.../{OutboxService,JpaOutbox}.java`. 용량·큐 산정은 [`decisions/ADR-003-chat-capacity-target-and-connection-budget.md`](decisions/ADR-003-chat-capacity-target-and-connection-budget.md).
+
+---
