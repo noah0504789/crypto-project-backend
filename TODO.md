@@ -56,6 +56,26 @@ spring-cloud-config는 `POST /sign`(Vault Transit RS256 서명 대행)·`GET /.w
 outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴링을 런타임 토글하나, 모듈 계층 인증(`SecurityFilterChain`)이 확인되지 않는다(스타터는 `web`, security 없음). `stop` 시 DLQ 재처리가 멈춰 실패 이벤트가 적체될 수 있다. 게이트웨이 라우팅(`DlqPollerController`는 게이트웨이 컨트롤러 목록에 있음)/네트워크 격리 전제와 접근 통제 여부 확인 필요(config-server 무인증 엔드포인트 1.10과 같은 성격, 설계/결함 미판정).
 `[출처: docs/modules/OUTBOX_POLLER.md §5, §7]`
 
+### websocket-gateway
+
+#### 1.13 STOMP 채팅 Rate Limit 을 측정용으로 꺼 둔 상태다 — 되돌려야 한다
+
+`git-config-repo/dynamic/websocket-gateway.yml`의 `app.rate-limit.chat-message.enabled`를 **`false`로 바꿔 둔 상태**다(팬아웃 용량 재측정용). **측정이 끝나면 `true`로 되돌린다.**
+
+켜두면 측정 자체가 불가능하다. 계획한 조건은 전원이 한 방에 있고 계정 2개를 공유하는데, 한도는 room `30/s`·user `3/s`다.
+
+| | 한도 | VU 100 기준 유입 | 거절률 |
+|---|---:|---:|---:|
+| room(전원 같은 방) | 30/s | 100/s | 70% |
+| user(계정 2개 공유) | 3/s | 계정당 50/s | 94% |
+
+인바운드 대부분이 컨트롤러에서 잘려 gRPC 저장도 팬아웃도 일어나지 않으므로 `C`(팬아웃 처리량)를 잴 수 없다. 그래서 실험을 둘로 나눈다 — **(A) 팬아웃 용량**은 rate limit off, **(B) rate limit 검증**은 VU별 계정을 공급한 별도 실행(→ 5.4의 "VU별 자격증명 공급").
+
+주의: **busrefresh로 반영되지 않는다.** `ChatMessageRateLimitProperties`는 불변 record이고 `RedisChatMessageRateLimiter`가 주입된 인스턴스를 계속 참조하므로, 켜고 끄려면 재배포가 필요하다(executor 설정과 같은 제약 → ADR-003).
+
+되돌리기: `git-config-repo/dynamic/websocket-gateway.yml`의 `enabled: false` → `true`, 주석 제거, **머지 + websocket-gateway 재배포**. 설정은 `label: main` 고정이라 main에 머지해야 반영되고, 도입 PR이 squash 머지되므로 `git revert`가 아니라 값을 되돌리는 새 커밋이다.
+`[출처: 2026-08-27 재측정 조건 검토 / rate limit 한도와 테스트 조건 대조]`
+
 ---
 
 ## 2. 데이터 · 영속성
@@ -65,6 +85,12 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 #### 2.4 카탈로그 쓰기 경로(`changeMarkets`) 미노출
 `MarketCommandUseCase.changeMarkets`(카탈로그 create/update/delete + `market-broadcast-event` 캐시 무효화)가 구현·테스트되어 있으나 **인바운드 어댑터(REST/gRPC/Kafka)에 연결되어 있지 않다**. 현재 마켓 카탈로그는 `market-bootstrap/.../sql/schema.sql`의 시드 INSERT로만 채워진다. 관리 엔드포인트/운영 반영 경로 도입 여부 또는 현재가 의도인지 확인 필요.
 `[출처: docs/modules/MARKET.md §12]`
+
+### user
+
+#### 2.5 ARCHITECTURE.md §6의 user Read Replica 서술과 코드 불일치
+`ARCHITECTURE.md` §6이 user 서비스에 read Hikari + `ReplicationRoutingDataSource`가 구성됐다고 적었으나, `user/user-adapter-out/.../infra/config/DataSourceConfig.java`에는 write DataSource 하나뿐이다(read pool도 routing DataSource도 없다). §8.6 · §11 · `docs/modules/USER.md` §10이 서로를 참조하는 구조라 한 줄만 고치면 나머지 불일치가 남는다. market에는 실제로 `DatasourceConfig`(write+read+routing) + `@ReadReplica` 적용 지점이 있어 서술이 맞으므로, **user만 틀린 것인지 전수 대조 후 정정**한다. ADR-003의 커넥션 예산은 코드 기준(user는 write pool 하나, master write 합계 165)으로 산정했으므로 영향 없다.
+`[출처: 2026-08-27 ADR-003 커넥션 예산 산정 중 코드 대조]`
 
 ---
 
@@ -129,6 +155,31 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 착수 시: 각 지점에 카운터를 먼저 심고(이름 규약 필요), 그 다음 룰·채널을 정한다. 카운터 없이 룰부터 만들 수 없다.
 `[출처: 2026-08-19 전체 `log.error` 스캔 / infra `monitoring/` 구성 확인]`
 
+#### 4.13 서킷 브레이커 도입 검토
+
+gRPC 호출에 deadline(chat 10s, 나머지 3.5s)은 있지만 **연속 실패 시 호출을 끊는 장치가 없다.**
+특히 API Gateway는 **모든 인증 요청마다** oauth2-authorization-server에 blacklist 조회 gRPC를 호출하므로,
+그 서비스가 죽으면 인증 전체가 멈춘다.
+
+**지금 급하지 않은 이유:** 부하테스트가 잡은 문제는 하류 장애 전파가 아니라 자기 팬아웃 지연이었다(→ 5.3).
+deadline이 무한 대기는 이미 막고 있고, gRPC 호출 깊이가 1단계라 전파 사슬이 짧다.
+
+**선행 조건:** 브레이커가 열려도 알 방법이 없다(→ 4.12 알림 경로). **알림이 브레이커보다 먼저다.**
+
+착수 시 결정할 것.
+
+| 호출 | OPEN일 때 정책 | 비고 |
+|---|---|---|
+| api-gateway → auth-server(blacklist) | fail-open(토큰 통과) vs fail-closed(인증 거부) | **보안 결정.** 통과시키면 로그아웃 토큰이 살아나고, 막으면 인증 전체가 죽는다 |
+| websocket-gateway → chat(save) | 실패 ACK 반환 | 경로가 이미 있다 |
+| notification → market(수신자 조회) | 알림 생성 스킵 vs 재시도 큐 | |
+| oauth2-client → user/auth | 로그인 실패 처리 | |
+
+함정: 실패로 셀 코드 분류(`GrpcFailureCode` 재사용 — `NOT_FOUND` 같은 비즈니스 응답은 제외),
+재시도와의 조합 순서(재시도가 브레이커 카운터를 채워 실패를 증폭), 브레이커 상태는 인스턴스별이라는 점.
+라이브러리는 Resilience4j(Spring Boot 3 표준).
+`[출처: 2026-08-22 부하테스트 후속 논의]`
+
 ### oauth2-authorization-server
 
 #### 4.2 미사용 mysql 설정
@@ -174,3 +225,63 @@ notification master 캐시가 **긴 TTL(7일) + 다수 키(알림당 1키)** 전
 #### 5.2 chat 스파이크 시 배치 웜업 도입 검토(선택)
 chat 은 **cache-first**(캐시가 Mongo 보다 앞섬)라 miss 엔 줄 stale 이 없어 **SWR 부적합**, 미스 복구는 로드 완료까지 **동기 대기**한다. 방어 도구는 reload 비용에 따라 다르다: **방(`ChatRoomQueryRepairService`)=`SingleFlight`**(싼 point reload → 경량 동기 dedup), **메시지(`ChatMessageQueryRepairService`)=분산락**(무거운 range reload → 전역 1회 보장). 만약 대량 스파이크에서 콜드 miss DB 부하가 실측 병목이 되면, **주기/이벤트 배치 웜업(만료 전 재적재)로 만료 자체를 회피**(인기방 등 hot 대상 한정)를 검토한다.
 `[근거: docs/modules/CHAT.md 캐시 절]`
+
+### websocket-gateway
+
+#### 5.3 STOMP 팬아웃 처리량 개선
+
+부하테스트에서 확인된 유일한 실측 병목이다. 같은 방의 모두가 서로의 메시지를 받으므로 **전달 작업이 사용자 수의 제곱으로 는다**
+(130명이 각자 초당 1개만 보내도 초당 16,900건). 130명 구간에서 이미 Broadcast p95가 10초를 넘었다.
+
+원인은 자원 고갈이 아니다. 게이트웨이 CPU 20%·GC pause 0·gRPC 저장 실패 0건인데 STOMP outbound 스레드는 상한(96)까지 찼고,
+JFR에서 278바이트 쓰는 데 209ms 걸리는 소켓 write 블로킹이 잡혔다. **처리량 ≈ 스레드 수 ÷ 블로킹 시간**이라
+`96 ÷ 0.022초 ≈ 4,400건/s`로, 관측된 채널 처리량 6,000건/s와 같은 자릿수다. 요구량은 22,500건/s였다.
+
+후보 셋. 배타적이지 않고 곱해서 효과가 난다.
+
+| 접근 | 성격 | 비용·확인 필요 |
+|---|---|---|
+| **배치 전송** | 방별 시간창(예: 100ms)으로 묶어 프레임 수를 줄인다. 100ms면 1/15 | STOMP wire payload가 배열이 되어 **외부 계약 변경**(프론트 수정 필요). 방 내 순서 보장·창 유실 범위를 함께 설계 |
+| 가상 스레드 | 대기 시간을 회수해 좌변(처리량)을 확장 | **Java 21 업그레이드**(현재 17, `build-logic`·Dockerfile 전 서비스). 그리고 **효과가 0일 수 있다** — 블로킹 구간이 `synchronized`나 JNI 안에 있으면 가상 스레드가 캐리어 스레드에서 분리되지 못하고(pinning) 기존과 똑같이 막힌다. JDK 24(JEP 491)에서 `synchronized` 제약은 해소됐다. 착수 전 `-Djdk.tracePinnedThreads=full`로 Tomcat NIO 경로를 먼저 확인한다 |
+| 인스턴스 확장 | 세션을 나눠 가져 인스턴스당 write 감소 | 실측으로 150·200명 구간 avg·p95 41~53% 감소 확인됨 |
+
+스레드를 늘리는 것만으로는 못 이긴다 — **좌변은 선형, 우변은 제곱**이다.
+현재 걸어둔 방 Rate Limit 30 msg/s도 우변을 깎는 조치지만 근본 해결은 아니다.
+`docs/CODE_STYLE.md` §16(대량 broadcast의 channel contention·backpressure 고려)과 함께 본다.
+`[출처: chat/load-test-results/chatmessage/websocket-gateway/README.md, 2026-05-08 부하테스트]`
+
+#### 5.4 부하테스트 재측정 시 보정할 항목
+
+현재 결과는 집계 한계가 있어 지연 지표만 그대로 쓸 수 있다. 재측정할 때 아래를 함께 고친다.
+
+**상태: 미완료.** 재측정 자체를 아직 하지 않았다. 아래 다섯 중 **값이 정해진 것은 앞의 둘뿐**이고(정했을 뿐 실행하지 않았다), 나머지 셋은 미착수다. 재측정을 마치기 전에는 이 항목을 닫지 않는다.
+
+- **`ACK_TIMEOUT_MS`를 gRPC deadline보다 크게 → `11000`으로 정했다.** 지금은 둘 다 10초라 deadline 초과 거절 ACK가 스크립트의
+  무응답 처리 뒤에 도착해 `ack_failed_count`로 잡히지 않는다. 거절과 지연이 갈리지 않는다.
+  hardDelete 보상은 실패 ACK를 막지 않으므로(`ChatMessageSendService.handleSaveError`가 future를 기다리지 않는다) deadline이 중첩되지는 않는다.
+  다만 **실패 ACK 자체가 broker·outbound 큐를 탄다** — outbound 지연이 1초를 넘으면 11초로도 여전히 무응답으로 집계된다.
+  결과 해석 시 `stomp.executor` 큐 지표를 함께 본다. 타임아웃을 늘려도 부하 패턴은 안 바뀐다(전송은 `setInterval(send_interval_ms)`로 ACK와 무관하고 `ack_timeout_ms`는 집계 스위퍼 전용).
+- **`COLLECT_WINDOW_MS` 확대 → `60000`.** 이 값은 전송을 마친 뒤 소켓을 열어둔 채 broadcast를 더 받는 시간이고, 창이 닫히면
+  그때까지 안 온 것이 전부 `미도달`로 집계된다. 즉 미도달은 "영구 유실"이 아니라 "수집 창이 닫힐 때까지 안 온 것"이다.
+  1차 130 VU는 발생량 169,000건 ÷ 관측 6,000/s ≈ 28초인데 총 창이 40초(전송 10초 + 수집 30초)라 전부 들어와 미도달 0이 나왔다 — 서버가 안 밀렸다는 뜻이 아니라 창이 컸다는 뜻이다(같은 실행 p95 10.65초).
+  새 조건 VU 100·60개는 발생량 600,000건 ÷ 6,000/s = 100초, 전송 구간 60초라 잔여 백로그가 약 40초여서 60초 창으로 덮인다.
+- **VU별 자격증명 공급.**(미착수) 계정 2개를 전 VU가 공유해 ACK가 세션 수만큼 복제된다(150 VU 실행 수신 메시지의 약 40%).
+  사용자별 Rate Limit 검증에도 필요하다
+- **서버 메트릭 교차 검증.**(미착수) `ws.grpc.client.errors{method,code}`로 거절 건수를 실측해 클라이언트 집계와 대조한다
+- **미측정 영역 둘.**(미착수) 부하 중 DLQ 적체 여부, `stomp-in` 풀이 32/32로 포화된 이유(인바운드는 초당 150건뿐이라 찰 이유가 없다)
+`[출처: chat/load-test-results/chatmessage/websocket-gateway/README.md 「측정값 신뢰 범위」]`
+
+#### 5.5 브로드캐스트 유실을 클라이언트가 감지·복구할 경로가 없다
+
+브로드캐스트 push는 DLQ·재시도가 없고 executor 큐 포화 시 버려지는데, **유실을 클라이언트가 감지해 재조회하는 경로가 없다**(2026-08-27 `crypto-project-frontend` 확인).
+
+- `ChatRoomPage.tsx`의 `client.onConnect`는 `subscribeChatRoomMessages`로 **재구독만** 하고 재조회하지 않는다. `onWebSocketClose`·`onStompError`도 `setIsConnected(false)`뿐이다.
+- 최근 메시지 로드 `useEffect`의 deps는 `[isLoggedIn, isInvalidRoomId, roomId]` — **마운트·방 변경에만** 돈다. 다른 `getChatMessages` 호출은 `lastMsgId`/`lastCreatedAtMs` 커서를 쓰는 **과거 스크롤** 경로다.
+- wire payload `StompChatMessagePayload{messageId, roomId, writerId, content, timestamp, clientMessageId}`에 **방별 순번이 없어** 클라이언트가 갭을 감지할 수단 자체가 없다.
+
+즉 연결을 유지한 채 broadcast가 유실되면 클라이언트는 알지 못하고, 방 재진입·새로고침 전까지 그 메시지가 보이지 않는다. ADR-003이 shedding을 택한 근거는 "재조회로 복구된다"가 아니라 "피크에서 전원을 지연시키는 것보다 일부 유실이 SLO에 유리하다"이며, 갭 복구는 미구현으로 남아 있다.
+
+착수 시 결정할 것: (a) 재연결 시 커서 기반 재조회(프론트만 수정, 갭 감지는 여전히 불가하나 재연결 구간은 덮인다), (b) payload에 방별 순번 추가 후 클라이언트 갭 감지(**STOMP wire payload 변경 = 외부 계약**, 프론트·k6 함께 → `.claude/rules/external-contracts.md`).
+
+`websocket-gateway/CLAUDE.md`와 `docs/modules/WEBSOCKET_GATEWAY.md` §6에 있던 "유실 시 클라이언트 REST 재조회 전제" 서술은 이 확인 결과에 맞춰 같은 커밋에서 정정했다.
+`[출처: 2026-08-27 ADR-003 리뷰 중 프론트 구현 대조]`

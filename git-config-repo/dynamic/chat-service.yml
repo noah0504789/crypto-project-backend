@@ -96,9 +96,11 @@ mysql:
   password: ${mysql.event.password}
   db: ${mysql.event.db}
   write:
+    # chat 은 @Entity 가 없다. 이 pool 은 outbox 기록 전용이고, 메시지 1건이 행 3건을 만들지만
+    # 한 트랜잭션이라 커넥션은 1건이다. 배분 근거는 ADR-003 의 커넥션 예산 표.
     pool:
-      max-size: 120
-      min-idle: 120
+      max-size: 30
+      min-idle: 30
       connection-timeout: 3500
 
 mongo:

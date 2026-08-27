@@ -90,7 +90,7 @@
 
 - **로컬 세션 필터링**: 각 push 어댑터가 `LocalSessionCache.hasUser(...)`로 이 인스턴스에 연결된 사용자만 전송한다. 없으면 skip(로그). 사용자가 붙어 있는 인스턴스가 실제 전달을 담당한다.
 - **memberIds는 로컬 라우팅용**(wire에 싣지 않음): `ChatMessageBroadcastEvent`는 nested `payload`+`memberIds`지만, `/topic/chat/{roomId}`로 나가는 wire는 flat `StompChatMessagePayload{ messageId, roomId, writerId, content, timestamp(long), clientMessageId }`다(§8). 변환은 `ChatMessageBroadcastEventMapper` → `StompChatMessagePayload.from`.
-- **best-effort**: 이 소비자들은 DLQ 소비/재시도가 없다(`ack-mode: record`). 실시간 push는 유실돼도 클라이언트가 REST로 재조회 가능한 성격이라 durable 영속(chat/notification)과 구분된다.
+- **best-effort**: 이 소비자들은 DLQ 소비/재시도가 없고(`ack-mode: record`), STOMP executor 큐가 포화하면 push 태스크가 버려진다(`stomp.executor.rejected{pool}`). durable 영속(chat/notification)과 구분된다. 단 **유실을 클라이언트가 감지해 재조회하는 경로는 없다** — 프론트는 재연결 시 재구독만 하고, wire payload에 방별 순번이 없어 갭 감지가 불가능하다. 방 재진입·새로고침 전까지 그 메시지는 보이지 않는다(→ **TODO 5.5**).
 
 ## 7. 세션 위치 관리
 
@@ -124,6 +124,7 @@
 
 - 세션 위치 TTL은 `websocket.session.ttl`(기본 `3m`, `git-config-repo/dynamic/websocket-gateway.yml`)로 주입된다. 값 조정은 Config 변경만으로 가능하다.
 - **TODO 1.5**(기존, oauth2-client) — WebSocket 핸드셰이크의 `?access_token=` 쿼리 토큰 전달과 `X-User-Id` 주입 경로. 핸드셰이크 인증 전제와 연결.
+- **TODO 5.5** — 브로드캐스트 유실을 클라이언트가 감지·복구할 경로가 없다(§6 best-effort 절). 순번 추가는 STOMP wire payload 변경(외부 계약).
 
 ## 10. 테스트 현황
 

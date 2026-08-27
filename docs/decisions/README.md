@@ -6,5 +6,6 @@
 |---|---|---|
 | [ADR-001](ADR-001-grpc-for-interservice-synchronous-calls.md) | 채택됨 | 서비스 간 동기 호출에 gRPC contract/client 모듈 사용 |
 | [ADR-002](ADR-002-outbox-for-kafka-delivery.md) | 채택됨 | 도메인 이벤트의 Kafka 전달에 Outbox + outbox-poller 사용 |
+| [ADR-003](ADR-003-chat-capacity-target-and-connection-budget.md) | 채택됨 | chat 실시간 경로의 용량 목표를 `M ≤ √(C/r)`로 산정하고 커넥션을 DB 예산에서 배분 |
 
 전역 구조에 영향을 주지 않는 구현·버그 수정·기존 convention 준수는 ADR 대상이 아니다. 미확정 검토 사항은 `TODO.md`에 기록한다.

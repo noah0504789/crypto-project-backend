@@ -75,11 +75,25 @@ websocket:
   session:
     # STOMP 세션 위치 Redis TTL(연결 유휴 만료. subscribe 마다 갱신)
     ttl: 3m
+  stomp:
+    # 주의: dynamic/ 이지만 busrefresh 로는 반영되지 않는다. 풀은 ThreadPoolTaskExecutor.initialize()
+    # 시점에 만들어지고 이 코드베이스는 @RefreshScope 를 쓰지 않아, 리바인딩된 값을 풀에 다시 넣어줄
+    # 지점이 없다(큐 용량은 LinkedBlockingQueue 고정이라 애초에 런타임 변경 불가). 값 변경은 재배포로 반영한다.
+    # core = max 인 이유와 큐 산정 근거는 docs/decisions/ADR-003-chat-capacity-target-and-connection-budget.md
+    executor:
+      inbound:  { core-size: 32, max-size: 32, queue-capacity: 600 }
+      broker:   { core-size: 64, max-size: 64, queue-capacity: 3000 }
+      outbound: { core-size: 96, max-size: 96, queue-capacity: 30000 }
+      ack:      { core-size: 16, max-size: 16, queue-capacity: 2000 }
 
 app:
   rate-limit:
     chat-message:
-      enabled: true
+      # TODO(1.13): 팬아웃 용량 재측정을 위해 일시적으로 끈 상태다. 측정이 끝나면 true 로 되돌린다.
+      # 켜두면 측정이 불가능하다 — 전원이 한 방에 있고 계정을 공유하므로 user 버킷(3/s)에서 대부분 잘려
+      # 팬아웃이 아니라 rate limiter 를 재게 된다. rate limit 자체 검증은 VU 별 계정을 공급한 별도 실행에서 한다.
+      # busrefresh 로는 반영되지 않는다(불변 record 라 리바인딩이 limiter 가 든 참조를 바꾸지 못한다). 재배포 필요.
+      enabled: false
       user:
         replenish-rate: 3
         burst-capacity: 5
