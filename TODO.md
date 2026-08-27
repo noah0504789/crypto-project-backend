@@ -129,6 +129,31 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 착수 시: 각 지점에 카운터를 먼저 심고(이름 규약 필요), 그 다음 룰·채널을 정한다. 카운터 없이 룰부터 만들 수 없다.
 `[출처: 2026-08-19 전체 `log.error` 스캔 / infra `monitoring/` 구성 확인]`
 
+#### 4.13 서킷 브레이커 도입 검토
+
+gRPC 호출에 deadline(chat 10s, 나머지 3.5s)은 있지만 **연속 실패 시 호출을 끊는 장치가 없다.**
+특히 API Gateway는 **모든 인증 요청마다** oauth2-authorization-server에 blacklist 조회 gRPC를 호출하므로,
+그 서비스가 죽으면 인증 전체가 멈춘다.
+
+**지금 급하지 않은 이유:** 부하테스트가 잡은 문제는 하류 장애 전파가 아니라 자기 팬아웃 지연이었다(→ 5.3).
+deadline이 무한 대기는 이미 막고 있고, gRPC 호출 깊이가 1단계라 전파 사슬이 짧다.
+
+**선행 조건:** 브레이커가 열려도 알 방법이 없다(→ 4.12 알림 경로). **알림이 브레이커보다 먼저다.**
+
+착수 시 결정할 것.
+
+| 호출 | OPEN일 때 정책 | 비고 |
+|---|---|---|
+| api-gateway → auth-server(blacklist) | fail-open(토큰 통과) vs fail-closed(인증 거부) | **보안 결정.** 통과시키면 로그아웃 토큰이 살아나고, 막으면 인증 전체가 죽는다 |
+| websocket-gateway → chat(save) | 실패 ACK 반환 | 경로가 이미 있다 |
+| notification → market(수신자 조회) | 알림 생성 스킵 vs 재시도 큐 | |
+| oauth2-client → user/auth | 로그인 실패 처리 | |
+
+함정: 실패로 셀 코드 분류(`GrpcFailureCode` 재사용 — `NOT_FOUND` 같은 비즈니스 응답은 제외),
+재시도와의 조합 순서(재시도가 브레이커 카운터를 채워 실패를 증폭), 브레이커 상태는 인스턴스별이라는 점.
+라이브러리는 Resilience4j(Spring Boot 3 표준).
+`[출처: 2026-08-22 부하테스트 후속 논의]`
+
 ### oauth2-authorization-server
 
 #### 4.2 미사용 mysql 설정
@@ -174,3 +199,40 @@ notification master 캐시가 **긴 TTL(7일) + 다수 키(알림당 1키)** 전
 #### 5.2 chat 스파이크 시 배치 웜업 도입 검토(선택)
 chat 은 **cache-first**(캐시가 Mongo 보다 앞섬)라 miss 엔 줄 stale 이 없어 **SWR 부적합**, 미스 복구는 로드 완료까지 **동기 대기**한다. 방어 도구는 reload 비용에 따라 다르다: **방(`ChatRoomQueryRepairService`)=`SingleFlight`**(싼 point reload → 경량 동기 dedup), **메시지(`ChatMessageQueryRepairService`)=분산락**(무거운 range reload → 전역 1회 보장). 만약 대량 스파이크에서 콜드 miss DB 부하가 실측 병목이 되면, **주기/이벤트 배치 웜업(만료 전 재적재)로 만료 자체를 회피**(인기방 등 hot 대상 한정)를 검토한다.
 `[근거: docs/modules/CHAT.md 캐시 절]`
+
+### websocket-gateway
+
+#### 5.3 STOMP 팬아웃 처리량 개선
+
+부하테스트에서 확인된 유일한 실측 병목이다. 같은 방의 모두가 서로의 메시지를 받으므로 **전달 작업이 사용자 수의 제곱으로 는다**
+(130명이 각자 초당 1개만 보내도 초당 16,900건). 130명 구간에서 이미 Broadcast p95가 10초를 넘었다.
+
+원인은 자원 고갈이 아니다. 게이트웨이 CPU 20%·GC pause 0·gRPC 저장 실패 0건인데 STOMP outbound 스레드는 상한(96)까지 찼고,
+JFR에서 278바이트 쓰는 데 209ms 걸리는 소켓 write 블로킹이 잡혔다. **처리량 ≈ 스레드 수 ÷ 블로킹 시간**이라
+`96 ÷ 0.022초 ≈ 4,400건/s`로, 관측된 채널 처리량 6,000건/s와 같은 자릿수다. 요구량은 22,500건/s였다.
+
+후보 셋. 배타적이지 않고 곱해서 효과가 난다.
+
+| 접근 | 성격 | 비용·확인 필요 |
+|---|---|---|
+| **배치 전송** | 방별 시간창(예: 100ms)으로 묶어 프레임 수를 줄인다. 100ms면 1/15 | STOMP wire payload가 배열이 되어 **외부 계약 변경**(프론트 수정 필요). 방 내 순서 보장·창 유실 범위를 함께 설계 |
+| 가상 스레드 | 대기 시간을 회수해 좌변(처리량)을 확장 | **Java 21 업그레이드**(현재 17, `build-logic`·Dockerfile 전 서비스). 그리고 **효과가 0일 수 있다** — 블로킹 구간이 `synchronized`나 JNI 안에 있으면 가상 스레드가 캐리어 스레드에서 분리되지 못하고(pinning) 기존과 똑같이 막힌다. JDK 24(JEP 491)에서 `synchronized` 제약은 해소됐다. 착수 전 `-Djdk.tracePinnedThreads=full`로 Tomcat NIO 경로를 먼저 확인한다 |
+| 인스턴스 확장 | 세션을 나눠 가져 인스턴스당 write 감소 | 실측으로 150·200명 구간 avg·p95 41~53% 감소 확인됨 |
+
+스레드를 늘리는 것만으로는 못 이긴다 — **좌변은 선형, 우변은 제곱**이다.
+현재 걸어둔 방 Rate Limit 30 msg/s도 우변을 깎는 조치지만 근본 해결은 아니다.
+`docs/CODE_STYLE.md` §16(대량 broadcast의 channel contention·backpressure 고려)과 함께 본다.
+`[출처: chat/load-test-results/chatmessage/websocket-gateway/README.md, 2026-05-08 부하테스트]`
+
+#### 5.4 부하테스트 재측정 시 보정할 항목
+
+현재 결과는 집계 한계가 있어 지연 지표만 그대로 쓸 수 있다. 재측정할 때 아래를 함께 고친다.
+
+- **`ACK_TIMEOUT_MS`를 gRPC deadline보다 크게.** 지금은 둘 다 10초라 deadline 초과 거절 ACK가 스크립트의 무응답 처리 뒤에 도착해
+  `ack_failed_count`로 잡히지 않는다. 거절과 지연이 갈리지 않는다
+- **`COLLECT_WINDOW_MS` 확대.** 미도달은 "영구 유실"이 아니라 "수집 창이 닫힐 때까지 안 온 것"이다. 창을 늘려야 유실과 지연이 갈린다
+- **VU별 자격증명 공급.** 계정 2개를 전 VU가 공유해 ACK가 세션 수만큼 복제된다(150 VU 실행 수신 메시지의 약 40%).
+  사용자별 Rate Limit 검증에도 필요하다
+- **서버 메트릭 교차 검증.** `ws.grpc.client.errors{method,code}`로 거절 건수를 실측해 클라이언트 집계와 대조한다
+- **미측정 영역 둘.** 부하 중 DLQ 적체 여부, `stomp-in` 풀이 32/32로 포화된 이유(인바운드는 초당 150건뿐이라 찰 이유가 없다)
+`[출처: chat/load-test-results/chatmessage/websocket-gateway/README.md 「측정값 신뢰 범위」]`
