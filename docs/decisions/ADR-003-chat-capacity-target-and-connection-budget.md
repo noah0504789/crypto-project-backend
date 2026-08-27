@@ -24,7 +24,28 @@
 | DB 커넥션 | `L = λ × W` | `L`(필요 커넥션) | 트랜잭션이 짧고 소요시간을 알 수 있으므로 필요 동시성을 구한다 |
 | STOMP 팬아웃 | `λ = L ÷ W` | `λ`(처리량) | 스레드 수가 상한으로 고정돼 있으므로 그 상한이 내는 처리량을 구한다 |
 
-- **DB**: chat 목표를 300 msg/s로 두고 outbox 기록은 메시지당 트랜잭션 1건, 커넥션 1건이다. 트랜잭션 소요를 넉넉히 50ms로 잡아도 `L = 300 × 0.05 = 15`다. 트랜잭션 안에 외부 호출도 `REQUIRES_NEW`도 없어 커넥션 점유가 길어질 경로가 없다.
+- **DB**: chat 목표를 300 msg/s로 두고 outbox 기록은 메시지당 트랜잭션 1건, 커넥션 1건이다. 트랜잭션 소요를 넉넉히 50ms로 잡으면 `L = 300 × 0.05 = 15`다.
+
+> **정정 (2026-08-27 측정)**: 위 `W = 50ms` 가정과 "커넥션 점유가 길어질 경로가 없다"는 서술은 **틀렸다.**
+> `ChatMessageCommandService.save`는 `@Transactional` 안에서 `chatRoomPersistencePort.findById`(MongoDB)를
+> 호출한 뒤 outbox를 INSERT한다. `LazyConnectionDataSourceProxy`가 없어 트랜잭션 시작 시점에 커넥션을 잡고
+> **Mongo 왕복 내내 붙들고 있었다.** VU 60(60 msg/s) 실측은 다음과 같다.
+>
+> | 지표 | 실측 |
+> |---|---:|
+> | `hikaricp_connections_usage_seconds_max` | **5.139초** |
+> | `hikaricp_connections_acquire_seconds_max` | 5.343초 |
+> | `hikaricp_connections_active` 최대 | 30 (풀 포화) |
+> | `hikaricp_connections_pending` 최대 | **118** |
+> | `hikaricp_connections_timeout_total` | **360건** |
+>
+> 커넥션 타임아웃 360건(전송 3,600건의 10.0%)이 저장 실패로 이어져 브로드캐스트 유실
+> 10.06%(21,720/216,000)를 만들었다. 같은 실행에서 `stomp_executor_rejected_total{pool="outbound"}`는
+> **0건**이었다 — **병목은 팬아웃이 아니라 커넥션 점유시간이었다.**
+>
+> 대응은 풀 확대가 아니라 점유시간 단축이다. `LazyConnectionDataSourceProxy`를 적용해 물리 커넥션 획득을
+> 첫 statement까지 미루면 Mongo 왕복이 점유에서 빠진다. 적용 후 재측정으로 `W`를 다시 잡고 이 절의 수치를
+> 갱신한다.
 - **STOMP**: outbound 스레드 96개, 실측 소켓 write 블로킹 22ms면 `λ = 96 ÷ 0.022 ≈ 4,400/s`다. 관측된 채널 처리량 6,000/s와 같은 자릿수다.
 
 ### 커넥션 예산
