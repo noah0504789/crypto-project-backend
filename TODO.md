@@ -76,6 +76,26 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 되돌리기: `git-config-repo/dynamic/websocket-gateway.yml`의 `enabled: false` → `true`, 주석 제거, **머지 + websocket-gateway 재배포**. 설정은 `label: main` 고정이라 main에 머지해야 반영되고, 도입 PR이 squash 머지되므로 `git revert`가 아니라 값을 되돌리는 새 커밋이다.
 `[출처: 2026-08-27 재측정 조건 검토 / rate limit 한도와 테스트 조건 대조]`
 
+#### 1.14 게이트웨이 WebSocket 핸드셰이크 Rate Limit 을 측정용으로 올려 둔 상태다 — 되돌려야 한다
+
+`git-config-repo/dynamic/api-gateway.yml`의 `gateway.rate-limit.websocket-handshake`를 **`2/5/1` → `100/300/1`로 올려 둔 상태**다(팬아웃 용량 재측정용). **측정이 끝나면 되돌린다.**
+
+원래 값에서는 측정 자체가 불가능하다. `RateLimitConfig`가 `WEBSOCKET_NATIVE_HANDSHAKE`·`WEBSOCKET_HANDSHAKE` 라우트에 `keyResolvers.user()` 기준으로 리미터를 붙이는데, k6는 계정 2개를 전 VU가 공유한다. 사용자별 `burst-capacity: 5`이므로 **계정당 5개, 총 10개만 통과**한다.
+
+| VU | 기대 연결 | 실제 연결 | 근거 |
+|---:|---:|---:|---|
+| 20 | 20 | **10** | `ws upgrade status is 101` → ✓10 / ✗10 (2026-08-27 실측) |
+| 60·80·100 | 각 60·80·100 | **10** | 계정 2개 × burst 5. VU를 올려도 상한이 같다 |
+
+VU를 올려도 연결이 10개에서 멈추므로 팬아웃(`M²`)이 생기지 않아 `C`를 잴 수 없다. **핸드셰이크는 연결 시 1회만 검사하고 STOMP 전송은 이미 열린 소켓을 쓰므로, 이 값은 팬아웃 처리량 측정 경로에 영향을 주지 않는다.**
+
+1.13(STOMP Rate Limit)과 **원인이 같다** — 계정 2개 공유라는 테스트 구조가 사용자별 리미터 둘 다에 걸린다. 근본 해결은 VU별 자격증명 공급(→ 5.4)이며, 그때 1.13·1.14를 함께 원복한다.
+
+주의: **busrefresh로 반영되지 않는다.** `GatewayRateLimitProperties`는 불변 record이고 `RedisRateLimiter` 빈이 기동 시점 값으로 라우트별 Config를 등록하므로 **api-gateway 재배포**가 필요하다(1.13과 같은 제약).
+
+되돌리기: `websocket-handshake`를 `replenish-rate: 2` / `burst-capacity: 5` / `requested-tokens: 1`로, 주석 제거, **머지 + api-gateway 재배포**.
+`[출처: 2026-08-27 워밍업 실행(VU 20) ws upgrade 실패 50% 원인 규명]`
+
 ---
 
 ## 2. 데이터 · 영속성

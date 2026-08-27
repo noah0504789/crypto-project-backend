@@ -89,8 +89,14 @@ gateway:
       burst-capacity: 100
       requested-tokens: 20
     websocket-handshake:
-      replenish-rate: 2
-      burst-capacity: 5
+      # TODO(1.14): 팬아웃 재측정을 위해 일시 상향한 상태다. 측정이 끝나면 2/5/1 로 되돌린다.
+      # 원래 값(burst 5)에서는 측정이 불가능하다 — k6 가 계정 2개를 전 VU 가 공유하는 구조라
+      # 사용자별 버킷이 계정당 5개만 통과시키고 나머지 연결을 잘라낸다(20 VU 실행에서
+      # `ws upgrade status is 101` 이 정확히 ✓10/✗10). VU 를 올려도 10개만 붙어 팬아웃이 안 생긴다.
+      # 핸드셰이크는 연결 시 1회만 검사하므로(전송은 이미 열린 소켓을 쓴다) 이 값은 팬아웃
+      # 처리량 측정 경로에 영향을 주지 않는다. 근본 해결은 VU별 자격증명 공급(→ 5.4).
+      replenish-rate: 100
+      burst-capacity: 300
       requested-tokens: 1
     command:
       replenish-rate: 2
