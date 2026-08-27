@@ -56,6 +56,26 @@ spring-cloud-config는 `POST /sign`(Vault Transit RS256 서명 대행)·`GET /.w
 outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴링을 런타임 토글하나, 모듈 계층 인증(`SecurityFilterChain`)이 확인되지 않는다(스타터는 `web`, security 없음). `stop` 시 DLQ 재처리가 멈춰 실패 이벤트가 적체될 수 있다. 게이트웨이 라우팅(`DlqPollerController`는 게이트웨이 컨트롤러 목록에 있음)/네트워크 격리 전제와 접근 통제 여부 확인 필요(config-server 무인증 엔드포인트 1.10과 같은 성격, 설계/결함 미판정).
 `[출처: docs/modules/OUTBOX_POLLER.md §5, §7]`
 
+### websocket-gateway
+
+#### 1.13 STOMP 채팅 Rate Limit 을 측정용으로 꺼 둔 상태다 — 되돌려야 한다
+
+`git-config-repo/dynamic/websocket-gateway.yml`의 `app.rate-limit.chat-message.enabled`를 **`false`로 바꿔 둔 상태**다(팬아웃 용량 재측정용). **측정이 끝나면 `true`로 되돌린다.**
+
+켜두면 측정 자체가 불가능하다. 계획한 조건은 전원이 한 방에 있고 계정 2개를 공유하는데, 한도는 room `30/s`·user `3/s`다.
+
+| | 한도 | VU 100 기준 유입 | 거절률 |
+|---|---:|---:|---:|
+| room(전원 같은 방) | 30/s | 100/s | 70% |
+| user(계정 2개 공유) | 3/s | 계정당 50/s | 94% |
+
+인바운드 대부분이 컨트롤러에서 잘려 gRPC 저장도 팬아웃도 일어나지 않으므로 `C`(팬아웃 처리량)를 잴 수 없다. 그래서 실험을 둘로 나눈다 — **(A) 팬아웃 용량**은 rate limit off, **(B) rate limit 검증**은 VU별 계정을 공급한 별도 실행(→ 5.4의 "VU별 자격증명 공급").
+
+주의: **busrefresh로 반영되지 않는다.** `ChatMessageRateLimitProperties`는 불변 record이고 `RedisChatMessageRateLimiter`가 주입된 인스턴스를 계속 참조하므로, 켜고 끄려면 재배포가 필요하다(executor 설정과 같은 제약 → ADR-003).
+
+되돌리기: `git-config-repo/dynamic/websocket-gateway.yml`의 `enabled: false` → `true`, 주석 제거, **머지 + websocket-gateway 재배포**. 설정은 `label: main` 고정이라 main에 머지해야 반영되고, 도입 PR이 squash 머지되므로 `git revert`가 아니라 값을 되돌리는 새 커밋이다.
+`[출처: 2026-08-27 재측정 조건 검토 / rate limit 한도와 테스트 조건 대조]`
+
 ---
 
 ## 2. 데이터 · 영속성
