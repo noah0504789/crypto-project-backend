@@ -21,7 +21,7 @@ STOMP destination·Kafka 소비·gRPC 계약에 걸친 변경은 `../.claude/rul
 - **로컬 세션 필터링 유지**: 모든 push 어댑터는 `LocalSessionCache.hasUser(...)`로 이 인스턴스 연결자만 전송한다. Kafka 소비 group은 **인스턴스별 고유**(`...-${app.instance-id}`)여야 전 인스턴스가 이벤트를 받아 각자 자기 세션 보유자에게 전달한다. 이 group 규칙을 공유 group으로 바꾸면 push가 유실된다(→ external-contracts).
 - **송신 보상 로직 유지**: `ChatMessageSendService`는 gRPC 저장 실패 중 `DEADLINE_EXCEEDED`면 `hardDelete`로 보상한다(저장됐을 수 있는 메시지 제거). messageId는 gRPC 호출 전에 게이트웨이가 생성한다(클라이언트 상관용). 이 순서·보상을 깨지 않는다.
 - **세션 이중 관리 정합성**: 로컬(Caffeine)과 Redis(`{session}:user:{userId}`)를 함께 갱신한다(connect save, subscribe refreshTtl, disconnect `deleteIfServerMatches`). disconnect는 serverId 일치할 때만 삭제(재접속 레이스 방지) — 이 조건을 제거하지 않는다. Redis key는 `common-core/RedisKey.SESSION_INFO`로만, hash tag `{session}` 유지.
-- **best-effort push 인지**: 브로드캐스트 소비자는 DLQ/재시도가 없다(실시간 push는 유실 시 클라이언트 REST 재조회 전제). 이를 durable로 바꾸려면 chat/notification 영속 경로와 함께 설계한다.
+- **best-effort push 인지**: 브로드캐스트 소비자는 DLQ/재시도가 없고, STOMP executor 큐가 포화하면 push 태스크를 버린다(`stomp.executor.rejected{pool}`). **유실을 클라이언트가 감지해 재조회하는 경로는 없다** — 프론트는 재연결 시 재구독만 하고 wire payload에 방별 순번이 없어 갭 감지가 불가능하다(→ `../TODO.md` 5.5). "재조회로 복구된다"를 전제로 설계하지 않는다. durable로 바꾸려면 chat/notification 영속 경로와 함께 설계한다.
 - **공유 Inbox 적용 금지**: 브로드캐스트 consumer는 인스턴스별 group으로 모든 gateway가 자기 로컬 세션에 전송해야 한다. 공유 `(consumer_name,event_id)` 선점은 다른 인스턴스 push를 막으므로 적용하지 않고, 클라이언트가 `messageId`/`notificationId`로 중복 제거한다.
 - **gRPC 소비 계약**: `chatmessage.v1`(save/hardDelete)은 chat이 서버, 여기가 클라이언트다. proto 변경은 chat과 함께(external-contracts). client 설정은 `websocket-gateway.yml`의 `grpc.client.chat-client`.
 - **DataSource/JPA 자동설정 제외 유지**: 이 서비스는 DB가 없지만 소비 계약(`chat-contract`/`notification-contract` → `common-outbox` → `common-jpa`)이 `spring-boot-starter-data-jpa`를 전이로 끌어온다. `websocket-gateway.yml`의 `spring.autoconfigure.exclude`(`DataSourceAutoConfiguration`·`HibernateJpaAutoConfiguration`)를 제거하면 `DataSourceAutoConfiguration`이 강제 활성화돼 부팅이 실패한다. 지우지 않는다(상세: `../docs/modules/WEBSOCKET_GATEWAY.md §3`).
@@ -56,3 +56,4 @@ STOMP destination·Kafka 소비·gRPC 계약에 걸친 변경은 `../.claude/rul
 확정된 결함으로 단정하지 않는다. 코드 변경 전 사용자 확인이 필요하다. 상세·근거는 [`../docs/modules/WEBSOCKET_GATEWAY.md §9`](../docs/modules/WEBSOCKET_GATEWAY.md)와 [`../TODO.md`](../TODO.md).
 
 - WebSocket 핸드셰이크 `?access_token=` 토큰 전달·`X-User-Id` 주입 경로(TODO 1.5)
+- 브로드캐스트 유실을 클라이언트가 감지·복구할 경로 부재(TODO 5.5)

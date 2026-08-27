@@ -66,6 +66,12 @@ outbox-poller가 `PUT /dlq-poller/start|stop`(`DlqPollerController`)로 DLQ 폴�
 `MarketCommandUseCase.changeMarkets`(카탈로그 create/update/delete + `market-broadcast-event` 캐시 무효화)가 구현·테스트되어 있으나 **인바운드 어댑터(REST/gRPC/Kafka)에 연결되어 있지 않다**. 현재 마켓 카탈로그는 `market-bootstrap/.../sql/schema.sql`의 시드 INSERT로만 채워진다. 관리 엔드포인트/운영 반영 경로 도입 여부 또는 현재가 의도인지 확인 필요.
 `[출처: docs/modules/MARKET.md §12]`
 
+### user
+
+#### 2.5 ARCHITECTURE.md §6의 user Read Replica 서술과 코드 불일치
+`ARCHITECTURE.md` §6이 user 서비스에 read Hikari + `ReplicationRoutingDataSource`가 구성됐다고 적었으나, `user/user-adapter-out/.../infra/config/DataSourceConfig.java`에는 write DataSource 하나뿐이다(read pool도 routing DataSource도 없다). §8.6 · §11 · `docs/modules/USER.md` §10이 서로를 참조하는 구조라 한 줄만 고치면 나머지 불일치가 남는다. market에는 실제로 `DatasourceConfig`(write+read+routing) + `@ReadReplica` 적용 지점이 있어 서술이 맞으므로, **user만 틀린 것인지 전수 대조 후 정정**한다. ADR-003의 커넥션 예산은 코드 기준(user는 write pool 하나, master write 합계 165)으로 산정했으므로 영향 없다.
+`[출처: 2026-08-27 ADR-003 커넥션 예산 산정 중 코드 대조]`
+
 ---
 
 ## 3. 계약 · 직렬화
@@ -236,3 +242,18 @@ JFR에서 278바이트 쓰는 데 209ms 걸리는 소켓 write 블로킹이 잡�
 - **서버 메트릭 교차 검증.** `ws.grpc.client.errors{method,code}`로 거절 건수를 실측해 클라이언트 집계와 대조한다
 - **미측정 영역 둘.** 부하 중 DLQ 적체 여부, `stomp-in` 풀이 32/32로 포화된 이유(인바운드는 초당 150건뿐이라 찰 이유가 없다)
 `[출처: chat/load-test-results/chatmessage/websocket-gateway/README.md 「측정값 신뢰 범위」]`
+
+#### 5.5 브로드캐스트 유실을 클라이언트가 감지·복구할 경로가 없다
+
+브로드캐스트 push는 DLQ·재시도가 없고 executor 큐 포화 시 버려지는데, **유실을 클라이언트가 감지해 재조회하는 경로가 없다**(2026-08-27 `crypto-project-frontend` 확인).
+
+- `ChatRoomPage.tsx`의 `client.onConnect`는 `subscribeChatRoomMessages`로 **재구독만** 하고 재조회하지 않는다. `onWebSocketClose`·`onStompError`도 `setIsConnected(false)`뿐이다.
+- 최근 메시지 로드 `useEffect`의 deps는 `[isLoggedIn, isInvalidRoomId, roomId]` — **마운트·방 변경에만** 돈다. 다른 `getChatMessages` 호출은 `lastMsgId`/`lastCreatedAtMs` 커서를 쓰는 **과거 스크롤** 경로다.
+- wire payload `StompChatMessagePayload{messageId, roomId, writerId, content, timestamp, clientMessageId}`에 **방별 순번이 없어** 클라이언트가 갭을 감지할 수단 자체가 없다.
+
+즉 연결을 유지한 채 broadcast가 유실되면 클라이언트는 알지 못하고, 방 재진입·새로고침 전까지 그 메시지가 보이지 않는다. ADR-003이 shedding을 택한 근거는 "재조회로 복구된다"가 아니라 "피크에서 전원을 지연시키는 것보다 일부 유실이 SLO에 유리하다"이며, 갭 복구는 미구현으로 남아 있다.
+
+착수 시 결정할 것: (a) 재연결 시 커서 기반 재조회(프론트만 수정, 갭 감지는 여전히 불가하나 재연결 구간은 덮인다), (b) payload에 방별 순번 추가 후 클라이언트 갭 감지(**STOMP wire payload 변경 = 외부 계약**, 프론트·k6 함께 → `.claude/rules/external-contracts.md`).
+
+`websocket-gateway/CLAUDE.md`와 `docs/modules/WEBSOCKET_GATEWAY.md` §6에 있던 "유실 시 클라이언트 REST 재조회 전제" 서술은 이 확인 결과에 맞춰 같은 커밋에서 정정했다.
+`[출처: 2026-08-27 ADR-003 리뷰 중 프론트 구현 대조]`
