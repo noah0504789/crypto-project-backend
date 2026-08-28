@@ -89,8 +89,10 @@
 | `webNotificationBroadcastEventConsumer` | `web-notification-broadcast-event` | `WebNotificationBroadcastEvent` | 수신자 `/user/topic/notification/` |
 
 - **로컬 세션 필터링**: 각 push 어댑터가 `LocalSessionCache.hasUser(...)`로 이 인스턴스에 연결된 사용자만 전송한다. 없으면 skip(로그). 사용자가 붙어 있는 인스턴스가 실제 전달을 담당한다.
-- **memberIds는 로컬 라우팅용**(wire에 싣지 않음): `ChatMessageBroadcastEvent`는 nested `payload`+`memberIds`지만, `/topic/chat/{roomId}`로 나가는 wire는 flat `StompChatMessagePayload{ messageId, roomId, writerId, content, timestamp(long), clientMessageId }`다(§8). 변환은 `ChatMessageBroadcastEventMapper` → `StompChatMessagePayload.from`.
-- **best-effort**: 이 소비자들은 DLQ 소비/재시도가 없고(`ack-mode: record`), STOMP executor 큐가 포화하면 push 태스크가 버려진다(`stomp.executor.rejected{pool}`). durable 영속(chat/notification)과 구분된다. 단 **유실을 클라이언트가 감지해 재조회하는 경로는 없다** — 프론트는 재연결 시 재구독만 하고, wire payload에 방별 순번이 없어 갭 감지가 불가능하다. 방 재진입·새로고침 전까지 그 메시지는 보이지 않는다(→ **TODO 5.5**).
+- **memberIds는 로컬 라우팅용**(wire에 싣지 않음): `ChatMessageBroadcastEvent`는 nested `payload`+`memberIds`지만, `/topic/chat/{roomId}`로 나가는 wire는 봉투 `StompChatMessageBatchPayload{ roomId, messages[] }`다(§8). 변환은 `ChatMessageBroadcastEventMapper` → `StompChatMessagePayload.from` → 배칭 버퍼.
+- **브로드캐스트는 방 단위 시간창(100ms)으로 묶어 보낸다**(`BatchingChatMessageBroadcastAdapter`). 프레임 수만 줄고 전달 메시지 수는 그대로다 — 브로커의 구독자 확장(×N)은 변하지 않는다. **배칭이 꺼져 있어도 1건짜리 봉투로 나가므로 wire 형식은 바뀌지 않는다.** 근거·수치는 [부하테스트 문서 §7-1](../../chat/load-test-results/chatmessage/websocket-gateway/2026-08-28/README.md).
+- **뱃지는 방 단위로 합친다**(`CoalescingMyChatRoomBadgeAdapter`, 200ms). 뱃지는 내용이 아니라 상태라 구간의 마지막 1건만 보내고 나머지는 버린다. payload 에 개인별 값이 없어서 성립한다.
+- **best-effort**: 이 소비자들은 DLQ 소비/재시도가 없고(`ack-mode: record`), STOMP executor 큐가 포화하면 push 태스크가 버려진다(`stomp.executor.rejected{pool,kind}` — `kind` 로 브로드캐스트·ACK·뱃지를 갈라 읽는다). durable 영속(chat/notification)과 구분된다. 단 **유실을 클라이언트가 감지해 재조회하는 경로는 없다** — 프론트는 재연결 시 재구독만 하고, wire payload에 방별 순번이 없어 갭 감지가 불가능하다. 방 재진입·새로고침 전까지 그 메시지는 보이지 않는다(→ **TODO 5.5**).
 
 ## 7. 세션 위치 관리
 
@@ -110,12 +112,13 @@
 | 방향 | destination | 전송 방식 | payload |
 |---|---|---|---|
 | inbound | `/msg/chat.send` | `@MessageMapping("/chat.send")` | `StompChatMessageSendRequest{clientMessageId, roomId, writerId, content}` |
-| outbound | `/topic/chat/{roomId}` | `convertAndSend`(방 공유) | `StompChatMessagePayload{messageId, roomId, writerId, content, timestamp(long), clientMessageId}` |
-| outbound | `/user/queue/chat/ack` | `convertAndSendToUser` | `StompChatMessageAckPayload`(성공/실패, errorCode) |
+| outbound | `/topic/chat/{roomId}` | `convertAndSend`(방 공유) | **봉투** `StompChatMessageBatchPayload{roomId, messages[]}`. 각 원소는 `StompChatMessagePayload{messageId, roomId, writerId, content, timestamp(long), clientMessageId}` |
+| outbound | `/user/queue/chat/ack` | **`clientOutboundChannel` 직접**(brokerChannel 우회) | `StompChatMessageAckPayload`(성공/실패, errorCode) |
 | outbound | `/user/queue/chat/badge` | `convertAndSendToUser` | `StompMyChatRoomBadgePayload` |
 | outbound | `/user/topic/notification/` | `convertAndSendToUser` | `StompWebNotificationPayload` |
 
-- 이들은 프론트와 `websocket-gateway/k6` 부하 테스트가 의존하는 **외부 계약**이다. 변경 전 의존성 확인(→ `../../.claude/rules/external-contracts.md`). 특히 `/topic/chat/{roomId}` wire는 내부 Kafka `ChatMessageBroadcastEvent`와 구조가 다르다(flat vs nested).
+- 이들은 프론트와 `websocket-gateway/k6` 부하 테스트가 의존하는 **외부 계약**이다. 변경 전 의존성 확인(→ `../../.claude/rules/external-contracts.md`). 특히 `/topic/chat/{roomId}` wire는 내부 Kafka `ChatMessageBroadcastEvent`와 구조가 다르다.
+- **ACK 는 brokerChannel 을 지나지 않는다.** `LocalSessionCache` 에서 세션과 구독 ID 를 찾아 `clientOutboundChannel` 로 직접 보낸다(`DirectStompChatMessageAckAdapter`). 세션이나 구독을 못 찾으면 기존 `convertAndSendToUser` 경로로 넘긴다(`chat.message.ack.direct.fallback` 로 관측). 구독 ID 는 `SessionSubscribeEvent` 에서 잡아 `LocalSessionCache` 에 함께 둔다 — 없으면 클라이언트가 MESSAGE 프레임을 매칭하지 못한다.
 - 메시지 변환: `MappingJackson2MessageConverter`(JSON), 커스텀 executor(broker/inbound/outbound `ThreadPoolTaskExecutor`), broker cacheLimit 8192.
 
 ## 9. 확인 필요 항목
