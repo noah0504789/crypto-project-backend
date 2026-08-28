@@ -105,7 +105,7 @@ public class CoalescingMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
     }
 
     @PostConstruct
-    void start() {
+    public void start() {
         if (!properties.enabled()) {
             log.info("[badge] coalescing disabled. 멤버별 즉시 전송으로 동작한다");
             return;
@@ -122,8 +122,9 @@ public class CoalescingMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
         log.info("[badge] coalescing enabled. windowMs={}", windowMs);
     }
 
-    // 테스트에서 스케줄러 없이 창을 닫아보기 위해 package-private 이다.
-    void flush() {
+    // 창을 한 번 닫고 대기 중인 방을 전부 내보낸다. 스케줄러가 주기적으로 부르고,
+    // 테스트는 스케줄러 없이 직접 불러 결과를 확인한다. 여러 번 불러도 안전하다.
+    public void flush() {
         try {
             for (String roomId : pending.keySet()) {
                 Pending target = pending.remove(roomId);
@@ -142,7 +143,7 @@ public class CoalescingMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
     }
 
     @PreDestroy
-    void stop() {
+    public void stop() {
         scheduler.shutdown();
 
         // 남은 버퍼를 한 번 비우고 내려간다. 종료 중 유실을 줄이려는 최선 노력이며 보장은 아니다.
