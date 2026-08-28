@@ -11,10 +11,9 @@ import org.springframework.validation.annotation.Validated;
 public record ChatMessageBatchProperties(
         @NotNull Boolean enabled,
 
-        // 묶는 시간창. 값 선택 근거는 TODO.md 5.3.
         @Positive Long windowMs,
 
-        // 방당 버퍼 상한. 넘으면 버리지 않고 창이 닫히기 전에 내보낸다.
+        // 넘으면 버리지 않고 창이 닫히기 전에 내보낸다.
         @Positive Integer maxBatchSize
 ) {
 }
