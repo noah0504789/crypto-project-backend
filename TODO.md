@@ -313,6 +313,49 @@ JFR에서 278바이트 쓰는 데 209ms 걸리는 소켓 write 블로킹이 잡�
 - **미측정 영역 둘.**(미착수) 부하 중 DLQ 적체 여부, `stomp-in` 풀이 32/32로 포화된 이유(인바운드는 초당 150건뿐이라 찰 이유가 없다)
 `[출처: chat/load-test-results/chatmessage/websocket-gateway/README.md 「측정값 신뢰 범위」]`
 
+#### 5.7 broker executor 가 스레드를 안 쓰고 큐만 채운다 — 원인 미확정
+
+VU 80 재측정(2026-08-28)에서 `stompBrokerExecutor` 만 포화했다.
+
+| | 값 |
+|---|---:|
+| broker 거절 | **17,250건** |
+| broker 큐 최대 | **3,000 / 3,000** (포화) |
+| 같은 시점 broker 활성 스레드 | **5 / 64** |
+| broker `pool_size` | 64 (측정 내내 일정) |
+| outbound 거절 | 0건 |
+| outbound 큐 최대 | 1,019 / 30,000 |
+
+**스레드가 없어서가 아니라 있는데 안 쓰였다.** 같은 스크레이프 시점에 큐 3,000·활성 5다.
+
+JFR(`gateway-vu80.jfr`) 관측:
+
+- broker 스레드 park 41,774건 — 대부분 `LinkedBlockingQueue.take()` 유휴 대기
+- 그중 1,052건이 같은 큐의 `takeLock` 경합(`ReentrantLock.lockInterruptibly`, 최대 56ms)
+- `jdk.JavaMonitorEnter` 198건 — 1차의 거절 경로 락 경합(3,637건)은 사라졌다
+
+**가설**: 소비자 스레드 64개가 단일 `LinkedBlockingQueue` 의 `takeLock` 을 두고 경합해 실제 소비
+속도가 스레드 수에 비례하지 않는다. 다만 락 대기 1,052건은 큐 포화를 설명하기엔 적어 **확정이 아니다.**
+
+**모순 하나**: `executor_completed_tasks_total` 이 누적 2,540,956인데, 메시지당 brokerChannel 통과를
+3건(방 브로드캐스트·뱃지·ACK)으로 잡은 추정치(약 5만)와 50배 차이 난다. brokerChannel 을 지나는
+실제 메시지 종류를 다시 확인해야 한다 — 세션별 확장 메시지도 이 채널을 지나는지.
+
+**실험**: 변수 하나만 바꾼다. `broker` 스레드 64 → 16, 큐 3,000 고정.
+
+```
+처리량 유지·증가  → 락 경합 확정. 스레드 과다가 원인
+처리량 감소       → 경합이 아님. 다른 원인 탐색
+```
+
+**근본 해결은 배칭이다(→ 5.3).** 이 실험은 원인 규명이며, 배칭 설계에도 brokerChannel 통과량이
+어떻게 결정되는지 알아야 한다.
+
+되돌리기: `broker` 를 `core-size: 64, max-size: 64` 로, 주석 제거, 머지 + websocket-gateway 재배포.
+`[출처: 2026-08-28 VU 80 재측정 / gateway-vu80.jfr]`
+
+---
+
 #### 5.5 브로드캐스트 유실을 클라이언트가 감지·복구할 경로가 없다
 
 브로드캐스트 push는 DLQ·재시도가 없고 executor 큐 포화 시 버려지는데, **유실을 클라이언트가 감지해 재조회하는 경로가 없다**(2026-08-27 `crypto-project-frontend` 확인).
