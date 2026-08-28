@@ -567,7 +567,8 @@ VU 110 이 VU 120 보다 나쁘게 나왔다 (4차)
 ## 원본
 
 - k6 스크립트·실행 스크립트: [`websocket-gateway/k6/`](../../../../../websocket-gateway/k6/) — `run-cloud.sh` 가 이 측정에 쓴 것
-- k6 원본 로그 · JFR: 클라우드 인스턴스 `~/results/`, 맥 `~/k6_chatmessage/results/` (저장소에 두지 않는다)
+- k6 원본 로그: [`2026-08-28/raw/`](raw/) — **2차까지만 있다.** 3차·4차 원본은 OCI 인스턴스와 함께 유실됐다(→ [`raw/README.md`](raw/README.md))
+- JFR: [`2026-08-28/jfr/gateway-vu80.jfr`](jfr/) — 소켓 write 블로킹 근거. 나머지 7개는 맥에만 있다
 - 관련 PR: #255 #257 #258 #259 #260 #261 #263 #265 #266 #267
 - 실패 경로 전체와 지금 상태: [`docs/SERVICE_FLOWS.md`](../../../../../docs/SERVICE_FLOWS.md) §15
 - 용량·큐 산정: [`docs/decisions/ADR-003`](../../../../../docs/decisions/ADR-003-chat-capacity-target-and-connection-budget.md)
