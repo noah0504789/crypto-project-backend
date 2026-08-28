@@ -1,0 +1,5 @@
+=== run VU=60 MESSAGE_COUNT=60 ===
+시작: 2026-08-28 10:49:23
+gateway=crypto-websocket-gateway-green-1  chat=crypto-chat-service-green-1
+종료: 2026-08-28 10:52:22
+측정 중 swapin: 8521 MB
