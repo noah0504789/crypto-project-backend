@@ -30,6 +30,11 @@ public class LocalSessionCache {
         return sessionToUser.getIfPresent(sessionId);
     }
 
+    public Set<String> findSessions(String userId) {
+        Set<String> sessions = userToSessions.getIfPresent(userId);
+        return (sessions == null) ? Set.of() : Set.copyOf(sessions);
+    }
+
     public boolean hasUser(String userId) {
         Set<String> sessions = userToSessions.getIfPresent(userId);
         return sessions != null && !sessions.isEmpty();

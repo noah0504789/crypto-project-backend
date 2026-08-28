@@ -127,6 +127,18 @@ websocket:
       window-ms: 100
       max-batch-size: 300
 
+    # ACK 를 brokerChannel 을 거치지 않고 clientOutboundChannel 로 직접 보낸다.
+    # 배칭·conflation 으로 브로드캐스트와 뱃지를 줄인 뒤에는 ACK 가 broker 태스크의 대부분이다
+    # (VU 100·60초 기준 브로드캐스트 209 · 뱃지 186 · ACK 12,000 — 세션 1개 가정).
+    # convertAndSendToUser 는 사용자 목적지를 세션 수만큼 다시 brokerChannel 로 보내므로
+    # 세션이 늘수록 증폭된다. 직접 보내면 그 단계가 통째로 없어진다.
+    # 대가: 브로커가 해주던 사용자 목적지 해석을 직접 한다. 세션 ID·구독 ID 가 하나라도
+    # 없으면 보내지 않고 기존 경로로 넘긴다(chat.message.ack.direct.fallback 로 관측).
+    # 주의: busrefresh 로 반영되지 않는다. 불변 record 다. 재배포 필요.
+    ack:
+      direct:
+        enabled: true
+
 app:
   rate-limit:
     chat-message:
