@@ -82,7 +82,13 @@ websocket:
     # core = max 인 이유와 큐 산정 근거는 docs/decisions/ADR-003-chat-capacity-target-and-connection-budget.md
     executor:
       inbound:  { core-size: 32, max-size: 32, queue-capacity: 600 }
-      broker:   { core-size: 64, max-size: 64, queue-capacity: 3000 }
+      # TODO(5.7): 스레드 수만 바꾸는 실험값이다. 큐(3000)는 의도적으로 고정한다.
+      # VU 80 측정에서 큐가 3,000/3,000 으로 포화해 17,250건을 거절했는데, 같은 시점 활성 스레드는
+      # 64개 중 5개뿐이었다(pool_size 는 64 로 계속 유지). 스레드가 없어서가 아니라 있는데 안 쓰였다.
+      # JFR 상 broker 스레드 park 41,774건이 LinkedBlockingQueue.take() 대기이고, 그중 1,052건은
+      # 같은 큐의 takeLock 경합(최대 56ms)이다. 소비자 64개가 단일 락을 두고 줄 서는 구조를 의심해
+      # 16 으로 줄여 재측정한다.
+      broker:   { core-size: 16, max-size: 16, queue-capacity: 3000 }
       outbound: { core-size: 96, max-size: 96, queue-capacity: 30000 }
       ack:      { core-size: 16, max-size: 16, queue-capacity: 2000 }
 
