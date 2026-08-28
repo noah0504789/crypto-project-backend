@@ -85,6 +85,28 @@ read DataSource를 만드는 서비스는 **market 하나뿐**이다(`market-ada
 
 **이 값은 후보이며 지속 부하 재측정 전까지 확정하지 않는다.** 1차 측정은 10초 발송 + 30초 드레인 버스트였다. 130명 실행의 총 169,000건을 6,000/s로 소화하면 28초로 40초 수집 창 안에 들어오므로, 지속 한계가 아니라 창 크기 덕에 통과한 값이다. 재측정 조건과 보정 항목은 `TODO.md` 5.4를 따른다.
 
+#### 재측정 결과 (2026-08-28)
+
+**`M ≈ 77` 이라는 추정은 틀렸다.** 60초 지속 부하에서 **게이트웨이 1대로 `M = 100`, p99 6.7초**가 나왔다.
+
+| VU | 게이트웨이 | p90 | p99 | ACK | 유실 |
+|---:|---:|---:|---:|---:|---:|
+| 100 | 1 | 3,790ms | 6,740ms | 99.86% | **0** |
+| 100 | 2 | 4,290ms | 8,550ms | 99.73% | **0** |
+| 120 | 1 | 38,490 ~ 42,620ms | — | 35 ~ 49% | 0 |
+| 120 | 2 | 16,660 ~ 20,250ms | — | 69 ~ 78% | 0 |
+
+**`C` 를 고정 상수로 본 것이 오류였다.** `M ≤ √(C/r)` 은 `C` 가 고정일 때만 성립하는데, **배칭이 `C` 자체를 바꿨다.**
+
+```
+배칭 전   전달 1건 = 프레임 1개        C 는 초당 프레임 수에 묶인다
+배칭 후   전달 23건 = 프레임 1개       같은 프레임 예산으로 23배를 나른다
+```
+
+처리량이 "초당 바이트"가 아니라 **"초당 프레임"** 에 묶여 있었기 때문이다(1차 JFR: 278바이트 write 에 209ms). 그래서 요구량을 프레임 단위로 깎으면 `M` 이 올라간다.
+
+**단 이 숫자도 이 호스트의 것이다.** 16GB 맥에 컨테이너 26개를 올린 상태이고 측정 중 swapin 이 회차당 16~74GB 났다. 운영계에서 같은 테스트를 다시 돌려 확정한다.
+
 ### 지연 예산 분할이 큐 크기를 정한다
 
 목표 10초를 두 구간으로 나눈다.
@@ -100,16 +122,17 @@ broker 큐는 **팬아웃 이전** 메시지를 세고 outbound 큐는 **팬아�
 
 ### 결과
 
-- 큐가 포화하면 팬아웃 태스크는 **버리고 카운터만 남긴다**(`stomp.executor.rejected{pool}`). 브로드캐스트 push는 DLQ·재시도가 없는 best-effort 계약이다. 다만 **클라이언트가 유실을 감지해 재조회하는 경로는 아직 없다** — 방 재진입·새로고침 시에만 REST 조회로 복구되고, wire payload(`StompChatMessagePayload`)에 방별 순번이 없어 갭 감지 자체가 불가능하다. 이 상태에서 shedding을 택한 이유는 피크에서 전원을 지연시키는 것보다 일부 유실이 위 SLO에 유리하기 때문이며, 클라이언트 갭 복구는 `TODO.md` 5.5로 남긴다.
-- ACK 풀만 `CallerRunsPolicy`를 유지한다 — 발신자에게 성공 여부를 알려야 하고 발생량이 사용자 수에 선형이라 배압이 오래 가지 않는다.
+- 큐가 포화하면 팬아웃 태스크는 **버리고 카운터만 남긴다**(`stomp.executor.rejected{pool,kind}`). **`kind` 로 무엇이 버려졌는지 갈라 읽는다** — 브로드캐스트 1건은 방 전원, ACK 1건은 발신자가 결과를 영영 모른다, 뱃지는 다음 창이 덮는다. 브로드캐스트 push는 DLQ·재시도가 없는 best-effort 계약이다. 다만 **클라이언트가 유실을 감지해 재조회하는 경로는 아직 없다** — 방 재진입·새로고침 시에만 REST 조회로 복구되고, wire payload(`StompChatMessagePayload`)에 방별 순번이 없어 갭 감지 자체가 불가능하다. 이 상태에서 shedding을 택한 이유는 피크에서 전원을 지연시키는 것보다 일부 유실이 위 SLO에 유리하기 때문이며, 클라이언트 갭 복구는 `TODO.md` 5.5로 남긴다.
+- **ACK 는 `brokerChannel` 을 지나지 않는다**(2026-08-28 변경). `LocalSessionCache` 에서 세션과 구독 ID 를 찾아 `clientOutboundChannel` 로 직접 보낸다. `chatMessageAckExecutor` 의 `CallerRunsPolicy` 는 그 앞단이라 브로커 큐 포화를 막지 못했다 — **방어 위치가 틀렸었다.** 배칭·conflation 으로 나머지를 줄이자 ACK 가 broker 태스크의 97% 가 됐고, 거절 태그가 그것을 지목했다.
 - 실행기 설정은 `git-config-repo/dynamic/`에 있지만 **busrefresh로는 반영되지 않는다.** 풀은 `initialize()` 시점에 만들어지고 이 코드베이스는 `@RefreshScope`를 쓰지 않는다. 값 변경은 재배포로 반영한다.
-- **300명 목표는 배칭 없이 불가능하다.** 요구 90,000/s 대 능력 6,000/s다. 방별 100ms 시간창 배칭은 수신자당 전송 횟수를 `M`회에서 10회로 줄여 총 `M × 10 = 3,000/s`가 되지만, STOMP wire payload가 배열이 되어 **외부 계약 변경**이다(→ `TODO.md` 5.3).
+- **300명 목표는 배칭 없이 불가능하다.** 요구 90,000/s 대 능력 6,000/s다. **배칭은 2026-08-28 에 적용했다**(방별 100ms, `TODO.md` 5.3-a). STOMP wire payload 가 봉투(`{roomId, messages[]}`)가 되는 **외부 계약 변경**이었고 프론트를 함께 고쳤다. 실측 프레임 감소는 23배다.
+- **입구 거절(백프레셔)은 운영계 이전 후에 넣는다**(→ `TODO.md` 5.14). 임계값은 "이 부하에서 이만큼 밀리면 SLO 를 넘긴다"는 실측에서 나오는데, 개발계 수치로 박으면 운영계에서 다시 재야 한다. 그때까지 inbound 큐 거절은 발신자에게 통보되지 않는다.
 
 ## 관련 근거
 
 - 실패 경로 전체 표(거절이 어디서 무엇을 잃는가): [`../SERVICE_FLOWS.md` §15](../SERVICE_FLOWS.md). **거절 카운터는 `pool` 태그로 분리해 읽는다** — broker 1건은 방 전원, outbound 1건은 1명이다.
-- 측정 원본: `chat/load-test-results/chatmessage/websocket-gateway/README.md`
-- 후속 과제: `TODO.md` 5.3(팬아웃 처리량), 5.4(재측정 보정)
+- 측정 원본: [`chat/load-test-results/chatmessage/websocket-gateway/2026-08-28/README.md`](../../chat/load-test-results/chatmessage/websocket-gateway/2026-08-28/README.md) — **최종 곡선은 §7-4**
+- 후속 과제: `TODO.md` 5.4(VU별 자격증명), 5.5(클라이언트 갭 복구), 5.12(측정 환경 분리), 5.14(입구 거절)
 - 설정: `git-config-repo/dynamic/websocket-gateway.yml`, `git-config-repo/dynamic/chat-service.yml`, `git-config-repo/infrastructure/mysql.yml`
 - 구현: `websocket-gateway/websocket-gateway-adapter-in/.../websocket/config/{ExecutorConfig,StompExecutorProperties}.java`
 - 관련 규칙: `docs/CODE_STYLE.md` §16(대량 broadcast의 channel contention·backpressure)
