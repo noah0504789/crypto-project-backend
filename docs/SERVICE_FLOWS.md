@@ -250,12 +250,12 @@ notification KafkaNotificationBinder.priceAlertDetectedEventConsumer (price-aler
 
 | 실패 | 발신자 통보 | 재시도·보상 | 지금까지 한 것 |
 |---|---|---|---|
-| **inbound 큐 거절** | **없음(침묵)** | 없음 | 거절 원인이던 락 제거(#255). **침묵은 그대로** → 5.14 |
+| **inbound 큐 거절** | **없음(침묵)** | 없음 | **침묵은 그대로** → 5.14 |
 | Rate Limit 초과 | `RATE_LIMIT_EXCEEDED` (`clientMessageId` 포함) | — | 측정용으로 꺼 둔 상태 → 1.13 |
 | 요청 검증 실패 | `VALIDATION_ERROR` (**`clientMessageId=null`**) | — | 미해결 → 5.14 |
 | 그 외 예외 | `SERVER_ERROR` (**`clientMessageId=null`**) | — | 미해결 → 5.14 |
 | chat outbox 기록 일시 실패 | 재시도 소진 후 거절 ACK | `@Retryable(TemporaryOutboxPersistenceException)` → 소진 시 예외가 gRPC로 전파 | — |
-| gRPC `DEADLINE_EXCEEDED` | 거절 ACK | `hardDelete` 보상(저장됐을 수 있는 메시지 제거) | 커넥션 점유시간 단축으로 발생 자체가 감소(#257) |
+| gRPC `DEADLINE_EXCEEDED` | 거절 ACK | `hardDelete` 보상(저장됐을 수 있는 메시지 제거) | 발생 자체가 감소 (#257) |
 | gRPC 그 외 코드 | 거절 ACK | 보상 없음 | — |
 
 - `@ControllerAdvice StompChatMessageExceptionHandler`의 `@MessageExceptionHandler(Exception.class)`가 컨트롤러 진입 이후의 예외를 모두 잡아 `/queue/chat/ack`로 알린다. **inbound 큐 거절만 이 그물에 안 걸린다** — 핸들러 진입 전에 executor가 버리기 때문이다(`stomp.executor.rejected{pool="inbound"}`로만 관측된다).
@@ -270,10 +270,10 @@ notification KafkaNotificationBinder.priceAlertDetectedEventConsumer (price-aler
 | Redis 캐시 반영 실패 | 캐시만 | 조회 시 `*QueryRepairService`가 Mongo에서 재적재 | — |
 | **outbox `FAILED`** | **전원** | **없음** | 미해결 → 4.6 |
 | Kafka 발행 재시도 중 | 지연 | outbox-poller 재시도 | — |
-| **broker 큐 거절 — 브로드캐스트** | **방 전원** | 없음 | 배칭으로 프레임 1/23(#265). 뱃지가 먹던 자리를 비움(#263) |
-| **broker 큐 거절 — 뱃지** | 그 사용자 | **다음 창이 최신값을 덮는다** | conflation(#263). 회복 가능해짐 |
+| **broker 큐 거절 — 브로드캐스트** | **방 전원** | 없음 | 프레임 수 감소 (#263 #265) |
+| **broker 큐 거절 — 뱃지** | 그 사용자 | **다음 창이 최신값을 덮는다** | conflation 으로 회복 가능해짐 (#263) |
 | **broker 큐 거절 — ACK** | **발신자가 영영 모름** | 없음 | **이 채널을 안 탄다**(#267) |
-| **outbound 큐 거절** | **수신자 1명** | 없음 | 배칭으로 프레임 1/23(#265) |
+| **outbound 큐 거절** | **수신자 1명** | 없음 | 프레임 수 감소 (#265) |
 | consumer 처리 실패 | 해당 이벤트 | `@Retryable` 소진 → `@Recover`가 DLQ 발행 | — |
 | 로컬 세션 없음 | — | 정상(다중 인스턴스 설계) | — |
 
@@ -313,35 +313,29 @@ k6의 ACK 타임아웃 건수가 부풀면 원인이 둘(inbound에서 잘림 / 
 
 **침묵은 아직 남아 있다.** inbound 거절은 핸들러 진입 전이라 `@MessageExceptionHandler` 그물에 안 걸린다. 입구에서 미리 거절하고 이유를 알리는 것(→ `TODO.md` 5.14)이 남은 마지막 조각이며, **임계값이 실측에서 나와야 하므로 운영계 이전 후에 한다.**
 
-### 15.5 이 표에서 출발해 고친 것들 (2026-08-27 ~ 08-28)
-
-실패 경로를 먼저 적어두고, 부하테스트로 **어느 경로가 실제로 터지는지** 확인한 뒤 하나씩 걷어냈다.
-
-| # | 어느 실패 경로 | 무엇이 원인이었나 | 어떻게 고쳤나 | PR |
-|---|---|---|---|---|
-| 1 | gRPC deadline · 저장 지연 | 트랜잭션이 Mongo 조회를 품어 커넥션을 5.1초 쥐고 있었다 | `LazyConnectionDataSourceProxy` — 첫 statement 까지 물리 커넥션을 안 잡는다 | #257 |
-| 2 | 전 구간 거절 | `AbortPolicy` 가 예외 메시지를 만들며 `toString()` 에서 `mainLock` 을 잡아, 거절이 폭주하면 제출까지 직렬화됐다 | 카운터만 올리는 거절 핸들러 | #255 |
-| 3 | broker 큐 거절 | 스레드 64개가 단일 큐의 `takeLock` 을 두고 경합해 5개만 가동됐다 | broker 64 → 32 | #258 #259 |
-| 4 | outbound 지연 | 스레드를 줄여도 늘려도 안 바뀌었다. 소켓 write 블로킹이 상한이었다 | outbound 96 → 64 (곡선을 닫고 최적값 확정) | #260 #261 |
-| 5 | broker 큐 거절 | 뱃지가 멤버마다 `convertAndSendToUser` 를 호출해 메시지당 O(멤버수). broker 태스크의 98.8% | 방 단위 conflation — 구간 마지막 1건만 보내고 나머지는 버린다 | #263 |
-| 6 | outbound 큐 적체 | 처리량이 "초당 바이트"가 아니라 **"초당 프레임"** 에 묶여 있었다(278바이트 write 에 209ms) | 방 단위 배칭 — 프레임 수 1/23. 전달 메시지 수는 그대로 | #265 |
-| 7 | 거절 내역을 모름 | 채널 하나를 셋이 공유하는데 카운터에 `pool` 태그밖에 없었다 | 거절된 태스크의 목적지를 `kind` 태그로 | #266 |
-| 8 | broker 큐 거절 — ACK | 6·5 로 나머지를 줄이자 ACK 가 broker 부하의 대부분이 됐다. `convertAndSendToUser` 가 세션 수만큼 재발행한다 | ACK 를 `clientOutboundChannel` 로 직접 — brokerChannel 을 안 탄다 | #267 |
-
-**측정 자체를 고친 것도 있다.**
-
-| 무엇 | 왜 |
-|---|---|
-| k6 를 OCI 로 분리 | 로컬 k6 가 CPU 484% 를 먹어 서버와 경합했다. 분리 후 연결 성공률이 처음으로 100% |
-| 뱃지 구독 추가 | k6 가 뱃지를 구독하지 않아 **서버 부하의 절반이 측정에서 빠져** 있었다 |
-| 유효성 게이트를 swapin 으로 | `Pages free` 는 파일 캐시가 먹어도 떨어져 단독 지표가 못 된다 |
-
-**읽는 법**: 1~4 는 "왜 스레드를 만져도 안 바뀌었나"의 답이고, 5~6 이 실제로 자릿수를 바꿨다. **좌변(처리 능력)이 아니라 우변(요구량)을 깎아야 했다.**
-
 ### 15.4 이 표가 다루지 않는 것
 
 WebSocket 핸드셰이크 실패, Kafka consumer 리밸런스 중 유실, Inbox 멱등 경로, DLQ consumer 자체 실패는 범위 밖이다.
 
 근거: `websocket-gateway/.../stomp/exception/StompChatMessageExceptionHandler.java`, `websocket-gateway/.../config/ExecutorConfig.java`, `websocket-gateway/.../chatmessage/adapter/out/stomp/{BatchingChatMessageBroadcastAdapter,DirectStompChatMessageAckAdapter}.java`, `websocket-gateway/.../chatroom/adapter/out/stomp/CoalescingMyChatRoomBadgeAdapter.java`, `websocket-gateway/.../chatmessage/application/service/ChatMessageSendService.java`, `chat/chat-application/.../service/{ChatMessageCommandService,ChatMessageEventService}.java`, `common/common-outbox/.../{OutboxService,JpaOutbox}.java`. 용량·큐 산정은 [`decisions/ADR-003-chat-capacity-target-and-connection-budget.md`](decisions/ADR-003-chat-capacity-target-and-connection-budget.md).
+
+### 15.5 이 표에서 출발해 고친 것들 (2026-08-27 ~ 08-28)
+
+실패 경로를 먼저 적어두고, 부하테스트로 **어느 경로가 실제로 터지는지** 확인한 뒤 하나씩 걷어냈다.
+발견 과정·수치·판단 근거는 [`chat/load-test-results/chatmessage/websocket-gateway/2026-08-28/README.md`](../chat/load-test-results/chatmessage/websocket-gateway/2026-08-28/README.md).
+
+| 어느 실패 경로 | 무엇을 했나 | PR |
+|---|---|---|
+| gRPC deadline · 저장 지연 | 트랜잭션에서 커넥션 획득을 미뤘다 | #257 |
+| 전 구간 거절 | 거절 경로의 락을 없앴다 | #255 |
+| broker 큐 거절 | executor 크기를 실측으로 잡았다 | #258 #259 |
+| outbound 지연 | 〃 | #260 #261 |
+| broker 큐 거절 — 뱃지 | 방 단위 conflation | #263 |
+| outbound 큐 적체 | 방 단위 배칭 | #265 |
+| 거절 내역을 모름 | 거절된 태스크의 목적지를 태그로 | #266 |
+| broker 큐 거절 — ACK | ACK 를 이 채널에서 뺐다 | #267 |
+
+**앞의 넷은 "왜 스레드를 만져도 안 바뀌었나"의 답이고, 뒤의 둘이 실제로 자릿수를 바꿨다.**
+좌변(처리 능력)이 아니라 우변(요구량)을 깎아야 했다.
 
 ---
