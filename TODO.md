@@ -96,6 +96,29 @@ VU를 올려도 연결이 10개에서 멈추므로 팬아웃(`M²`)이 생기지
 되돌리기: `websocket-handshake`를 `replenish-rate: 2` / `burst-capacity: 5` / `requested-tokens: 1`로, 주석 제거, **머지 + api-gateway 재배포**.
 `[출처: 2026-08-27 워밍업 실행(VU 20) ws upgrade 실패 50% 원인 규명]`
 
+#### 1.15 STOMP SUBSCRIBE 에 인가 검사가 없다 — 남의 방을 구독할 수 있다
+
+게이트웨이의 `ChannelInterceptor` 구현체는 `WebSocketSessionEventHandler` 하나뿐이고 **`StompCommand.SUBSCRIBE` 를 검사하는 코드가 없다.**
+
+```
+SUBSCRIBE /topic/chat/{roomId}
+  → 방 멤버 여부를 확인하지 않고 그대로 구독된다
+```
+
+인증된 사용자면 **roomId 만 알면 어느 방이든 메시지를 실시간으로 받는다.** roomId 는 Mongo ObjectId 라 추측이 어렵지만, 한 번이라도 노출되면(공유 링크·로그·이전 멤버) 방을 나간 뒤에도 계속 받는다. 나가기(leave)가 구독을 끊지 않기 때문이다.
+
+전송(SEND)은 `ChatRoom.validateWritable(writerId)` 로 막히지만 **읽기 경로에는 같은 검사가 없다.**
+
+대응 후보:
+
+| 방식 | 성격 |
+|---|---|
+| `ChannelInterceptor` 에서 SUBSCRIBE 가로채 방 멤버십 확인 | 구독 시 1회 검사. 게이트웨이가 방 멤버를 알아야 해서 chat-service 조회(gRPC) 또는 캐시가 필요 |
+| 구독 시점 발급 토큰 | 방 입장 API 가 방별 단기 토큰을 주고 SUBSCRIBE 헤더로 검증 |
+
+**뱃지를 토픽으로 바꾸면(→ 5.9) 이 구멍이 뱃지 경로에도 열린다.** 토픽 전환의 선행 조건이다.
+`[출처: 2026-08-28 뱃지 합치기 설계 중 ChannelInterceptor 전수 확인]`
+
 ---
 
 ## 2. 데이터 · 영속성
@@ -448,6 +471,53 @@ k6 는 `/user/queue/chat/badge` 를 구독하지 않아 이 부하가 측정에�
 집계는 채팅 지표와 분리한다(`badge_received_count`) — 발행 단위(멤버별)와 전달 대상(그 사용자의
 모든 세션)이 달라 같은 분모로 볼 수 없다. 계정 공유로 인한 증폭은 VU별 자격증명(→ 5.4) 이후에 해소된다.
 `[출처: 2026-08-28 StompMyChatRoomBadgeAdapter 확인]`
+
+##### 5.9-a 방 단위 합치기 — 적용함
+
+**뱃지는 내용이 아니라 상태다.** 같은 방에 100ms 사이 30건이 들어와도 마지막 1건만 보내면 화면 결과가 같다. 채팅 메시지(배칭 → 5.3)는 전부 전달해야 하지만 뱃지는 버릴 수 있다.
+
+합치기가 성립하는 근거는 **payload 에 개인별 값이 없다는 것**이다.
+
+```java
+public record StompMyChatRoomBadgePayload(String roomId, String lastMsgContent, Instant lastMsgCreatedAt) {}
+```
+
+`memberIds` 는 라우팅에만 쓰이고 payload 에 안 들어간다. **80명이 받는 바이트가 완전히 같다.** 개인별 필드(내 안읽음 수 등)가 생기면 이 최적화는 깨진다.
+
+VU 80(방 1개, 초당 80건) 기준 예상:
+
+| | broker 태스크/초 |
+|---|---:|
+| 채팅 브로드캐스트 | 80 |
+| 뱃지 (현재) | **6,400** (전체의 98.8%) |
+| 뱃지 (200ms 합치기) | **400** — 16배 감소 |
+
+`CoalescingMyChatRoomBadgeAdapter` 가 `MyChatRoomBadgePort` 를 `@Primary` 로 구현해 기존 어댑터를 감싼다. 방별 `ConcurrentHashMap` 에 last-write-wins 로 담고 전용 스케줄러가 창마다 드레인한다.
+
+- `scheduleWithFixedDelay` 를 쓴다. brokerChannel 이 `CallerRunsPolicy` 라 flush 스레드가 broker 태스크를 직접 실행하며 창보다 오래 걸릴 수 있는데, `scheduleAtFixedRate` 면 밀린 실행이 연달아 터진다. fixedDelay 는 느려진 만큼 창이 넓어져 합치는 양이 늘고 **스스로 배압이 된다.**
+- Kafka 키가 roomId 라 같은 방은 순서가 보장되지만, 파티션 재할당을 대비해 `lastMsgCreatedAt` 으로 한 번 더 거른다.
+- 전용 `ScheduledExecutorService` 를 쓴다. 게이트웨이에 `@EnableScheduling` 이 없고, 공용 스케줄러를 새로 켜면 flush 가 막힐 때 다른 스케줄 작업까지 같이 멈춘다.
+
+**대가**: Kafka 오프셋이 실제 전송보다 먼저 커밋된다. 게이트웨이가 죽으면 버퍼가 유실된다. **뱃지는 방 목록 재조회로 회복되므로 허용**한다 — 회복 불가능한 ACK(→ 5.8)에는 같은 기법을 쓰지 않는다.
+
+지표: `chat.badge.coalesced`(덮어써서 안 나간 건수) · `chat.badge.flushed`(실제 전송) · `chat.badge.pending`(대기 중인 방 수).
+
+되돌리기: `websocket.badge.coalesce.enabled: false`. busrefresh 로는 안 되고 재배포가 필요하다(불변 record + `@PostConstruct` 스케줄러).
+
+##### 5.9-b 토픽 전환 — 보류
+
+`convertAndSendToUser` N건을 `/topic/chat/badge/{roomId}` 1건으로 바꾸면 broker 태스크가 N → 1 이 된다. payload 가 방 단위라 **기술적으로는 가능하다.**
+
+보류하는 이유는 **구독 모델이 바뀌기 때문**이다.
+
+```
+지금    /user/queue/chat/badge         1건 구독으로 내 모든 방 뱃지 수신
+토픽    /topic/chat/badge/{roomId}     내가 속한 방 N개를 각각 구독
+```
+
+로그인 시 방 목록만큼 SUBSCRIBE, 초대·퇴장 시 구독 추가·해제가 필요해 **프론트 계약이 바뀐다.** 게다가 SUBSCRIBE 인가가 없어(→ 1.15) 토픽으로 옮기면 남의 방 뱃지를 받을 수 있다.
+
+**5.9-a 로 broker 여유가 확보되면 하지 않는다.** 재측정으로 판단한다.
 
 ---
 
