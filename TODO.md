@@ -293,10 +293,14 @@ chat 은 **cache-first**(캐시가 Mongo 보다 앞섬)라 miss 엔 줄 stale �
 
 ### websocket-gateway
 
-#### 5.3 STOMP 팬아웃 처리량 개선
+#### 5.3 STOMP 팬아웃 처리량 개선 — 배칭으로 해소함 (PR #265)
 
-부하테스트에서 확인된 유일한 실측 병목이다. 같은 방의 모두가 서로의 메시지를 받으므로 **전달 작업이 사용자 수의 제곱으로 는다**
-(130명이 각자 초당 1개만 보내도 초당 16,900건). 130명 구간에서 이미 Broadcast p95가 10초를 넘었다.
+**아래는 2026-05-08 1차 측정 시점의 분석이다.** 세 후보 중 배치 전송을 골라 적용했고
+실측 프레임 감소는 23배다. 적용 내용·수치는
+[부하테스트 문서 §7-1](chat/load-test-results/chatmessage/websocket-gateway/2026-08-28/README.md).
+**남은 것은 5.3-b(방별 순번)뿐이다.**
+
+당시 분석 — 같은 방의 모두가 서로의 메시지를 받으므로 **전달 작업이 사용자 수의 제곱으로 는다.** (130명이 각자 초당 1개만 보내도 초당 16,900건). 130명 구간에서 이미 Broadcast p95가 10초를 넘었다.
 
 원인은 자원 고갈이 아니다. 게이트웨이 CPU 20%·GC pause 0·gRPC 저장 실패 0건인데 STOMP outbound 스레드는 상한(96)까지 찼고,
 JFR에서 278바이트 쓰는 데 209ms 걸리는 소켓 write 블로킹이 잡혔다. **처리량 ≈ 스레드 수 ÷ 블로킹 시간**이라
@@ -314,42 +318,6 @@ JFR에서 278바이트 쓰는 데 209ms 걸리는 소켓 write 블로킹이 잡�
 현재 걸어둔 방 Rate Limit 30 msg/s도 우변을 깎는 조치지만 근본 해결은 아니다.
 `docs/CODE_STYLE.md` §16(대량 broadcast의 channel contention·backpressure 고려)과 함께 본다.
 `[출처: chat/load-test-results/chatmessage/websocket-gateway/README.md, 2026-05-08 부하테스트]`
-
-##### 5.3-a 방 단위 시간창 배칭 — 적용함 (PR #265)
-
-뱃지 conflation(5.9-a) 이후 남은 병목은 outbound 하나다. VU 80 재측정에서 broker 큐는 4까지 떨어졌는데 outbound 큐는 1,091~1,519 쌓였고 활성은 9~18/64 였다. 스레드를 늘려도 줄여도 안 바뀌는 구간이므로(→ 5.10) **좌변을 늘리는 대신 우변을 줄인다.**
-
-**설정값 근거**
-
-| 값 | 선택 | 이유 |
-|---|---|---|
-| `window-ms` | **100** | 200ms 면 프레임이 1/16, 100ms 면 1/8. **8배로 충분하고 메시지는 사용자가 기다리는 내용이다.** 뱃지(200ms)는 배경 상태라 더 길게 잡았다 |
-| `max-batch-size` | **300** | conflation 과 달리 버퍼가 유입량만큼 커진다. 버리지 않는 대신 일찍 내보내 메모리를 묶어두지 않는다 |
-
-**기대 효과 (초당 80건 · 구독자 80명)**
-
-| | 배칭 전 | 배칭 후 |
-|---|---:|---:|
-| brokerChannel 태스크 | 80/초 | **10/초** |
-| outbound 프레임 | 6,400/초 | **800/초** |
-| 전달 메시지 | 6,400/초 | 6,400/초 (같다) |
-
-**줄어드는 것은 프레임 수이지 전달되는 메시지 수가 아니다.** 브로커의 구독자 확장(×N)은 그대로다.
-
-**conflation 과 성격이 다르다**
-
-| | conflation (뱃지) | 배칭 (메시지) |
-|---|---|---|
-| 데이터 | 상태 | 내용 |
-| 버림 | 29건 버리고 1건 | **한 건도 안 버린다** |
-| 순서 | 무의미 | **보장한다** |
-| 버퍼 | 방 수만큼. 트래픽 무관 | **유입량만큼 증가** |
-
-**계약 변경**: `{ roomId, messages: [...] }`. 배칭이 꺼진 경로에서도 봉투로 내보내 설정으로 껐다 켜도 wire 형식이 안 바뀐다. 프론트는 봉투와 단건을 모두 받는다 — 저장소가 달라 배포 순서를 맞출 수 없다(프론트 커밋 `a2f23d3`, `10e85dc`).
-
-**판정 기준**: 지연(p90·ACK)으로 판정하지 않는다. 이 호스트는 회차 편차가 2.5배다(→ 5.15). 프레임 수(`batch_frame_count`)·프레임당 메시지(`batch_size`)·outbound 큐 깊이·유실·거절로 판정한다.
-
-되돌리기: `websocket.chat-message.batch.enabled: false`. busrefresh 로는 안 되고 재배포가 필요하다.
 
 ##### 5.3-b 방별 순번 — 별도 설계 필요
 
@@ -388,262 +356,13 @@ chatRoomPersistencePort.incrementMessageCount(roomId);   // $inc, 반환값 없�
 - **미측정 영역 둘.**(미착수) 부하 중 DLQ 적체 여부, `stomp-in` 풀이 32/32로 포화된 이유(인바운드는 초당 150건뿐이라 찰 이유가 없다)
 `[출처: chat/load-test-results/chatmessage/websocket-gateway/README.md 「측정값 신뢰 범위」]`
 
-#### 5.7 broker executor 가 스레드를 안 쓰고 큐만 채운다 — 원인 미확정
+#### 5.9 뱃지 전송 — 남은 것
 
-VU 80 재측정(2026-08-28)에서 `stompBrokerExecutor` 만 포화했다.
+방 단위 conflation 은 적용했다(PR #263, 프레임 25배 감소). 근거·수치는
+[부하테스트 문서 §6](chat/load-test-results/chatmessage/websocket-gateway/2026-08-28/README.md).
+**아래 둘이 남았다.**
 
-| | 값 |
-|---|---:|
-| broker 거절 | **17,250건** |
-| broker 큐 최대 | **3,000 / 3,000** (포화) |
-| 같은 시점 broker 활성 스레드 | **5 / 64** |
-| broker `pool_size` | 64 (측정 내내 일정) |
-| outbound 거절 | 0건 |
-| outbound 큐 최대 | 1,019 / 30,000 |
-
-**스레드가 없어서가 아니라 있는데 안 쓰였다.** 같은 스크레이프 시점에 큐 3,000·활성 5다.
-
-JFR(`gateway-vu80.jfr`) 관측:
-
-- broker 스레드 park 41,774건 — 대부분 `LinkedBlockingQueue.take()` 유휴 대기
-- 그중 1,052건이 같은 큐의 `takeLock` 경합(`ReentrantLock.lockInterruptibly`, 최대 56ms)
-- `jdk.JavaMonitorEnter` 198건 — 1차의 거절 경로 락 경합(3,637건)은 사라졌다
-
-**가설**: 소비자 스레드 64개가 단일 `LinkedBlockingQueue` 의 `takeLock` 을 두고 경합해 실제 소비
-속도가 스레드 수에 비례하지 않는다. 다만 락 대기 1,052건은 큐 포화를 설명하기엔 적어 **확정이 아니다.**
-
-**모순 하나**: `executor_completed_tasks_total` 이 누적 2,540,956인데, 메시지당 brokerChannel 통과를
-3건(방 브로드캐스트·뱃지·ACK)으로 잡은 추정치(약 5만)와 50배 차이 난다. brokerChannel 을 지나는
-실제 메시지 종류를 다시 확인해야 한다 — 세션별 확장 메시지도 이 채널을 지나는지.
-
-**실험 (진행 중)**: 변수 하나만 바꾼다. `broker` 스레드만 조정하고 큐 3,000 은 고정.
-
-VU 80 동일 조건 실측:
-
-| 스레드 | 활성 최대 | 활용률 | 거절 | 큐 최대 | **브로드캐스트 유실** | **ACK 유실** | p90 |
-|---:|---:|---:|---:|---:|---:|---:|---:|
-| 64 | 5 | 7.8% | 17,250 | 3,000 (포화) | 869 (0.23%) | 70 (1.48%) | 5,951ms |
-| 32 | 5 | 15.6% | 6,942 | 286 | **316 (0.08%)** | **63 (1.33%)** | **5,705ms** |
-| 16 | 8 | 50% | 5,413 | 1,649 | 320 (0.08%) | **1,023 (21.3%)** | 10,649ms |
-
-> **집계 정정**: k6 가 출력하는 `미도달` 을 그대로 유실로 읽으면 안 된다. 기대치를 `VUS × VUS × MESSAGE_COUNT`
-> 로 잡는데, 연결에 실패한 VU 가 있으면 분모만 커진다. 64·32 실행은 `ws upgrade` 가 ✗1 이어서
-> 실제로는 79명이 79명에게 보냈다(`subscribe_frame_count` 158, `send_count` 4,740).
->
-> ```
-> k6 기대치     4,800 × 80 = 384,000
-> 실제 기대치   4,740 × 79 = 374,460
-> ```
->
-> 이 보정을 하면 세 구성 모두 **브로드캐스트 유실은 0.1% 내외**다. 처음에 "64에서 10,409 유실"로
-> 읽은 것은 착시였고, **구성 간 진짜 차이는 ACK 유실과 지연에 있었다.** 16 은 브로드캐스트를 살리는
-> 대신 ACK 를 21.3% 버렸다.
-
-**스레드를 줄였더니 활용률이 오르고 거절이 줄었다.** 락 경합 가설과 방향이 맞는다.
-DB 압박도 함께 풀렸다(pending 75 → 18, 커넥션 타임아웃 8.2건 → 0건) — broker 가 덜 막히니 상류가 편해졌다.
-
-**32 가 최적이다.** 거절이 64 대비 60% 줄고 큐 포화가 해소되면서 p90 도 가장 낮다.
-16 은 거절이 더 줄었지만 소화 속도가 부족해 ACK 를 21.3% 버렸고 p90 이 10.6초로 SLO 를 넘겼다.
-
-```
-64  락 경합으로 5개만 가동 → 큐 포화
-32  균형점 — 큐 286, p90 5,705ms
-16  8개 가동하지만 처리 속도 부족 → ACK 유실 21.3%, 지연 2배
-```
-
-**남은 문제는 스레드 수가 아니라 ACK 가 브로드캐스트와 같은 채널에서 잘린다는 것이다(→ 5.8).**
-
-**근본 해결은 배칭이다(→ 5.3).** 이 실험은 원인 규명이며, 배칭 설계에도 brokerChannel 통과량이
-어떻게 결정되는지 알아야 한다.
-
-되돌리기: `broker` 를 `core-size: 64, max-size: 64` 로, 주석 제거, 머지 + websocket-gateway 재배포.
-`[출처: 2026-08-28 VU 80 재측정 / gateway-vu80.jfr]`
-
----
-
-#### 5.8 ACK 가 브로드캐스트와 같은 채널에서 잘렸다 — 해소함
-
-`ExecutorConfig` 는 ACK 풀에만 `CallerRunsPolicy` 를 걸어 "ACK 는 버리지 않는다"를 의도했다.
-**방어 위치가 틀렸다.**
-
-```
-gRPC save 성공
-  → chatMessageAckExecutor      CallerRunsPolicy — 여기선 안 버림
-    → SimpMessagingTemplate.convertAndSendToUser()
-      → brokerChannel           shedding 핸들러. 여기서 버려진다
-        → clientOutboundChannel → 소켓
-```
-
-`SimpMessagingTemplate`(= `brokerMessagingTemplate` 빈)은 brokerChannel 을 물고 만들어진다.
-ACK 와 브로드캐스트가 **같은 채널·같은 거절 핸들러**를 쓴다. ack executor 는 넘겨주기만 하므로
-거기 건 정책은 실효가 없었다.
-
-VU 80 / broker 16 실측에서 **ACK 21.3%(1,023건)** 가 유실됐다. 같은 실행의 브로드캐스트 유실은 0.08%다.
-
-| 유실 | 회복 |
-|---|---|
-| 브로드캐스트 | 방 재진입 시 Mongo 조회 — **회복 O** |
-| Kafka lag | 따라잡음 — **회복 O** |
-| **ACK** | 발신자가 영영 모름. 실패로 오인해 재전송하면 중복 — **회복 X** |
-
-**회복 불가능한 쪽을 버리고 있었다.** 양으로도 ACK 는 브로드캐스트의 80분의 1이라 보호 비용이 가장 싸다.
-
-**정정 (2026-08-28)**: 위 "대응" 은 **적용되지 않았다.** `ExecutorConfig` 를 확인하니 `brokerChannel` 은 여전히 `sheddingHandler`(그냥 버림)이고 `CallerRunsPolicy` 는 ack 풀에만 걸려 있다. 문서만 앞서 나간 기록이었다.
-
-**대응 후보**
-
-| | 방식 | 대가 |
-|---|---|---|
-| A | `brokerChannel` → `CallerRunsPolicy` | 안 버림. 호출 스레드가 직접 실행해 배압이 상류로 간다(Kafka lag 로 바뀌므로 회복 가능) |
-| B | 큐 확대 | 안 버리지만 지연만 는다. SLO 를 넘겨 도착하면 버린 것과 같다 |
-| C | 입구 거절(→ 5.14) | 애초에 덜 만들고 발신자에게 이유를 알린다 |
-| D | ACK 경로 분리 | `LocalSessionCache` 로 세션을 직접 찾아 `clientOutboundChannel` 로. 브로커가 해주던 사용자 목적지 해석·구독 확인을 직접 해야 해서 비용이 크다 |
-
-**A 를 하면 유실이 0이 되어 D 의 "유실 방지" 목적은 사라진다.** 남는 목적은 지연 격리다.
-
-##### 5.8-a ACK 를 clientOutboundChannel 로 직접 보낸다 — 적용함
-
-태그(5.17) 측정 결과가 D 를 골랐다. **VU 100 회차 거절 658건이 전부 ACK 였다**(브로드캐스트 0 · 뱃지 0).
-
-**배칭·conflation 이후 ACK 가 broker 부하의 대부분이다.** 계정 공유가 이를 더 부풀렸지만, 공유가 없어도 비율은 같다.
-
-| brokerChannel 태스크 (VU 100 · 60초) | 세션 1개 가정 |
-|---|---:|
-| 브로드캐스트 (배칭) | 209 |
-| 뱃지 (conflation) | 186 |
-| **ACK** | **12,000 (97%)** |
-
-`convertAndSendToUser` 는 사용자 목적지를 `UserDestinationMessageHandler` 가 **세션 수만큼 다시 brokerChannel 로** 보낸다. 계정을 100 VU 가 2개로 공유하면 세션이 계정당 50개라 ACK 1건이 태스크 51건이 된다.
-
-**대응**: `LocalSessionCache` 에서 세션과 구독 ID 를 찾아 `clientOutboundChannel` 로 직접 보낸다. brokerChannel 을 아예 안 탄다.
-
-구독 ID 는 `LocalSessionCache` 에 함께 둔다. 키·수명·제거 지점이 세션과 같아 캐시를 나누면 정리 경로가 늘 때 한쪽을 빼먹는다.
-
-**구독 ID 를 직접 들고 있어야 하는 이유**: `StompSubProtocolHandler` 가 MESSAGE 프레임을 만들 때 `simpSubscriptionId` 가 없으면 경고만 남기고 클라이언트가 매칭하지 못한다. 브로커가 해주던 일이라 `SessionSubscribeEvent` 에서 직접 잡는다.
-
-**안전장치**: 세션이나 구독이 하나라도 없으면 **보내지 않고 기존 경로로 넘긴다**(`chat.message.ack.direct.fallback`). 헤더 조립이 틀려도 ACK 가 사라지지 않게 한다.
-
-되돌리기: `websocket.chat-message.ack.direct.enabled: false`. 재배포 필요.
-`[출처: 2026-08-28 VU 100 태그 측정 — 거절 658건 전부 ack]`
-
-**근본 해결은 배칭(→ 5.3)이다.** 브로드캐스트 태스크가 줄면 채널에 여유가 생겨 ACK 가 저절로 산다.
-`[출처: 2026-08-28 VU 80 측정 / SimpMessagingTemplate 배선 확인]`
-
----
-
-#### 5.9 k6 가 뱃지 이벤트를 관측하지 않았다 — 구독 추가함
-
-`StompMyChatRoomBadgeAdapter` 는 **멤버마다** `convertAndSendToUser` 를 호출한다.
-
-```java
-for (String memberId : command.memberIds()) {
-    stompTemplate.convertAndSendToUser(memberId, destination, payload);
-}
-```
-
-| | brokerChannel 태스크 |
-|---|---|
-| 채팅 브로드캐스트 | 1건 (토픽 → SimpleBroker 가 구독자 N명으로 확장) |
-| **뱃지** | **멤버 수만큼** |
-| ACK | 1건 |
-
-**뱃지만 broker 에서 O(멤버수)다.** 실사용에서 방 멤버가 80명이면 메시지당 80 broker 태스크가 된다.
-
-k6 는 `/user/queue/chat/badge` 를 구독하지 않아 이 부하가 측정에서 빠져 있었다. 구독을 추가했다.
-
-주의: 구독하면 **서버 부하가 실제로 늘어난다.** 이전에는 구독자가 없어 SimpleBroker 가 확장을
-0건으로 끝냈다. 따라서 뱃지 구독 이후의 측정은 이전 회차와 직접 비교할 수 없는 **새 기준선**이다.
-
-집계는 채팅 지표와 분리한다(`badge_received_count`) — 발행 단위(멤버별)와 전달 대상(그 사용자의
-모든 세션)이 달라 같은 분모로 볼 수 없다. 계정 공유로 인한 증폭은 VU별 자격증명(→ 5.4) 이후에 해소된다.
-`[출처: 2026-08-28 StompMyChatRoomBadgeAdapter 확인]`
-
-##### 5.9-a 방 단위 합치기 — 적용함
-
-**뱃지는 내용이 아니라 상태다.** 같은 방에 100ms 사이 30건이 들어와도 마지막 1건만 보내면 화면 결과가 같다. 채팅 메시지(배칭 → 5.3)는 전부 전달해야 하지만 뱃지는 버릴 수 있다.
-
-시세 피드에서 말하는 **conflation** 이다. 배칭과 다르다 — 배칭은 30건을 묶어 전부 전달하고, conflation 은 29건을 버리고 1건만 전달한다. 그래서 메모리가 다르다: 배칭은 창 안 건수만큼 쌓여 부하에 비례하지만, conflation 은 방 개수만큼만 잡고 트래픽과 무관하다.
-
-**이 프로젝트에 같은 패턴이 이미 있다.** `UpbitTickerCollectService` 가 종목별 시세를 같은 방식으로 줄인다.
-
-```java
-source.groupBy(UpbitTickerEvent::code)
-      .flatMap(codeGroup -> codeGroup
-              .sample(properties.websocket().tickerPublishInterval())   // 7s
-              .onBackpressureLatest()
-              .concatMap(this::publish), Integer.MAX_VALUE);
-```
-
-| upbit-connector | 뱃지 | 하는 일 |
-|---|---|---|
-| `groupBy(code)` | `ConcurrentHashMap` 키 = roomId | 키별로 칸을 나눈다 |
-| `.sample(7s)` | 200ms flush + last-write-wins | 구간 마지막 1건만 내보낸다 |
-| `.onBackpressureLatest()` | `scheduleWithFixedDelay` | 소비가 느리면 최신만 남긴다 |
-| `.concatMap(publish)` | 방별 단일 슬롯 | 키 안에서 순서 유지 |
-
-`upbit-connector` 는 WebFlux 라 `Flux.sample` 이 바로 붙지만, 게이트웨이는 서블릿 기반이고 뱃지 유입이 Kafka 컨슈머 콜백(블로킹)이라 `Flux` 가 없다. 리액티브 파이프라인을 새로 세워 얻는 것이 `sample` 하나뿐이라 맵 + 스케줄러로 직접 구현한다.
-
-**동작이 완전히 같지는 않다.** `groupBy` 는 그룹마다 타이머가 따로 돌고 `flatMap` 으로 그룹 간 병렬이지만, 여기는 **전역 타이머 하나에 단일 스레드가 전 방을 순회**한다. 창마다 전 방이 동시에 나가 스파이크가 생기고, 한 방이 느리면 뒷 방이 밀린다. 반대로 유휴 방은 매 flush 의 `remove` 로 즉시 사라져 `groupBy` 보다 낫다. **방 수가 많아지면 타이머 분산과 병렬화를 검토한다 — 지금 부하테스트는 방 1개라 드러나지 않는다.**
-
-합치기가 성립하는 근거는 **payload 에 개인별 값이 없다는 것**이다.
-
-```java
-public record StompMyChatRoomBadgePayload(String roomId, String lastMsgContent, Instant lastMsgCreatedAt) {}
-```
-
-`memberIds` 는 라우팅에만 쓰이고 payload 에 안 들어간다. **80명이 받는 바이트가 완전히 같다.** 개인별 필드(내 안읽음 수 등)가 생기면 이 최적화는 깨진다.
-
-VU 80(방 1개, 초당 80건) 기준 예상:
-
-| | broker 태스크/초 |
-|---|---:|
-| 채팅 브로드캐스트 | 80 |
-| 뱃지 (현재) | **6,400** (전체의 98.8%) |
-| 뱃지 (200ms 합치기) | **400** — 16배 감소 |
-
-`CoalescingMyChatRoomBadgeAdapter` 가 `MyChatRoomBadgePort` 를 `@Primary` 로 구현해 기존 어댑터를 감싼다. 방별 `ConcurrentHashMap` 에 last-write-wins 로 담고 전용 스케줄러가 창마다 드레인한다.
-
-- `scheduleWithFixedDelay` 를 쓴다. brokerChannel 이 `CallerRunsPolicy` 라 flush 스레드가 broker 태스크를 직접 실행하며 창보다 오래 걸릴 수 있는데, `scheduleAtFixedRate` 면 밀린 실행이 연달아 터진다. fixedDelay 는 느려진 만큼 창이 넓어져 합치는 양이 늘고 **스스로 배압이 된다.**
-- Kafka 키가 roomId 라 같은 방은 순서가 보장되지만, 파티션 재할당을 대비해 `lastMsgCreatedAt` 으로 한 번 더 거른다.
-- 전용 `ScheduledExecutorService` 를 쓴다. 게이트웨이에 `@EnableScheduling` 이 없고, 공용 스케줄러를 새로 켜면 flush 가 막힐 때 다른 스케줄 작업까지 같이 멈춘다.
-
-**대가**: Kafka 오프셋이 실제 전송보다 먼저 커밋된다. 게이트웨이가 죽으면 버퍼가 유실된다. **뱃지는 방 목록 재조회로 회복되므로 허용**한다 — 회복 불가능한 ACK(→ 5.8)에는 같은 기법을 쓰지 않는다.
-
-지표: `chat.badge.coalesced`(덮어써서 안 나간 건수) · `chat.badge.flushed`(실제 전송) · `chat.badge.pending`(대기 중인 방 수).
-
-되돌리기: `websocket.badge.coalesce.enabled: false`. busrefresh 로는 안 되고 재배포가 필요하다(불변 record + `@PostConstruct` 스케줄러).
-
-**실측 (2026-08-28 VU 80·게이트웨이 1대):**
-
-| | 적용 전 | 적용 후 |
-|---|---:|---:|
-| 뱃지 프레임 | 384,000 | **약 15,000** (25배) |
-| broker 거절 | 17,250 | **0** |
-| broker 큐 최대 | 3,000 (포화) | **4 ~ 264** |
-| outbound 큐 최대 | 4,232 | 1,091 ~ 1,519 |
-| DB pending | 18 | **0** |
-| 수신률 / 유실 | 99.92% / 320 | **100% / 0** |
-
-카운터가 클라이언트 수신과 정확히 맞는다 — `coalesced 9,577 + flushed 423 = 10,000`(유입 총량), `badge 수신 14,880 = 186라운드 × 80멤버`.
-
-**brokerChannel 병목은 해소됐다. 남은 것은 outbound 하나다.** 지연(p90·ACK)은 회차 간 편차가 2.5배라 판정하지 못했다(→ 5.12).
-
-##### 5.9-b 토픽 전환 — 보류
-
-`convertAndSendToUser` N건을 `/topic/chat/badge/{roomId}` 1건으로 바꾸면 broker 태스크가 N → 1 이 된다. payload 가 방 단위라 **기술적으로는 가능하다.**
-
-보류하는 이유는 **구독 모델이 바뀌기 때문**이다.
-
-```
-지금    /user/queue/chat/badge         1건 구독으로 내 모든 방 뱃지 수신
-토픽    /topic/chat/badge/{roomId}     내가 속한 방 N개를 각각 구독
-```
-
-로그인 시 방 목록만큼 SUBSCRIBE, 초대·퇴장 시 구독 추가·해제가 필요해 **프론트 계약이 바뀐다.** 게다가 SUBSCRIBE 인가가 없어(→ 1.15) 토픽으로 옮기면 남의 방 뱃지를 받을 수 있다.
-
-**5.9-a 로 broker 여유가 확보되면 하지 않는다.** 재측정으로 판단한다.
-
-##### 5.9-c 사용자 축 집계 — 배칭(5.3) 때 같이 검토
+##### 5.9-c 사용자 축 집계 — 다음 계약 변경 때 같이
 
 5.9-a 는 **방 축**으로만 접었다. 라운드 수는 줄었지만 **라운드당 프레임 수는 그대로**다.
 
@@ -668,7 +387,7 @@ VU 80(방 1개, 초당 80건) 기준 예상:
 
 키를 방으로 잡은 것이 이 확장의 전제다. 사용자 키였다면 방별 conflation 자체가 불가능하고, `(방, 멤버)` 키였다면 방 묶음이 사라져 되돌리기 어렵다.
 
-**지금 하지 않는 이유**: payload 가 배열이 되어 **프론트 계약이 바뀐다**(배칭 5.3 과 같은 등급). 그리고 **현재 부하테스트는 방이 1개**라 이 최적화를 넣어도 숫자가 안 움직인다. 계약은 배칭 때 한 번만 깬다.
+**배칭(#265) 때 같이 넣지 않은 이유**: **부하테스트가 방 1개**라 넣어도 숫자가 안 움직여 검증이 안 된다. 방이 여러 개인 조건을 만들 수 있을 때, 그리고 계약을 또 깨야 할 일이 생길 때 함께 한다(5.3-b 방별 순번과 묶으면 계약을 한 번만 깬다).
 
 ##### 5.9-d flush 소요 시간을 재지 않고 있다 — 병렬화 판단 근거가 없다
 
@@ -702,80 +421,30 @@ flush 150ms  → 창 200ms 에 근접. 타이머 분산·병렬화 시점
 
 ---
 
-#### 5.10 outbound executor 도 스레드를 안 쓰고 큐만 채운다
-
-k6 를 클라우드로 분리한 뒤(맥에서 k6 가 CPU 484% 를 점유하던 오염 제거) VU 80 을 재측정했다.
-**커넥션·broker 는 해소됐고 outbound 만 남았다.**
-
-| | 값 |
-|---|---:|
-| outbound 큐 최대 | **4,232** |
-| outbound 활성 스레드 | **17 / 96 (17.7%)** |
-| outbound 거절 | 0 |
-| broker 큐 최대 | 40 (여유) |
-| broker 활성 | 2 / 32 |
-| DB pending | **0** |
-| DB 점유 | 1초 |
-
-broker 가 64 스레드일 때 활성 5/64(7.8%)로 막혔던 것과 **같은 구간**이고, 32 로 줄여 해소됐다
-(→ 5.7). 소비자 스레드가 단일 `LinkedBlockingQueue` 의 `takeLock` 을 두고 경합하는 구조가 같다.
-
-**결과**: 유실은 없는데 지연이 폭발한다. VU 80 2회 측정 모두 재현됐다.
-
-```
-1회차   수신률 99.98%  p90 31,507ms  ACK 42.5%
-2회차   수신률 100%    p90 38,648ms  ACK 35.3%
-```
-
-큐 30,000 이 다 받아내서 버리지 않는 대신 소화를 못 해 밀린다.
-
-**실험 결과 — 가설이 틀렸다.** VU 80 동일 조건(클라우드 k6):
-
-| 스레드 | 활성 최대 | 활용률 | p90 | ACK | 유실 |
-|---:|---:|---:|---:|---:|---:|
-| 96 | 17 | 17.7% | 31,507~38,648ms | 35~43% | 0~0.02% |
-| 32 | **14** | 44% | **45,833ms** | **28.3%** | 0% |
-
-**활용률은 올랐지만 활성 절대값이 17 → 14 로 줄었고 지연은 나빠졌다.**
-broker 는 64→32 에서 활성이 5→8 로 **늘어** 개선됐는데 outbound 는 정반대다.
-
-```
-broker    락 경합 O   스레드 줄이니 실제 가동이 늘었다
-outbound  락 경합 X   스레드 줄이니 여유만 사라졌다
-```
-
-**같은 증상(활성 스레드 낮음)인데 원인이 달랐다.** outbound 가 17개까지밖에 못 도는 이유는
-스레드 경합이 아니라 다른 데 있다 — 1차 JFR 에서 관측된 **소켓 write 블로킹**(278바이트에 209ms)이
-후보다. I/O 대기로 스레드가 묶이면 개수를 늘려도 줄여도 통과량이 안 바뀐다.
-
-주의: 워밍업이 부족한 회차는 못 쓴다. 32 첫 실행은 유실 31.45%·p90 76,648ms 였으나
-워밍업 후 재측정에서 유실 0%·p90 45,833ms 로 바뀌었다. **회차마다 워밍업을 반드시 선행한다.**
-
-**다음 실험**: 32 와 96 사이인 64 를 찍어 곡선을 닫는다. 큐는 계속 30,000 고정.
-
-되돌리기: `core-size: 96, max-size: 96` 로 복귀, 주석 제거, 머지 + websocket-gateway 재배포.
-`[출처: 2026-08-28 클라우드 k6(Tailscale) VU 80 2회 측정]`
-
 ---
 
-#### 5.11 k6 를 클라우드로 분리해 측정 오염을 제거했다
+#### 5.10 outbound 처리량 상한의 원인이 소켓 write 블로킹으로 보인다 — 미확정
 
-로컬 실행 시 k6 가 맥 CPU 를 최대 484%(4.8코어/6코어) 점유해 서버 컨테이너와 경합했다.
-그 결과 매 실행마다 `ws upgrade` 가 1~2개 실패하고(연결 78/80) 수치 변동이 컸다.
+스레드 수 실험(96 / 32 / 64)은 끝났고 64 로 확정했다. 이력과 실측은
+[부하테스트 문서 §2-3](chat/load-test-results/chatmessage/websocket-gateway/2026-08-28/README.md).
 
-OCI `VM.Standard.E5.Flex`(4 OCPU / 16GB)에 k6 를 올리고 Tailscale 로 맥에 연결했다.
+**남은 것은 왜 상한이 있는가다.** broker 는 스레드를 줄이자 활성이 5 → 8 로 늘어 개선됐는데(락 경합),
+outbound 는 96 → 32 에서 17 → 14 로 줄어 악화됐다. **같은 증상인데 원인이 다르다.**
 
-| | 로컬 k6 | 클라우드 k6 |
-|---|---:|---:|
-| k6 CPU | **247%** (VU 60) | **79%** |
-| 연결 성공 | 59/60 | **60/60** |
-| p90 (VU 60) | 773ms | 899ms |
+```
+broker    락 경합 O   스레드를 줄이니 실제 가동이 늘었다
+outbound  락 경합 X   스레드를 줄이니 여유만 사라졌다
+```
 
-**연결이 처음으로 100% 됐고 집계 보정이 불필요해졌다.** 지연 +126ms 는 Tailscale DERP 릴레이
-왕복(실측 75ms)에서 온다. 직접 연결(direct)은 확립되지 않아 릴레이 경유다.
+후보는 1차 JFR 에서 관측된 **소켓 write 블로킹**(278바이트에 209ms)이다. I/O 대기로 스레드가 묶이면
+개수를 늘려도 줄여도 통과량이 안 바뀐다.
 
-측정 조건: `WS_BASE_URL` 만 맥의 Tailscale IP 로 바꾼다. k6 버전은 양쪽 모두 v2.2.0 이다.
-`[출처: 2026-08-28 클라우드 분리 전후 VU 60 비교]`
+배칭(5.3-a)으로 프레임 수를 23배 줄여 증상은 크게 완화됐고, VU 120·2대에서도 outbound 큐는
+712 / 30,000 에 그친다. **그럼에도 p90 이 16초인 것은 채널 이후 구간이 여전히 상한이라는 뜻이다**
+(부하테스트 문서 §7-6). 확정하려면 JFR 로 `jdk.SocketWrite` 를 다시 떠야 하는데,
+지금 호스트는 swapin 이 회차당 16~74GB 라 블로킹이 I/O 때문인지 페이지 폴트 때문인지 못 가른다.
+**측정 환경 분리(→ 5.12) 이후에 판정한다.**
+`[출처: 2026-08-28 VU 80 스레드 수 실험 · VU 120 2대 측정]`
 
 ---
 
@@ -881,47 +550,6 @@ SW1=$(vm_stat | awk '/Swapins/{gsub(/\./,"",$2); print $2}')
 **유실·거절·큐 깊이·프레임 수는 서버가 직접 센 값이라 스왑과 무관하다.** 지연을 못 재는 회차에서도 이 지표들로는 판정할 수 있다 — 배칭(5.3) 효과를 지연 없이 검증할 수 있는 이유다.
 `[출처: 2026-08-28 뱃지 conflation 재측정 2회]`
 
-#### 5.17 거절된 태스크가 무엇이었는지 남기지 않는다 — 태그 추가함
-
-`brokerChannel` 하나를 ACK·뱃지·브로드캐스트가 함께 쓰는데 `stomp.executor.rejected` 에는 `pool` 태그밖에 없다. **거절 2,185건의 내역을 알 수 없다.**
-
-피해가 서로 다르다.
-
-| 종류 | 1건 거절의 결과 | 회복 |
-|---|---|---|
-| 브로드캐스트 | **방 전원**이 못 받는다 (확장 전 단계) | 방 재진입 시 Mongo 조회 |
-| ACK | 발신자가 결과를 **영영 모른다** | **불가** |
-| 뱃지 | 다음 창이 최신값을 덮는다 | 자동 |
-
-**배칭(5.3-a)·conflation(5.9-a) 이후 broker 태스크의 대부분이 ACK 다.** VU 100 한 회차 기준 채팅 프레임 209 · 뱃지 프레임 186 · ACK 6,000 이라, 거절에 ACK 가 섞였을 가능성이 높다.
-
-거절 핸들러가 받는 `Runnable` 은 `ExecutorSubscribableChannel.SendTask` 이고 **공개 인터페이스 `MessageHandlingRunnable` 로 원본 메시지를 꺼낼 수 있다.** 목적지 헤더를 읽어 `kind` 태그(`broadcast`/`ack`/`badge`/`notification`/`other`/`none`/`unknown`)를 붙인다.
-
-사용자 목적지는 브로커가 세션별로 다시 쓰므로 접미사가 붙는다(`/queue/chat/ack-user{sessionId}`). `startsWith` 가 아니라 `contains` 로 본다.
-
-카운터는 기동 시 kind 별로 미리 만들어 둔다 — **거절 폭주 구간에서 매번 빌더를 도는 것 자체가 다음 병목이 된다**(AbortPolicy 를 걷어낸 것과 같은 이유).
-
-**이 태그는 A~D 중 무엇을 할지 정하기 위한 것이다.** A(CallerRuns)나 B(큐 확대)를 먼저 넣으면 거절이 0이 되어 **내역을 영영 못 본다.** 그래서 태그를 먼저 배포하고 한 회차 측정한 뒤 대응을 고른다.
-`[출처: 2026-08-28 VU 100 4회차 broker 거절 2,185건]`
-
-#### 5.16 컨테이너가 이사 전 경로를 물고 있었다 — 해소함
-
-Docker 엔진 재시작 후 인프라 컨테이너가 하나도 안 올라왔다.
-
-```
-컨테이너 참조   /Users/noah/crypto-project-infra/infra/...
-실제 저장소     /Users/noah/crypto-project/crypto-project-infra/infra/
-```
-
-저장소가 이사한 뒤에도 컨테이너는 이사 전 경로의 bind mount 를 물고 계속 돌고 있었다. **한 번 죽으면 다시 못 뜨는 상태**였고 그때까지 드러나지 않았다. `docker start` 는 없는 경로에 빈 디렉터리를 만들며 `not a directory` 로 실패한다.
-
-compose 로 재생성해 현재 경로로 맞췄다(데이터는 named volume 이라 보존). 재생성으로 IP 가 바뀌어 Redis 클러스터가 `cluster_state:fail` 이 됐고 `CLUSTER MEET` 로 주소를 갱신해 복구했다.
-
-**같이 알아둘 것 둘**
-
-- **`docker start` 로 띄운 서비스는 eureka 에 DOWN 으로 남는다.** `DeploymentReadiness` 가 메모리의 `AtomicBoolean(false)` 라 재시작마다 초기화되고, CD 의 승인 단계를 안 거치면 `OUT_OF_SERVICE` 다. 컨테이너는 `Up` 인데 다른 서비스가 못 찾아 증상만으로는 헷갈린다. 비상 복구용 스크립트를 `~/mark-ready.sh` 에 두었다(서비스별 스킴·경로가 달라 `http|https × /internal/deployment|/api/v1/internal/deployment` 를 순회한다).
-- **api-gateway 는 토큰 검증마다 authorization-server 로 gRPC 를 호출한다**(`BlacklistAwareReactiveJwtDecoder`). JWKS 캐시로 때울 수 있는 구조가 아니라 측정 중에도 살아 있어야 한다. 메모리를 아끼려고 내렸다가 전 핸드셰이크가 실패했다.
-`[출처: 2026-08-28 Docker 엔진 재시작 후 인프라 복구]`
 
 ---
 
