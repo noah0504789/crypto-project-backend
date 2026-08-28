@@ -11,14 +11,10 @@ import org.springframework.validation.annotation.Validated;
 public record ChatMessageBatchProperties(
         @NotNull Boolean enabled,
 
-        // 방 하나에 대해 이 시간 안에 들어온 메시지를 한 프레임으로 묶는다.
-        // 창을 키울수록 프레임 수는 줄고 수신 지연은 늘어난다.
-        // 뱃지 conflation(200ms)보다 짧게 잡는다 — 메시지는 사용자가 기다리는 내용이다.
+        // 묶는 시간창. 값 선택 근거는 TODO.md 5.3.
         @Positive Long windowMs,
 
-        // 방당 버퍼 상한. 넘으면 창이 닫히기 전에 즉시 내보낸다.
-        // conflation 과 달리 배칭은 한 건도 버리지 않으므로 버퍼가 유입량만큼 커진다.
-        // 버리는 대신 일찍 내보내 메모리를 묶어둔다.
+        // 방당 버퍼 상한. 넘으면 버리지 않고 창이 닫히기 전에 내보낸다.
         @Positive Integer maxBatchSize
 ) {
 }
