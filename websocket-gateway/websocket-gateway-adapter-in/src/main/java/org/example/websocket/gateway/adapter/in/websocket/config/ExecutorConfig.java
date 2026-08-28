@@ -4,17 +4,26 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.binder.jvm.ExecutorServiceMetrics;
+import org.example.common.enums.StompDestination;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.messaging.support.MessageHandlingRunnable;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadPoolExecutor;
 
 @EnableAsync
 @Configuration
 public class ExecutorConfig {
+
+    private static final List<String> REJECTED_KINDS =
+            List.of("broadcast", "ack", "badge", "notification", "other", "none", "unknown");
 
     @Bean
     public ThreadPoolTaskExecutor stompInboundExecutor(MeterRegistry registry, StompExecutorProperties properties) {
@@ -62,13 +71,53 @@ public class ExecutorConfig {
     // 거부가 폭주하면 제출 스레드가 전부 이 락에서 직렬화되고 느려진 제출이 큐를 더 밀어 거부를 늘린다.
     // JFR 30초 녹화에서 락 대기 3,637건 중 3,613건이 이 경로였다.
     // 로그가 아니라 카운터를 남긴다 — 폭주 구간에서는 로깅 자체가 다음 병목이 된다.
+    // 카운터를 미리 만들어 둔다. 거절 폭주 구간에서 매번 빌더를 도는 것 자체가 다음 병목이 된다.
     private RejectedExecutionHandler sheddingHandler(MeterRegistry registry, String poolName) {
-        Counter rejected = Counter.builder("stomp.executor.rejected")
-                .description("큐 포화로 버려진 STOMP 태스크 수")
-                .tag("pool", poolName)
-                .register(registry);
+        Map<String, Counter> counters = new HashMap<>();
 
-        return (task, executor) -> rejected.increment();
+        for (String kind : REJECTED_KINDS) {
+            counters.put(kind, Counter.builder("stomp.executor.rejected")
+                    .description("큐 포화로 버려진 STOMP 태스크 수")
+                    .tag("pool", poolName)
+                    .tag("kind", kind)
+                    .register(registry));
+        }
+
+        return (task, executor) -> counters.get(classify(task)).increment();
+    }
+
+    // 채널 하나를 ACK·뱃지·브로드캐스트가 함께 쓰므로 거절 수만으로는 무엇이 사라졌는지 알 수 없다.
+    // 피해가 다르다 — 브로드캐스트 1건은 방 전원, ACK 1건은 발신자가 결과를 영영 모른다.
+    // 태스크는 SendTask 이고 MessageHandlingRunnable 로 원본 메시지를 꺼낼 수 있다(공개 API).
+    private String classify(Runnable task) {
+        if (!(task instanceof MessageHandlingRunnable runnable)) {
+            return "unknown";
+        }
+
+        Object destination = runnable.getMessage().getHeaders().get(SimpMessageHeaderAccessor.DESTINATION_HEADER);
+
+        if (!(destination instanceof String value)) {
+            return "none";
+        }
+
+        if (value.startsWith(StompDestination.CHAT_ROOM_PREFIX.destination())) {
+            return "broadcast";
+        }
+
+        // 사용자 목적지는 브로커가 세션별로 다시 쓰므로 접미사가 붙는다. contains 로 본다.
+        if (value.contains(StompDestination.CHAT_ACK_QUEUE.destination())) {
+            return "ack";
+        }
+
+        if (value.contains(StompDestination.CHAT_ROOM_BADGE_QUEUE.destination())) {
+            return "badge";
+        }
+
+        if (value.startsWith(StompDestination.NOTIFICATION_PREFIX.destination())) {
+            return "notification";
+        }
+
+        return "other";
     }
 
     // allowCoreThreadTimeOut(false): core == max 운용이라 유휴 타임아웃은 스레드를 죽였다 다시 만들기만 한다.

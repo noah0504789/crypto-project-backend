@@ -1,5 +1,6 @@
 package org.example.websocket.gateway.adapter.in.websocket.config;
 
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -146,7 +147,10 @@ class ExecutorConfigUnitTest {
         };
     }
 
+    // 거절 카운터는 kind 로도 나뉘므로 풀 단위 합계를 본다.
     private double rejectedCount(String poolName) {
-        return registry.get("stomp.executor.rejected").tag("pool", poolName).counter().count();
+        return registry.get("stomp.executor.rejected").tag("pool", poolName).counters().stream()
+                .mapToDouble(Counter::count)
+                .sum();
     }
 }
