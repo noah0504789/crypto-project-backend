@@ -48,6 +48,49 @@
 - 서브도메인: `chatmessage`(송신·브로드캐스트), `chatroom`(뱃지), `notification`(push), `session`(위치).
 - 소비 계약을 위해 adapter-in이 `chat-contract`(`ChatMessageBroadcastEvent`, `MyChatRoomBadgeBroadcastEvent`)·`notification-contract`(`WebNotificationBroadcastEvent`)에, adapter-out이 `chat-client`(gRPC)에 의존한다.
 
+## 4-1. 채팅 메시지 경로 한눈에
+
+**ACK 와 브로드캐스트는 갈라진다.** ACK 는 저장이 끝나면 바로 나가고, 브로드캐스트는 outbox·Kafka 를 돈다.
+
+```mermaid
+flowchart TB
+  C(("클라이언트"))
+
+  subgraph GW["websocket-gateway"]
+    IN["clientInboundChannel"]
+    CTRL["StompController<br/>@MessageMapping /chat.send"]
+    ACKX["chatMessageAckExecutor"]
+    ACKD["DirectStompChatMessageAckAdapter<br/>세션·구독 직접 조회"]
+    KC["Kafka consumer"]
+    BATCH["BatchingChatMessageBroadcastAdapter<br/>방 단위 100ms"]
+    CONF["CoalescingMyChatRoomBadgeAdapter<br/>방 단위 200ms · 마지막 1건"]
+    BRK["brokerChannel<br/>구독자 조회 + 1→N 확장"]
+    OUT["clientOutboundChannel<br/>소켓 write"]
+  end
+
+  CHAT["chat-service"]
+  MYSQL[("MySQL event.outbox")]
+  POLL["outbox-poller"]
+  KAFKA[["Kafka"]]
+
+  C -->|"SEND /msg/chat.send"| IN --> CTRL
+  CTRL -->|"gRPC save"| CHAT --> MYSQL
+  CHAT -.->|"응답"| ACKX --> ACKD
+
+  MYSQL --> POLL --> KAFKA --> KC
+  KC --> BATCH --> BRK
+  KC --> CONF --> BRK
+  BRK --> OUT
+  ACKD --> OUT
+  OUT -->|"MESSAGE 프레임"| C
+```
+
+**읽는 법 셋**
+
+- **ACK 는 `brokerChannel` 을 건너뛴다.** 브로드캐스트 384,000건 뒤에 ACK 4,800건이 줄 서던 구조를 끊었다(→ §8).
+- **배칭과 conflation 은 `brokerChannel` 진입 직전에서 태스크 수를 줄인다.** 확장(×N)은 그대로이고 프레임 수만 준다.
+- **`brokerChannel` 에서 1건이 버려지면 방 전원이 못 받는다.** 확장 이전 단계이기 때문이다. `clientOutboundChannel` 은 확장 이후라 1명이다(→ [`SERVICE_FLOWS.md` §15](../SERVICE_FLOWS.md)).
+
 ## 5. 인바운드 — 메시지 송신 (STOMP → gRPC → ACK)
 
 ```
@@ -89,8 +132,10 @@
 | `webNotificationBroadcastEventConsumer` | `web-notification-broadcast-event` | `WebNotificationBroadcastEvent` | 수신자 `/user/topic/notification/` |
 
 - **로컬 세션 필터링**: 각 push 어댑터가 `LocalSessionCache.hasUser(...)`로 이 인스턴스에 연결된 사용자만 전송한다. 없으면 skip(로그). 사용자가 붙어 있는 인스턴스가 실제 전달을 담당한다.
-- **memberIds는 로컬 라우팅용**(wire에 싣지 않음): `ChatMessageBroadcastEvent`는 nested `payload`+`memberIds`지만, `/topic/chat/{roomId}`로 나가는 wire는 flat `StompChatMessagePayload{ messageId, roomId, writerId, content, timestamp(long), clientMessageId }`다(§8). 변환은 `ChatMessageBroadcastEventMapper` → `StompChatMessagePayload.from`.
-- **best-effort**: 이 소비자들은 DLQ 소비/재시도가 없고(`ack-mode: record`), STOMP executor 큐가 포화하면 push 태스크가 버려진다(`stomp.executor.rejected{pool}`). durable 영속(chat/notification)과 구분된다. 단 **유실을 클라이언트가 감지해 재조회하는 경로는 없다** — 프론트는 재연결 시 재구독만 하고, wire payload에 방별 순번이 없어 갭 감지가 불가능하다. 방 재진입·새로고침 전까지 그 메시지는 보이지 않는다(→ **TODO 5.5**).
+- **memberIds는 로컬 라우팅용**(wire에 싣지 않음): `ChatMessageBroadcastEvent`는 nested `payload`+`memberIds`지만, `/topic/chat/{roomId}`로 나가는 wire는 봉투 `StompChatMessageBatchPayload{ roomId, messages[] }`다(§8). 변환은 `ChatMessageBroadcastEventMapper` → `StompChatMessagePayload.from` → 배칭 버퍼.
+- **브로드캐스트는 방 단위 시간창(100ms)으로 묶어 보낸다**(`BatchingChatMessageBroadcastAdapter`). 프레임 수만 줄고 전달 메시지 수는 그대로다 — 브로커의 구독자 확장(×N)은 변하지 않는다. **배칭이 꺼져 있어도 1건짜리 봉투로 나가므로 wire 형식은 바뀌지 않는다.** 근거·수치는 [부하테스트 문서 §7-1](../../chat/load-test-results/chatmessage/websocket-gateway/2026-08-28/README.md).
+- **뱃지는 방 단위로 합친다**(`CoalescingMyChatRoomBadgeAdapter`, 200ms). 뱃지는 내용이 아니라 상태라 구간의 마지막 1건만 보내고 나머지는 버린다. payload 에 개인별 값이 없어서 성립한다.
+- **best-effort**: 이 소비자들은 DLQ 소비/재시도가 없고(`ack-mode: record`), STOMP executor 큐가 포화하면 push 태스크가 버려진다(`stomp.executor.rejected{pool,kind}` — `kind` 로 브로드캐스트·ACK·뱃지를 갈라 읽는다). durable 영속(chat/notification)과 구분된다. 단 **유실을 클라이언트가 감지해 재조회하는 경로는 없다** — 프론트는 재연결 시 재구독만 하고, wire payload에 방별 순번이 없어 갭 감지가 불가능하다. 방 재진입·새로고침 전까지 그 메시지는 보이지 않는다(→ **TODO 5.5**).
 
 ## 7. 세션 위치 관리
 
@@ -110,12 +155,13 @@
 | 방향 | destination | 전송 방식 | payload |
 |---|---|---|---|
 | inbound | `/msg/chat.send` | `@MessageMapping("/chat.send")` | `StompChatMessageSendRequest{clientMessageId, roomId, writerId, content}` |
-| outbound | `/topic/chat/{roomId}` | `convertAndSend`(방 공유) | `StompChatMessagePayload{messageId, roomId, writerId, content, timestamp(long), clientMessageId}` |
-| outbound | `/user/queue/chat/ack` | `convertAndSendToUser` | `StompChatMessageAckPayload`(성공/실패, errorCode) |
+| outbound | `/topic/chat/{roomId}` | `convertAndSend`(방 공유) | **봉투** `StompChatMessageBatchPayload{roomId, messages[]}`. 각 원소는 `StompChatMessagePayload{messageId, roomId, writerId, content, timestamp(long), clientMessageId}` |
+| outbound | `/user/queue/chat/ack` | **`clientOutboundChannel` 직접**(brokerChannel 우회) | `StompChatMessageAckPayload`(성공/실패, errorCode) |
 | outbound | `/user/queue/chat/badge` | `convertAndSendToUser` | `StompMyChatRoomBadgePayload` |
 | outbound | `/user/topic/notification/` | `convertAndSendToUser` | `StompWebNotificationPayload` |
 
-- 이들은 프론트와 `websocket-gateway/k6` 부하 테스트가 의존하는 **외부 계약**이다. 변경 전 의존성 확인(→ `../../.claude/rules/external-contracts.md`). 특히 `/topic/chat/{roomId}` wire는 내부 Kafka `ChatMessageBroadcastEvent`와 구조가 다르다(flat vs nested).
+- 이들은 프론트와 `websocket-gateway/k6` 부하 테스트가 의존하는 **외부 계약**이다. 변경 전 의존성 확인(→ `../../.claude/rules/external-contracts.md`). 특히 `/topic/chat/{roomId}` wire는 내부 Kafka `ChatMessageBroadcastEvent`와 구조가 다르다.
+- **ACK 는 brokerChannel 을 지나지 않는다.** `LocalSessionCache` 에서 세션과 구독 ID 를 찾아 `clientOutboundChannel` 로 직접 보낸다(`DirectStompChatMessageAckAdapter`). 세션이나 구독을 못 찾으면 기존 `convertAndSendToUser` 경로로 넘긴다(`chat.message.ack.direct.fallback` 로 관측). 구독 ID 는 `SessionSubscribeEvent` 에서 잡아 `LocalSessionCache` 에 함께 둔다 — 없으면 클라이언트가 MESSAGE 프레임을 매칭하지 못한다.
 - 메시지 변환: `MappingJackson2MessageConverter`(JSON), 커스텀 executor(broker/inbound/outbound `ThreadPoolTaskExecutor`), broker cacheLimit 8192.
 
 ## 9. 확인 필요 항목
@@ -128,9 +174,11 @@
 
 ## 10. 테스트 현황
 
-- application: `ChatMessageSendServiceTest`, `LocalSessionCacheTest`
-- adapter-out: `GrpcChatMessageCommandAdapterTest`, `RedisSessionLocationAdapterTest`
-- 부하: `chat/load-test-results/chatmessage/websocket-gateway`(k6 원본 결과·Grafana 대시보드·해석)
+- application: `ChatMessageSendServiceUnitTest`, `LocalSessionCacheUnitTest`(세션·ACK 구독 ID·제거 시 동반 삭제)
+- adapter-in: `StompControllerUnitTest`, `StompChatMessageExceptionHandlerUnitTest`(실패 ACK 의 `clientMessageId`), `ExecutorConfigUnitTest`, `ExecutorConfigRejectionKindUnitTest`(거절 태스크 목적지 분류), `RedisChatMessageRateLimiter*Test`
+- adapter-out: `BatchingChatMessageBroadcastAdapterUnitTest`(순서 보존·상한 초과 즉시 전송), `CoalescingMyChatRoomBadgeAdapterUnitTest`(마지막 1건·타임스탬프 역전), `DirectStompChatMessageAckAdapterUnitTest`(헤더 3종·폴백), `GrpcChatMessageCommandAdapterUnitTest`, `RedisSessionLocationAdapterUnitTest`
+- bootstrap: `BootSmokeTest` — 실제 `git-config-repo` 설정을 import 하므로 **설정 키 누락이 부팅 실패로 잡힌다**
+- 부하: [`chat/load-test-results/.../2026-08-28/README.md`](../../chat/load-test-results/chatmessage/websocket-gateway/2026-08-28/README.md) — 최종 곡선은 §7-4. **거기 숫자는 목표치도 확정 용량도 아니다.** 16GB 단일 호스트에 컨테이너 26개를 올린 상태의 측정이라 피크·SLO 는 운영계에서 다시 잰다. 확정된 것은 **병목이 어디였고 무엇을 걷어냈는가**뿐이다
 
 ## 11. 컴파일 · 테스트 · CI 명령
 
@@ -144,10 +192,12 @@
 | 파일 | 이유 |
 |---|---|
 | `common-core/StompDestination` · `StompConfig` | STOMP destination/endpoint/prefix 계약(프론트·k6) |
-| `StompChatMessagePayload`/`*AckPayload`/`*BadgePayload`/`*WebNotificationPayload` | wire payload 계약 |
+| `StompChatMessageBatchPayload`/`StompChatMessagePayload`/`*AckPayload`/`*BadgePayload`/`*WebNotificationPayload` | wire payload 계약 |
+| `BatchingChatMessageBroadcastAdapter` · `CoalescingMyChatRoomBadgeAdapter` | 배칭·conflation 창과 버퍼. 프레임 수와 지연을 동시에 정한다 |
+| `DirectStompChatMessageAckAdapter` | ACK 가 브로커를 우회한다. 헤더(세션·구독 ID)가 틀리면 **조용히 전달되지 않는다** |
 | `KafkaWebsocketGatewayBinder` · `websocket-gateway.yml` stream | 소비 토픽·group(per-instance)·concurrency |
 | `GrpcChatMessageCommandAdapter` | `chatmessage.v1` 소비(저장·hardDelete 보상) |
-| `LocalSessionCache`/`RedisSessionLocationAdapter`/`WebSocketSessionEventHandler` | 세션 위치·push 라우팅 정합성 |
+| `LocalSessionCache`/`RedisSessionLocationAdapter`/`WebSocketSessionEventHandler` | 세션 위치·push 라우팅 정합성. **ACK 구독 ID 도 여기 있다** — 세션 제거 경로가 늘면 함께 지워야 한다 |
 
 ## 13. 관련 문서와 rules
 

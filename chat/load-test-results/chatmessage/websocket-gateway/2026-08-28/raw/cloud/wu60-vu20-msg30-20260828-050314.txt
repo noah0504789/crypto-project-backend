@@ -1,0 +1,429 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: chat-message-fanout-native.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 20 max VUs, 10m30s max duration (incl. graceful stop):
+              * chat_message_fanout_native: 1 iterations for each of 20 VUs (maxDuration: 10m0s, gracefulStop: 30s)
+
+time="2026-08-28T05:03:14Z" level=info msg="[VU 1] websocket_open" source=console
+time="2026-08-28T05:03:14Z" level=info msg="[VU 1] sent_connect" source=console
+time="2026-08-28T05:03:14Z" level=info msg="[VU 1] stomp_connected_and_subscribed ack=/user/queue/chat/ack, broadcast=/topic/chat/6a70918192769704d8056e33" source=console
+
+running (00m01.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m01.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m02.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m02.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m03.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m03.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m04.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m04.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m05.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m05.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m06.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m06.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m07.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m07.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m08.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m08.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m09.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m09.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m10.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m10.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m11.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m11.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m12.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m12.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m13.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m13.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m14.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m14.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m15.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m15.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:29Z" level=info msg="[VU 1] start_sending messages_per_user=30, expected_broadcast_per_user=600, expected_broadcast_total=12000" source=console
+
+running (00m16.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m16.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:30Z" level=info msg="[VU 1] sent_message 1/30, msg_id=chat-message-fanout-native-1-1-1787893410976" source=console
+
+running (00m17.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m17.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:31Z" level=info msg="[VU 1] sent_message 2/30, msg_id=chat-message-fanout-native-1-2-1787893411976" source=console
+
+running (00m18.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m18.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:32Z" level=info msg="[VU 1] sent_message 3/30, msg_id=chat-message-fanout-native-1-3-1787893412976" source=console
+
+running (00m19.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m19.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:33Z" level=info msg="[VU 1] sent_message 4/30, msg_id=chat-message-fanout-native-1-4-1787893413976" source=console
+
+running (00m20.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m20.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:34Z" level=info msg="[VU 1] sent_message 5/30, msg_id=chat-message-fanout-native-1-5-1787893414976" source=console
+
+running (00m21.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m21.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:35Z" level=info msg="[VU 1] sent_message 6/30, msg_id=chat-message-fanout-native-1-6-1787893415976" source=console
+
+running (00m22.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m22.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:36Z" level=info msg="[VU 1] sent_message 7/30, msg_id=chat-message-fanout-native-1-7-1787893416976" source=console
+
+running (00m23.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m23.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:37Z" level=info msg="[VU 1] sent_message 8/30, msg_id=chat-message-fanout-native-1-8-1787893417976" source=console
+
+running (00m24.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m24.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:38Z" level=info msg="[VU 1] sent_message 9/30, msg_id=chat-message-fanout-native-1-9-1787893418976" source=console
+
+running (00m25.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m25.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:39Z" level=info msg="[VU 1] sent_message 10/30, msg_id=chat-message-fanout-native-1-10-1787893419975" source=console
+
+running (00m26.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m26.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:40Z" level=info msg="[VU 1] sent_message 11/30, msg_id=chat-message-fanout-native-1-11-1787893420975" source=console
+
+running (00m27.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m27.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:41Z" level=info msg="[VU 1] sent_message 12/30, msg_id=chat-message-fanout-native-1-12-1787893421976" source=console
+
+running (00m28.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m28.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:42Z" level=info msg="[VU 1] sent_message 13/30, msg_id=chat-message-fanout-native-1-13-1787893422976" source=console
+
+running (00m29.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m29.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:43Z" level=info msg="[VU 1] sent_message 14/30, msg_id=chat-message-fanout-native-1-14-1787893423976" source=console
+
+running (00m30.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m30.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:44Z" level=info msg="[VU 1] sent_message 15/30, msg_id=chat-message-fanout-native-1-15-1787893424976" source=console
+
+running (00m31.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m31.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:45Z" level=info msg="[VU 1] sent_message 16/30, msg_id=chat-message-fanout-native-1-16-1787893425975" source=console
+
+running (00m32.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m32.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:46Z" level=info msg="[VU 1] sent_message 17/30, msg_id=chat-message-fanout-native-1-17-1787893426976" source=console
+
+running (00m33.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m33.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:47Z" level=info msg="[VU 1] sent_message 18/30, msg_id=chat-message-fanout-native-1-18-1787893427976" source=console
+
+running (00m34.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m34.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:48Z" level=info msg="[VU 1] sent_message 19/30, msg_id=chat-message-fanout-native-1-19-1787893428976" source=console
+
+running (00m35.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m35.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:49Z" level=info msg="[VU 1] sent_message 20/30, msg_id=chat-message-fanout-native-1-20-1787893429976" source=console
+
+running (00m36.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m36.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:50Z" level=info msg="[VU 1] sent_message 21/30, msg_id=chat-message-fanout-native-1-21-1787893430976" source=console
+
+running (00m37.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m37.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:51Z" level=info msg="[VU 1] sent_message 22/30, msg_id=chat-message-fanout-native-1-22-1787893431976" source=console
+
+running (00m38.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m38.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:52Z" level=info msg="[VU 1] sent_message 23/30, msg_id=chat-message-fanout-native-1-23-1787893432976" source=console
+
+running (00m39.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m39.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:53Z" level=info msg="[VU 1] sent_message 24/30, msg_id=chat-message-fanout-native-1-24-1787893433976" source=console
+
+running (00m40.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m40.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:54Z" level=info msg="[VU 1] sent_message 25/30, msg_id=chat-message-fanout-native-1-25-1787893434976" source=console
+
+running (00m41.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m41.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:55Z" level=info msg="[VU 1] sent_message 26/30, msg_id=chat-message-fanout-native-1-26-1787893435976" source=console
+
+running (00m42.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m42.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:56Z" level=info msg="[VU 1] sent_message 27/30, msg_id=chat-message-fanout-native-1-27-1787893436976" source=console
+
+running (00m43.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m43.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:57Z" level=info msg="[VU 1] sent_message 28/30, msg_id=chat-message-fanout-native-1-28-1787893437976" source=console
+
+running (00m44.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m44.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:58Z" level=info msg="[VU 1] sent_message 29/30, msg_id=chat-message-fanout-native-1-29-1787893438976" source=console
+
+running (00m45.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m45.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:03:59Z" level=info msg="[VU 1] sent_message 30/30, msg_id=chat-message-fanout-native-1-30-1787893439976" source=console
+
+running (00m46.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m46.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:04:00Z" level=info msg="[VU 1] all_send_frames_queued" source=console
+
+running (00m47.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m47.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m48.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m48.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m49.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m49.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m50.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m50.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m51.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m51.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m52.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m52.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m53.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m53.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m54.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m54.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m55.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m55.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m56.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m56.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m57.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m57.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m58.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m58.0s/10m0s  00/20 iters, 1 per VU
+
+running (00m59.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  00m59.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m00.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m00.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m01.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m01.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m02.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m02.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m03.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m03.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m04.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m04.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m05.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m05.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m06.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m06.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m07.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m07.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m08.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m08.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m09.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m09.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m10.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m10.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m11.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m11.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m12.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m12.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m13.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m13.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m14.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m14.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m15.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m15.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m16.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m16.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m17.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m17.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m18.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m18.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m19.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m19.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m20.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m20.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m21.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m21.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m22.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m22.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m23.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m23.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m24.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m24.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m25.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m25.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m26.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m26.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m27.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m27.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m28.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m28.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m29.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m29.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m30.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m30.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m31.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m31.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m32.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m32.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m33.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m33.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m34.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m34.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m35.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m35.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m36.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m36.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m37.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m37.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m38.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m38.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m39.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m39.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m40.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m40.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m41.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m41.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m42.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m42.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m43.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m43.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m44.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m44.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m45.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m45.0s/10m0s  00/20 iters, 1 per VU
+
+running (01m46.0s), 20/20 VUs, 0 complete and 0 interrupted iterations
+chat_message_fanout_native   [   0% ] 20 VUs  01m46.0s/10m0s  00/20 iters, 1 per VU
+time="2026-08-28T05:05:00Z" level=info msg="[VU 1] finalize reason=broadcast_collect_window_complete, sent=30, broadcast_received=600, broadcast_missing=0, expected=600" source=console
+time="2026-08-28T05:05:00Z" level=info msg="[VU 1] socket_closed" source=console
+[32m     ✓ websocket open received[0m
+[32m     ✓ stomp connected[0m
+[32m     ✓ ws upgrade status is 101[0m
+
+     ack_latency_ms[2m........................:[0m avg=[36m74.18ms[0m  min=[36m18ms[0m     med=[36m62ms[0m     p(90)=[36m145ms[0m    p(95)=[36m166ms[0m   p(99)=[36m190.03ms[0m max=[36m508ms[0m   
+     ack_ok_count[2m..........................:[0m [36m600[0m     [36;2m5.640412/s[0m
+     ack_ok_rate[2m...........................:[0m [36m100.00%[0m [36;2m✓ 600[0m        [36;2m✗ 0[0m   
+     badge_received_count[2m..................:[0m [36m12000[0m   [36;2m112.808247/s[0m
+     broadcast_delivery_latency_ms[2m.........:[0m avg=[36m337.64ms[0m min=[36m87ms[0m     med=[36m343ms[0m    p(90)=[36m475ms[0m    p(95)=[36m524ms[0m   p(99)=[36m574ms[0m    max=[36m692ms[0m   
+     broadcast_delivery_ok_count[2m...........:[0m [36m12000[0m   [36;2m112.808247/s[0m
+     broadcast_delivery_timeout_ok_count[2m...:[0m [36m12000[0m   [36;2m112.808247/s[0m
+     broadcast_delivery_timeout_ok_rate[2m....:[0m [36m100.00%[0m [36;2m✓ 12000[0m      [36;2m✗ 0[0m   
+     broadcast_expected_total_count[2m........:[0m [36m12000[0m   [36;2m112.808247/s[0m
+     checks[2m................................:[0m [36m100.00%[0m [36;2m✓ 60[0m         [36;2m✗ 0[0m   
+     connect_frame_count[2m...................:[0m [36m20[0m      [36;2m0.188014/s[0m
+     data_received[2m.........................:[0m [36m13 MB[0m   [36;2m126 kB/s[0m
+     data_sent[2m.............................:[0m [36m268 kB[0m  [36;2m2.5 kB/s[0m
+     iteration_duration[2m....................:[0m avg=[36m1m46s[0m    min=[36m1m46s[0m    med=[36m1m46s[0m    p(90)=[36m1m46s[0m    p(95)=[36m1m46s[0m   p(99)=[36m1m46s[0m    max=[36m1m46s[0m   
+     iterations[2m............................:[0m [36m20[0m      [36;2m0.188014/s[0m
+     send_count[2m............................:[0m [36m600[0m     [36;2m5.640412/s[0m
+     subscribe_frame_count[2m.................:[0m [36m60[0m      [36;2m0.564041/s[0m
+     vus[2m...................................:[0m [36m20[0m      [36;2mmin=20[0m       [36;2mmax=20[0m
+     vus_max[2m...............................:[0m [36m20[0m      [36;2mmin=20[0m       [36;2mmax=20[0m
+     ws_connecting[2m.........................:[0m avg=[36m277.37ms[0m min=[36m253.81ms[0m med=[36m267.41ms[0m p(90)=[36m316.86ms[0m p(95)=[36m320.5ms[0m p(99)=[36m322.78ms[0m max=[36m323.35ms[0m
+     ws_msgs_received[2m......................:[0m [36m30020[0m   [36;2m282.20863/s[0m
+     ws_msgs_sent[2m..........................:[0m [36m680[0m     [36;2m6.392467/s[0m
+     ws_session_duration[2m...................:[0m avg=[36m1m46s[0m    min=[36m1m46s[0m    med=[36m1m46s[0m    p(90)=[36m1m46s[0m    p(95)=[36m1m46s[0m   p(99)=[36m1m46s[0m    max=[36m1m46s[0m   
+     ws_sessions[2m...........................:[0m [36m20[0m      [36;2m0.188014/s[0m
+
+========== chat_message_fanout_native_result ==========
+
+send_count: 600
+subscribe_frame_count: 60
+
+broadcast:
+- total_count: 12,000 / 12,000 (100.00%)
+- late_total_count: 0 / 12,000 (0.00%)
+- missing_total_count: 0 / 12,000 (0.00%)
+- duplicate_total_count: 0 / 12,000 (0.00%)
+
+- ok_rate_per_user: 600 / 600 (100.00%)
+- timeout_rate_per_user: 0 / 600 (0.00%)
+- duplicate_per_user: 0
+
+badge(참고, 채팅 지표와 분리):
+- received_count: 12,000
+
+- latency_ms:
+  avg=337.64ms
+  p90=475ms
+  p95=524ms
+  p99=574ms
+  max=692ms
+
+============================================
+
+
+running (01m46.4s), 00/20 VUs, 20 complete and 0 interrupted iterations
+chat_message_fanout_native ✓ [ 100% ] 20 VUs  01m46.4s/10m0s  20/20 iters, 1 per VU

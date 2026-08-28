@@ -18,6 +18,21 @@
 | ACK | 24.96% | **99.86%** |
 | 유실 | 52,398 | **0** |
 
+### 이 문서를 읽을 때 먼저 알 것
+
+**여기서 나온 숫자는 목표치도 확정 용량도 아니다.**
+
+```
+확정   병목이 어디였고 무엇을 걷어냈는가       호스트가 바뀌어도 유효하다
+미정   피크·SLO·목표 수치                      운영계에서 다시 잰다
+```
+
+16GB 맥 한 대에 서비스·인프라·모니터링 컨테이너 26개를 올리고 그 위에 부하를 걸었다. **측정 중 swapin 이 회차당 16~74GB** 났고, 같은 조건 2회에서 p90 이 42.2초와 16.7초로 갈린 적도 있다. **"VU 100 이 한계"는 이 호스트의 숫자다.**
+
+**유실·거절·큐 깊이·프레임 수만은 조건 없이 믿어도 된다** — 서버가 직접 센 값이라 스왑과 무관하다. 배칭 효과를 지연 없이 판정할 수 있었던 이유다.
+
+자세한 것은 §8.
+
 절별 안내 — §2 가 찾아낸 병목, §4·§5 는 배칭 전 기록, §6 이 뱃지 conflation, **§7 이 최종 결과**, §8 이 이 측정의 의미와 한계다.
 
 ---
@@ -40,6 +55,7 @@ flowchart LR
     AGW["api-gateway<br/>JWT 검증 · 핸드셰이크 Rate Limit"]
     subgraph WSG["websocket-gateway (1~2대)"]
       IN["clientInboundChannel<br/>32 / 큐 600"]
+      BATCH["배칭 100ms · conflation 200ms"]
       BRK["brokerChannel<br/>32 / 큐 3,000"]
       OUT["clientOutboundChannel<br/>64 / 큐 30,000"]
       ACKX["chatMessageAckExecutor<br/>16 / 큐 2,000"]
@@ -59,11 +75,20 @@ flowchart LR
   CHAT -->|"findById"| MONGO
   CHAT -->|"outbox INSERT"| MYSQL
   CHAT -.->|"gRPC 응답"| ACKX
-  ACKX --> BRK
-  MYSQL --> POLL --> KAFKA --> BRK
+  ACKX -.->|"ACK 직접 (#267)"| OUT
+  MYSQL --> POLL --> KAFKA --> BATCH
+  BATCH --> BRK
   BRK --> OUT --> T
   T -.->|"broadcast · ACK · badge"| K6
 ```
+
+**측정 회차마다 이 그림이 바뀌었다.**
+
+| 회차 | 바뀐 곳 |
+|---|---|
+| 2차 | `CHAT → MONGO` 를 트랜잭션 밖으로 (#257) · 거절 정책 교체 (#255) |
+| 3차 | 뱃지가 멤버마다 `BRK` 를 치던 것을 방 단위 conflation 으로 (#263) |
+| 4차 | `KAFKA → BRK` 사이에 배칭 (#265) · `ACKX → BRK` 를 `ACKX → OUT` 으로 (#267) |
 
 ### brokerChannel 이 세 종류를 함께 나른다
 
@@ -215,7 +240,7 @@ k6 가 `/user/queue/chat/badge` 를 구독하지 않아 SimpleBroker 가 확장�
 
 **즉 이전 측정은 실제 부하의 절반만 걸고 있었다.**
 
-### 2-5. ACK 가 브로드캐스트와 같은 채널에서 잘린다 — 미해결
+### 2-5. ACK 가 브로드캐스트와 같은 채널에서 잘린다 — §7-3 에서 해소
 
 `ExecutorConfig` 는 ACK 풀에만 `CallerRunsPolicy` 를 걸어 "ACK 는 버리지 않는다"를 의도했으나 **방어 위치가 틀렸다.**
 
@@ -233,7 +258,7 @@ chatMessageAckExecutor      CallerRunsPolicy — 여기선 안 버림
 | Kafka lag | 따라잡음 — 회복 O |
 | **ACK** | 발신자가 영영 모름 — **회복 X** |
 
-**회복 불가능한 쪽을 버리고 있다.** 양으로도 ACK 는 브로드캐스트의 1/80 이라 보호 비용이 가장 싸다. (→ `TODO.md` 5.8)
+**회복 불가능한 쪽을 버리고 있다.** 양으로도 ACK 는 브로드캐스트의 1/80 이라 보호 비용이 가장 싸다. **§7-3 에서 해소했다.**
 
 ---
 
@@ -297,7 +322,7 @@ chatMessageAckExecutor      CallerRunsPolicy — 여기선 안 버림
 
 ## 6. 3차 측정 — 뱃지 conflation 적용 후 (PR #263)
 
-같은 날 뱃지 conflation(→ `TODO.md` 5.9-a)을 적용하고 VU 80 을 다시 쟀다.
+같은 날 뱃지 conflation 을 적용하고 VU 80 을 다시 쟀다. 남은 뱃지 과제는 `TODO.md` 5.9.
 **목표였던 brokerChannel 병목은 사라졌고, 지연은 호스트 한계로 판정하지 못했다.**
 
 ### 6-1. 서버 카운터 — 확정
@@ -471,7 +496,7 @@ broker 거절 658  →  ack 658 · broadcast 0 · badge 0
 
 **유실 0 · 거절 0 이 전 구간에서 유지된다.** 실패하는 구간에서도 메시지가 사라지지 않고 늦게 도착할 뿐이다.
 
-**개발계 한계는 VU 100 이다.** VU 110 을 시도했으나 무효였다 — swapin 이 74GB 로 이전 최고(30GB)의 2.5배였고, **VU 110 이 VU 120 보다 나쁘게 나왔다.** 부하가 적은데 결과가 더 나쁘면 용량 측정이 아니다.
+**개발계 한계는 VU 100 이다 — 서버 한계가 아니라 이 호스트의 한계다.** VU 110 을 시도했으나 무효였다 — swapin 이 74GB 로 이전 최고(30GB)의 2.5배였고, **VU 110 이 VU 120 보다 나쁘게 나왔다.** 부하가 적은데 결과가 더 나쁘면 용량 측정이 아니다.
 
 ### 7-5. 스케일아웃이 병목 위치를 갈랐다
 
@@ -557,7 +582,8 @@ VU 110 이 VU 120 보다 나쁘게 나왔다 (4차)
 ## 원본
 
 - k6 스크립트·실행 스크립트: [`websocket-gateway/k6/`](../../../../../websocket-gateway/k6/) — `run-cloud.sh` 가 이 측정에 쓴 것
-- k6 원본 로그 · JFR: 클라우드 인스턴스 `~/results/`, 맥 `~/k6_chatmessage/results/` (저장소에 두지 않는다)
+- k6 원본 로그: [`2026-08-28/raw/`](raw/) — **2차까지만 있다.** 3차(#263)·4차(#265 #266 #267) 원본은 OCI 인스턴스 종료 시 부트 볼륨과 함께 삭제됐고 **복구 불가로 확정**이다. 유실 범위와 남은 것은 [`raw/README.md`](raw/README.md)
+- JFR: [`2026-08-28/jfr/gateway-vu80.jfr`](jfr/) — 소켓 write 블로킹 근거. 나머지 7개는 맥에만 있다
 - 관련 PR: #255 #257 #258 #259 #260 #261 #263 #265 #266 #267
 - 실패 경로 전체와 지금 상태: [`docs/SERVICE_FLOWS.md`](../../../../../docs/SERVICE_FLOWS.md) §15
 - 용량·큐 산정: [`docs/decisions/ADR-003`](../../../../../docs/decisions/ADR-003-chat-capacity-target-and-connection-budget.md)

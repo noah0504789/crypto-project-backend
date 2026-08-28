@@ -80,28 +80,29 @@ websocket:
   # @PostConstruct 에서 만들어지고 @RefreshScope 를 쓰지 않는다. 값 변경은 재배포로 반영한다.
   stomp:
     # core = max 인 이유와 큐 산정 근거는 docs/decisions/ADR-003-chat-capacity-target-and-connection-budget.md
-    # 스레드 수 실험 이력(64/32/16, 96/32/64)과 실측은 TODO.md 5.7 · 5.10
+    # 스레드 수 실험 이력(64/32/16, 96/32/64)과 실측은 chat/load-test-results/chatmessage/websocket-gateway/2026-08-28/README.md §2-3.
+    # 남은 질문(왜 outbound 에 상한이 있는가)은 TODO.md 5.10
     executor:
       inbound:  { core-size: 32, max-size: 32, queue-capacity: 600 }
       broker:   { core-size: 32, max-size: 32, queue-capacity: 3000 }
       outbound: { core-size: 64, max-size: 64, queue-capacity: 30000 }
       ack:      { core-size: 16, max-size: 16, queue-capacity: 2000 }
 
-  # 방 단위 conflation. 구간의 마지막 1건만 보내고 나머지는 버린다. 근거는 TODO.md 5.9-a
+  # 방 단위 conflation. 구간의 마지막 1건만 보내고 나머지는 버린다. 근거는 chat/load-test-results/chatmessage/websocket-gateway/2026-08-28/README.md §6
   badge:
     coalesce:
       enabled: true
       window-ms: 200
 
   chat-message:
-    # 방 단위 배칭. conflation 과 달리 한 건도 버리지 않는다. 근거는 TODO.md 5.3-a
+    # 방 단위 배칭. conflation 과 달리 한 건도 버리지 않는다. 근거는 chat/load-test-results/chatmessage/websocket-gateway/2026-08-28/README.md §7-1
     # window-ms 를 뱃지(200ms)보다 짧게 잡는다 — 메시지는 사용자가 기다리는 내용이다.
     batch:
       enabled: true
       window-ms: 100
       max-batch-size: 300
 
-    # ACK 를 brokerChannel 없이 clientOutboundChannel 로 직접 보낸다. 근거는 TODO.md 5.8-a
+    # ACK 를 brokerChannel 없이 clientOutboundChannel 로 직접 보낸다. 근거는 chat/load-test-results/chatmessage/websocket-gateway/2026-08-28/README.md §7-3
     # 세션·구독 정보가 없으면 기존 경로로 넘긴다(chat.message.ack.direct.fallback 로 관측).
     ack:
       direct:

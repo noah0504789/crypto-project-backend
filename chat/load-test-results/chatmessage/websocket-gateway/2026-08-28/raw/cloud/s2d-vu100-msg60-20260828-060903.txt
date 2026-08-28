@@ -1,0 +1,157 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: chat-message-fanout-native.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 100 max VUs, 10m30s max duration (incl. graceful stop):
+              * chat_message_fanout_native: 1 iterations for each of 100 VUs (maxDuration: 10m0s, gracefulStop: 30s)
+
+time="2026-08-28T06:09:04Z" level=info msg="[VU 9] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 21] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 13] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 5] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 10] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 2] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 3] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 14] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 7] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 4] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 8] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 15] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 16] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 11] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 77] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 6] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 75] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 33] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 42] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 51] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 29] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 100] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 17] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 34] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 45] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 12] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 24] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 78] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 28] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 55] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 22] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 36] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 26] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 20] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 50] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 76] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 32] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 38] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 44] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 49] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 56] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 27] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 59] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 48] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 66] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 30] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 19] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 35] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 58] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 43] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 69] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 61] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 25] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 54] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 74] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 57] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 64] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 39] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 18] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 37] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 62] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 71] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 80] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 47] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 60] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 68] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 63] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 81] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 79] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 93] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 82] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 70] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 83] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 85] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 89] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 96] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 40] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 73] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 87] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 84] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 92] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 86] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 97] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 95] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 88] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 23] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 98] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 94] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 99] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 1] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 41] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 31] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 46] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 65] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 72] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 53] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 52] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 67] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 90] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+time="2026-08-28T06:09:04Z" level=info msg="[VU 91] upgrade_failed path=/ws-native, status=401, error=\"\"" source=console
+[31m     ✗ ws upgrade status is 101
+      ↳  0% — ✓ 0 / ✗ 100[0m
+
+     checks[2m................:[0m [36m0.00%[0m  [36;2m✓ 0[0m          [36;2m✗ 100[0m
+     data_received[2m.........:[0m [36m173 kB[0m [36;2m300 kB/s[0m
+     data_sent[2m.............:[0m [36m273 kB[0m [36;2m473 kB/s[0m
+     iteration_duration[2m....:[0m avg=[36m454.58ms[0m min=[36m362.94ms[0m med=[36m498.9ms[0m  p(90)=[36m546.71ms[0m p(95)=[36m564.12ms[0m p(99)=[36m573.01ms[0m max=[36m573.22ms[0m
+     iterations[2m............:[0m [36m100[0m    [36;2m173.277218/s[0m
+     ws_connecting[2m.........:[0m avg=[36m454.36ms[0m min=[36m362.62ms[0m med=[36m498.74ms[0m p(90)=[36m546.18ms[0m p(95)=[36m563.95ms[0m p(99)=[36m572.85ms[0m max=[36m572.99ms[0m
+     ws_session_duration[2m...:[0m avg=[36m454.38ms[0m min=[36m362.67ms[0m med=[36m498.76ms[0m p(90)=[36m546.2ms[0m  p(95)=[36m563.96ms[0m p(99)=[36m572.87ms[0m max=[36m573.01ms[0m
+     ws_sessions[2m...........:[0m [36m100[0m    [36;2m173.277218/s[0m
+
+========== chat_message_fanout_native_result ==========
+
+send_count: 0
+subscribe_frame_count: 0
+
+broadcast:
+- total_count: 0 / 0 (0.00%)
+- late_total_count: 0 / 0 (0.00%)
+- missing_total_count: 0 / 0 (0.00%)
+- duplicate_total_count: 0 / 0 (0.00%)
+
+- ok_rate_per_user: 0 / 0 (0.00%)
+- timeout_rate_per_user: 0 / 0 (0.00%)
+- duplicate_per_user: 0
+
+badge(참고, 채팅 지표와 분리):
+- received_count: 0
+
+- latency_ms:
+  avg=0ms
+  p90=0ms
+  p95=0ms
+  p99=0ms
+  max=0ms
+
+============================================
+
+
+running (00m00.6s), 000/100 VUs, 100 complete and 0 interrupted iterations
+chat_message_fanout_native ✓ [ 100% ] 100 VUs  00m00.6s/10m0s  100/100 iters, 1 per VU
