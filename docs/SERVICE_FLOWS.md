@@ -252,14 +252,14 @@ notification KafkaNotificationBinder.priceAlertDetectedEventConsumer (price-aler
 |---|---|---|---|
 | **inbound 큐 거절** | **없음(침묵)** | 없음 | **침묵은 그대로** → 5.14 |
 | Rate Limit 초과 | `RATE_LIMIT_EXCEEDED` (`clientMessageId` 포함) | — | 측정용으로 꺼 둔 상태 → 1.13 |
-| 요청 검증 실패 | `VALIDATION_ERROR` (**`clientMessageId=null`**) | — | 미해결 → 5.14 |
-| 그 외 예외 | `SERVER_ERROR` (**`clientMessageId=null`**) | — | 미해결 → 5.14 |
+| 요청 검증 실패 | `VALIDATION_ERROR` (`clientMessageId` 포함) | — | 원문에서 읽어 채운다 (#267) |
+| 그 외 예외 | `SERVER_ERROR` (`clientMessageId` 포함) | — | 〃 |
 | chat outbox 기록 일시 실패 | 재시도 소진 후 거절 ACK | `@Retryable(TemporaryOutboxPersistenceException)` → 소진 시 예외가 gRPC로 전파 | — |
 | gRPC `DEADLINE_EXCEEDED` | 거절 ACK | `hardDelete` 보상(저장됐을 수 있는 메시지 제거) | 발생 자체가 감소 (#257) |
 | gRPC 그 외 코드 | 거절 ACK | 보상 없음 | — |
 
 - `@ControllerAdvice StompChatMessageExceptionHandler`의 `@MessageExceptionHandler(Exception.class)`가 컨트롤러 진입 이후의 예외를 모두 잡아 `/queue/chat/ack`로 알린다. **inbound 큐 거절만 이 그물에 안 걸린다** — 핸들러 진입 전에 executor가 버리기 때문이다(`stomp.executor.rejected{pool="inbound"}`로만 관측된다).
-- **검증·서버 오류 ACK는 `clientMessageId`가 `null`이다**(`StompChatMessageAckResponse.ofFailure(null, ...)`). 발신자는 실패했다는 사실만 알고 **어느 메시지가 실패했는지 짚지 못한다.** Rate Limit ACK만 `clientMessageId`를 담는다.
+- **모든 실패 ACK가 `clientMessageId`를 담는다.** 검증·서버 오류는 예외 핸들러가 실패한 원본 메시지에서 읽는다 — 변환 전 원문(`byte[]`)일 수 있어 느슨하게 파싱하고, 못 읽으면 `null`로 둔다. 발신자가 어느 메시지를 재전송할지 고를 수 있어야 하기 때문이다.
 - `ChatMessageCommandService.save`에는 `@Recover`가 **없다**(이 클래스의 `@Recover`는 `hardDelete`용 `TemporaryChatPersistenceException` 시그니처다). 재시도가 소진되면 예외가 `@GrpcAdvice`를 거쳐 gRPC 오류가 되고, 게이트웨이 `ChatMessageSendService.handleSaveError`가 거절 ACK를 보낸다.
 - `save`는 Mongo에 쓰지 않는다. outbox 기록 + Redis 캐시 반영만 하고 Mongo 영속은 consumer 몫이다(§9) — Mongo 저장 실패는 15.2에 속한다.
 

@@ -854,9 +854,7 @@ if (willExceedLatencyBudget()) {
 
 2번까지 하면 **"서버가 감당 못 하는 부하는 애초에 들어오지 않고, 거절될 때도 발신자가 이유를 안다"** 가 된다. 그게 이 작업의 최종 목표다.
 
-**함께 볼 것**: `VALIDATION_ERROR` · `SERVER_ERROR` ACK 는 `clientMessageId` 가 `null` 이라
-어느 메시지가 실패했는지 짚지 못한다. 재전송 로직을 만들려면 이것도 채워야 한다
-(`StompChatMessageAckResponse.ofFailure(null, ...)`).
+**선행 항목은 해소했다 (2026-08-28)**: `VALIDATION_ERROR` · `SERVER_ERROR` ACK 가 `clientMessageId` 를 담지 않아 어느 메시지가 실패했는지 짚지 못하던 문제는 예외 핸들러가 실패한 원본 메시지에서 읽도록 고쳤다. 이 항목(입구 거절)과는 별개 문제였는데 여기 묻어 있었다.
 `[출처: 2026-08-28 VU 100 측정 ACK 14.38% / SERVICE_FLOWS.md §15]`
 
 #### 5.15 측정 유효성 판정 기준 — `Pages free` 가 아니라 swapin 증가량으로 본다
