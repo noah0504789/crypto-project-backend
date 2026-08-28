@@ -7,9 +7,39 @@
 
 | 파일 | 용도 |
 |---|---|
-| `chat-message-fanout-native.js` | Native WebSocket 메시지 전송, ACK 및 방 Broadcast 수집 |
+| `chat-message-fanout-native.js` | Native WebSocket 메시지 전송, ACK·Broadcast·뱃지 수집. **2026-08 측정에 쓴 것** |
 | `chat-message-fanout-sockjs.js` | SockJS 메시지 전송. 단일/분산 k6 실행을 모두 지원 |
 | `connection-capacity-sockjs.js` | SockJS 연결·구독 유지 한계 확인 |
+| `run-cloud.sh` | 클라우드(k6 전용 인스턴스)에서 실행. **2026-08 측정에 쓴 것** |
+| `run-local.sh` | 맥에서 실행. JFR 녹화와 docker 제어를 함께 한다 |
+| `k6.env.example` | 두 스크립트가 읽는 환경 파일의 틀. 실제 `k6.env` 는 저장소에 두지 않는다 |
+
+### 실행
+
+```bash
+./run-cloud.sh <VUS> [MESSAGE_COUNT] [라벨]     # 예: ./run-cloud.sh 100 60 peak-vu100
+```
+
+결과는 `results/<라벨>-vu<VUS>-msg<N>-<타임스탬프>.{txt,meta,k6usage}` 로 남는다.
+
+## k6 를 서버와 분리해서 돌린다
+
+로컬에서 k6 를 돌리면 **k6 가 맥 CPU 를 최대 484% 점유해 서버 컨테이너와 경합**했다. 매 실행마다 연결이 1~2개 실패하고 수치 변동이 컸다.
+
+OCI `VM.Standard.E5.Flex`(4 OCPU / 16GB)에 k6 를 올리고 **Tailscale** 로 맥에 연결한다. `WS_BASE_URL` 만 맥의 Tailscale IP 로 바꾸면 된다.
+
+| | 로컬 k6 | 클라우드 k6 |
+|---|---:|---:|
+| k6 CPU (VU 60) | 247% | **79%** |
+| 연결 성공 | 59/60 | **60/60** |
+
+지연에 +126ms 가 더해진다(Tailscale DERP 릴레이 왕복 실측 75ms). 직접 연결(direct)은 확립되지 않아 릴레이 경유다.
+
+## 측정할 때 지킬 것
+
+- **회차마다 웜업을 먼저 돌린다.** 1회차가 항상 가장 나쁘다 — 워밍업이 한 회차로 안 끝난다. 같은 조건 2회가 붙어야 인정한다.
+- **실행 전후 swapin 증가량을 기록한다.** `Pages free` 는 파일 캐시가 먹어도 떨어져 단독 지표가 못 된다(→ `TODO.md` 5.15).
+- **서버가 직접 센 값과 클라이언트 집계를 분리해 읽는다.** 프레임 수·큐 깊이·거절·유실은 호스트 스왑과 무관하지만 p90·ACK 성공률은 크게 흔들린다.
 
 VU, 메시지 수와 간격만 다른 기존 130/150/200 스크립트는 위 파일로 통합했다.
 
