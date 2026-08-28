@@ -20,7 +20,18 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * 뱃지는 "내용"이 아니라 "상태"다. 방 하나에 100ms 사이 30건이 들어와도
- * 마지막 1건만 보내면 화면 결과가 같다.
+ * 마지막 1건만 보내면 화면 결과가 같다. 시세 피드에서 말하는 conflation 이며,
+ * 배칭(전부 묶어 전달)과 달리 <b>구간의 마지막 1건만 남기고 나머지를 버린다.</b>
+ *
+ * <p>이 프로젝트에 같은 패턴이 이미 있다 — {@code UpbitTickerCollectService} 가
+ * {@code groupBy(code).sample(7s).onBackpressureLatest()} 로 종목별 시세를 같은 방식으로 줄인다.
+ * 거기는 WebFlux 라 {@code Flux.sample} 이 바로 붙지만, 게이트웨이는 서블릿 기반이고
+ * 뱃지 유입이 Kafka 컨슈머 콜백(블로킹)이라 {@code Flux} 가 없다. 리액티브 파이프라인을
+ * 새로 세워 얻는 것이 {@code sample} 하나뿐이라 맵 + 스케줄러로 직접 구현한다.
+ *
+ * <p>다만 {@code sample} 과 동작이 완전히 같지는 않다. {@code groupBy} 는 그룹마다 타이머가
+ * 따로 돌고 {@code flatMap} 으로 그룹 간 병렬이지만, 여기는 전역 타이머 하나에 단일 스레드가
+ * 전 방을 순회한다. 방 수가 많아지면 타이머 분산과 병렬화를 검토해야 한다.
  *
  * <p>{@link StompMyChatRoomBadgeAdapter} 는 멤버마다 {@code convertAndSendToUser} 를 호출하므로
  * brokerChannel 태스크가 메시지당 O(멤버수)다. 2026-08-28 측정(VU 80, 방 1개, 초당 80건) 기준

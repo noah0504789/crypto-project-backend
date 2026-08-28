@@ -476,6 +476,29 @@ k6 는 `/user/queue/chat/badge` 를 구독하지 않아 이 부하가 측정에�
 
 **뱃지는 내용이 아니라 상태다.** 같은 방에 100ms 사이 30건이 들어와도 마지막 1건만 보내면 화면 결과가 같다. 채팅 메시지(배칭 → 5.3)는 전부 전달해야 하지만 뱃지는 버릴 수 있다.
 
+시세 피드에서 말하는 **conflation** 이다. 배칭과 다르다 — 배칭은 30건을 묶어 전부 전달하고, conflation 은 29건을 버리고 1건만 전달한다. 그래서 메모리가 다르다: 배칭은 창 안 건수만큼 쌓여 부하에 비례하지만, conflation 은 방 개수만큼만 잡고 트래픽과 무관하다.
+
+**이 프로젝트에 같은 패턴이 이미 있다.** `UpbitTickerCollectService` 가 종목별 시세를 같은 방식으로 줄인다.
+
+```java
+source.groupBy(UpbitTickerEvent::code)
+      .flatMap(codeGroup -> codeGroup
+              .sample(properties.websocket().tickerPublishInterval())   // 7s
+              .onBackpressureLatest()
+              .concatMap(this::publish), Integer.MAX_VALUE);
+```
+
+| upbit-connector | 뱃지 | 하는 일 |
+|---|---|---|
+| `groupBy(code)` | `ConcurrentHashMap` 키 = roomId | 키별로 칸을 나눈다 |
+| `.sample(7s)` | 200ms flush + last-write-wins | 구간 마지막 1건만 내보낸다 |
+| `.onBackpressureLatest()` | `scheduleWithFixedDelay` | 소비가 느리면 최신만 남긴다 |
+| `.concatMap(publish)` | 방별 단일 슬롯 | 키 안에서 순서 유지 |
+
+`upbit-connector` 는 WebFlux 라 `Flux.sample` 이 바로 붙지만, 게이트웨이는 서블릿 기반이고 뱃지 유입이 Kafka 컨슈머 콜백(블로킹)이라 `Flux` 가 없다. 리액티브 파이프라인을 새로 세워 얻는 것이 `sample` 하나뿐이라 맵 + 스케줄러로 직접 구현한다.
+
+**동작이 완전히 같지는 않다.** `groupBy` 는 그룹마다 타이머가 따로 돌고 `flatMap` 으로 그룹 간 병렬이지만, 여기는 **전역 타이머 하나에 단일 스레드가 전 방을 순회**한다. 창마다 전 방이 동시에 나가 스파이크가 생기고, 한 방이 느리면 뒷 방이 밀린다. 반대로 유휴 방은 매 flush 의 `remove` 로 즉시 사라져 `groupBy` 보다 낫다. **방 수가 많아지면 타이머 분산과 병렬화를 검토한다 — 지금 부하테스트는 방 1개라 드러나지 않는다.**
+
 합치기가 성립하는 근거는 **payload 에 개인별 값이 없다는 것**이다.
 
 ```java
