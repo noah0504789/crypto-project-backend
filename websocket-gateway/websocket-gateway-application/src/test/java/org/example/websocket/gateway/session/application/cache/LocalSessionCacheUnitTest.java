@@ -151,4 +151,42 @@ class LocalSessionCacheUnitTest {
         // 현재 구현상 기존 userId의 userToSessions에는 sessionId가 남을 수 있음
         assertThat(sut.hasUser(userId)).isTrue();
     }
+
+    @Test
+    @DisplayName("사용자의 세션 목록을 조회한다")
+    void findSessions() {
+        // given
+        sut.register(sessionId, userId);
+        sut.register(otherSessionId, userId);
+
+        // when
+        // then
+        assertThat(sut.findSessions(userId)).containsExactlyInAnyOrder(sessionId, otherSessionId);
+        assertThat(sut.findSessions(otherUserId)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("ACK 구독 ID를 세션별로 보관한다")
+    void ackSubscription() {
+        // when
+        sut.registerAckSubscription(sessionId, "sub-0");
+
+        // then
+        assertThat(sut.findAckSubscriptionId(sessionId)).isEqualTo("sub-0");
+        assertThat(sut.findAckSubscriptionId(otherSessionId)).isNull();
+    }
+
+    @Test
+    @DisplayName("세션을 제거하면 ACK 구독 ID도 함께 사라진다")
+    void removeClearsAckSubscription() {
+        // given
+        sut.register(sessionId, userId);
+        sut.registerAckSubscription(sessionId, "sub-0");
+
+        // when
+        sut.remove(sessionId);
+
+        // then
+        assertThat(sut.findAckSubscriptionId(sessionId)).isNull();
+    }
 }
