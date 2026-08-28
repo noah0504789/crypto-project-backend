@@ -225,7 +225,7 @@ k6 가 `/user/queue/chat/badge` 를 구독하지 않아 SimpleBroker 가 확장�
 
 **즉 이전 측정은 실제 부하의 절반만 걸고 있었다.**
 
-### 2-5. ACK 가 브로드캐스트와 같은 채널에서 잘린다 — 미해결
+### 2-5. ACK 가 브로드캐스트와 같은 채널에서 잘린다 — §7-3 에서 해소
 
 `ExecutorConfig` 는 ACK 풀에만 `CallerRunsPolicy` 를 걸어 "ACK 는 버리지 않는다"를 의도했으나 **방어 위치가 틀렸다.**
 
@@ -243,7 +243,7 @@ chatMessageAckExecutor      CallerRunsPolicy — 여기선 안 버림
 | Kafka lag | 따라잡음 — 회복 O |
 | **ACK** | 발신자가 영영 모름 — **회복 X** |
 
-**회복 불가능한 쪽을 버리고 있다.** 양으로도 ACK 는 브로드캐스트의 1/80 이라 보호 비용이 가장 싸다. (→ `TODO.md` 5.8)
+**회복 불가능한 쪽을 버리고 있다.** 양으로도 ACK 는 브로드캐스트의 1/80 이라 보호 비용이 가장 싸다. **§7-3 에서 해소했다.**
 
 ---
 
@@ -307,7 +307,7 @@ chatMessageAckExecutor      CallerRunsPolicy — 여기선 안 버림
 
 ## 6. 3차 측정 — 뱃지 conflation 적용 후 (PR #263)
 
-같은 날 뱃지 conflation(→ `TODO.md` 5.9-a)을 적용하고 VU 80 을 다시 쟀다.
+같은 날 뱃지 conflation 을 적용하고 VU 80 을 다시 쟀다. 남은 뱃지 과제는 `TODO.md` 5.9.
 **목표였던 brokerChannel 병목은 사라졌고, 지연은 호스트 한계로 판정하지 못했다.**
 
 ### 6-1. 서버 카운터 — 확정

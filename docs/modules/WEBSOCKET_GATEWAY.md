@@ -174,9 +174,11 @@ flowchart TB
 
 ## 10. 테스트 현황
 
-- application: `ChatMessageSendServiceTest`, `LocalSessionCacheTest`
-- adapter-out: `GrpcChatMessageCommandAdapterTest`, `RedisSessionLocationAdapterTest`
-- 부하: `chat/load-test-results/chatmessage/websocket-gateway`(k6 원본 결과·Grafana 대시보드·해석)
+- application: `ChatMessageSendServiceUnitTest`, `LocalSessionCacheUnitTest`(세션·ACK 구독 ID·제거 시 동반 삭제)
+- adapter-in: `StompControllerUnitTest`, `StompChatMessageExceptionHandlerUnitTest`(실패 ACK 의 `clientMessageId`), `ExecutorConfigUnitTest`, `ExecutorConfigRejectionKindUnitTest`(거절 태스크 목적지 분류), `RedisChatMessageRateLimiter*Test`
+- adapter-out: `BatchingChatMessageBroadcastAdapterUnitTest`(순서 보존·상한 초과 즉시 전송), `CoalescingMyChatRoomBadgeAdapterUnitTest`(마지막 1건·타임스탬프 역전), `DirectStompChatMessageAckAdapterUnitTest`(헤더 3종·폴백), `GrpcChatMessageCommandAdapterUnitTest`, `RedisSessionLocationAdapterUnitTest`
+- bootstrap: `BootSmokeTest` — 실제 `git-config-repo` 설정을 import 하므로 **설정 키 누락이 부팅 실패로 잡힌다**
+- 부하: [`chat/load-test-results/.../2026-08-28/README.md`](../../chat/load-test-results/chatmessage/websocket-gateway/2026-08-28/README.md) — 최종 곡선은 §7-4
 
 ## 11. 컴파일 · 테스트 · CI 명령
 
@@ -190,10 +192,12 @@ flowchart TB
 | 파일 | 이유 |
 |---|---|
 | `common-core/StompDestination` · `StompConfig` | STOMP destination/endpoint/prefix 계약(프론트·k6) |
-| `StompChatMessagePayload`/`*AckPayload`/`*BadgePayload`/`*WebNotificationPayload` | wire payload 계약 |
+| `StompChatMessageBatchPayload`/`StompChatMessagePayload`/`*AckPayload`/`*BadgePayload`/`*WebNotificationPayload` | wire payload 계약 |
+| `BatchingChatMessageBroadcastAdapter` · `CoalescingMyChatRoomBadgeAdapter` | 배칭·conflation 창과 버퍼. 프레임 수와 지연을 동시에 정한다 |
+| `DirectStompChatMessageAckAdapter` | ACK 가 브로커를 우회한다. 헤더(세션·구독 ID)가 틀리면 **조용히 전달되지 않는다** |
 | `KafkaWebsocketGatewayBinder` · `websocket-gateway.yml` stream | 소비 토픽·group(per-instance)·concurrency |
 | `GrpcChatMessageCommandAdapter` | `chatmessage.v1` 소비(저장·hardDelete 보상) |
-| `LocalSessionCache`/`RedisSessionLocationAdapter`/`WebSocketSessionEventHandler` | 세션 위치·push 라우팅 정합성 |
+| `LocalSessionCache`/`RedisSessionLocationAdapter`/`WebSocketSessionEventHandler` | 세션 위치·push 라우팅 정합성. **ACK 구독 ID 도 여기 있다** — 세션 제거 경로가 늘면 함께 지워야 한다 |
 
 ## 13. 관련 문서와 rules
 

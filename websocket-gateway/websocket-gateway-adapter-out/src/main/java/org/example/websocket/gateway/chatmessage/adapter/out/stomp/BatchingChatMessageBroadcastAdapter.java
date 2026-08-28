@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * 같은 방의 메시지를 시간창으로 묶어 brokerChannel 태스크 수를 줄인다.
- * 설계 근거·수치·대가는 {@code TODO.md} 5.3-a.
+ * 설계 근거·수치·대가는 2026-08-28 부하테스트 문서 §7-1.
  */
 @Slf4j
 @Primary
