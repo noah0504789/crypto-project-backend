@@ -40,6 +40,7 @@ flowchart LR
     AGW["api-gateway<br/>JWT 검증 · 핸드셰이크 Rate Limit"]
     subgraph WSG["websocket-gateway (1~2대)"]
       IN["clientInboundChannel<br/>32 / 큐 600"]
+      BATCH["배칭 100ms · conflation 200ms"]
       BRK["brokerChannel<br/>32 / 큐 3,000"]
       OUT["clientOutboundChannel<br/>64 / 큐 30,000"]
       ACKX["chatMessageAckExecutor<br/>16 / 큐 2,000"]
@@ -59,11 +60,20 @@ flowchart LR
   CHAT -->|"findById"| MONGO
   CHAT -->|"outbox INSERT"| MYSQL
   CHAT -.->|"gRPC 응답"| ACKX
-  ACKX --> BRK
-  MYSQL --> POLL --> KAFKA --> BRK
+  ACKX -.->|"ACK 직접 (#267)"| OUT
+  MYSQL --> POLL --> KAFKA --> BATCH
+  BATCH --> BRK
   BRK --> OUT --> T
   T -.->|"broadcast · ACK · badge"| K6
 ```
+
+**측정 회차마다 이 그림이 바뀌었다.**
+
+| 회차 | 바뀐 곳 |
+|---|---|
+| 2차 | `CHAT → MONGO` 를 트랜잭션 밖으로 (#257) · 거절 정책 교체 (#255) |
+| 3차 | 뱃지가 멤버마다 `BRK` 를 치던 것을 방 단위 conflation 으로 (#263) |
+| 4차 | `KAFKA → BRK` 사이에 배칭 (#265) · `ACKX → BRK` 를 `ACKX → OUT` 으로 (#267) |
 
 ### brokerChannel 이 세 종류를 함께 나른다
 

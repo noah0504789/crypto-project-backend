@@ -48,6 +48,49 @@
 - 서브도메인: `chatmessage`(송신·브로드캐스트), `chatroom`(뱃지), `notification`(push), `session`(위치).
 - 소비 계약을 위해 adapter-in이 `chat-contract`(`ChatMessageBroadcastEvent`, `MyChatRoomBadgeBroadcastEvent`)·`notification-contract`(`WebNotificationBroadcastEvent`)에, adapter-out이 `chat-client`(gRPC)에 의존한다.
 
+## 4-1. 채팅 메시지 경로 한눈에
+
+**ACK 와 브로드캐스트는 갈라진다.** ACK 는 저장이 끝나면 바로 나가고, 브로드캐스트는 outbox·Kafka 를 돈다.
+
+```mermaid
+flowchart TB
+  C(("클라이언트"))
+
+  subgraph GW["websocket-gateway"]
+    IN["clientInboundChannel"]
+    CTRL["StompController<br/>@MessageMapping /chat.send"]
+    ACKX["chatMessageAckExecutor"]
+    ACKD["DirectStompChatMessageAckAdapter<br/>세션·구독 직접 조회"]
+    KC["Kafka consumer"]
+    BATCH["BatchingChatMessageBroadcastAdapter<br/>방 단위 100ms"]
+    CONF["CoalescingMyChatRoomBadgeAdapter<br/>방 단위 200ms · 마지막 1건"]
+    BRK["brokerChannel<br/>구독자 조회 + 1→N 확장"]
+    OUT["clientOutboundChannel<br/>소켓 write"]
+  end
+
+  CHAT["chat-service"]
+  MYSQL[("MySQL event.outbox")]
+  POLL["outbox-poller"]
+  KAFKA[["Kafka"]]
+
+  C -->|"SEND /msg/chat.send"| IN --> CTRL
+  CTRL -->|"gRPC save"| CHAT --> MYSQL
+  CHAT -.->|"응답"| ACKX --> ACKD
+
+  MYSQL --> POLL --> KAFKA --> KC
+  KC --> BATCH --> BRK
+  KC --> CONF --> BRK
+  BRK --> OUT
+  ACKD --> OUT
+  OUT -->|"MESSAGE 프레임"| C
+```
+
+**읽는 법 셋**
+
+- **ACK 는 `brokerChannel` 을 건너뛴다.** 브로드캐스트 384,000건 뒤에 ACK 4,800건이 줄 서던 구조를 끊었다(→ §8).
+- **배칭과 conflation 은 `brokerChannel` 진입 직전에서 태스크 수를 줄인다.** 확장(×N)은 그대로이고 프레임 수만 준다.
+- **`brokerChannel` 에서 1건이 버려지면 방 전원이 못 받는다.** 확장 이전 단계이기 때문이다. `clientOutboundChannel` 은 확장 이후라 1명이다(→ [`SERVICE_FLOWS.md` §15](../SERVICE_FLOWS.md)).
+
 ## 5. 인바운드 — 메시지 송신 (STOMP → gRPC → ACK)
 
 ```
