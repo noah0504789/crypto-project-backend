@@ -232,6 +232,28 @@ deadline이 무한 대기는 이미 막고 있고, gRPC 호출 깊이가 1단계
 
 ---
 
+#### 4.7 `LazyConnectionDataSourceProxy` 미적용 서비스 점검
+
+chat 은 `@Transactional` 안에서 MongoDB 를 읽어 커넥션을 그 왕복 내내 붙들고 있었다(점유 실측 5.139초,
+커넥션 타임아웃 360건 → 브로드캐스트 유실 10.06%). `LazyConnectionDataSourceProxy` 를 적용해 물리 커넥션
+획득을 첫 statement 로 미뤘다.
+
+같은 함정이 남은 서비스를 점검한다 — **트랜잭션 안에서 DB 외 I/O(Mongo·Redis·gRPC·HTTP)를 호출하는지**가 기준이다.
+
+| 서비스 | Lazy | 확인 필요 |
+|---|---|---|
+| market | 적용됨 | Read Replica 라우팅 배선의 일부로 이미 있음 |
+| chat | 적용됨 | 이번 변경 |
+| notification | **없음** | 트랜잭션 경계 안 외부 I/O 여부 |
+| user | **없음** | 동일 |
+| outbox-poller | **없음** | 폴링 트랜잭션이 Kafka 발행을 품는지 |
+
+외부 I/O 가 없더라도 Lazy 자체는 손해가 없다(첫 statement 시점에 획득할 뿐). 다만 커넥션 고갈 시
+실패 지점이 트랜잭션 시작에서 첫 statement 로 옮겨지므로, 각 서비스의 재시도·예외 처리 경로를 함께 본다.
+`[출처: 2026-08-27 VU 60 부하 측정 / chat 커넥션 점유시간 실측]`
+
+---
+
 ## 5. 성능 · 캐시
 
 ### notification · chat (공통 인프라)
