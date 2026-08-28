@@ -528,6 +528,132 @@ OCI `VM.Standard.E5.Flex`(4 OCPU / 16GB)에 k6 를 올리고 Tailscale 로 맥�
 
 ---
 
+#### 5.14 조용히 사라지는 실패를 없앤다 — 입구에서 거절하고 알린다
+
+**원칙: 발신자가 결과를 모르는 실패를 만들지 않는다.**
+
+현재 침묵하는 경로가 둘이다.
+
+| 경로 | 발신자가 아는가 |
+|---|---|
+| inbound 큐 거절 | ❌ 핸들러 진입 전이라 `@MessageExceptionHandler` 그물에 안 걸린다 |
+| ACK 가 brokerChannel 에서 거절 | ❌ 저장은 성공했는데 응답만 사라진다 (→ 5.8) |
+
+VU 100 측정에서 **ACK 성공률이 14.38%** 였다. 저장은 거의 다 됐는데 발신자 대부분이 결과를 모른다.
+실패로 오인해 재전송하면 중복 메시지가 된다.
+
+**대응: 입구에서 미리 거절하고 이유를 알린다.**
+
+`StompController` 에 이미 같은 패턴이 있다 — rate limit 이 `clientMessageId` 를 담아 거절 ACK 를 보낸다.
+
+```java
+if (!rateLimiter.isAllowed(...)) {
+    throw new ChatMessageRateLimitExceededException(request.clientMessageId());
+}
+```
+
+```java
+@MessageExceptionHandler(ChatMessageRateLimitExceededException.class)
+@SendToUser("/queue/chat/ack")
+→ ofFailure(clientMessageId, "RATE_LIMIT_EXCEEDED")
+```
+
+여기에 backpressure 판정을 더한다.
+
+```java
+if (willExceedLatencyBudget()) {
+    throw new ChatMessageServerBusyException(request.clientMessageId());   // "SERVER_BUSY"
+}
+```
+
+**얻는 것 셋**
+
+1. **사용자가 안다** — 침묵 대신 "서버 혼잡, 재시도" + 어느 메시지인지(`clientMessageId`)
+2. **부하가 실제로 준다** — 입구에서 1건을 자르면 저장·outbox·Kafka·팬아웃 outbound N건을 통째로 안 만든다. 뒤에서 버리는 것보다 N배 싸다
+3. **거절 ACK 가 살아난다** — 통과량이 줄어 채널에 여유가 생기므로, 거절 통지 자체는 전달된다
+
+**판정 기준 후보**
+
+| 기준 | 성격 |
+|---|---|
+| outbound 큐 깊이 | 직접적. 현재 지표로 바로 가능 |
+| broker 큐 깊이 | |
+| **지연 예측(큐 ÷ 처리량)** | **SLO 와 직결.** "10초 안에 못 보낼 것 같으면 미리 거절" |
+
+세 번째가 ADR-003 의 SLO 정의와 맞물린다.
+
+**함께 볼 것**: `VALIDATION_ERROR` · `SERVER_ERROR` ACK 는 `clientMessageId` 가 `null` 이라
+어느 메시지가 실패했는지 짚지 못한다. 재전송 로직을 만들려면 이것도 채워야 한다
+(`StompChatMessageAckResponse.ofFailure(null, ...)`).
+`[출처: 2026-08-28 VU 100 측정 ACK 14.38% / SERVICE_FLOWS.md §15]`
+
+---
+
+#### 5.12 서버 컨테이너를 측정용 별도 장비로 분리한다
+
+**목표**: 부하 측정 수치를 하드웨어 한계가 아닌 소프트웨어 한계로 만든다.
+
+현재는 16GB · 6코어 맥 한 대에 인프라(MySQL ×2 · MongoDB ×3 · Redis ×6 · Kafka ×2 · Vault) ·
+서비스 8개 · 모니터링을 모두 올려 측정한다. 2026-08-28 측정에서 이 구성이 한계로 드러났다.
+
+| 관측 | 값 |
+|---|---|
+| 회차별 `swapin` | 4,430 ~ 25,340 MB |
+| VU 100 구간 `Pages free` | **43 MB** |
+| 게이트웨이 CPU | **1~4%** (계산이 아니라 대기) |
+| 회차 간 편차 | VU 100·2대에서 수신률 71.58% ~ 100% |
+
+**CPU 가 노는데 큐가 쌓인다** — 페이지 폴트 대기가 지연에 섞인다는 뜻이다.
+게이트웨이를 2대로 늘리면 컨테이너 메모리를 +768MB 요구해 오히려 호스트 압박을 키운다.
+
+k6 는 이미 분리했다(→ 5.11). 남은 것은 서버 쪽이다.
+
+**옮길 때 큰 것들**
+
+| 항목 | 주의 |
+|---|---|
+| MySQL master/replica | GTID 복제 재구성. `mysql-replica-init.sh` 는 멱등이나 볼륨은 새로 만들어진다 |
+| MongoDB replica set | 3노드 재구성 |
+| Redis Cluster | 6노드 + `redis-cluster-init.sh`(멱등). `nodes.conf` 가 볼륨에 있다 |
+| Vault | Role ID / Secret ID 재발급 |
+| 시크릿 | `service/.env`(DockerHub 토큰 · Deploy Token · Vault 자격) — 저장소에 없다 |
+| self-hosted runner | 현재 맥에 붙어 있다. CD 전체를 다시 봐야 한다 |
+| 네트워크 | 서비스 간 `localhost` 전제 |
+| `restart` 정책 | 대부분 `no` 라 재부팅 후 수동 복구가 필요하다(같이 정리) |
+
+**우선순위는 배칭(5.3)보다 낮다.** 배칭은 전송 횟수를 1/30 로 줄여 자릿수를 바꾸지만,
+장비 이전은 하드웨어만큼만 올린다. 팬아웃이 `M²` 인 이상 장비로는 못 이긴다.
+
+```
+500명 한 방 → 500² × 2(뱃지) = 500,000 전달/s
+```
+
+다만 **절대 수치를 말해야 할 때**(포트폴리오·설명서에 "N명 지원"을 쓸 때)는 필요하다.
+`[출처: 2026-08-28 2차 부하테스트 / chat/load-test-results/.../2026-08-28/README.md]`
+
+---
+
+#### 5.13 Kafka 컨슈머 그룹이 배포마다 누수된다
+
+`websocket-gateway` 의 브로드캐스트 컨슈머 그룹명이 `${app.instance-id}` 를 포함한다.
+
+```yaml
+group: chatmessage-broadcast-${app.instance-id}
+```
+
+**배포할 때마다 새 그룹이 생기고 옛 그룹은 영원히 남는다.** 2026-08-28 기준 27개가 쌓여 있었고
+(현재 인스턴스와 일치하는 것은 6개), 죽은 그룹들이 lag 111,228 까지 누적한 채 Kafka 가 계속 추적하고 있었다.
+수동으로 21개를 삭제했다.
+
+인스턴스별 그룹을 쓰는 것 자체는 의도된 설계다 — 모든 인스턴스가 모든 브로드캐스트를 받아
+자기 로컬 세션에만 전달해야 한다. 문제는 **정리 경로가 없다는 것**이다.
+
+검토 후보: 배포 스크립트에서 옛 슬롯 그룹 삭제 / Kafka `offsets.retention.minutes` 조정 /
+그룹명을 슬롯 기준(`blue`/`green`)으로 고정해 개수를 상한
+`[출처: 2026-08-28 부하 측정 중 Kafka lag 조회]`
+
+---
+
 #### 5.5 브로드캐스트 유실을 클라이언트가 감지·복구할 경로가 없다
 
 브로드캐스트 push는 DLQ·재시도가 없고 executor 큐 포화 시 버려지는데, **유실을 클라이언트가 감지해 재조회하는 경로가 없다**(2026-08-27 `crypto-project-frontend` 확인).
