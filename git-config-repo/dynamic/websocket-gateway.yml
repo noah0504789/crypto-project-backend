@@ -90,11 +90,14 @@ websocket:
       # 다만 소화 속도가 부족해 버려지던 것이 지연 도착으로 바뀌었다(늦게 도착 0 → 81,544).
       # 최적점이 두 값 사이에 있다고 보고 32 를 잰다.
       broker:   { core-size: 32, max-size: 32, queue-capacity: 3000 }
-      # TODO(5.10): broker 에서 검증된 패턴을 outbound 에 적용한다. 큐(30000)는 고정한다.
-      # 클라우드 k6 분리 후 VU 80 측정에서 outbound 만 밀렸다 — 큐 4,232, 활성 스레드 17/96(17.7%).
-      # broker 가 64 스레드일 때 활성 5/64(7.8%)로 막혔던 것과 같은 구간이고, 32 로 줄여 해결됐다.
-      # 소비자 스레드가 단일 LinkedBlockingQueue 의 takeLock 을 두고 경합하는 구조가 같다.
-      outbound: { core-size: 32, max-size: 32, queue-capacity: 30000 }
+      # TODO(5.10): 스레드 수만 바꾸는 실험값이다. 큐(30000)는 고정한다.
+      # VU 80 동일 조건 실측(클라우드 k6):
+      #   96 → 활성 17/96(17.7%),  p90 31,507~38,648ms, ACK 35~43%, 유실 0~0.02%
+      #   32 → 활성 14/32(44%),    p90 45,833ms,        ACK 28.3%,  유실 0%
+      # broker 는 64→32 에서 활성이 5→8 로 늘어 개선됐는데, outbound 는 96→32 에서
+      # 17→14 로 줄어 악화됐다. 즉 outbound 는 락 경합이 아니라 다른 이유로 상한이 있다
+      # (JFR 의 소켓 write 블로킹이 후보). 32 와 96 사이를 찍어 곡선을 닫는다.
+      outbound: { core-size: 64, max-size: 64, queue-capacity: 30000 }
       ack:      { core-size: 16, max-size: 16, queue-capacity: 2000 }
 
 app:
