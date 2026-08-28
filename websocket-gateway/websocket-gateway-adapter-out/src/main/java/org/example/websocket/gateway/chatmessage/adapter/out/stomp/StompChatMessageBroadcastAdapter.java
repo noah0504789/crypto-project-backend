@@ -3,6 +3,7 @@ package org.example.websocket.gateway.chatmessage.adapter.out.stomp;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.common.enums.StompDestination;
+import org.example.websocket.gateway.chatmessage.adapter.out.stomp.payload.StompChatMessageBatchPayload;
 import org.example.websocket.gateway.chatmessage.adapter.out.stomp.payload.StompChatMessagePayload;
 import org.example.websocket.gateway.chatmessage.application.port.out.ChatMessageBroadcastPort;
 import org.example.websocket.gateway.chatmessage.application.service.command.ChatMessageBroadcastCommand;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Set;
 
 @Slf4j
@@ -39,7 +41,7 @@ public class StompChatMessageBroadcastAdapter implements ChatMessageBroadcastPor
         return sendChatMessage(command, txId);
     }
 
-    private boolean hasAnyLocalMember(Set<String> memberIds) {
+    public boolean hasAnyLocalMember(Set<String> memberIds) {
         if (memberIds == null || memberIds.isEmpty()) {
             return false;
         }
@@ -47,12 +49,45 @@ public class StompChatMessageBroadcastAdapter implements ChatMessageBroadcastPor
         return memberIds.stream().anyMatch(localSessionCache::hasUser);
     }
 
+    /** 로컬 멤버 판정은 적재 시점에 이미 끝났다고 본다. */
+    public boolean broadcastBatch(String roomId, List<StompChatMessagePayload> messages, String txId) {
+        String destination = StompDestination.CHAT_ROOM_PREFIX.destination(roomId);
+
+        try {
+            stompTemplate.convertAndSend(destination, new StompChatMessageBatchPayload(roomId, messages));
+
+            log.debug(
+                    "[stomp] chat batch sent. txId={}, roomId={}, count={}, destination={}, serverId={}",
+                    txId,
+                    roomId,
+                    messages.size(),
+                    destination,
+                    instanceId
+            );
+
+            return true;
+        } catch (Exception e) {
+            log.error(
+                    "[stomp] batch broadcast failed. txId={}, roomId={}, count={}, destination={}, serverId={}",
+                    txId,
+                    roomId,
+                    messages.size(),
+                    destination,
+                    instanceId,
+                    e
+            );
+
+            return false;
+        }
+    }
+
     private boolean sendChatMessage(ChatMessageBroadcastCommand command, String txId) {
         String destination = StompDestination.CHAT_ROOM_PREFIX.destination(command.roomId());
         StompChatMessagePayload payload = StompChatMessagePayload.from(command);
 
         try {
-            stompTemplate.convertAndSend(destination, payload);
+            // 배칭이 꺼져도 봉투로 보낸다. 설정으로 껐다 켜도 wire 형식이 안 바뀐다.
+            stompTemplate.convertAndSend(destination, new StompChatMessageBatchPayload(command.roomId(), List.of(payload)));
 
             log.debug(
                     "[stomp] chat body sent. txId={}, roomId={}, messageId={}, destination={}, serverId={}",

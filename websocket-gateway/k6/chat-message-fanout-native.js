@@ -75,6 +75,9 @@ const broadcast_duplicate_count = new Counter('broadcast_duplicate_count');
 // 뱃지는 채팅 브로드캐스트 지표와 섞지 않는다 — 발행 단위(멤버별)와 전달 대상(그 사용자의 모든 세션)이
 // 달라 같은 분모로 볼 수 없다. 서버가 실제로 내보내는 양을 확인하는 용도로만 센다.
 const badge_received_count = new Counter('badge_received_count');
+// 배칭 효과를 지연과 무관하게 판정하는 지표다. 프레임 수는 스왑에 흔들리지 않는다.
+const batch_frame_count = new Counter('batch_frame_count');
+const batch_size = new Trend('batch_size');
 
 // ===== k6 options =====
 export const options = {
@@ -469,23 +472,37 @@ export default function () {
           continue;
         }
 
-        const msg_id = resolve_message_id(body_obj);
+        // 게이트웨이가 같은 방의 메시지를 100ms 창으로 묶어 봉투로 보낸다
+        // (StompChatMessageBatchPayload: { roomId, messages: [...] }).
+        // 프레임 1개가 메시지 N건이므로 펼쳐서 각각 집계한다 —
+        // 봉투째로 세면 수신률이 프레임 수로 계산되어 대부분 미도달로 잡힌다.
+        // 배칭이 꺼진 회차나 옛 게이트웨이를 대비해 단건 모양도 함께 받는다.
+        const payloads = Array.isArray(body_obj?.messages) ? body_obj.messages : [body_obj];
 
-        if (!msg_id) {
-          debug_log(vu, `[VU ${vu}] message_has_no_client_message_id_or_cid body=${frame.body}`);
-          continue;
+        if (destination === broadcast_destination) {
+          batch_frame_count.add(1);
+          batch_size.add(payloads.length);
         }
 
-        const is_ack_payload = body_obj?.success !== undefined || body_obj?.errorCode !== undefined;
+        for (const payload of payloads) {
+          const msg_id = resolve_message_id(payload);
 
-        if (destination === ack_destination) {
-          mark_ack(msg_id, body_obj);
-        } else if (destination === broadcast_destination) {
-          mark_broadcast_delivery(msg_id);
-        } else if (is_ack_payload) {
-          mark_ack(msg_id, body_obj);
-        } else if (body_obj?.content?.includes?.('CID:')) {
-          mark_broadcast_delivery(msg_id);
+          if (!msg_id) {
+            debug_log(vu, `[VU ${vu}] message_has_no_client_message_id_or_cid body=${frame.body}`);
+            continue;
+          }
+
+          const is_ack_payload = payload?.success !== undefined || payload?.errorCode !== undefined;
+
+          if (destination === ack_destination) {
+            mark_ack(msg_id, payload);
+          } else if (destination === broadcast_destination) {
+            mark_broadcast_delivery(msg_id);
+          } else if (is_ack_payload) {
+            mark_ack(msg_id, payload);
+          } else if (payload?.content?.includes?.('CID:')) {
+            mark_broadcast_delivery(msg_id);
+          }
         }
       }
     });
@@ -583,6 +600,9 @@ export function handleSummary(data) {
   const timeout_per_user = timeout_total_count / num_vus;
   const duplicate_per_user = duplicate_total_count / num_vus;
   const badge_received = get_count('badge_received_count');
+  const batch_frames = get_count('batch_frame_count');
+  const batch_avg = get_trend('batch_size', 'avg');
+  const batch_max = get_trend('batch_size', 'max');
 
   const percent = (value, total) => {
     if (!total) return '0.00%';
@@ -615,6 +635,11 @@ broadcast:
 - ok_rate_per_user: ${format_number(ok_per_user)} / ${format_number(expected_per_user)} (${percent(ok_per_user, expected_per_user)})
 - timeout_rate_per_user: ${format_number(timeout_per_user)} / ${format_number(expected_per_user)} (${percent(timeout_per_user, expected_per_user)})
 - duplicate_per_user: ${format_number(duplicate_per_user)}
+
+배칭(지연과 무관하게 판정 가능):
+- 브로드캐스트 프레임 수: ${format_number(batch_frames)}
+- 프레임당 메시지: avg=${format_number(batch_avg)} max=${format_number(batch_max)}
+- 배칭 없을 때 프레임 수: ${format_number(total_count)} (수신 메시지 총량)
 
 badge(참고, 채팅 지표와 분리):
 - received_count: ${format_number(badge_received)}

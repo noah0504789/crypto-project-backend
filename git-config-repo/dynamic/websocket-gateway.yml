@@ -112,6 +112,21 @@ websocket:
       enabled: true
       window-ms: 200
 
+  # 같은 방의 메시지를 시간창으로 묶어 brokerChannel 태스크 수를 줄인다.
+  # 뱃지 conflation 과 달리 한 건도 버리지 않고 순서를 지킨다 — 줄어드는 것은 프레임 수이지
+  # 전달되는 메시지 수가 아니다. 브로커의 구독자 확장(×N)은 그대로다.
+  #   초당 80건·구독자 80명 기준: brokerChannel 80 → 10 태스크/초, outbound 6,400 → 800 프레임/초
+  # window-ms 를 뱃지(200ms)보다 짧게 잡는다. 메시지는 사용자가 기다리는 내용이고 뱃지는 배경 상태다.
+  # max-batch-size 를 넘으면 창이 닫히기 전에 즉시 내보낸다 — 버리지 않는 대신 버퍼를 묶어두지 않는다.
+  # 대가: Kafka 오프셋이 실제 전송보다 먼저 커밋된다. 게이트웨이가 죽으면 버퍼가 유실되며,
+  # 방 재진입 시 Mongo 조회로 회복되지만 클라이언트가 갭을 감지할 수단은 아직 없다(TODO 5.5).
+  # 주의: busrefresh 로 반영되지 않는다. 불변 record 이고 스케줄러가 @PostConstruct 에서 뜬다. 재배포 필요.
+  chat-message:
+    batch:
+      enabled: true
+      window-ms: 100
+      max-batch-size: 300
+
 app:
   rate-limit:
     chat-message:
