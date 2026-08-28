@@ -96,6 +96,29 @@ VU를 올려도 연결이 10개에서 멈추므로 팬아웃(`M²`)이 생기지
 되돌리기: `websocket-handshake`를 `replenish-rate: 2` / `burst-capacity: 5` / `requested-tokens: 1`로, 주석 제거, **머지 + api-gateway 재배포**.
 `[출처: 2026-08-27 워밍업 실행(VU 20) ws upgrade 실패 50% 원인 규명]`
 
+#### 1.15 STOMP SUBSCRIBE 에 인가 검사가 없다 — 남의 방을 구독할 수 있다
+
+게이트웨이의 `ChannelInterceptor` 구현체는 `WebSocketSessionEventHandler` 하나뿐이고 **`StompCommand.SUBSCRIBE` 를 검사하는 코드가 없다.**
+
+```
+SUBSCRIBE /topic/chat/{roomId}
+  → 방 멤버 여부를 확인하지 않고 그대로 구독된다
+```
+
+인증된 사용자면 **roomId 만 알면 어느 방이든 메시지를 실시간으로 받는다.** roomId 는 Mongo ObjectId 라 추측이 어렵지만, 한 번이라도 노출되면(공유 링크·로그·이전 멤버) 방을 나간 뒤에도 계속 받는다. 나가기(leave)가 구독을 끊지 않기 때문이다.
+
+전송(SEND)은 `ChatRoom.validateWritable(writerId)` 로 막히지만 **읽기 경로에는 같은 검사가 없다.**
+
+대응 후보:
+
+| 방식 | 성격 |
+|---|---|
+| `ChannelInterceptor` 에서 SUBSCRIBE 가로채 방 멤버십 확인 | 구독 시 1회 검사. 게이트웨이가 방 멤버를 알아야 해서 chat-service 조회(gRPC) 또는 캐시가 필요 |
+| 구독 시점 발급 토큰 | 방 입장 API 가 방별 단기 토큰을 주고 SUBSCRIBE 헤더로 검증 |
+
+**뱃지를 토픽으로 바꾸면(→ 5.9) 이 구멍이 뱃지 경로에도 열린다.** 토픽 전환의 선행 조건이다.
+`[출처: 2026-08-28 뱃지 합치기 설계 중 ChannelInterceptor 전수 확인]`
+
 ---
 
 ## 2. 데이터 · 영속성
@@ -448,6 +471,133 @@ k6 는 `/user/queue/chat/badge` 를 구독하지 않아 이 부하가 측정에�
 집계는 채팅 지표와 분리한다(`badge_received_count`) — 발행 단위(멤버별)와 전달 대상(그 사용자의
 모든 세션)이 달라 같은 분모로 볼 수 없다. 계정 공유로 인한 증폭은 VU별 자격증명(→ 5.4) 이후에 해소된다.
 `[출처: 2026-08-28 StompMyChatRoomBadgeAdapter 확인]`
+
+##### 5.9-a 방 단위 합치기 — 적용함
+
+**뱃지는 내용이 아니라 상태다.** 같은 방에 100ms 사이 30건이 들어와도 마지막 1건만 보내면 화면 결과가 같다. 채팅 메시지(배칭 → 5.3)는 전부 전달해야 하지만 뱃지는 버릴 수 있다.
+
+시세 피드에서 말하는 **conflation** 이다. 배칭과 다르다 — 배칭은 30건을 묶어 전부 전달하고, conflation 은 29건을 버리고 1건만 전달한다. 그래서 메모리가 다르다: 배칭은 창 안 건수만큼 쌓여 부하에 비례하지만, conflation 은 방 개수만큼만 잡고 트래픽과 무관하다.
+
+**이 프로젝트에 같은 패턴이 이미 있다.** `UpbitTickerCollectService` 가 종목별 시세를 같은 방식으로 줄인다.
+
+```java
+source.groupBy(UpbitTickerEvent::code)
+      .flatMap(codeGroup -> codeGroup
+              .sample(properties.websocket().tickerPublishInterval())   // 7s
+              .onBackpressureLatest()
+              .concatMap(this::publish), Integer.MAX_VALUE);
+```
+
+| upbit-connector | 뱃지 | 하는 일 |
+|---|---|---|
+| `groupBy(code)` | `ConcurrentHashMap` 키 = roomId | 키별로 칸을 나눈다 |
+| `.sample(7s)` | 200ms flush + last-write-wins | 구간 마지막 1건만 내보낸다 |
+| `.onBackpressureLatest()` | `scheduleWithFixedDelay` | 소비가 느리면 최신만 남긴다 |
+| `.concatMap(publish)` | 방별 단일 슬롯 | 키 안에서 순서 유지 |
+
+`upbit-connector` 는 WebFlux 라 `Flux.sample` 이 바로 붙지만, 게이트웨이는 서블릿 기반이고 뱃지 유입이 Kafka 컨슈머 콜백(블로킹)이라 `Flux` 가 없다. 리액티브 파이프라인을 새로 세워 얻는 것이 `sample` 하나뿐이라 맵 + 스케줄러로 직접 구현한다.
+
+**동작이 완전히 같지는 않다.** `groupBy` 는 그룹마다 타이머가 따로 돌고 `flatMap` 으로 그룹 간 병렬이지만, 여기는 **전역 타이머 하나에 단일 스레드가 전 방을 순회**한다. 창마다 전 방이 동시에 나가 스파이크가 생기고, 한 방이 느리면 뒷 방이 밀린다. 반대로 유휴 방은 매 flush 의 `remove` 로 즉시 사라져 `groupBy` 보다 낫다. **방 수가 많아지면 타이머 분산과 병렬화를 검토한다 — 지금 부하테스트는 방 1개라 드러나지 않는다.**
+
+합치기가 성립하는 근거는 **payload 에 개인별 값이 없다는 것**이다.
+
+```java
+public record StompMyChatRoomBadgePayload(String roomId, String lastMsgContent, Instant lastMsgCreatedAt) {}
+```
+
+`memberIds` 는 라우팅에만 쓰이고 payload 에 안 들어간다. **80명이 받는 바이트가 완전히 같다.** 개인별 필드(내 안읽음 수 등)가 생기면 이 최적화는 깨진다.
+
+VU 80(방 1개, 초당 80건) 기준 예상:
+
+| | broker 태스크/초 |
+|---|---:|
+| 채팅 브로드캐스트 | 80 |
+| 뱃지 (현재) | **6,400** (전체의 98.8%) |
+| 뱃지 (200ms 합치기) | **400** — 16배 감소 |
+
+`CoalescingMyChatRoomBadgeAdapter` 가 `MyChatRoomBadgePort` 를 `@Primary` 로 구현해 기존 어댑터를 감싼다. 방별 `ConcurrentHashMap` 에 last-write-wins 로 담고 전용 스케줄러가 창마다 드레인한다.
+
+- `scheduleWithFixedDelay` 를 쓴다. brokerChannel 이 `CallerRunsPolicy` 라 flush 스레드가 broker 태스크를 직접 실행하며 창보다 오래 걸릴 수 있는데, `scheduleAtFixedRate` 면 밀린 실행이 연달아 터진다. fixedDelay 는 느려진 만큼 창이 넓어져 합치는 양이 늘고 **스스로 배압이 된다.**
+- Kafka 키가 roomId 라 같은 방은 순서가 보장되지만, 파티션 재할당을 대비해 `lastMsgCreatedAt` 으로 한 번 더 거른다.
+- 전용 `ScheduledExecutorService` 를 쓴다. 게이트웨이에 `@EnableScheduling` 이 없고, 공용 스케줄러를 새로 켜면 flush 가 막힐 때 다른 스케줄 작업까지 같이 멈춘다.
+
+**대가**: Kafka 오프셋이 실제 전송보다 먼저 커밋된다. 게이트웨이가 죽으면 버퍼가 유실된다. **뱃지는 방 목록 재조회로 회복되므로 허용**한다 — 회복 불가능한 ACK(→ 5.8)에는 같은 기법을 쓰지 않는다.
+
+지표: `chat.badge.coalesced`(덮어써서 안 나간 건수) · `chat.badge.flushed`(실제 전송) · `chat.badge.pending`(대기 중인 방 수).
+
+되돌리기: `websocket.badge.coalesce.enabled: false`. busrefresh 로는 안 되고 재배포가 필요하다(불변 record + `@PostConstruct` 스케줄러).
+
+##### 5.9-b 토픽 전환 — 보류
+
+`convertAndSendToUser` N건을 `/topic/chat/badge/{roomId}` 1건으로 바꾸면 broker 태스크가 N → 1 이 된다. payload 가 방 단위라 **기술적으로는 가능하다.**
+
+보류하는 이유는 **구독 모델이 바뀌기 때문**이다.
+
+```
+지금    /user/queue/chat/badge         1건 구독으로 내 모든 방 뱃지 수신
+토픽    /topic/chat/badge/{roomId}     내가 속한 방 N개를 각각 구독
+```
+
+로그인 시 방 목록만큼 SUBSCRIBE, 초대·퇴장 시 구독 추가·해제가 필요해 **프론트 계약이 바뀐다.** 게다가 SUBSCRIBE 인가가 없어(→ 1.15) 토픽으로 옮기면 남의 방 뱃지를 받을 수 있다.
+
+**5.9-a 로 broker 여유가 확보되면 하지 않는다.** 재측정으로 판단한다.
+
+##### 5.9-c 사용자 축 집계 — 배칭(5.3) 때 같이 검토
+
+5.9-a 는 **방 축**으로만 접었다. 라운드 수는 줄었지만 **라운드당 프레임 수는 그대로**다.
+
+```
+전   초당 80라운드 × 멤버 80 = 6,400 프레임
+후   초당  5라운드 × 멤버 80 =   400 프레임
+      ↑ 5.9-a 가 줄인 것      ↑ 아직 그대로
+```
+
+한 사용자가 여러 방에 속하므로 **사용자 축으로 한 번 더 접을 수 있다.** 화면이 채팅방 목록 하나인데 방마다 프레임을 따로 보낼 이유가 없다.
+
+```
+방A 멤버 {1,2,3} · 방B 멤버 {2,3,4} 가 같은 창에 갱신될 때
+
+지금    A 3프레임 + B 3프레임 = 6
+집계    사용자1[A] · 사용자2[A,B] · 사용자3[A,B] · 사용자4[B] = 4
+```
+
+**뒤집는 위치는 flush 안이다.** ingest 때 뒤집으면 메시지마다 멤버 루프가 돌지만(초당 6,400회), flush 때 뒤집으면 살아남은 방에 대해서만 돈다(초당 400회).
+
+**구현이 한 곳에 갇혀 있다.** `CoalescingMyChatRoomBadgeAdapter.flush()` 의 `delegate.send(...)` 한 줄이 "무엇이 나가는가"를 정하는 유일한 지점이다. 버퍼·스케줄러·프로퍼티·지표·단위 테스트는 그대로 산다.
+
+키를 방으로 잡은 것이 이 확장의 전제다. 사용자 키였다면 방별 conflation 자체가 불가능하고, `(방, 멤버)` 키였다면 방 묶음이 사라져 되돌리기 어렵다.
+
+**지금 하지 않는 이유**: payload 가 배열이 되어 **프론트 계약이 바뀐다**(배칭 5.3 과 같은 등급). 그리고 **현재 부하테스트는 방이 1개**라 이 최적화를 넣어도 숫자가 안 움직인다. 계약은 배칭 때 한 번만 깬다.
+
+##### 5.9-d flush 소요 시간을 재지 않고 있다 — 병렬화 판단 근거가 없다
+
+전역 타이머 하나에 **단일 스레드가 전 방을 순회**한다. `upbit-connector` 의 `groupBy(code).sample(7s)` 는 그룹마다 타이머가 따로 돌고 `flatMap` 으로 병렬이지만, 채팅방은 무한히 늘어 타이머를 방마다 두면 폭증한다. 전역 하나를 고른 이유다.
+
+대가 둘:
+
+| | 내용 |
+|---|---|
+| 스파이크 | 모든 방이 같은 순간에 나간다. 창마다 봉우리 |
+| 전파 | 한 방이 `CallerRunsPolicy` 로 막히면 뒷 방이 전부 정지 |
+
+두 번째가 실제 위험이다. `brokerChannel` 이 포화하면 flush 스레드가 broker 태스크를 직접 실행하며 µs 작업이 수십~수백 ms 가 된다.
+
+**다만 자기 모순적이다** — conflation 자체가 그 포화를 없애려고 넣은 것이라, 효과가 있으면 이 상황이 안 온다. 그래서 지금 병렬화하는 것은 안 일어날 문제에 코드를 더하는 셈이다.
+
+**필요한 것은 병렬화가 아니라 관측이다.**
+
+```java
+Timer.builder("chat.badge.flush")   // 한 사이클 소요 시간
+```
+
+```
+flush 2ms    → 방이 10배 늘어도 여유
+flush 150ms  → 창 200ms 에 근접. 타이머 분산·병렬화 시점
+```
+
+**코드는 4줄이지만 데이터는 나중에 못 얻는다** — 재배포 + 부하테스트 한 회차가 더 든다. 3차 측정에는 못 넣었고(2026-08-28 판단), 다음 회차에 넣는다.
+
+병렬화가 필요해지면 드레인은 단일 스레드로 두고 전송만 작은 풀로 뺀다. 맵은 여전히 한 스레드만 만지므로 `ConcurrentHashMap` 경합은 0으로 유지된다. **다만 이득은 제한적이다** — 목적지가 `brokerChannel` 큐 하나라 `putLock` 에서 다시 만난다(5.7 에서 `takeLock` 으로 이미 확인한 벽의 반대편). 병렬화의 목적은 처리량이 아니라 "한 방 때문에 전부 정지"를 막는 것이다.
 
 ---
 
