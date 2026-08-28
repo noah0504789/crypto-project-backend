@@ -515,7 +515,9 @@ VU 80 / broker 16 실측에서 **ACK 21.3%(1,023건)** 가 유실됐다. 같은 
 
 `convertAndSendToUser` 는 사용자 목적지를 `UserDestinationMessageHandler` 가 **세션 수만큼 다시 brokerChannel 로** 보낸다. 계정을 100 VU 가 2개로 공유하면 세션이 계정당 50개라 ACK 1건이 태스크 51건이 된다.
 
-**대응**: `LocalSessionCache` 로 세션을, `AckSubscriptionRegistry` 로 구독 ID 를 찾아 `clientOutboundChannel` 로 직접 보낸다. brokerChannel 을 아예 안 탄다.
+**대응**: `LocalSessionCache` 에서 세션과 구독 ID 를 찾아 `clientOutboundChannel` 로 직접 보낸다. brokerChannel 을 아예 안 탄다.
+
+구독 ID 는 `LocalSessionCache` 에 함께 둔다. 키·수명·제거 지점이 세션과 같아 캐시를 나누면 정리 경로가 늘 때 한쪽을 빼먹는다.
 
 **구독 ID 를 직접 들고 있어야 하는 이유**: `StompSubProtocolHandler` 가 MESSAGE 프레임을 만들 때 `simpSubscriptionId` 가 없으면 경고만 남기고 클라이언트가 매칭하지 못한다. 브로커가 해주던 일이라 `SessionSubscribeEvent` 에서 직접 잡는다.
 

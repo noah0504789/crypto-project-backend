@@ -8,7 +8,6 @@ import org.example.common.properties.ApiPathProperties;
 import org.example.websocket.gateway.chatmessage.adapter.out.stomp.payload.StompChatMessageAckPayload;
 import org.example.websocket.gateway.chatmessage.application.port.out.ChatMessageAckPort;
 import org.example.websocket.gateway.chatmessage.application.service.result.ChatMessageAckResult;
-import org.example.websocket.gateway.session.application.cache.AckSubscriptionRegistry;
 import org.example.websocket.gateway.session.application.cache.LocalSessionCache;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Primary;
@@ -22,12 +21,9 @@ import org.springframework.stereotype.Component;
 import java.util.Set;
 
 /**
- * ACK 를 brokerChannel 을 거치지 않고 clientOutboundChannel 로 직접 보낸다.
- * 근거와 수치는 {@code TODO.md} 5.8.
+ * ACK 를 brokerChannel 없이 clientOutboundChannel 로 직접 보낸다. 근거는 {@code TODO.md} 5.8-a.
  *
- * <p>브로커가 해주던 사용자 목적지 해석을 대신하므로 세션 ID 와 구독 ID 를 직접 채운다.
- * 구독 ID 가 없으면 STOMP MESSAGE 프레임이 반쪽이 되어 클라이언트가 매칭하지 못하므로,
- * 하나라도 빠지면 보내지 않고 기존 경로로 넘긴다.
+ * <p>구독 ID 가 없으면 클라이언트가 프레임을 매칭하지 못하므로, 하나라도 빠지면 기존 경로로 넘긴다.
  */
 @Slf4j
 @Primary
@@ -37,7 +33,6 @@ public class DirectStompChatMessageAckAdapter implements ChatMessageAckPort {
     private final StompChatMessageAckAdapter delegate;
     private final ChatMessageAckDirectProperties properties;
     private final LocalSessionCache localSessionCache;
-    private final AckSubscriptionRegistry ackSubscriptionRegistry;
     private final MessageChannel clientOutboundChannel;
     private final MessageConverter messageConverter;
     private final String ackDestination;
@@ -49,7 +44,6 @@ public class DirectStompChatMessageAckAdapter implements ChatMessageAckPort {
             StompChatMessageAckAdapter delegate,
             ChatMessageAckDirectProperties properties,
             LocalSessionCache localSessionCache,
-            AckSubscriptionRegistry ackSubscriptionRegistry,
             @Qualifier("clientOutboundChannel") MessageChannel clientOutboundChannel,
             @Qualifier("brokerMessageConverter") MessageConverter messageConverter,
             ApiPathProperties apiPathProperties,
@@ -58,7 +52,6 @@ public class DirectStompChatMessageAckAdapter implements ChatMessageAckPort {
         this.delegate = delegate;
         this.properties = properties;
         this.localSessionCache = localSessionCache;
-        this.ackSubscriptionRegistry = ackSubscriptionRegistry;
         this.clientOutboundChannel = clientOutboundChannel;
         this.messageConverter = messageConverter;
         this.ackDestination = apiPathProperties.stomp().userDestinationPrefix()
@@ -102,7 +95,7 @@ public class DirectStompChatMessageAckAdapter implements ChatMessageAckPort {
         boolean sentAny = false;
 
         for (String sessionId : sessions) {
-            String subscriptionId = ackSubscriptionRegistry.findSubscriptionId(sessionId);
+            String subscriptionId = localSessionCache.findAckSubscriptionId(sessionId);
 
             if (subscriptionId == null) {
                 continue;

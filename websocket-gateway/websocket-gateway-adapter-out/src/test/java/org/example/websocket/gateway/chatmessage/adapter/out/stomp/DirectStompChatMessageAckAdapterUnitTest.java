@@ -4,7 +4,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.example.common.properties.ApiPathProperties;
 import org.example.websocket.gateway.chatmessage.application.service.result.ChatMessageAckResult;
-import org.example.websocket.gateway.session.application.cache.AckSubscriptionRegistry;
 import org.example.websocket.gateway.session.application.cache.LocalSessionCache;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -36,7 +35,6 @@ class DirectStompChatMessageAckAdapterUnitTest {
 
     private MeterRegistry registry;
     private LocalSessionCache localSessionCache;
-    private AckSubscriptionRegistry ackSubscriptionRegistry;
     private ExecutorSubscribableChannel clientOutboundChannel;
     private List<Message<?>> captured;
 
@@ -49,7 +47,6 @@ class DirectStompChatMessageAckAdapterUnitTest {
     void setUp() {
         registry = new SimpleMeterRegistry();
         localSessionCache = new LocalSessionCache();
-        ackSubscriptionRegistry = new AckSubscriptionRegistry();
         captured = new ArrayList<>();
 
         clientOutboundChannel = new ExecutorSubscribableChannel();
@@ -61,7 +58,6 @@ class DirectStompChatMessageAckAdapterUnitTest {
                 delegate,
                 new ChatMessageAckDirectProperties(enabled),
                 localSessionCache,
-                ackSubscriptionRegistry,
                 clientOutboundChannel,
                 new MappingJackson2MessageConverter(),
                 // 이 어댑터가 쓰는 것은 stomp().userDestinationPrefix() 하나뿐이다.
@@ -83,7 +79,7 @@ class DirectStompChatMessageAckAdapterUnitTest {
     void sendsDirectlyWhenSessionAndSubscriptionKnown() {
         // given
         localSessionCache.register(sessionId, userId);
-        ackSubscriptionRegistry.register(sessionId, subscriptionId);
+        localSessionCache.registerAckSubscription(sessionId, subscriptionId);
 
         // when
         sut(true).success(userId, result);
@@ -99,7 +95,7 @@ class DirectStompChatMessageAckAdapterUnitTest {
     void fillsSessionSubscriptionAndDestination() {
         // given
         localSessionCache.register(sessionId, userId);
-        ackSubscriptionRegistry.register(sessionId, subscriptionId);
+        localSessionCache.registerAckSubscription(sessionId, subscriptionId);
 
         // when
         sut(true).success(userId, result);
@@ -145,8 +141,8 @@ class DirectStompChatMessageAckAdapterUnitTest {
         // given
         localSessionCache.register(sessionId, userId);
         localSessionCache.register("session-2", userId);
-        ackSubscriptionRegistry.register(sessionId, subscriptionId);
-        ackSubscriptionRegistry.register("session-2", "sub-1");
+        localSessionCache.registerAckSubscription(sessionId, subscriptionId);
+        localSessionCache.registerAckSubscription("session-2", "sub-1");
 
         // when
         sut(true).success(userId, result);
@@ -161,7 +157,7 @@ class DirectStompChatMessageAckAdapterUnitTest {
     void delegatesWhenDisabled() {
         // given
         localSessionCache.register(sessionId, userId);
-        ackSubscriptionRegistry.register(sessionId, subscriptionId);
+        localSessionCache.registerAckSubscription(sessionId, subscriptionId);
 
         // when
         sut(false).success(userId, result);
@@ -177,7 +173,7 @@ class DirectStompChatMessageAckAdapterUnitTest {
     void sendsFailureAckDirectly() {
         // given
         localSessionCache.register(sessionId, userId);
-        ackSubscriptionRegistry.register(sessionId, subscriptionId);
+        localSessionCache.registerAckSubscription(sessionId, subscriptionId);
 
         // when
         sut(true).failure(userId, "client-1", "RATE_LIMIT_EXCEEDED");
