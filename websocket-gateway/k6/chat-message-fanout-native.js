@@ -23,6 +23,10 @@ const ws_base_path = '/ws-native';
 const send_destination = '/msg/chat.send';
 const ack_destination = '/user/queue/chat/ack';
 const broadcast_destination = `/topic/chat/${room_id}`;
+// 뱃지는 서버가 멤버마다 convertAndSendToUser 로 개별 발행한다(StompMyChatRoomBadgeAdapter).
+// 채팅 브로드캐스트와 달리 brokerChannel 태스크가 멤버 수만큼 생기므로 서버 부하에서 차지하는
+// 비중이 크다. 구독하지 않으면 그 부하가 측정에서 통째로 빠진다.
+const badge_destination = '/user/queue/chat/badge';
 
 // ===== test config =====
 const num_vus = Number(__ENV.VUS || 130);
@@ -67,6 +71,10 @@ const broadcast_delivery_missing_count = new Counter('broadcast_delivery_missing
 const broadcast_delivery_timeout_ok_rate = new Rate('broadcast_delivery_timeout_ok_rate');
 const broadcast_delivery_latency_ms = new Trend('broadcast_delivery_latency_ms', true);
 const broadcast_duplicate_count = new Counter('broadcast_duplicate_count');
+
+// 뱃지는 채팅 브로드캐스트 지표와 섞지 않는다 — 발행 단위(멤버별)와 전달 대상(그 사용자의 모든 세션)이
+// 달라 같은 분모로 볼 수 없다. 서버가 실제로 내보내는 양을 확인하는 용도로만 센다.
+const badge_received_count = new Counter('badge_received_count');
 
 // ===== k6 options =====
 export const options = {
@@ -411,10 +419,17 @@ export default function () {
               ack: 'auto',
             });
 
+            const subscribe_badge_frame = build_stomp_frame('SUBSCRIBE', {
+              id: `badge-${vu}`,
+              destination: badge_destination,
+              ack: 'auto',
+            });
+
             socket.send(subscribe_ack_frame);
             socket.send(subscribe_broadcast_frame);
+            socket.send(subscribe_badge_frame);
 
-            subscribe_frame_count.add(2);
+            subscribe_frame_count.add(3);
 
             debug_log(
               vu,
@@ -442,17 +457,24 @@ export default function () {
           continue;
         }
 
+        const destination =
+          frame.headers.destination ||
+          frame.headers['simpDestination'] ||
+          '';
+
+        // 뱃지는 clientMessageId 를 담지 않으므로 msg_id 검사보다 먼저 가른다.
+        // 아래 검사에 걸리면 debug 로그만 남기고 버려져 측정에서 빠진다.
+        if (destination === badge_destination) {
+          badge_received_count.add(1);
+          continue;
+        }
+
         const msg_id = resolve_message_id(body_obj);
 
         if (!msg_id) {
           debug_log(vu, `[VU ${vu}] message_has_no_client_message_id_or_cid body=${frame.body}`);
           continue;
         }
-
-        const destination =
-          frame.headers.destination ||
-          frame.headers['simpDestination'] ||
-          '';
 
         const is_ack_payload = body_obj?.success !== undefined || body_obj?.errorCode !== undefined;
 
@@ -560,6 +582,7 @@ export function handleSummary(data) {
   const ok_per_user = timeout_ok_count / num_vus;
   const timeout_per_user = timeout_total_count / num_vus;
   const duplicate_per_user = duplicate_total_count / num_vus;
+  const badge_received = get_count('badge_received_count');
 
   const percent = (value, total) => {
     if (!total) return '0.00%';
@@ -592,6 +615,9 @@ broadcast:
 - ok_rate_per_user: ${format_number(ok_per_user)} / ${format_number(expected_per_user)} (${percent(ok_per_user, expected_per_user)})
 - timeout_rate_per_user: ${format_number(timeout_per_user)} / ${format_number(expected_per_user)} (${percent(timeout_per_user, expected_per_user)})
 - duplicate_per_user: ${format_number(duplicate_per_user)}
+
+badge(참고, 채팅 지표와 분리):
+- received_count: ${format_number(badge_received)}
 
 - latency_ms:
   avg=${format_number(latency_avg)}ms
