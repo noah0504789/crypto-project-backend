@@ -527,6 +527,21 @@ VU 80(방 1개, 초당 80건) 기준 예상:
 
 되돌리기: `websocket.badge.coalesce.enabled: false`. busrefresh 로는 안 되고 재배포가 필요하다(불변 record + `@PostConstruct` 스케줄러).
 
+**실측 (2026-08-28 VU 80·게이트웨이 1대):**
+
+| | 적용 전 | 적용 후 |
+|---|---:|---:|
+| 뱃지 프레임 | 384,000 | **약 15,000** (25배) |
+| broker 거절 | 17,250 | **0** |
+| broker 큐 최대 | 3,000 (포화) | **4 ~ 264** |
+| outbound 큐 최대 | 4,232 | 1,091 ~ 1,519 |
+| DB pending | 18 | **0** |
+| 수신률 / 유실 | 99.92% / 320 | **100% / 0** |
+
+카운터가 클라이언트 수신과 정확히 맞는다 — `coalesced 9,577 + flushed 423 = 10,000`(유입 총량), `badge 수신 14,880 = 186라운드 × 80멤버`.
+
+**brokerChannel 병목은 해소됐다. 남은 것은 outbound 하나다.** 지연(p90·ACK)은 회차 간 편차가 2.5배라 판정하지 못했다(→ 5.12).
+
 ##### 5.9-b 토픽 전환 — 보류
 
 `convertAndSendToUser` N건을 `/topic/chat/badge/{roomId}` 1건으로 바꾸면 broker 태스크가 N → 1 이 된다. payload 가 방 단위라 **기술적으로는 가능하다.**
@@ -736,6 +751,49 @@ if (willExceedLatencyBudget()) {
 어느 메시지가 실패했는지 짚지 못한다. 재전송 로직을 만들려면 이것도 채워야 한다
 (`StompChatMessageAckResponse.ofFailure(null, ...)`).
 `[출처: 2026-08-28 VU 100 측정 ACK 14.38% / SERVICE_FLOWS.md §15]`
+
+#### 5.15 측정 유효성 판정 기준 — `Pages free` 가 아니라 swapin 증가량으로 본다
+
+2026-08-28 3차 측정에서 `Pages free` 만으로 오염을 판단하다 두 번 틀렸다. **`Pages free` 는 파일 캐시가 먹어도 떨어지므로 단독 지표가 못 된다.** 실제로 웜업 직후 6,013MB → 63MB 로 떨어졌는데 그 회차는 정상이었다.
+
+**측정 중 swapin 증가량**을 쓴다.
+
+```bash
+SW0=$(vm_stat | awk '/Swapins/{gsub(/\./,"",$2); print $2}')
+# ... 측정 ...
+SW1=$(vm_stat | awk '/Swapins/{gsub(/\./,"",$2); print $2}')
+# 증가 바이트 = (SW1 - SW0) × 16384
+```
+
+| swapin 증가 | 판정 | 근거 |
+|---|---|---|
+| 32,470 MB | 무효 | p90 41.9초. 서버는 전 풀 거절 0 · CPU 0.5% |
+| 8,614 ~ 9,541 MB | 신뢰 불가 | 같은 조건 2회에서 p90 42.2초 vs 16.7초 (2.5배) |
+| 수백 MB 이하 | 유효 | 이 호스트에서는 미달성 |
+
+**회차마다 실행 전후 swapin·swap used 를 결과에 함께 기록한다.** 2차 측정은 이걸 안 남겨서 p90 4,333ms 를 어떤 호스트 조건에서 얻었는지 알 수 없고, 그래서 3차와 직접 비교가 성립하지 않는다.
+
+**유실·거절·큐 깊이·프레임 수는 서버가 직접 센 값이라 스왑과 무관하다.** 지연을 못 재는 회차에서도 이 지표들로는 판정할 수 있다 — 배칭(5.3) 효과를 지연 없이 검증할 수 있는 이유다.
+`[출처: 2026-08-28 뱃지 conflation 재측정 2회]`
+
+#### 5.16 컨테이너가 이사 전 경로를 물고 있었다 — 해소함
+
+Docker 엔진 재시작 후 인프라 컨테이너가 하나도 안 올라왔다.
+
+```
+컨테이너 참조   /Users/noah/crypto-project-infra/infra/...
+실제 저장소     /Users/noah/crypto-project/crypto-project-infra/infra/
+```
+
+저장소가 이사한 뒤에도 컨테이너는 이사 전 경로의 bind mount 를 물고 계속 돌고 있었다. **한 번 죽으면 다시 못 뜨는 상태**였고 그때까지 드러나지 않았다. `docker start` 는 없는 경로에 빈 디렉터리를 만들며 `not a directory` 로 실패한다.
+
+compose 로 재생성해 현재 경로로 맞췄다(데이터는 named volume 이라 보존). 재생성으로 IP 가 바뀌어 Redis 클러스터가 `cluster_state:fail` 이 됐고 `CLUSTER MEET` 로 주소를 갱신해 복구했다.
+
+**같이 알아둘 것 둘**
+
+- **`docker start` 로 띄운 서비스는 eureka 에 DOWN 으로 남는다.** `DeploymentReadiness` 가 메모리의 `AtomicBoolean(false)` 라 재시작마다 초기화되고, CD 의 승인 단계를 안 거치면 `OUT_OF_SERVICE` 다. 컨테이너는 `Up` 인데 다른 서비스가 못 찾아 증상만으로는 헷갈린다. 비상 복구용 스크립트를 `~/mark-ready.sh` 에 두었다(서비스별 스킴·경로가 달라 `http|https × /internal/deployment|/api/v1/internal/deployment` 를 순회한다).
+- **api-gateway 는 토큰 검증마다 authorization-server 로 gRPC 를 호출한다**(`BlacklistAwareReactiveJwtDecoder`). JWKS 캐시로 때울 수 있는 구조가 아니라 측정 중에도 살아 있어야 한다. 메모리를 아끼려고 내렸다가 전 핸드셰이크가 실패했다.
+`[출처: 2026-08-28 Docker 엔진 재시작 후 인프라 복구]`
 
 ---
 
