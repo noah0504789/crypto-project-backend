@@ -178,7 +178,7 @@ flowchart TB
 - adapter-in: `StompControllerUnitTest`, `StompChatMessageExceptionHandlerUnitTest`(실패 ACK 의 `clientMessageId`), `ExecutorConfigUnitTest`, `ExecutorConfigRejectionKindUnitTest`(거절 태스크 목적지 분류), `RedisChatMessageRateLimiter*Test`
 - adapter-out: `BatchingChatMessageBroadcastAdapterUnitTest`(순서 보존·상한 초과 즉시 전송), `CoalescingMyChatRoomBadgeAdapterUnitTest`(마지막 1건·타임스탬프 역전), `DirectStompChatMessageAckAdapterUnitTest`(헤더 3종·폴백), `GrpcChatMessageCommandAdapterUnitTest`, `RedisSessionLocationAdapterUnitTest`
 - bootstrap: `BootSmokeTest` — 실제 `git-config-repo` 설정을 import 하므로 **설정 키 누락이 부팅 실패로 잡힌다**
-- 부하: [`chat/load-test-results/.../2026-08-28/README.md`](../../chat/load-test-results/chatmessage/websocket-gateway/2026-08-28/README.md) — 최종 곡선은 §7-4
+- 부하: [`chat/load-test-results/.../2026-08-28/README.md`](../../chat/load-test-results/chatmessage/websocket-gateway/2026-08-28/README.md) — 최종 곡선은 §7-4. **거기 숫자는 목표치도 확정 용량도 아니다.** 16GB 단일 호스트에 컨테이너 26개를 올린 상태의 측정이라 피크·SLO 는 운영계에서 다시 잰다. 확정된 것은 **병목이 어디였고 무엇을 걷어냈는가**뿐이다
 
 ## 11. 컴파일 · 테스트 · CI 명령
 
