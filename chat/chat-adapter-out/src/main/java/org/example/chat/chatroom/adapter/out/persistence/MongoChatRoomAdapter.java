@@ -124,7 +124,7 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
     public void updateMembershipScores(String id, Set<String> memberIds, long lastMsgCreatedAtMs) {
         long score = MyChatRoomScoreCalculator.unread(lastMsgCreatedAtMs);
 
-        memberIds.forEach(memberId -> membershipRepository.upsert(MongoChatRoomMembership.ofUnreadActivity(id, memberId, score)));
+        membershipRepository.upsertUnreadActivity(id, memberIds, score);
     }
 
     @Override

@@ -18,6 +18,7 @@ import org.springframework.data.mongodb.core.index.Index;
 import org.springframework.test.context.ContextConfiguration;
 
 import java.util.Arrays;
+import java.util.Set;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -75,10 +76,8 @@ class MongoChatRoomMembershipRepositoryImplIntegrationTest {
         @DisplayName("membership이 없으면 새로 생성한다")
         void upsertInsert() {
             // given
-            MongoChatRoomMembership entity = unreadMembership(roomId1, MEMBER_ID, SCORE_1000);
-
             // when
-            sut.upsert(entity);
+            sut.upsertUnreadActivity(roomId1.toHexString(), Set.of(MEMBER_ID), SCORE_1000);
 
             // then
             MongoChatRoomMembership found = find(roomId1, MEMBER_ID);
@@ -86,7 +85,7 @@ class MongoChatRoomMembershipRepositoryImplIntegrationTest {
             assertThat(found.getId()).isEqualTo(membershipId(roomId1, MEMBER_ID));
             assertThat(found.getRoomId()).isEqualTo(roomId1);
             assertThat(found.getMemberId()).isEqualTo(MEMBER_ID);
-            assertThat(found.getScore()).isEqualTo(entity.getScore());
+            assertThat(found.getScore()).isEqualTo(SCORE_1000);
             assertThat(found.getLastMsgReadSeq()).isEqualTo(0L);
         }
 
@@ -96,15 +95,13 @@ class MongoChatRoomMembershipRepositoryImplIntegrationTest {
             // given
             saveMembership(roomId1, MEMBER_ID, READ_SEQ_77, SCORE_1000);
 
-            MongoChatRoomMembership updateEntity = unreadMembership(roomId1, MEMBER_ID, SCORE_3000);
-
             // when
-            sut.upsert(updateEntity);
+            sut.upsertUnreadActivity(roomId1.toHexString(), Set.of(MEMBER_ID), SCORE_3000);
 
             // then
             MongoChatRoomMembership found = find(roomId1, MEMBER_ID);
 
-            assertThat(found.getScore()).isEqualTo(updateEntity.getScore());
+            assertThat(found.getScore()).isEqualTo(SCORE_3000);
             assertThat(found.getLastMsgReadSeq()).isEqualTo(READ_SEQ_77);
             assertThat(found.getRoomId()).isEqualTo(roomId1);
             assertThat(found.getMemberId()).isEqualTo(MEMBER_ID);
@@ -114,19 +111,16 @@ class MongoChatRoomMembershipRepositoryImplIntegrationTest {
         @DisplayName("다른 memberId는 별도 membership으로 생성한다")
         void upsertDifferentMember() {
             // given
-            MongoChatRoomMembership member1 = unreadMembership(roomId1, MEMBER_ID, SCORE_1000);
-            MongoChatRoomMembership member2 = unreadMembership(roomId1, OTHER_MEMBER_ID, SCORE_2000);
-
             // when
-            sut.upsert(member1);
-            sut.upsert(member2);
+            sut.upsertUnreadActivity(roomId1.toHexString(), Set.of(MEMBER_ID), SCORE_1000);
+            sut.upsertUnreadActivity(roomId1.toHexString(), Set.of(OTHER_MEMBER_ID), SCORE_2000);
 
             // then
             MongoChatRoomMembership found1 = find(roomId1, MEMBER_ID);
             MongoChatRoomMembership found2 = find(roomId1, OTHER_MEMBER_ID);
 
-            assertThat(found1.getScore()).isEqualTo(member1.getScore());
-            assertThat(found2.getScore()).isEqualTo(member2.getScore());
+            assertThat(found1.getScore()).isEqualTo(SCORE_1000);
+            assertThat(found2.getScore()).isEqualTo(SCORE_2000);
         }
     }
 
@@ -353,14 +347,6 @@ class MongoChatRoomMembershipRepositoryImplIntegrationTest {
                 roomId.toHexString(),
                 memberId,
                 lastMsgReadSeq,
-                score
-        );
-    }
-
-    private MongoChatRoomMembership unreadMembership(ObjectId roomId, String memberId, long score) {
-        return MongoChatRoomMembership.ofUnreadActivity(
-                roomId.toHexString(),
-                memberId,
                 score
         );
     }

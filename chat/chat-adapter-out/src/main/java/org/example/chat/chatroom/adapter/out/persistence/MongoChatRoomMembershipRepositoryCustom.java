@@ -1,6 +1,7 @@
 package org.example.chat.chatroom.adapter.out.persistence;
 
 import java.util.List;
+import java.util.Set;
 
 public interface MongoChatRoomMembershipRepositoryCustom {
 
@@ -13,7 +14,7 @@ public interface MongoChatRoomMembershipRepositoryCustom {
             int limit
     );
 
-    void upsert(MongoChatRoomMembership entity);
+    void upsertUnreadActivity(String roomId, Set<String> memberIds, long score);
 
     void updateScore(String id, long score);
 }

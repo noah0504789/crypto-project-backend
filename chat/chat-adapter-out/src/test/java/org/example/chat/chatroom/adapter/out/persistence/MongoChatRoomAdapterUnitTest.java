@@ -457,10 +457,11 @@ class MongoChatRoomAdapterUnitTest {
             String memberId,
             Long score
     ) {
-        return MongoChatRoomMembership.ofUnreadActivity(
-                roomId.toHexString(),
-                memberId,
-                score
-        );
+        return MongoChatRoomMembership.builder()
+                .id(MongoChatRoomMembership.generateId(roomId.toHexString(), memberId))
+                .roomId(roomId)
+                .memberId(memberId)
+                .score(score)
+                .build();
     }
 }

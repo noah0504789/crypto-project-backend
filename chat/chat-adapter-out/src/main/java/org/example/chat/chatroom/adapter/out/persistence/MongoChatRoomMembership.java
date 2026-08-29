@@ -31,15 +31,6 @@ public class MongoChatRoomMembership {
     private Long lastMsgReadSeq;
     private Long score;
 
-    public static MongoChatRoomMembership ofUnreadActivity(String roomId, String memberId, Long score) {
-        return MongoChatRoomMembership.builder()
-                .id(generateId(roomId, memberId))
-                .roomId(new ObjectId(roomId))
-                .memberId(memberId)
-                .score(score)
-                .build();
-    }
-
     public static MongoChatRoomMembership ofReadActivity(String roomId, String memberId, Long lastMsgReadSeq, Long score) {
         return MongoChatRoomMembership.builder()
                 .id(generateId(roomId, memberId))

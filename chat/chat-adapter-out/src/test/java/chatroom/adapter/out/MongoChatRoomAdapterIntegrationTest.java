@@ -641,11 +641,12 @@ class MongoChatRoomAdapterIntegrationTest {
             String memberId,
             Long lastMsgCreatedAt
     ) {
-        return MongoChatRoomMembership.ofUnreadActivity(
-                roomId.toHexString(),
-                memberId,
-                MyChatRoomScoreCalculator.unread(lastMsgCreatedAt)
-        );
+        return MongoChatRoomMembership.builder()
+                .id(MongoChatRoomMembership.generateId(roomId.toHexString(), memberId))
+                .roomId(roomId)
+                .memberId(memberId)
+                .score(MyChatRoomScoreCalculator.unread(lastMsgCreatedAt))
+                .build();
     }
 
     private void saveMembership(MongoChatRoomMembership membership) {
