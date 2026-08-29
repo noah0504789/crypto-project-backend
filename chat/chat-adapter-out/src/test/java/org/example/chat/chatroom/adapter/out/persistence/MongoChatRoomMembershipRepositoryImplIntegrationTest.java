@@ -17,6 +17,7 @@ import org.springframework.data.mongodb.core.index.Index;
 import org.springframework.test.context.ContextConfiguration;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -194,14 +195,7 @@ class MongoChatRoomMembershipRepositoryImplIntegrationTest {
         @Test
         @DisplayName("없으면 새 membership을 생성한다")
         void upsert_shouldInsertMembershipWhenNotExists() {
-            MongoChatRoomMembership membership =
-                    MongoChatRoomMembership.ofUnreadActivity(
-                            roomId1.toHexString(),
-                            memberId1,
-                            100L
-                    );
-
-            sut.upsert(membership);
+            sut.upsertUnreadActivity(roomId1.toHexString(), Set.of(memberId1), 100L);
 
             MongoChatRoomMembership actual = mongoTemplate.findById(
                     MongoChatRoomMembership.generateId(
@@ -223,14 +217,7 @@ class MongoChatRoomMembershipRepositoryImplIntegrationTest {
         void upsert_shouldUpdateScoreWhenExists() {
             saveMembership(roomId1, memberId1, 100L);
 
-            MongoChatRoomMembership membership =
-                    MongoChatRoomMembership.ofUnreadActivity(
-                            roomId1.toHexString(),
-                            memberId1,
-                            300L
-                    );
-
-            sut.upsert(membership);
+            sut.upsertUnreadActivity(roomId1.toHexString(), Set.of(memberId1), 300L);
 
             MongoChatRoomMembership actual = mongoTemplate.findById(
                     MongoChatRoomMembership.generateId(
@@ -278,12 +265,12 @@ class MongoChatRoomMembershipRepositoryImplIntegrationTest {
             String memberId,
             Long score
     ) {
-        MongoChatRoomMembership membership =
-                MongoChatRoomMembership.ofUnreadActivity(
-                        roomId.toHexString(),
-                        memberId,
-                        score
-                );
+        MongoChatRoomMembership membership = MongoChatRoomMembership.builder()
+                .id(MongoChatRoomMembership.generateId(roomId.toHexString(), memberId))
+                .roomId(roomId)
+                .memberId(memberId)
+                .score(score)
+                .build();
 
         mongoTemplate.save(membership);
     }

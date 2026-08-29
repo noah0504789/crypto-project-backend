@@ -3,7 +3,7 @@ package org.example.chat.chatroom.adapter.out.persistence;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.mongodb.core.FindAndModifyOptions;
+import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -11,6 +11,7 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Set;
 
 @Repository
 public class MongoChatRoomMembershipRepositoryImpl implements MongoChatRoomMembershipRepositoryCustom {
@@ -65,26 +66,36 @@ public class MongoChatRoomMembershipRepositoryImpl implements MongoChatRoomMembe
         return secondaryMongoTemplate.find(query, MongoChatRoomMembership.class);
     }
 
+    /**
+     * 메시지 한 건마다 방 멤버 전원의 활동 점수를 갱신한다. 멤버당 왕복하면 비용이 방 크기에
+     * 비례하므로 한 번의 bulkWrite 로 보낸다. 순서 보장이 필요 없어 UNORDERED 다.
+     */
     @Override
-    public void upsert(MongoChatRoomMembership entity) {
-        String id = entity.getId();
-        ObjectId roomId = entity.getRoomId();
-        String memberId = entity.getMemberId();
+    public void upsertUnreadActivity(String roomId, Set<String> memberIds, long score) {
+        if (memberIds == null || memberIds.isEmpty()) {
+            return;
+        }
 
-        Criteria criteria = Criteria.where("_id").is(id);
-        Query query = new Query(criteria);
+        ObjectId roomObjectId = new ObjectId(roomId);
 
-        Update update = new Update()
-                .set("score", entity.getScore())
-                .setOnInsert("_id", id)
-                .setOnInsert("roomId", roomId)
-                .setOnInsert("memberId", memberId)
-                .setOnInsert("lastMsgReadSeq", 0L);
+        BulkOperations bulkOperations = primaryMongoTemplate.bulkOps(
+                BulkOperations.BulkMode.UNORDERED,
+                MongoChatRoomMembership.class
+        );
 
-        FindAndModifyOptions opts = FindAndModifyOptions.options()
-                .upsert(true);
+        for (String memberId : memberIds) {
+            String id = MongoChatRoomMembership.generateId(roomId, memberId);
 
-        primaryMongoTemplate.findAndModify(query, update, opts, MongoChatRoomMembership.class);
+            Update update = new Update()
+                    .set("score", score)
+                    .setOnInsert("roomId", roomObjectId)
+                    .setOnInsert("memberId", memberId)
+                    .setOnInsert("lastMsgReadSeq", 0L);
+
+            bulkOperations.upsert(new Query(Criteria.where("_id").is(id)), update);
+        }
+
+        bulkOperations.execute();
     }
 
     @Override
