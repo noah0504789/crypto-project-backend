@@ -1,5 +1,0 @@
-=== probe3 VU=2 MESSAGE_COUNT=3 ===
-시작: 2026-08-27 23:25:48
-gateway=crypto-websocket-gateway-green-1  chat=crypto-chat-service-blue-1
-종료: 2026-08-27 23:27:38
-측정 중 swapin: 2138 MB

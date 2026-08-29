@@ -1,0 +1,5 @@
+=== smoke VU=2 MESSAGE_COUNT=3 ===
+시작: 2026-08-29 17:37:48
+gateway=crypto-websocket-gateway-green-1  chat=crypto-chat-service-green-1
+종료: 2026-08-29 17:39:38
+측정 중 swapin: 2098 MB
