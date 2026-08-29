@@ -19,10 +19,10 @@ flowchart LR
   WG -->|"/topic/chat/{roomId}"| K
 
   classDef fixed fill:#e8f5e9,stroke:#2e7d32
-  class CS,WG,OP fixed
+  class CS,WG,OP,MG fixed
 ```
 
-초록색이 이번에 고친 지점이다.
+초록색이 이번에 손댄 지점이다 — 코드 둘(#270 #271)과 설정 둘(GC · WiredTiger 캐시).
 
 ---
 
@@ -95,7 +95,7 @@ Hikari 커넥션 대기 0이었다.
 memberIds.forEach(memberId -> membershipRepository.upsert(...));   // 302회 왕복
 ```
 
-접속하지 않은 202명 몫까지 메시지마다 지불한다. 6,000건이면 왕복 **181만 회**다.
+접속하지 않은 202명 몫까지 메시지마다 지불한다. 기준선 회차(전송 6,000건)로 치면 왕복 **181만 회**다.
 UNORDERED bulkWrite 한 번으로 묶어 6,000회로 줄였다 — 각 멤버 문서에 같은 점수를 독립적으로
 쓰므로 순서 보장이 필요 없다.
 
@@ -127,7 +127,8 @@ memberIds.stream().anyMatch(localSessionCache::hasUser)
 
 ### 3-3. ParallelGC 명시 (인프라)
 
-**STOMP 큐는 0~2 로 비어 있는데 브로드캐스트 p90 이 54초였다.** 밀린 게 아니라 멈춰 있었다.
+**고치기 전, STOMP 큐가 0~2 로 비어 있는데 브로드캐스트 p90 이 54초였다.**
+밀린 게 아니라 멈춰 있었다.
 
 JVM 은 부팅 시 server class machine 인지 판정해 GC 를 고른다. 기준이 **CPU 2개 이상이면서
 메모리 1,792MB 이상**인데, 배포 스크립트의 `MEM_LIMIT` 이 768m~1024m 이라 전부 기준을 못 넘겨
@@ -147,7 +148,7 @@ mark-sweep-compact 하는 것이 원인이고, 페이지가 스왑에 나가 있
 
 **이 판정은 경고를 남기지 않는다.** 컨테이너 메모리를 1,792MB 미만으로 주는 모든 JVM 서비스가
 같은 함정에 빠진다. 남은 서비스(api-gateway·oauth2-authorization-server·user-service)도
-같은 상태이며 순차 적용 대상이다.
+같은 상태이며 순차 적용 대상이다(→ TODO 5.4-b).
 
 ### 3-4. MongoDB WiredTiger 캐시 상한 (인프라)
 
@@ -173,8 +174,8 @@ mark-sweep-compact 하는 것이 원인이고, 페이지가 스왑에 나가 있
 | api-gateway GC | 누적 0.884초·최대 150ms |
 | Redis 지연 | 건당 150µs, 순간 최대 12ms |
 
-> outbox 는 발행 완료 행을 지우지 않아 68만 행·1GB 로 자라 있었다.
-> **지연 원인은 아니었지만** 청소 주기가 없는 것은 별개의 설계 공백이다(→ TODO).
+> outbox 는 발행 완료 행에 청소 경로가 없다. 지연 원인은 아니었지만 디스크·백업·복제가
+> 무한히 자라므로 별개 과제로 남긴다(→ TODO 5.4-a).
 
 ### 계측이 측정을 바꾼 사례
 
@@ -194,7 +195,7 @@ outbox 적체를 보려고 1초마다 `docker exec` + mysql 클라이언트를 �
 메시지 유실 0            수신 수 = 전송 수 × 접속 VU 수, 세 회차 일치
 ACK 실패 0               서버가 실패 ACK 를 반환한 건수
 STOMP 거절 0             모든 kind 에서 0
-Hikari 커넥션 대기 0     이전 92 → 0
+Hikari 커넥션 대기 0     수정 전 기준선에서는 92 대기·풀 고갈 예외 24건
 GC 일시정지              6,566ms → 61ms 등
 ```
 
@@ -219,7 +220,7 @@ WebSocket 업그레이드(HTTP 101)는 100% 성공하는데 그 위로 보낸 ST
 도달하지 않는 것**이다.
 
 게이트웨이 로그·GC·Redis·api-gateway GC 어디에도 흔적이 없고, 실패 개수도 회차마다
-4·1·2개로 부하에 비례하지 않는다. 메시지 경로와는 별개이며 재현 조건을 따로 만들어야 한다(→ TODO).
+4·1·2개로 부하에 비례하지 않는다. 메시지 경로와는 별개이며 재현 조건을 따로 만들어야 한다(→ TODO 5.4-c).
 
 ---
 
