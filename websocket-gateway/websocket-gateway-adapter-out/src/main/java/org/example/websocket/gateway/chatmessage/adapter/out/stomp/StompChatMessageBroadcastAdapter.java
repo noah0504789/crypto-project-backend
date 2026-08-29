@@ -13,7 +13,6 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Set;
 
 @Slf4j
 @Component
@@ -28,9 +27,9 @@ public class StompChatMessageBroadcastAdapter implements ChatMessageBroadcastPor
 
     @Override
     public boolean broadcast(ChatMessageBroadcastCommand command, String txId) {
-        if (!hasAnyLocalMember(command.memberIds())) {
+        if (!hasLocalSubscriber(command.roomId())) {
             log.debug(
-                    "[stomp] skip. no local member session. txId={}, roomId={}, serverId={}",
+                    "[stomp] skip. no local subscriber. txId={}, roomId={}, serverId={}",
                     txId,
                     command.roomId(),
                     instanceId
@@ -41,15 +40,11 @@ public class StompChatMessageBroadcastAdapter implements ChatMessageBroadcastPor
         return sendChatMessage(command, txId);
     }
 
-    public boolean hasAnyLocalMember(Set<String> memberIds) {
-        if (memberIds == null || memberIds.isEmpty()) {
-            return false;
-        }
-
-        return memberIds.stream().anyMatch(localSessionCache::hasUser);
+    public boolean hasLocalSubscriber(String roomId) {
+        return roomId != null && localSessionCache.hasLocalSubscriber(roomId);
     }
 
-    /** 로컬 멤버 판정은 적재 시점에 이미 끝났다고 본다. */
+    /** 로컬 구독자 판정은 적재 시점에 이미 끝났다고 본다. */
     public boolean broadcastBatch(String roomId, List<StompChatMessagePayload> messages, String txId) {
         String destination = StompDestination.CHAT_ROOM_PREFIX.destination(roomId);
 

@@ -133,7 +133,7 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
             ChatMessageEventList chatMessageEventList =
                     ChatMessageEventList.of(
                             new ChatMessagePersistEvent(chatMessagePayload, memberIds),
-                            new ChatMessageBroadcastEvent(chatMessagePayload, memberIds, clientMessageId),
+                            new ChatMessageBroadcastEvent(chatMessagePayload, clientMessageId),
                             new MyChatRoomBadgeBroadcastEvent(myChatRoomBadgePayload)
                     );
 

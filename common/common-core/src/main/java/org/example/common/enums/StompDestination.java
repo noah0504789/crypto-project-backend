@@ -22,4 +22,15 @@ public enum StompDestination {
     public String destination(String uri) {
         return prefix + uri;
     }
+
+    /** 접두사에 해당하지 않는 목적지면 null. */
+    public String uriOf(String destination) {
+        if (destination == null || !destination.startsWith(prefix)) {
+            return null;
+        }
+
+        String uri = destination.substring(prefix.length());
+
+        return uri.isBlank() ? null : uri;
+    }
 }

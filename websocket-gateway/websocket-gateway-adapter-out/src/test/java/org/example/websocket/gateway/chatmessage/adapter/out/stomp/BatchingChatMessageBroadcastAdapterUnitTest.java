@@ -13,7 +13,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -35,7 +34,6 @@ class BatchingChatMessageBroadcastAdapterUnitTest {
 
     private final String roomId = "room-1";
     private final String otherRoomId = "room-2";
-    private final Set<String> memberIds = Set.of("member-1", "member-2");
 
     @BeforeEach
     void setUp() {
@@ -57,7 +55,6 @@ class BatchingChatMessageBroadcastAdapterUnitTest {
                 "writer-1",
                 content,
                 1L,
-                memberIds,
                 "client-" + messageId
         );
     }
@@ -74,7 +71,7 @@ class BatchingChatMessageBroadcastAdapterUnitTest {
     @DisplayName("창이 닫히기 전에는 delegate 로 나가지 않는다")
     void doesNotSendBeforeFlush() {
         // given
-        when(delegate.hasAnyLocalMember(memberIds)).thenReturn(true);
+        when(delegate.hasLocalSubscriber(anyString())).thenReturn(true);
         BatchingChatMessageBroadcastAdapter sut = sut(true, 300);
 
         // when
@@ -89,7 +86,7 @@ class BatchingChatMessageBroadcastAdapterUnitTest {
     @DisplayName("같은 방의 메시지를 순서대로 한 프레임에 담는다")
     void batchesInArrivalOrder() {
         // given
-        when(delegate.hasAnyLocalMember(memberIds)).thenReturn(true);
+        when(delegate.hasLocalSubscriber(anyString())).thenReturn(true);
         BatchingChatMessageBroadcastAdapter sut = sut(true, 300);
 
         sut.broadcast(command(roomId, "m1", "첫 번째"), "tx-1");
@@ -111,7 +108,7 @@ class BatchingChatMessageBroadcastAdapterUnitTest {
     @DisplayName("방이 다르면 각각 별도 프레임으로 내보낸다")
     void separatesRooms() {
         // given
-        when(delegate.hasAnyLocalMember(memberIds)).thenReturn(true);
+        when(delegate.hasLocalSubscriber(anyString())).thenReturn(true);
         BatchingChatMessageBroadcastAdapter sut = sut(true, 300);
 
         sut.broadcast(command(roomId, "m1", "방1"), "tx-1");
@@ -130,7 +127,7 @@ class BatchingChatMessageBroadcastAdapterUnitTest {
     @DisplayName("방당 상한을 넘으면 창을 기다리지 않고 즉시 내보낸다")
     void flushesImmediatelyOnOverflow() {
         // given
-        when(delegate.hasAnyLocalMember(memberIds)).thenReturn(true);
+        when(delegate.hasLocalSubscriber(anyString())).thenReturn(true);
         BatchingChatMessageBroadcastAdapter sut = sut(true, 2);
 
         // when — 두 번째 적재에서 상한에 닿는다
@@ -148,7 +145,7 @@ class BatchingChatMessageBroadcastAdapterUnitTest {
     @DisplayName("로컬 멤버가 없으면 적재하지 않는다")
     void skipsWhenNoLocalMember() {
         // given
-        when(delegate.hasAnyLocalMember(memberIds)).thenReturn(false);
+        when(delegate.hasLocalSubscriber(anyString())).thenReturn(false);
         BatchingChatMessageBroadcastAdapter sut = sut(true, 300);
 
         // when
@@ -164,7 +161,7 @@ class BatchingChatMessageBroadcastAdapterUnitTest {
     @DisplayName("비운 뒤 다시 flush 해도 재전송하지 않는다")
     void doesNotResendAfterFlush() {
         // given
-        when(delegate.hasAnyLocalMember(memberIds)).thenReturn(true);
+        when(delegate.hasLocalSubscriber(anyString())).thenReturn(true);
         BatchingChatMessageBroadcastAdapter sut = sut(true, 300);
         sut.broadcast(command(roomId, "m1", "한 번"), "tx-1");
         sut.flush();

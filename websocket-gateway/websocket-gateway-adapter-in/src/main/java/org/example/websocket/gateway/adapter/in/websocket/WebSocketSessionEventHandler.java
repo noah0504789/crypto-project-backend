@@ -14,6 +14,7 @@ import org.springframework.web.socket.messaging.SessionConnectEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.web.socket.messaging.SessionSubscribeEvent;
+import org.springframework.web.socket.messaging.SessionUnsubscribeEvent;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -81,12 +82,35 @@ public class WebSocketSessionEventHandler {
 
         sessionLocationPort.refreshTtl(userId);
 
-        // ACK 를 brokerChannel 없이 직접 보내려면 구독 ID 가 필요하다. 여기서만 얻을 수 있다.
-        if (ackDestination.equals(accessor.getDestination()) && accessor.getSubscriptionId() != null) {
-            localSessionCache.registerAckSubscription(sessionId, accessor.getSubscriptionId());
+        String destination = accessor.getDestination();
+        String subscriptionId = accessor.getSubscriptionId();
+
+        if (subscriptionId != null) {
+            // ACK 를 brokerChannel 없이 직접 보내려면 구독 ID 가 필요하다. 여기서만 얻을 수 있다.
+            if (ackDestination.equals(destination)) {
+                localSessionCache.registerAckSubscription(sessionId, subscriptionId);
+            }
+
+            // 방 브로드캐스트를 보낼지 판정할 근거다. 이게 없으면 발신자가 멤버 목록을 실어 보내야 한다.
+            String roomId = StompDestination.CHAT_ROOM_PREFIX.uriOf(destination);
+            if (roomId != null) {
+                localSessionCache.registerRoomSubscription(sessionId, subscriptionId, roomId);
+            }
         }
 
         log.debug("[ws] ttl refreshed by subscribe. instance-index={}, userId={}, sessionId={}", instanceId, userId, sessionId);
+    }
+
+    @EventListener
+    public void handleUnsubscribe(SessionUnsubscribeEvent event) {
+        StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
+
+        String sessionId = accessor.getSessionId();
+        String subscriptionId = accessor.getSubscriptionId();
+
+        if (sessionId == null || subscriptionId == null) return;
+
+        localSessionCache.removeRoomSubscription(sessionId, subscriptionId);
     }
 
     @EventListener

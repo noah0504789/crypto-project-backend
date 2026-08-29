@@ -17,7 +17,6 @@ public class ChatMessageBroadcastEventMapper {
                 payload.writerId(),
                 payload.content(),
                 payload.createdAt() == null ? 0L : payload.createdAt().toEpochMilli(),
-                event.getMemberIds(),
                 event.getClientMessageId()
         );
     }
