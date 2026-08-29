@@ -133,7 +133,7 @@ flowchart TB
 
 - **로컬 세션 필터링**: 각 push 어댑터가 `LocalSessionCache.hasUser(...)`로 이 인스턴스에 연결된 사용자만 전송한다. 없으면 skip(로그). 사용자가 붙어 있는 인스턴스가 실제 전달을 담당한다.
 - **로컬 전달 판정은 구독 레지스트리로 한다**: SUBSCRIBE/UNSUBSCRIBE 시점에 `LocalSessionCache` 가 방별 세션을 들고 있어 `hasLocalSubscriber(roomId)` 하나로 정해진다. 이벤트가 멤버 목록을 싣던 방식은 outbox 행 크기가 방 크기에 비례해 버려서 걷어냈다. `/topic/chat/{roomId}`로 나가는 wire 는 봉투 `StompChatMessageBatchPayload{ roomId, messages[] }`다(§8). 변환은 `ChatMessageBroadcastEventMapper` → `StompChatMessagePayload.from` → 배칭 버퍼.
-- **브로드캐스트는 방 단위 시간창(100ms)으로 묶어 보낸다**(`BatchingChatMessageBroadcastAdapter`). 프레임 수만 줄고 전달 메시지 수는 그대로다 — 브로커의 구독자 확장(×N)은 변하지 않는다. **배칭이 꺼져 있어도 1건짜리 봉투로 나가므로 wire 형식은 바뀌지 않는다.** 근거·수치는 [부하테스트 문서 §7-1](../../chat/load-test-results/chatmessage/websocket-gateway/2026-08-28/README.md).
+- **브로드캐스트는 방 단위 시간창(100ms)으로 묶어 보낸다**(`BatchingChatMessageBroadcastAdapter`). 프레임 수만 줄고 전달 메시지 수는 그대로다 — 브로커의 구독자 확장(×N)은 변하지 않는다. **배칭이 꺼져 있어도 1건짜리 봉투로 나가므로 wire 형식은 바뀌지 않는다.** 근거·수치는 [부하테스트 문서 §3-0](../../chat/load-test-results/chatmessage/websocket-gateway/README.md).
 - **뱃지는 방 단위로 합친다**(`CoalescingMyChatRoomBadgeAdapter`, 200ms). 뱃지는 내용이 아니라 상태라 구간의 마지막 1건만 보내고 나머지는 버린다. payload 에 개인별 값이 없어서 성립한다.
 - **best-effort**: 이 소비자들은 DLQ 소비/재시도가 없고(`ack-mode: record`), STOMP executor 큐가 포화하면 push 태스크가 버려진다(`stomp.executor.rejected{pool,kind}` — `kind` 로 브로드캐스트·ACK·뱃지를 갈라 읽는다). durable 영속(chat/notification)과 구분된다. 단 **유실을 클라이언트가 감지해 재조회하는 경로는 없다** — 프론트는 재연결 시 재구독만 하고, wire payload에 방별 순번이 없어 갭 감지가 불가능하다. 방 재진입·새로고침 전까지 그 메시지는 보이지 않는다(→ **TODO 5.5**).
 
@@ -178,7 +178,7 @@ flowchart TB
 - adapter-in: `StompControllerUnitTest`, `StompChatMessageExceptionHandlerUnitTest`(실패 ACK 의 `clientMessageId`), `ExecutorConfigUnitTest`, `ExecutorConfigRejectionKindUnitTest`(거절 태스크 목적지 분류), `RedisChatMessageRateLimiter*Test`
 - adapter-out: `BatchingChatMessageBroadcastAdapterUnitTest`(순서 보존·상한 초과 즉시 전송), `CoalescingMyChatRoomBadgeAdapterUnitTest`(마지막 1건·타임스탬프 역전), `DirectStompChatMessageAckAdapterUnitTest`(헤더 3종·폴백), `GrpcChatMessageCommandAdapterUnitTest`, `RedisSessionLocationAdapterUnitTest`
 - bootstrap: `BootSmokeTest` — 실제 `git-config-repo` 설정을 import 하므로 **설정 키 누락이 부팅 실패로 잡힌다**
-- 부하: [`chat/load-test-results/.../2026-08-28/README.md`](../../chat/load-test-results/chatmessage/websocket-gateway/2026-08-28/README.md) — 최종 곡선은 §7-4. **거기 숫자는 목표치도 확정 용량도 아니다.** 16GB 단일 호스트에 컨테이너 26개를 올린 상태의 측정이라 피크·SLO 는 운영계에서 다시 잰다. 확정된 것은 **병목이 어디였고 무엇을 걷어냈는가**뿐이다
+- 부하: [`chat/load-test-results/.../README.md`](../../chat/load-test-results/chatmessage/websocket-gateway/README.md) — 결과는 §2. **거기 지연 수치는 목표치도 확정 용량도 아니다.** 16GB 단일 호스트에 컨테이너 23개를 올린 상태라 같은 조건 3회에서 p90 이 3배까지 흔들린다. 피크·SLO 는 운영계에서 다시 잰다. 확정된 것은 **유실 0·ACK 실패 0**과 **병목이 어디였는가**다
 
 ## 11. 컴파일 · 테스트 · CI 명령
 
