@@ -319,10 +319,10 @@ WebSocket 핸드셰이크 실패, Kafka consumer 리밸런스 중 유실, Inbox 
 
 근거: `websocket-gateway/.../stomp/exception/StompChatMessageExceptionHandler.java`, `websocket-gateway/.../config/ExecutorConfig.java`, `websocket-gateway/.../chatmessage/adapter/out/stomp/{BatchingChatMessageBroadcastAdapter,DirectStompChatMessageAckAdapter}.java`, `websocket-gateway/.../chatroom/adapter/out/stomp/CoalescingMyChatRoomBadgeAdapter.java`, `websocket-gateway/.../chatmessage/application/service/ChatMessageSendService.java`, `chat/chat-application/.../service/{ChatMessageCommandService,ChatMessageEventService}.java`, `common/common-outbox/.../{OutboxService,JpaOutbox}.java`. 용량·큐 산정은 [`decisions/ADR-003-chat-capacity-target-and-connection-budget.md`](decisions/ADR-003-chat-capacity-target-and-connection-budget.md).
 
-### 15.5 이 표에서 출발해 고친 것들 (2026-08-27 ~ 08-28)
+### 15.5 이 표에서 출발해 고친 것들
 
 실패 경로를 먼저 적어두고, 부하테스트로 **어느 경로가 실제로 터지는지** 확인한 뒤 하나씩 걷어냈다.
-발견 과정·수치·판단 근거는 [`chat/load-test-results/chatmessage/websocket-gateway/2026-08-28/README.md`](../chat/load-test-results/chatmessage/websocket-gateway/2026-08-28/README.md).
+발견 과정·수치·판단 근거는 [`chat/load-test-results/chatmessage/websocket-gateway/README.md`](../chat/load-test-results/chatmessage/websocket-gateway/README.md).
 
 | 어느 실패 경로 | 무엇을 했나 | PR |
 |---|---|---|
@@ -334,8 +334,17 @@ WebSocket 핸드셰이크 실패, Kafka consumer 리밸런스 중 유실, Inbox 
 | outbound 큐 적체 | 방 단위 배칭 | #265 |
 | 거절 내역을 모름 | 거절된 태스크의 목적지를 태그로 | #266 |
 | broker 큐 거절 — ACK | ACK 를 이 채널에서 뺐다 | #267 |
+| gRPC deadline · 저장 지연 | 멤버십 갱신을 bulkWrite 한 번으로 (왕복 302회 → 1회) | #270 |
+| 〃 | 브로드캐스트 이벤트에서 멤버 목록 제거 (outbox 행 크기를 방 크기와 분리) | #271 |
 
-**앞의 넷은 "왜 스레드를 만져도 안 바뀌었나"의 답이고, 뒤의 둘이 실제로 자릿수를 바꿨다.**
-좌변(처리 능력)이 아니라 우변(요구량)을 깎아야 했다.
+**앞의 넷은 좌변(처리 능력)을 늘리려 한 것이고 자릿수를 바꾸지 못했다.** 우변(요구량)을
+깎은 conflation·배칭이 바꿨다.
+
+**#270 #271 은 다시 다른 축이다.** 팬아웃을 걷어내고 방 멤버를 302명으로 올리자
+**접속자 수가 아니라 방 멤버 수에 비례하는 쓰기 비용**이 드러났다. 멤버 2명일 때는
+보이지 않던 경로다.
+
+지연을 마지막까지 붙들고 있던 것은 코드가 아니라 **GC 설정**이었다 — 컨테이너 메모리가
+1,792MB 미만이면 JVM 이 조용히 SerialGC 를 고르고, full GC 가 초 단위로 멈춘다.
 
 ---

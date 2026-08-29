@@ -1,0 +1,5 @@
+=== warmup VU=20 MESSAGE_COUNT=30 ===
+시작: 2026-08-29 23:03:12
+gateway=crypto-websocket-gateway-blue-1  chat=crypto-chat-service-green-1
+종료: 2026-08-29 23:05:31
+측정 중 swapin: 6220 MB
