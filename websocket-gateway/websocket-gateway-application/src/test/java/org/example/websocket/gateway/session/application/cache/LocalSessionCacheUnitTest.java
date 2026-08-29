@@ -18,6 +18,9 @@ class LocalSessionCacheUnitTest {
     private final String sessionId = "session-1";
     private final String otherSessionId = "session-2";
 
+    private final String roomId = "room-1";
+    private final String otherRoomId = "room-2";
+
     @BeforeEach
     void setUp() {
         sut = new LocalSessionCache();
@@ -188,5 +191,87 @@ class LocalSessionCacheUnitTest {
 
         // then
         assertThat(sut.findAckSubscriptionId(sessionId)).isNull();
+    }
+
+    @Test
+    @DisplayName("방을 구독하면 해당 방에 로컬 구독자가 있다고 판단한다")
+    void registerRoomSubscription() {
+        // given
+        sut.register(sessionId, userId);
+
+        // when
+        sut.registerRoomSubscription(sessionId, "sub-1", roomId);
+
+        // then
+        assertThat(sut.hasLocalSubscriber(roomId)).isTrue();
+        assertThat(sut.hasLocalSubscriber(otherRoomId)).isFalse();
+    }
+
+    @Test
+    @DisplayName("구독을 해제하면 로컬 구독자가 없다고 판단한다")
+    void removeRoomSubscription() {
+        // given
+        sut.register(sessionId, userId);
+        sut.registerRoomSubscription(sessionId, "sub-1", roomId);
+
+        // when
+        sut.removeRoomSubscription(sessionId, "sub-1");
+
+        // then
+        assertThat(sut.hasLocalSubscriber(roomId)).isFalse();
+    }
+
+    @Test
+    @DisplayName("같은 방을 구독한 세션이 남아 있으면 하나를 해제해도 로컬 구독자로 남는다")
+    void removeRoomSubscriptionKeepingOtherSession() {
+        // given
+        sut.register(sessionId, userId);
+        sut.register(otherSessionId, otherUserId);
+        sut.registerRoomSubscription(sessionId, "sub-1", roomId);
+        sut.registerRoomSubscription(otherSessionId, "sub-1", roomId);
+
+        // when
+        sut.removeRoomSubscription(sessionId, "sub-1");
+
+        // then
+        assertThat(sut.hasLocalSubscriber(roomId)).isTrue();
+    }
+
+    @Test
+    @DisplayName("한 세션이 같은 방을 두 구독으로 열었으면 하나만 해제해도 로컬 구독자로 남는다")
+    void removeRoomSubscriptionKeepingOtherSubscription() {
+        // given
+        sut.register(sessionId, userId);
+        sut.registerRoomSubscription(sessionId, "sub-1", roomId);
+        sut.registerRoomSubscription(sessionId, "sub-2", roomId);
+
+        // when
+        sut.removeRoomSubscription(sessionId, "sub-1");
+
+        // then
+        assertThat(sut.hasLocalSubscriber(roomId)).isTrue();
+    }
+
+    @Test
+    @DisplayName("세션을 제거하면 그 세션이 구독하던 방도 함께 정리된다")
+    void removeClearsRoomSubscriptions() {
+        // given
+        sut.register(sessionId, userId);
+        sut.registerRoomSubscription(sessionId, "sub-1", roomId);
+        sut.registerRoomSubscription(sessionId, "sub-2", otherRoomId);
+
+        // when
+        sut.remove(sessionId);
+
+        // then
+        assertThat(sut.hasLocalSubscriber(roomId)).isFalse();
+        assertThat(sut.hasLocalSubscriber(otherRoomId)).isFalse();
+    }
+
+    @Test
+    @DisplayName("등록되지 않은 구독을 해제해도 예외가 발생하지 않는다")
+    void removeRoomSubscriptionWhenNotRegistered() {
+        // expect
+        assertDoesNotThrow(() -> sut.removeRoomSubscription(sessionId, "sub-1"));
     }
 }

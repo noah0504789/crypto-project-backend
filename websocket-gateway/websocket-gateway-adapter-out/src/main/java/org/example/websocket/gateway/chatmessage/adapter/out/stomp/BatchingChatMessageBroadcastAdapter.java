@@ -74,14 +74,14 @@ public class BatchingChatMessageBroadcastAdapter implements ChatMessageBroadcast
                 .register(registry);
     }
 
-    /** 반환값은 "접수했다"는 뜻이다. 로컬 멤버 판정은 여기서만 가능하다 — 창이 닫히면 memberIds 가 없다. */
+    /** 반환값은 "접수했다"는 뜻이다. */
     @Override
     public boolean broadcast(ChatMessageBroadcastCommand command, String txId) {
         if (!properties.enabled()) {
             return delegate.broadcast(command, txId);
         }
 
-        if (!delegate.hasAnyLocalMember(command.memberIds())) {
+        if (!delegate.hasLocalSubscriber(command.roomId())) {
             return false;
         }
 
