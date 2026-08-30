@@ -40,22 +40,9 @@ public class DatasourceConfig {
     }
 
     /**
-     * 물리 커넥션 획득을 첫 statement 시점까지 미룬다.
-     *
-     * <p>{@code ChatMessageCommandService.save} 는 {@code @Transactional} 안에서
-     * {@code chatRoomPersistencePort.findById}(Mongo)를 먼저 호출한 뒤 outbox 를 INSERT 한다.
-     * lazy proxy 가 없으면 트랜잭션 시작과 동시에 커넥션을 잡아 <b>Mongo 왕복 내내 커넥션을
-     * 붙들고 있다.</b> 실제 SQL 은 수 ms 인데 점유는 그 몇 배가 된다.
-     *
-     * <p>2026-08-27 부하 측정(VU 60, 60 msg/s)에서 이 구조가 병목으로 드러났다 —
-     * {@code hikaricp_connections_usage_seconds_max} 5.139초, {@code acquire_seconds_max} 5.343초,
-     * {@code connections_timeout_total} 360건. 그 360건이 저장 실패로 이어져 브로드캐스트
-     * 유실 10.06%(21,720/216,000)를 만들었고, 같은 실행에서 STOMP outbound 거절은 0건이었다.
-     * 즉 병목은 팬아웃이 아니라 커넥션 점유시간이었다.
-     *
-     * <p>market 은 Read Replica 라우팅을 배선하면서 같은 프록시를 이미 쓰고 있다
-     * (→ {@code docs/modules/MARKET.md §10}). 그쪽은 라우팅 결정 시점을 statement 로 미루는 것이
-     * 목적이었고, 점유시간 단축은 같은 프록시가 주는 다른 효과다.
+     * 물리 커넥션 획득을 첫 statement 로 미룬다. {@code ChatMessageCommandService.save} 가
+     * 트랜잭션 안에서 Mongo 를 왕복하므로, 이게 없으면 그 왕복 내내 커넥션을 붙든다.
+     * 배경·실측은 {@code docs/modules/CHAT.md} §15, 커넥션 예산은 ADR-003 §2.
      */
     @Bean
     @Primary

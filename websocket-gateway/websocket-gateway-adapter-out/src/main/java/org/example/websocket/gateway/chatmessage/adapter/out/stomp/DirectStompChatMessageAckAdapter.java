@@ -21,7 +21,9 @@ import org.springframework.stereotype.Component;
 import java.util.Set;
 
 /**
- * ACK 를 brokerChannel 없이 clientOutboundChannel 로 직접 보낸다. 근거는 {@code TODO.md} 5.8-a.
+ * ACK 를 brokerChannel 없이 clientOutboundChannel 로 직접 보낸다. 도입 근거는 PR #267 —
+ * {@code convertAndSendToUser} 가 사용자 목적지를 세션 수만큼 brokerChannel 로 되돌려
+ * 거절된 broker 태스크의 97% 가 ACK 였다.
  *
  * <p>구독 ID 가 없으면 클라이언트가 프레임을 매칭하지 못하므로, 하나라도 빠지면 기존 경로로 넘긴다.
  */

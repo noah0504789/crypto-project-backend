@@ -19,31 +19,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 뱃지는 "내용"이 아니라 "상태"다. 방 하나에 100ms 사이 30건이 들어와도
- * 마지막 1건만 보내면 화면 결과가 같다. 시세 피드에서 말하는 conflation 이며,
- * 배칭(전부 묶어 전달)과 달리 <b>구간의 마지막 1건만 남기고 나머지를 버린다.</b>
- *
- * <p>이 프로젝트에 같은 패턴이 이미 있다 — {@code UpbitTickerCollectService} 가
- * {@code groupBy(code).sample(7s).onBackpressureLatest()} 로 종목별 시세를 같은 방식으로 줄인다.
- * 거기는 WebFlux 라 {@code Flux.sample} 이 바로 붙지만, 게이트웨이는 서블릿 기반이고
- * 뱃지 유입이 Kafka 컨슈머 콜백(블로킹)이라 {@code Flux} 가 없다. 리액티브 파이프라인을
- * 새로 세워 얻는 것이 {@code sample} 하나뿐이라 맵 + 스케줄러로 직접 구현한다.
- *
- * <p>다만 {@code sample} 과 동작이 완전히 같지는 않다. {@code groupBy} 는 그룹마다 타이머가
- * 따로 돌고 {@code flatMap} 으로 그룹 간 병렬이지만, 여기는 전역 타이머 하나에 단일 스레드가
- * 전 방을 순회한다. 방 수가 많아지면 타이머 분산과 병렬화를 검토해야 한다.
- *
- * <p>{@link StompMyChatRoomBadgeAdapter} 는 멤버마다 {@code convertAndSendToUser} 를 호출하므로
- * brokerChannel 태스크가 메시지당 O(멤버수)다. 2026-08-28 측정(VU 80, 방 1개, 초당 80건) 기준
- * 뱃지가 broker 태스크의 98.8%(6,400/초)를 차지했고 broker 거절 75,694건의 주원인이었다.
- * 방 단위로 합치면 창 200ms 에서 80 라운드/초가 5 라운드/초가 된다.
- *
- * <p>합치기가 가능한 이유는 payload 에 개인별 값이 없기 때문이다 —
- * {@code StompMyChatRoomBadgePayload(roomId, lastMsgContent, lastMsgCreatedAt)}.
- * 개인별 필드가 생기면 이 최적화는 성립하지 않는다.
- *
- * <p>대가: Kafka 오프셋이 실제 전송보다 먼저 커밋된다. 게이트웨이가 죽으면 버퍼에 있던 뱃지는
- * 사라진다. 뱃지는 방 목록 재조회로 회복되므로 허용한다. 회복 불가능한 ACK 에는 쓰지 않는다.
+ * 뱃지를 방 단위 시간창으로 합쳐 brokerChannel 태스크 수를 줄인다. 뱃지는 내용이 아니라
+ * 상태라 구간의 마지막 1건만 남기고 버린다 — 성립 근거와 대가는
+ * {@code docs/modules/WEBSOCKET_GATEWAY.md} §6, 도입 근거는 PR #263.
  */
 @Slf4j
 @Primary
@@ -124,17 +102,14 @@ public class CoalescingMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
 
         long windowMs = properties.windowMs();
 
-        // scheduleAtFixedRate 가 아니라 scheduleWithFixedDelay 다. brokerChannel 이 CallerRunsPolicy 라
-        // flush 스레드가 broker 태스크를 직접 실행하며 창보다 오래 걸릴 수 있는데, fixedRate 면
-        // 밀린 실행이 연달아 터져 부하를 키운다. fixedDelay 는 느려진 만큼 창이 자연히 넓어져
-        // 합치는 양이 늘고 스스로 배압이 된다.
+        // fixedRate 가 아니라 fixedDelay 다. brokerChannel 이 CallerRunsPolicy 라 flush 가 창보다
+        // 오래 걸릴 수 있는데, fixedRate 면 밀린 실행이 연달아 터진다.
         scheduler.scheduleWithFixedDelay(this::flush, windowMs, windowMs, TimeUnit.MILLISECONDS);
 
         log.info("[badge] coalescing enabled. windowMs={}", windowMs);
     }
 
-    // 창을 한 번 닫고 대기 중인 방을 전부 내보낸다. 스케줄러가 주기적으로 부르고,
-    // 테스트는 스케줄러 없이 직접 불러 결과를 확인한다. 여러 번 불러도 안전하다.
+    // 스케줄러가 주기적으로 부르고 테스트는 직접 부른다. 여러 번 불러도 안전하다.
     public void flush() {
         try {
             for (String roomId : pending.keySet()) {
