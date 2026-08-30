@@ -96,7 +96,7 @@
 
 | 서비스 | 실행 모듈 | app name | 저장소/외부 | gRPC 서버 | gRPC 클라이언트 소비 |
 |---|---|---|---|---|---|
-| user | user-bootstrap | user-service | MySQL(Read Replica 인프라) | `user.v1` | — |
+| user | user-bootstrap | user-service | MySQL | `user.v1` | — |
 | oauth2-authorization-server | …-bootstrap | oauth2-authorization-server | Redis, Vault Transit | `auth.v1` | `user.v1` |
 | oauth2-client | oauth2-client-bootstrap | oauth2-client | 외부 OAuth(Google/Kakao) | — | `auth.v1`, `user.v1` |
 | spring-cloud-api-gateway | (단일) | api-gateway | — | — | `auth.v1` |
@@ -167,7 +167,7 @@
   - `chat_room`: CompoundIndex `{category, msgCnt, _id}` partial `{deleted:false}`, `title` unique partial. (`chat/chat-adapter-out/.../MongoChatRoom.java`)
   - `chat_message`, `chat_room_membership`, `notification`, `notification_recipient`.
 - **Redis Cluster**: 6노드 구성(`git-config-repo/infrastructure/redis.yml`). 키는 `common-core/RedisKey` enum으로 중앙 관리. Cluster Hash Tag로 슬롯 고정: `{chat}`, `{auth}`, `{session}`.
-- **Read Replica 인프라**: `common-jpa`에 라우팅 DataSource가 구현되어 있고 user 서비스에 write/read Hikari + `ReplicationRoutingDataSource`가 구성됨(`user/user-adapter-out/.../infra/config/DataSourceConfig.java`). 단, user에는 `@ReadReplica`가 적용된 지점이 없어 조회도 write 노드로 라우팅된다(라우팅 트리거는 `@ReadReplica`+Aspect이며 `@Transactional(readOnly=true)`만으로는 read로 가지 않음). 실제 `@ReadReplica` 적용 현황은 §8.6과 §11, 상세는 `docs/modules/USER.md §10` 참조.
+- **Read Replica 라우팅**: `common-jpa`에 라우팅 DataSource가 구현되어 있고, 이를 실제로 배선한 서비스는 **market 하나**다(`market/market-adapter-out/.../infra/config/DatasourceConfig.java`: write/read Hikari + `ReplicationRoutingDataSource` + `LazyConnectionDataSourceProxy`, 상세는 `docs/modules/MARKET.md §10`). **user는 `spring.datasource.write` 단일 Hikari만 구성**하며 read pool도 라우팅 DataSource도 두지 않는다(`user/user-adapter-out/.../infra/config/DataSourceConfig.java`, 상세는 `docs/modules/USER.md §10`). 라우팅 트리거는 `@ReadReplica`+Aspect이며 `@Transactional(readOnly=true)`만으로는 read로 가지 않는다(§8.6).
 
 ---
 
@@ -229,7 +229,7 @@ Spring `ApplicationEventPublisher`를 직접 쓰지 않고 `EventUtils.raise(lis
 - `outbox-poller`가 `@Scheduled`로 general/broadcast/dlq를 분리 폴링 → `KafkaEventPublisher`(StreamBridge)로 발행. DLQ 폴러 on/off는 `DlqPollerController`.
 
 ### 8.6 Read Replica 라우팅
-`@ReadReplica` + `ReadReplicaAspect`(이미 write 트랜잭션이 활성이면 라우팅하지 않음) + `DataSourceContextHolder`(ThreadLocal 중첩 카운팅) + `ReplicationRoutingDataSource`. `@Transactional(readOnly=true)`만으로는 라우팅되지 않는다. 실제 `@ReadReplica` 적용 지점은 §11 참조.
+`@ReadReplica` + `ReadReplicaAspect`(이미 write 트랜잭션이 활성이면 라우팅하지 않음) + `DataSourceContextHolder`(ThreadLocal 중첩 카운팅) + `ReplicationRoutingDataSource`. `@Transactional(readOnly=true)`만으로는 라우팅되지 않는다. 실제 `@ReadReplica` 적용 지점은 `market/.../MarketQueryService.getMarkets()` 1곳이다(§6).
 
 ### 8.7 Redis Key 관리
 `common-core/RedisKey` enum이 `pattern` + `expectedArgCount`를 보유하고 `keyFor(...)`가 인자 개수를 검증. Hash Tag `{chat}`/`{auth}`/`{session}`로 클러스터 슬롯 고정. 캐시 조회 실패는 `CacheFailOpen`으로 fail-open 처리 가능.

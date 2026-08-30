@@ -129,12 +129,6 @@ SUBSCRIBE /topic/chat/{roomId}
 `MarketCommandUseCase.changeMarkets`(카탈로그 create/update/delete + `market-broadcast-event` 캐시 무효화)가 구현·테스트되어 있으나 **인바운드 어댑터(REST/gRPC/Kafka)에 연결되어 있지 않다**. 현재 마켓 카탈로그는 `market-bootstrap/.../sql/schema.sql`의 시드 INSERT로만 채워진다. 관리 엔드포인트/운영 반영 경로 도입 여부 또는 현재가 의도인지 확인 필요.
 `[출처: docs/modules/MARKET.md §12]`
 
-### user
-
-#### 2.5 ARCHITECTURE.md §6의 user Read Replica 서술과 코드 불일치
-`ARCHITECTURE.md` §6이 user 서비스에 read Hikari + `ReplicationRoutingDataSource`가 구성됐다고 적었으나, `user/user-adapter-out/.../infra/config/DataSourceConfig.java`에는 write DataSource 하나뿐이다(read pool도 routing DataSource도 없다). §8.6 · §11 · `docs/modules/USER.md` §10이 서로를 참조하는 구조라 한 줄만 고치면 나머지 불일치가 남는다. market에는 실제로 `DatasourceConfig`(write+read+routing) + `@ReadReplica` 적용 지점이 있어 서술이 맞으므로, **user만 틀린 것인지 전수 대조 후 정정**한다. ADR-003의 커넥션 예산은 코드 기준(user는 write pool 하나, master write 합계 165)으로 산정했으므로 영향 없다.
-`[출처: 2026-08-27 ADR-003 커넥션 예산 산정 중 코드 대조]`
-
 ---
 
 ## 3. 계약 · 직렬화
