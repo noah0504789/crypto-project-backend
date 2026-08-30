@@ -19,6 +19,8 @@
 | [CI_CD.md](CI_CD.md) | CI(affected 빌드)·CD(배포)·Config 재배포 파이프라인 |
 | [TESTING.md](TESTING.md) | 테스트 4계층(단위·통합·E2E·부팅 스모크), Testcontainers 하니스, 부팅 스모크 설계 |
 | [SCENARIO_TEST.md](SCENARIO_TEST.md) | 화면 카테고리별 시연/연동 테스트 시나리오 |
+| [../chat/load-test-results/.../README.md](../chat/load-test-results/chatmessage/websocket-gateway/README.md) | 채팅 팬아웃 부하테스트 — 측정 조건·결과·고친 것·한계(현재 유일한 측정 기록) |
+| [../websocket-gateway/k6/README.md](../websocket-gateway/k6/README.md) | 부하테스트 하네스(k6 스크립트·실행 방법·측정 시 지킬 것) |
 | [decisions/README.md](decisions/README.md) | 시스템 전반 기술 선택의 이유와 결과(ADR) |
 | [../README.md](../README.md) | 프로젝트 소개(기획·외부 API·화면 시연·문서 지도) |
 | [../TODO.md](../TODO.md) | 미해결 확인/결정 항목 단일 관리처 |
