@@ -23,7 +23,8 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * 같은 방의 메시지를 시간창으로 묶어 brokerChannel 태스크 수를 줄인다.
- * 설계 근거·수치·대가는 2026-08-28 부하테스트 문서 §7-1.
+ * 도입 근거는 PR #265, 유지 이유와 실측(프레임당 24~34건)은
+ * {@code chat/load-test-results/chatmessage/websocket-gateway/README.md} §3-0.
  */
 @Slf4j
 @Primary

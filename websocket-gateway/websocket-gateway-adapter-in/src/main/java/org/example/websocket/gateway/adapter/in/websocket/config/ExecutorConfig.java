@@ -52,10 +52,8 @@ public class ExecutorConfig {
         return executor;
     }
 
-    // gRPC save 응답 콜백(ACK 전송)이 도는 풀. 지정하지 않으면 gRPC 기본 캐시 풀에서 돌아
-    // 부하 시 스레드가 상한 없이 늘어난다. 큐가 차면 호출 스레드가 직접 처리해 ACK를 버리지 않는다.
-    // 팬아웃 풀과 달리 shedding 하지 않는다 — ACK를 버리면 발신자가 전송 성공 여부를 알 수 없고,
-    // ACK 발생량은 사용자 수에 선형(팬아웃처럼 제곱이 아님)이라 CallerRuns 배압이 오래 가지 않는다.
+    // gRPC 응답 콜백이 도는 풀. 지정하지 않으면 gRPC 기본 캐시 풀이라 스레드가 상한 없이 는다.
+    // 이 풀만 버리지 않는 이유는 ADR-003 「지키는 것」.
     @Bean("chatMessageAckExecutor")
     public ThreadPoolTaskExecutor chatMessageAckExecutor(MeterRegistry registry, StompExecutorProperties properties) {
         ThreadPoolTaskExecutor executor =
@@ -66,12 +64,8 @@ public class ExecutorConfig {
         return executor;
     }
 
-    // 기본 AbortPolicy 를 쓰지 않는다. AbortPolicy 는 예외 메시지를 만들며 ThreadPoolExecutor.toString() 을
-    // 호출하고, 그 안에서 mainLock 을 잡는다. 정상 제출 경로는 이 락을 쓰지 않고 거부 경로만 쓰므로,
-    // 거부가 폭주하면 제출 스레드가 전부 이 락에서 직렬화되고 느려진 제출이 큐를 더 밀어 거부를 늘린다.
-    // JFR 30초 녹화에서 락 대기 3,637건 중 3,613건이 이 경로였다.
-    // 로그가 아니라 카운터를 남긴다 — 폭주 구간에서는 로깅 자체가 다음 병목이 된다.
-    // 카운터를 미리 만들어 둔다. 거절 폭주 구간에서 매번 빌더를 도는 것 자체가 다음 병목이 된다.
+    // AbortPolicy 를 쓰지 않는 이유는 ADR-003 「지키는 것」. 로그도 남기지 않는다 — 폭주 구간에서
+    // 로깅이 다음 병목이 된다. 카운터는 기동 시 미리 만든다. 거절 때마다 빌더를 도는 것도 마찬가지다.
     private RejectedExecutionHandler sheddingHandler(MeterRegistry registry, String poolName) {
         Map<String, Counter> counters = new HashMap<>();
 
@@ -86,9 +80,8 @@ public class ExecutorConfig {
         return (task, executor) -> counters.get(classify(task)).increment();
     }
 
-    // 채널 하나를 ACK·뱃지·브로드캐스트가 함께 쓰므로 거절 수만으로는 무엇이 사라졌는지 알 수 없다.
-    // 피해가 다르다 — 브로드캐스트 1건은 방 전원, ACK 1건은 발신자가 결과를 영영 모른다.
-    // 태스크는 SendTask 이고 MessageHandlingRunnable 로 원본 메시지를 꺼낼 수 있다(공개 API).
+    // 채널 하나를 ACK·뱃지·브로드캐스트가 함께 쓴다. 무엇이 버려졌는지 갈라 보려고 목적지로 분류한다
+    // (피해가 다르다 — SERVICE_FLOWS.md §15). MessageHandlingRunnable 은 원본 메시지를 꺼내는 공개 API 다.
     private String classify(Runnable task) {
         if (!(task instanceof MessageHandlingRunnable runnable)) {
             return "unknown";
@@ -120,8 +113,7 @@ public class ExecutorConfig {
         return "other";
     }
 
-    // allowCoreThreadTimeOut(false): core == max 운용이라 유휴 타임아웃은 스레드를 죽였다 다시 만들기만 한다.
-    // 이전 측정에서 거부 급증 구간의 스레드 생성이 30초에 919건까지 올랐다. keepAlive 는 같은 이유로 두지 않는다.
+    // core == max 라 유휴 타임아웃은 스레드를 죽였다 다시 만들기만 한다(이전 측정에서 30초에 919건 생성).
     private ThreadPoolTaskExecutor newExecutor(
             String threadNamePrefix,
             StompExecutorProperties.Pool pool,
