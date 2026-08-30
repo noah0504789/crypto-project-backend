@@ -1,7 +1,7 @@
 # TESTING — 테스트 구조 기준 문서
 
 > - **문서 상태**: 검증 완료
-> - **기준 일자**: 2026-08-01
+> - **기준 일자**: 2026-08-01 (§7 커버리지·§8 개수는 2026-08-30 재확인)
 > - **검증 기준**: 실제 테스트 코드(`**/src/test`), `common-test`, `build-logic`, Config Repository(`git-config-repo/`)
 
 이 문서는 이 저장소의 테스트를 **어떤 층으로 나누고, 각 층을 어떤 스타일로 작성하며, 인프라(Testcontainers)와 부팅 검증을 어떤 공통 장치로 반복 없이 구성하는지**를 정리한다. 짧은 실행/작성 규칙은 [`../.claude/rules/testing.md`](../.claude/rules/testing.md)에 있고, 여기서는 구조와 근거를 다룬다. 문서와 코드가 어긋나면 코드가 기준이다.
@@ -146,7 +146,7 @@
 | market | ✓ | ✗ | ✓ | ✓ | JPA 어댑터는 mock(단위). DB 통합은 부팅 스모크로만 |
 | market-detection | ✓ | ✓ | — | ✓ | 도메인 계산 단위 + Streams `TopologyTestDriver`. 수집 테스트는 upbit-connector로 이동 |
 | notification | ✓ | ✓ | ✓ | ✓ | Mongo 리포지토리 Testcontainer 통합 |
-| websocket-gateway | ✓ | ✗ | ✗ | ✓ | 어댑터·세션 캐시 단위. 통합/E2E 미보유 |
+| websocket-gateway | ✓ | ✓ | ✗ | ✓ | 배칭·conflation·ACK 직접 전송·세션 캐시 단위, Rate Limit Redis Testcontainer 통합. E2E 미보유 |
 | oauth2-authorization-server | ✓ | ✓ | ✓ | ✓ | Redis 어댑터 통합, 토큰 엔드포인트 통합/E2E |
 | oauth2-client | ✓ | ✗ | ✓ | ✓ | 인증 흐름 E2E(`*E2ETest`) |
 | spring-cloud-api-gateway | ✓ | △ | ✓ | ✓ | 라우팅/보안/식별 전파 E2E, CORS slice(`GatewayCorsConfigTest`) |
@@ -161,7 +161,7 @@
 
 ## 8. 네이밍 정합화 (완료)
 
-전 테스트 클래스명을 §2.1 컨벤션에 맞춰 정리했다(112개: Unit 91 / Integration 12 / E2E 9). 층은 실제 구현(Mockito·Testcontainers·MockMvc/WebTestClient·@SpringBootTest)으로 판별했다. `BootSmokeTest`·헬퍼(`Test*Config`)·ArchUnit(`*ArchitectureTest`)은 대상에서 제외했다. 동작 변경 없는 이름 정리다.
+전 테스트 클래스명을 §2.1 컨벤션에 맞춰 정리했다(정리 시점 112개: Unit 91 / Integration 12 / E2E 9. 2026-08-30 기준 159개: Unit 122 / Integration 20 / E2E 17). 층은 실제 구현(Mockito·Testcontainers·MockMvc/WebTestClient·@SpringBootTest)으로 판별했다. `BootSmokeTest`·헬퍼(`Test*Config`)·ArchUnit(`*ArchitectureTest`)은 대상에서 제외했다. 동작 변경 없는 이름 정리다.
 
 ## 9. 관련 문서·규칙
 

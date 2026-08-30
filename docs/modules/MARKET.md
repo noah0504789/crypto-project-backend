@@ -128,7 +128,7 @@ proto: `protobuf/src/main/proto/market/v1/market-service.proto`. 서버 구현�
 
 - 쓰기: `MarketCommandService.changeMarkets`, `PriceAlertSettingCommandService.changeMySettings` 각 `@Transactional`(기본 `transactionManager`). `MarketCommandService`의 Market 변경과 공용 `JpaOutbox(catalog="event")` 저장은 동일 MySQL 서버·connection을 사용해 `market.*`와 `event.outbox`에 걸친 하나의 로컬 트랜잭션으로 커밋·롤백된다. market 계정에는 `event.outbox`의 `SELECT, INSERT` 권한이 필요하다.
 - `DatasourceConfig`: `spring.datasource.write`(mysql-primary)·`spring.datasource.read`(mysql-replica) 두 `HikariDataSource`를 만들고, `ReplicationRoutingDataSource`(`WRITE`/`READ` 라우팅) → `LazyConnectionDataSourceProxy`(`@Primary`)로 EMF에 바인딩한다. `JpaTransactionManager("transactionManager")`.
-- `LazyConnectionDataSourceProxy`는 라우팅 시점을 statement 로 미루는 것 외에 **물리 커넥션 점유시간을 줄이는 효과**도 갖는다. 트랜잭션 시작이 아니라 첫 statement 에서 커넥션을 잡으므로, 트랜잭션 안에 DB 외 I/O(Mongo·Redis·gRPC)가 있어도 그 왕복 동안 커넥션이 묶이지 않는다. chat 은 이 프록시가 없어 `@Transactional` 안의 Mongo 조회가 커넥션을 붙들었고, 2026-08-27 부하 측정에서 점유 5.139초·커넥션 타임아웃 360건으로 드러나 같은 프록시를 적용했다(→ `docs/decisions/ADR-003-chat-capacity-target-and-connection-budget.md`).
+- `LazyConnectionDataSourceProxy` 는 `@ReadReplica` 라우팅이 statement 시점에 결정되게 하려고 넣은 것이지만, **물리 커넥션 점유시간을 줄이는 효과**도 함께 갖는다 — 트랜잭션 시작이 아니라 첫 statement 에서 커넥션을 잡으므로 트랜잭션 안에 DB 외 I/O 가 있어도 그 왕복 동안 커넥션이 묶이지 않는다. 이 효과가 다른 서비스에서 문제가 된 사례와 커넥션 예산은 `docs/decisions/ADR-003-chat-capacity-target-and-connection-budget.md` §2, 미적용 서비스 점검은 `TODO.md` 4.7.
 - `MarketQueryService.getMarkets()`의 `@ReadReplica`는 이제 실제로 동작한다: `ReadReplicaAspect`가 read 스코프를 세팅하고, lazy proxy가 statement 시점에 `ReplicationRoutingDataSource`를 통해 read 노드로 라우팅한다(단, `@Cacheable` 캐시 히트 시에는 DB 자체를 타지 않는다). 이미 write 트랜잭션이 활성이면 write 우선(`ReadReplicaAspect`).
 
 ## 11. 검증 · 예외

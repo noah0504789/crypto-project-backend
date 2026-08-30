@@ -140,6 +140,8 @@ Outbox 패턴의 핵심 모듈. **비즈니스 DB write와 이벤트 기록을 �
 ```
 정확한 스크립트 호출 순서는 infra 저장소 소관이라 이 문서에서 코드로 검증하지 않는다(엔드포인트 계약만 기술). CD의 서비스별 전략(validated-recreate/blue-green)은 `docs/CI_CD.md §3`.
 
+**운영 주의.** `deploymentReadiness`는 in-memory `AtomicBoolean(false)`라 **프로세스가 뜰 때마다 초기화된다.** CD 를 거치지 않고 `docker start`·수동 재기동으로 올린 인스턴스는 컨테이너가 `Up` 이어도 `/actuator/health/readiness`가 `OUT_OF_SERVICE`이고 Eureka·LB 에서 제외된 채로 남는다. 컨테이너 상태만 보면 정상으로 보여 원인을 찾기 어렵다 — 복구는 `POST /internal/deployment/ready`(헤더 `X-Deploy-Token`)를 직접 호출한다.
+
 **주의.** 이 인증 필터는 `/internal/deployment/**`만 보호한다. 같은 `DEPLOY_TOKEN`을 쓰는 config server의 `/actuator/busrefresh`는 이 경로가 아니라 보호되지 않는다(→ `docs/CI_CD.md §4`, TODO 1.10).
 
 ## 6. 사용처(대표)

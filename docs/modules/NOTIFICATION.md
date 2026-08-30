@@ -93,7 +93,7 @@ market-detection: PriceAlertDetectedEvent  →  Kafka: price-alert-detected-even
   - 이전 페이지(`listRecipientsBefore`): 커서(`deliveredAt < ts` 또는 `= ts && _id < lastId`) — **`secondaryMongoTemplate`**(`secondaryPreferred`, replica read). 최신은 primary, 과거 페이지는 secondary로 부하 분리(유지).
 - **master 본문(`Notification`) = Redis 1차 캐시**: 한 알림이 여러 수신자에게 fan-out되는 **공유·불변** 데이터라 캐싱 이득이 크다. `NotificationQueryService`가 recipient의 `notificationId`를 모아 `NotificationCachePort.findByIds`로 조회하고(hit 은 불변이라 그대로 사용), **캐시에 없는 id만** `findMastersByIds`(Mongo primary)로 재조회 후 warm-up한다. recipient 순서대로 조립한다. 키는 `RedisKey.NOTIFICATION_MASTER`(`{noti}:master:%s`), 조회 경로는 `@CacheFailOpen`으로 Redis 장애 시 Mongo 폴백(fail-open).
 - **생성 시 선적재(warm-up on create)**: `NotificationEventService.handle`이 fan-out 저장 후 **커밋 시점(afterCommit)** 에 master 를 캐시에 적재한다. master 는 불변이라 한 번 올려두면 갱신이 필요 없고, 조회 콜드 miss 를 없앤다(롤백 시 유령 항목 방지 위해 커밋 후 실행, 실패는 조회 lazy 적재로 흡수).
-- **긴 TTL(7일) + LFU 축출**: master 는 불변이라 TTL 은 "만료 방어"가 아니라 **콜드 항목 상한(안전망)** 역할이다. 실제 교체는 Redis 서버 **`maxmemory-policy`(권장 `volatile-lfu`)** 축출이 담당 — 자주 조회되는 master 만 상주하고 안 쓰이는 것은 자동 제거된다. 키 카디널리티가 크므로(알림당 1키) LFU 축출이 없으면 메모리가 무한 증가할 수 있어 **서버 정책 설정이 전제**다(→ 아래 서버 설정, [`../../TODO.md`](../../TODO.md) 5.2).
+- **긴 TTL(7일) + LFU 축출**: master 는 불변이라 TTL 은 "만료 방어"가 아니라 **콜드 항목 상한(안전망)** 역할이다. 실제 교체는 Redis 서버 **`maxmemory-policy`(권장 `volatile-lfu`)** 축출이 담당 — 자주 조회되는 master 만 상주하고 안 쓰이는 것은 자동 제거된다. 키 카디널리티가 크므로(알림당 1키) LFU 축출이 없으면 메모리가 무한 증가할 수 있어 **서버 정책 설정이 전제**다(→ 아래 서버 설정, [`../../TODO.md`](../../TODO.md) 5.1).
 - **cache stampede**: 불변 + 싼 조회(Mongo `_id in`) + 선적재 + 긴 TTL 이라 miss 자체가 드물고, 겹쳐도 **재조회 결과가 동일**(불변)하고 싸서 무해하다. 따라서 PER·분산락 같은 별도 장치를 쓰지 않는다. 훗날 특정 hot 키의 콜드 miss 폭풍이 실측되면 `SingleFlight`(in-process 중복 제거)를 reload 경로에 좁게 얹는다.
 - master 는 불변(생성만, soft-delete 커맨드 없음)이라 `NotificationCachePort.invalidate`(Lua `invalidateNotification`)는 대응만 제공하고 현재 호출부 없음(대기).
 - 포트의 `listLatestInboxItems`/`listInboxItemsBefore`(본문까지 조인한 기존 메서드)는 남아 있으나 조회 경로에서는 더 이상 쓰지 않는다.
@@ -102,7 +102,7 @@ market-detection: PriceAlertDetectedEvent  →  Kafka: price-alert-detected-even
 
 > **Redis 배선**: adapter-out `RedisConfig`(master 단일 커넥션·템플릿·Lua 빈), `RedisNotification`/`RedisNotificationCodec`. 운영 설정은 config server의 `notification-service` config name 목록에 **`redis`** 가 포함돼야 로드된다(`application.yml`에 반영).
 >
-> **Redis 서버 설정 요구(인프라)**: 긴 TTL + 다수 키 전략은 **`maxmemory` + `maxmemory-policy volatile-lfu`**(TTL 있는 키만 LFU 축출) 를 전제로 한다. 이는 **해당 Redis 클러스터를 공유하는 전 서비스(auth 토큰·session·chat)에 적용되는 전역 설정**이므로, 정책이 `noeviction`이면 메모리 포화 시 쓰기 에러가 난다. 현재 정책 확인·반영은 인프라 작업이다(→ TODO 5.2).
+> **Redis 서버 설정 요구(인프라)**: 긴 TTL + 다수 키 전략은 **`maxmemory` + `maxmemory-policy volatile-lfu`**(TTL 있는 키만 LFU 축출) 를 전제로 한다. 이는 **해당 Redis 클러스터를 공유하는 전 서비스(auth 토큰·session·chat)에 적용되는 전역 설정**이므로, 정책이 `noeviction`이면 메모리 포화 시 쓰기 에러가 난다. 현재 정책 확인·반영은 인프라 작업이다(→ TODO 5.1).
 
 ### 7.1 캐시 설계 결정 근거 (특성별 전략)
 

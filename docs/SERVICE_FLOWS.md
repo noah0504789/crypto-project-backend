@@ -242,6 +242,10 @@ notification KafkaNotificationBinder.priceAlertDetectedEventConsumer (price-aler
 
 ## 15. 채팅 메시지 실패 경로 — 구현됨
 
+> **원칙: 발신자가 결과를 모르는 실패를 만들지 않는다.**
+>
+> 실패해도 된다. 다만 **보낸 사람이 실패했다는 사실과 어느 메시지가 실패했는지**(`clientMessageId`)를 알아야 한다. 모르면 성공으로 오인하거나, 재전송해서 중복을 만든다. 아래 표에서 **발신자가 모르는 칸이 곧 남은 일**이다.
+
 부하 결과를 읽으려면 "무엇이 어디서 사라지는가"가 한곳에 있어야 한다. 실패 처리는 `StompChatMessageExceptionHandler`·`ChatMessageSendService`·`ChatMessageCommandService`·`ChatMessageEventService`·`OutboxService`·`ExecutorConfig`에 흩어져 있다.
 
 경계는 **chat gRPC `save` 성공 지점**이고, 그 전후로 성질이 완전히 다르다.

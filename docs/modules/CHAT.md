@@ -86,7 +86,7 @@ chat의 쓰기 경로는 **동기적으로 Redis 캐시에 반영하고 영속(M
 | `ChatMessageCommandService` | `chat-application/.../chatmessage/application/service/` | 메시지 save/hardDelete(§10), Outbox 3종 발행 + 캐시 |
 | `ChatMessageQueryService` | `chat-application/.../chatmessage/application/service/` | 메시지 목록 조회(캐시-우선, 미스 시 repair) |
 | `ChatMessageQueryRepairService` | `chat-application/.../chatmessage/application/service/` | 메시지 캐시 미스 복구(분산락 하에 range 로드 + 워밍업) |
-| `ChatMessageEventService` | `chat-application/.../chatmessage/application/service/` | 메시지 이벤트 비동기 영속(멱등) + 방 카운터/스코어 갱신, →DLQ |
+| `ChatMessageEventService` | `chat-application/.../chatmessage/application/service/` | 메시지 이벤트 비동기 영속(멱등) + 방 카운터/스코어 갱신(멤버 전원 스코어는 `upsertUnreadActivity` 의 UNORDERED bulkWrite 한 번, PR #270 — 멤버당 왕복으로 되돌리지 않는다), →DLQ |
 | `MyChatRoomScoreCalculator` | `chat-domain/.../chatroom/domain/service/` | 내 방 정렬 스코어(안읽음 가중치) |
 | `MongoChatMessageAdapter` / `MongoChatRoomAdapter` | `chat-adapter-out/.../persistence/` | `*PersistencePort` 구현(MongoDB) |
 | `RedisChatMessageAdapter` / `RedisChatRoomAdapter` | `chat-adapter-out/.../cache/` | `*CachePort` 구현(Redis Cluster) |
@@ -263,12 +263,16 @@ DB `chat`(authSource `chat`). `MongoConfig`가 커넥션 풀(min 20/max 200), `W
 ## 15. 스케줄러 · 트랜잭션 · 재시도
 
 - **스케줄러**(`ChatMessageScheduler`, `@Scheduled(cron="0 0 3 * * *")`): 매일 03:00, `CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX`를 `SCAN`하며 접근시각이 7일(`Duration.ofDays(7)`) 초과인 메시지를 방별 message zset과 access zset에서 제거한다. 실패 시 `ChatCacheException`. `@EnableScheduling`은 `ScheduleConfig`.
+- **커넥션 점유**: `DatasourceConfig` 가 `LazyConnectionDataSourceProxy` 로 write DataSource 를 감싼다. `ChatMessageCommandService.save` 는 트랜잭션 안에서 Mongo(방 조회)를 왕복하는데, 프록시가 없으면 트랜잭션 시작 시점에 MySQL 커넥션을 잡고 그 왕복 내내 붙들어 풀이 고갈된다(실측 점유 5.139초 · 타임아웃 360건 → 브로드캐스트 유실 10.06%, PR #257). **이 프록시를 걷어내지 않는다**(→ `docs/decisions/ADR-003-...md`).
 - **트랜잭션 경계**: 모든 Mongo write 경로는 named 매니저 `@Transactional("chatMongoTransactionManager")`. `ChatMessageCommandService`(save/hardDelete), `ChatMessageEventService`(persist), `ChatRoomEventService`의 leave/delete/cache-warm 핸들러가 사용. `chatroom` 명령 서비스(create/update/join/activity)는 트랜잭션 없이 Outbox+캐시로만 동작한다.
 - **재시도/보상**: `@Retryable`(`TemporaryChatPersistenceException`/`TemporaryChatCacheException`/`TemporaryOutboxPersistenceException`, maxAttempts 3, backoff 100ms×2) + `@Recover`. Recover는 각 이벤트별 DLQ 이벤트를 발행하며, DLQ 발행조차 실패하면 `[RECOVER-FALLBACK]` 로그만 남긴다(`RetryConfig`).
 
 ## 16. 확인 필요 항목
 
 미해결 확인/결정 항목은 [`../../TODO.md`](../../TODO.md)에서 통합 관리한다. chat 관련 항목:
+
+- **TODO 5.3-b** — 방별 순번 부재. `msgCnt` 는 비동기 핸들러에서 `$inc` 로 올라가 순번으로 쓸 수 없다(브로드캐스트 갭 감지의 선행 조건)
+- **TODO 4.7** — `LazyConnectionDataSourceProxy` 미적용 서비스 점검(chat 은 적용 완료, §15)
 
 
 ## 17. 테스트 현황
