@@ -139,7 +139,7 @@ class LocalSessionCacheUnitTest {
     }
 
     @Test
-    @DisplayName("같은 sessionId를 다른 userId로 다시 등록하면 sessionToUser는 최신 userId로 갱신된다")
+    @DisplayName("같은 sessionId를 다른 userId로 다시 등록하면 이전 userId에서는 그 세션이 사라진다")
     void registerSameSessionIdWithDifferentUser() {
         // given
         sut.register(sessionId, userId);
@@ -150,9 +150,54 @@ class LocalSessionCacheUnitTest {
         // then
         assertThat(sut.findUserId(sessionId)).isEqualTo(otherUserId);
         assertThat(sut.hasUser(otherUserId)).isTrue();
+        assertThat(sut.hasUser(userId)).isFalse();
+        assertThat(sut.findSessions(userId)).isEmpty();
+    }
 
-        // 현재 구현상 기존 userId의 userToSessions에는 sessionId가 남을 수 있음
-        assertThat(sut.hasUser(userId)).isTrue();
+    @Test
+    @DisplayName("세션과 구독 방 수를 셀 수 있다")
+    void counts() {
+        // given
+        sut.register(sessionId, userId);
+        sut.register(otherSessionId, otherUserId);
+        sut.registerRoomSubscription(sessionId, "sub-1", roomId);
+        sut.registerRoomSubscription(otherSessionId, "sub-2", otherRoomId);
+
+        // when
+        // then
+        assertThat(sut.sessionCount()).isEqualTo(2);
+        assertThat(sut.subscribedRoomCount()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("세션을 제거하면 세션 수와 구독 방 수가 함께 줄어든다")
+    void countsAfterRemove() {
+        // given
+        sut.register(sessionId, userId);
+        sut.registerRoomSubscription(sessionId, "sub-1", roomId);
+
+        // when
+        sut.remove(sessionId);
+
+        // then
+        assertThat(sut.sessionCount()).isZero();
+        assertThat(sut.subscribedRoomCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("같은 세션을 두 번 제거해도 방 레지스트리가 되살아나지 않는다")
+    void removeTwiceKeepsRoomRegistryClean() {
+        // given
+        sut.register(sessionId, userId);
+        sut.registerRoomSubscription(sessionId, "sub-1", roomId);
+        sut.remove(sessionId);
+
+        // when
+        sut.remove(sessionId);
+
+        // then
+        assertThat(sut.hasLocalSubscriber(roomId)).isFalse();
+        assertThat(sut.subscribedRoomCount()).isZero();
     }
 
     @Test

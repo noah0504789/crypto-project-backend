@@ -40,6 +40,15 @@ public class WebSocketSessionEventHandler {
                 .description("Current active WebSocket sessions")
                 .register(registry);
 
+        // 축출 없는 맵이라 크기를 노출한다. ws_active_sessions 와 벌어지면 세션 정리가 안 되고 있다는 신호다.
+        Gauge.builder("ws_local_sessions", localSessionCache, LocalSessionCache::sessionCount)
+                .description("Sessions tracked by this instance")
+                .register(registry);
+
+        Gauge.builder("ws_local_subscribed_rooms", localSessionCache, LocalSessionCache::subscribedRoomCount)
+                .description("Chat rooms with at least one local subscriber")
+                .register(registry);
+
         this.localSessionCache = localSessionCache;
         this.sessionLocationPort = sessionLocationPort;
         this.ackDestination = apiPathProperties.stomp().userDestinationPrefix()
