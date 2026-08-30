@@ -33,3 +33,9 @@ __pycache__/
 
 # k6 부하테스트 자격증명 (토큰·방 ID). k6.env.example 만 저장소에 둔다.
 k6.env
+
+# k6 발급 계정 — 파일 내용이 실제 서명된 토큰 300개다
+websocket-gateway/k6/accounts/
+# k6 실행 산출물 — 매 회차 쌓이는 작업 디렉터리(JFR 포함 70MB 규모).
+# 보존할 회차는 chat/load-test-results/ 로 골라 옮긴다.
+websocket-gateway/k6/results/

@@ -9,12 +9,27 @@ const stomp_host = __ENV.STOMP_HOST || ws_base_url.replace(/^wss?:\/\//, '');
 const origin = __ENV.ORIGIN || 'http://localhost:5173';
 const room_id = __ENV.ROOM_ID || '';
 
-// ===== tokens from env =====
-const token_user_1 = __ENV.TOKEN_USER_1 || '';
-const token_user_2 = __ENV.TOKEN_USER_2 || '';
+// ===== tokens =====
+// 계정을 VU 마다 따로 쓴다. 계정을 공유하면 한 계정에 세션이 VU 수만큼 붙어
+// convertAndSendToUser 가 세션 수만큼 증폭되고(ACK·뱃지), 계정 단위 rate limit 도
+// 실제와 다르게 걸린다. mint-test-users.py 가 만든 파일을 VU 순서로 나눠 준다.
+// 파일이 없으면 예전처럼 env 의 계정 2개로 떨어진다.
+// open() 은 이 스크립트 파일 기준 상대 경로다.
+const test_users_file = __ENV.TEST_USERS_FILE || '../accounts/test-users.json';
 
-const writer_id_1 = __ENV.WRITER_ID_1 || '';
-const writer_id_2 = __ENV.WRITER_ID_2 || '';
+const test_users = (function load_test_users() {
+  try {
+    const parsed = JSON.parse(open(test_users_file));
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+  } catch (error) {
+    // 파일 없음 — env 폴백으로 간다.
+  }
+
+  return [
+    { userId: __ENV.WRITER_ID_1 || '', token: __ENV.TOKEN_USER_1 || '' },
+    { userId: __ENV.WRITER_ID_2 || '', token: __ENV.TOKEN_USER_2 || '' },
+  ].filter((user) => user.token && user.userId);
+})();
 
 // ===== native websocket endpoint =====
 const ws_base_path = '/ws-native';
@@ -189,13 +204,13 @@ function resolve_sent_at_from_msg_id(msg_id) {
 export default function () {
   const vu = __VU;
 
-  const is_user_1 = vu % 2 === 0;
-  const access_token = is_user_1 ? token_user_1 : token_user_2;
-  const writer_id = is_user_1 ? writer_id_1 : writer_id_2;
-
-  if (!room_id || !access_token || !writer_id) {
-    throw new Error('ROOM_ID, TOKEN_USER_1/2, WRITER_ID_1/2를 실행 환경에 설정해야 함');
+  if (!room_id || test_users.length === 0) {
+    throw new Error(`ROOM_ID 와 계정이 필요함 — ${test_users_file} 또는 TOKEN_USER_1/2 · WRITER_ID_1/2`);
   }
+
+  const test_user = test_users[(vu - 1) % test_users.length];
+  const access_token = test_user.token;
+  const writer_id = test_user.userId;
 
   // 브라우저 Native WebSocket 요청과 맞춤.
   // access_token은 query string으로만 전달.
@@ -604,6 +619,12 @@ export function handleSummary(data) {
   const batch_avg = get_trend('batch_size', 'avg');
   const batch_max = get_trend('batch_size', 'max');
 
+  // 기대치를 VU 수로 잡으면 붙지 못한 VU 몫이 유실로 보인다. 실제로 붙어서 보낸
+  // 양(send_count)과 실제 구독자 수로 다시 잡아야 유실 0을 유실 0이라고 말할 수 있다.
+  const subscriptions_per_vu = 3;
+  const joined_vus = Math.round(total_subscribe_frame_count / subscriptions_per_vu);
+  const actual_expected_total = total_send_count * joined_vus;
+
   const percent = (value, total) => {
     if (!total) return '0.00%';
     return `${((value / total) * 100).toFixed(2)}%`;
@@ -625,8 +646,13 @@ export function handleSummary(data) {
 
 send_count: ${format_number(total_send_count)}
 subscribe_frame_count: ${format_number(total_subscribe_frame_count)}
+distinct_accounts: ${format_number(Math.min(num_vus, test_users.length))} / VU ${format_number(num_vus)}
+joined_vus: ${format_number(joined_vus)} / VU ${format_number(num_vus)}
 
-broadcast:
+broadcast(실참여 기준 — 붙지 못한 VU 를 유실로 세지 않는다):
+- total_count: ${format_number(total_count)} / ${format_number(actual_expected_total)} (${percent(total_count, actual_expected_total)})
+
+broadcast(VU 수 기준):
 - total_count: ${format_number(total_count)} / ${format_number(expected_total_count)} (${percent(total_count, expected_total_count)})
 - late_total_count: ${format_number(late_total_count)} / ${format_number(expected_total_count)} (${percent(late_total_count, expected_total_count)})
 - missing_total_count: ${format_number(missing_total_count)} / ${format_number(expected_total_count)} (${percent(missing_total_count, expected_total_count)})
