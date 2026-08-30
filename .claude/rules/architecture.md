@@ -47,8 +47,8 @@ contract · client · common 은 계약/공통
 ### Read Replica 라우팅
 - `@ReadReplica`가 명시적 read 라우팅 지시다. `@Transactional(readOnly=true)`만으로 read로 보내지 않는다.
 - 이미 write 트랜잭션이 활성이면 내부 `@ReadReplica`도 write 우선.
-- 변경 전 확인: `DataSourceContextHolder`, `ReadReplicaAspect`, `ReplicationRoutingDataSource`(`common/common-jpa/`), `user/.../infra/config/DataSourceConfig.java`.
-- 현재 `@ReadReplica` 실제 적용은 `market/.../MarketQueryService.getMarkets()` 1곳만 확인됨. user 서비스는 인프라만 있고 미적용 → **확인 필요(임의로 설계/버그로 판정하지 않는다)**.
+- 변경 전 확인: `DataSourceContextHolder`, `ReadReplicaAspect`, `ReplicationRoutingDataSource`(`common/common-jpa/`), `market/.../infra/config/DatasourceConfig.java`.
+- 현재 `@ReadReplica` 실제 적용은 `market/.../MarketQueryService.getMarkets()` 1곳이다. 라우팅 DataSource를 배선한 서비스도 market 하나이며, user는 write 단일 DataSource라 라우팅 대상이 아니다.
 
 ### Redis Key
 - Redis key는 `common-core/RedisKey` enum(pattern + expectedArgCount)으로 관리한다. 임의의 문자열 조립 금지.
