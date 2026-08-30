@@ -151,28 +151,19 @@ SUBSCRIBE /topic/chat/{roomId}
 
 ### CI/CD (공통)
 
-#### 4.7 fork PR 은 이미지 승격 경로를 못 탄다
-`ci.yml` 의 머지 승격은 PR 실행이 `pr-<번호>` 이미지를 레지스트리에 push 해둔 것을 전제로 한다. **fork PR 은 GitHub 이 시크릿을 주지 않아 push 가 불가능**하므로(보안 설계) 빌드만 하고 끝나며, 머지 시 승격 대상이 없어 풀빌드로 떨어진다. 현재는 모든 PR 이 같은 저장소 브랜치에서 오므로 실사용 영향이 없다.
-
-외부 기여를 받게 되면 표준 2단계 분리가 필요하다: PR 워크플로(시크릿 없음)가 이미지를 artifact 로 올리고, `workflow_run` 으로 트리거되는 별도 워크플로(base 브랜치 코드로 실행되어 시크릿 보유)가 그 artifact 를 내려받아 push 한다. PR 코드를 실행하지 않으므로 시크릿이 새지 않는다. **`pull_request_target` 은 쓰지 않는다** — 시크릿을 받지만 PR 코드를 체크아웃해 실행하면 그대로 탈취된다.
-`[출처: docs/CI_CD.md §2.2 / #207 설계 논의]`
-
 #### 4.8 Merge Queue 도입 검토
 현재는 PR 에서 한 번, 머지 후 또 한 번 CI 가 도는 구조를 **tree 해시 비교 + 이미지 승격**으로 우회하고 있다(`docs/CI_CD.md §2.1`). GitHub **Merge Queue** 는 머지 직전에 "머지된 결과" 를 만들어 CI 를 돌리고 통과해야 머지하므로, 머지 후 CI 가 **구조적으로 불필요**해진다. 우리가 우회한 문제의 정식 해법이다.
 
 도입하려면 룰셋에 merge queue 를 설정하고 `auto-pr.sh` 훅의 auto-merge 흐름(`gh pr merge --auto --squash`)과 맞물리는 부분을 함께 손봐야 한다. 승격 로직(`merge-ci` 의 `Resolve promotion source`)을 제거할 수 있는지도 함께 판단한다. 지금 구조가 동작하고 있으므로 급하지 않다.
 `[출처: docs/CI_CD.md §2.1 / #207 설계 논의]`
 
+---
+
 #### 4.9 upbit-connector 첫 배포 전 초기화 필요
 `cd.yml` 배포 대상 등록과 infra 저장소의 safe-recreate 스크립트는 추가됐다. 다만 스크립트가 rollback 기준으로 읽는 `service/.deploy/upbit-connector.current-image`(git 미추적)가 러너에 없으면 **첫 배포가 실패한다**. 최초 1회 현재 이미지 다이제스트로 생성해야 한다(스크립트가 안내 메시지를 출력한다). 생성 시점·값 확인 필요.
 `[출처: docs/modules/UPBIT_CONNECTOR.md §10]`
 
-#### 4.11 upbit-connector REST 조회 API 미구현(2단계)
-`upbit-connector`는 현재 WebSocket 수집·Kafka 발행만 한다. 도입 당시 합의한 2단계 — **Upbit REST 조회(캔들·호가 등)를 조합해 응답하는 API** — 는 아직 없다. 프론트 차트에 필요한 과거 데이터를 줄 곳이 없는 상태가 유지된다.
-- 착수 시 함께 볼 것: Upbit REST 요청 제한(공식 문서 기준 확인 필요)과 그 구현 위치, 응답 캐시(Redis reactive 여부), Gateway route·CORS(외부 계약 → `.claude/rules/external-contracts.md`).
-- **예외 처리 계층이 없다.** 이 서비스는 HTTP 엔드포인트가 없어 지금은 필요 없지만, REST를 열면 응답 형식을 맞출 곳이 필요하다. `common-web/GlobalExceptionHandler`는 MVC 어댑터(`*-adapter-in`)만 쓰고 서블릿 계열 예외를 다루므로 WebFlux에서 그대로 재사용할지, WebFlux 전용 advice(또는 `ErrorWebExceptionHandler`)를 둘지 확인 필요. `common-grpc-server`의 gRPC advice는 gRPC 서버가 없어 무관.
-- 설계 메모: 캔들은 `to` 파라미터로 과거를 거슬러 여러 번 호출해야 하며 `Flux.expand`로 표현 가능. 동일 구간 동시 요청은 `Mono.cache()`로 합칠 수 있다. 둘 다 미검증 아이디어다.
-`[출처: docs/modules/UPBIT_CONNECTOR.md §2·§6 / 모듈 도입 논의]`
+---
 
 #### 4.12 에러를 로그로만 삼키는 지점에 알림 경로가 없다
 여러 지점이 예외를 잡아 `log.error`만 남기고 흐름을 이어간다. 로그는 남지만 **아무도 모른다**. 현재 모니터링 스택은 Prometheus + Grafana + exporter뿐이고 **Alertmanager도 alert 룰도 없다**(infra 저장소 `monitoring/`).
@@ -198,6 +189,8 @@ SUBSCRIBE /topic/chat/{roomId}
 착수 시: 각 지점에 카운터를 먼저 심고(이름 규약 필요), 그 다음 룰·채널을 정한다. 카운터 없이 룰부터 만들 수 없다.
 `[출처: 2026-08-19 전체 `log.error` 스캔 / infra `monitoring/` 구성 확인]`
 
+---
+
 #### 4.13 서킷 브레이커 도입 검토
 
 gRPC 호출에 deadline(chat 10s, 나머지 3.5s)은 있지만 **연속 실패 시 호출을 끊는 장치가 없다.**
@@ -222,6 +215,56 @@ deadline이 무한 대기는 이미 막고 있고, gRPC 호출 깊이가 1단계
 재시도와의 조합 순서(재시도가 브레이커 카운터를 채워 실패를 증폭), 브레이커 상태는 인스턴스별이라는 점.
 라이브러리는 Resilience4j(Spring Boot 3 표준).
 `[출처: 2026-08-22 부하테스트 후속 논의]`
+
+---
+
+#### 4.14 fork PR 은 이미지 승격 경로를 못 탄다
+`ci.yml` 의 머지 승격은 PR 실행이 `pr-<번호>` 이미지를 레지스트리에 push 해둔 것을 전제로 한다. **fork PR 은 GitHub 이 시크릿을 주지 않아 push 가 불가능**하므로(보안 설계) 빌드만 하고 끝나며, 머지 시 승격 대상이 없어 풀빌드로 떨어진다. 현재는 모든 PR 이 같은 저장소 브랜치에서 오므로 실사용 영향이 없다.
+
+외부 기여를 받게 되면 표준 2단계 분리가 필요하다: PR 워크플로(시크릿 없음)가 이미지를 artifact 로 올리고, `workflow_run` 으로 트리거되는 별도 워크플로(base 브랜치 코드로 실행되어 시크릿 보유)가 그 artifact 를 내려받아 push 한다. PR 코드를 실행하지 않으므로 시크릿이 새지 않는다. **`pull_request_target` 은 쓰지 않는다** — 시크릿을 받지만 PR 코드를 체크아웃해 실행하면 그대로 탈취된다.
+`[출처: docs/CI_CD.md §2.2 / #207 설계 논의]`
+
+---
+
+#### 4.15 squash 머지 본문이 훅이 넘긴 값과 다르다 — 원인 미확인
+
+`auto-pr.sh` 는 `gh pr merge --auto --squash --body "$CO_AUTHORS"` 로 트레일러만 넘긴다. 그런데
+#252~#272 의 머지 커밋 본문에는 **브랜치 커밋 메시지가 그대로 남아 있다**(최대 104줄).
+
+```
+훅이 의도한 것   subject = PR 제목 (#N),  body = Co-authored-by 트레일러만
+실제 이력        body 에 브랜치 커밋 메시지 전문
+```
+
+후보 셋을 못 갈랐다 — 훅이 아예 안 돌았는지(UI 머지), `--auto` 로 예약한 제목·본문이 실제 머지
+시점에 적용되지 않는지, `CO_AUTHORS` 가 비어 `--body ""` 가 되면 GitHub 기본 본문으로 떨어지는지.
+**확인하려면 실제 PR 을 하나 만들어 머지해야 한다.**
+
+당장 문제는 아니다. 본문이 길게 남는 것 자체는 해롭지 않고, 규칙은 "브랜치 커밋 메시지가 남을 수
+있다고 보고 쓴다"로 맞춰 뒀다. **확인이 필요한 쪽은 트레일러다.**
+
+| 범위 | 트레일러 |
+|---|---|
+| #252~#255 | `Co-authored-by: Claude` — 규칙대로 |
+| #256~#272 | `Claude Opus 5` — 모델명이 들어갔다(도구 기본값) |
+| #268 · #269 | **없다** — 공동 저작 표시가 조용히 사라진 사례 |
+
+머지된 이력은 재작성하지 않는다(→ `.claude/rules/git-safety.md`). 확인할 것은 트레일러 누락이
+훅 경로 때문인지, 아니면 브랜치 커밋에 애초에 없었는지다.
+`[출처: 2026-08-30 PR #252~#272 머지 커밋 본문·트레일러 전수 확인]`
+
+---
+
+### upbit-connector
+
+#### 4.11 upbit-connector REST 조회 API 미구현(2단계)
+`upbit-connector`는 현재 WebSocket 수집·Kafka 발행만 한다. 도입 당시 합의한 2단계 — **Upbit REST 조회(캔들·호가 등)를 조합해 응답하는 API** — 는 아직 없다. 프론트 차트에 필요한 과거 데이터를 줄 곳이 없는 상태가 유지된다.
+- 착수 시 함께 볼 것: Upbit REST 요청 제한(공식 문서 기준 확인 필요)과 그 구현 위치, 응답 캐시(Redis reactive 여부), Gateway route·CORS(외부 계약 → `.claude/rules/external-contracts.md`).
+- **예외 처리 계층이 없다.** 이 서비스는 HTTP 엔드포인트가 없어 지금은 필요 없지만, REST를 열면 응답 형식을 맞출 곳이 필요하다. `common-web/GlobalExceptionHandler`는 MVC 어댑터(`*-adapter-in`)만 쓰고 서블릿 계열 예외를 다루므로 WebFlux에서 그대로 재사용할지, WebFlux 전용 advice(또는 `ErrorWebExceptionHandler`)를 둘지 확인 필요. `common-grpc-server`의 gRPC advice는 gRPC 서버가 없어 무관.
+- 설계 메모: 캔들은 `to` 파라미터로 과거를 거슬러 여러 번 호출해야 하며 `Flux.expand`로 표현 가능. 동일 구간 동시 요청은 `Mono.cache()`로 합칠 수 있다. 둘 다 미검증 아이디어다.
+`[출처: docs/modules/UPBIT_CONNECTOR.md §2·§6 / 모듈 도입 논의]`
+
+---
 
 ### oauth2-authorization-server
 
@@ -255,6 +298,8 @@ deadline이 무한 대기는 이미 막고 있고, gRPC 호출 깊이가 1단계
 
 ---
 
+### 공통 (여러 서비스)
+
 #### 4.7 `LazyConnectionDataSourceProxy` 미적용 서비스 점검
 
 chat 은 `@Transactional` 안에서 MongoDB 를 읽어 커넥션을 그 왕복 내내 붙들고 있었다(점유 실측 5.139초,
@@ -287,40 +332,9 @@ notification master 캐시가 **긴 TTL(7일) + 다수 키(알림당 1키)** 전
 - 코드는 이미 이 전제로 구현됨(긴 TTL). **인프라 설정 미반영 시 메모리 상한 없음** → 우선 확인 필요.
 `[근거: docs/modules/NOTIFICATION.md §7]`
 
-#### 5.2 chat 스파이크 시 배치 웜업 도입 검토(선택)
-chat 은 **cache-first**(캐시가 Mongo 보다 앞섬)라 miss 엔 줄 stale 이 없어 **SWR 부적합**, 미스 복구는 로드 완료까지 **동기 대기**한다. 방어 도구는 reload 비용에 따라 다르다: **방(`ChatRoomQueryRepairService`)=`SingleFlight`**(싼 point reload → 경량 동기 dedup), **메시지(`ChatMessageQueryRepairService`)=분산락**(무거운 range reload → 전역 1회 보장). 만약 대량 스파이크에서 콜드 miss DB 부하가 실측 병목이 되면, **주기/이벤트 배치 웜업(만료 전 재적재)로 만료 자체를 회피**(인기방 등 hot 대상 한정)를 검토한다.
-`[근거: docs/modules/CHAT.md 캐시 절]`
+#### 5.3-b 방별 순번 — 별도 설계 필요
 
-### websocket-gateway
-
-#### 5.3 STOMP 팬아웃 처리량 개선 — 배칭으로 해소함 (PR #265)
-
-**아래는 2026-05-08 1차 측정 시점의 분석이다.** 세 후보 중 배치 전송을 골라 적용했고
-실측 프레임당 24~34건이다. 적용 내용·수치는
-[부하테스트 문서 §3-0](chat/load-test-results/chatmessage/websocket-gateway/README.md).
-**남은 것은 5.3-b(방별 순번)뿐이다.**
-
-당시 분석 — 같은 방의 모두가 서로의 메시지를 받으므로 **전달 작업이 사용자 수의 제곱으로 는다.** (130명이 각자 초당 1개만 보내도 초당 16,900건). 130명 구간에서 이미 Broadcast p95가 10초를 넘었다.
-
-원인은 자원 고갈이 아니다. 게이트웨이 CPU 20%·GC pause 0·gRPC 저장 실패 0건인데 STOMP outbound 스레드는 상한(96)까지 찼고,
-JFR에서 278바이트 쓰는 데 209ms 걸리는 소켓 write 블로킹이 잡혔다. **처리량 ≈ 스레드 수 ÷ 블로킹 시간**이라
-`96 ÷ 0.022초 ≈ 4,400건/s`로, 관측된 채널 처리량 6,000건/s와 같은 자릿수다. 요구량은 22,500건/s였다.
-
-후보 셋. 배타적이지 않고 곱해서 효과가 난다.
-
-| 접근 | 성격 | 비용·확인 필요 |
-|---|---|---|
-| **배치 전송** | 방별 시간창(예: 100ms)으로 묶어 프레임 수를 줄인다. 100ms면 1/15 | STOMP wire payload가 배열이 되어 **외부 계약 변경**(프론트 수정 필요). 방 내 순서 보장·창 유실 범위를 함께 설계 |
-| 가상 스레드 | 대기 시간을 회수해 좌변(처리량)을 확장 | **Java 21 업그레이드**(현재 17, `build-logic`·Dockerfile 전 서비스). 그리고 **효과가 0일 수 있다** — 블로킹 구간이 `synchronized`나 JNI 안에 있으면 가상 스레드가 캐리어 스레드에서 분리되지 못하고(pinning) 기존과 똑같이 막힌다. JDK 24(JEP 491)에서 `synchronized` 제약은 해소됐다. 착수 전 `-Djdk.tracePinnedThreads=full`로 Tomcat NIO 경로를 먼저 확인한다 |
-| 인스턴스 확장 | 세션을 나눠 가져 인스턴스당 write 감소 | 실측으로 150·200명 구간 avg·p95 41~53% 감소 확인됨 |
-
-스레드를 늘리는 것만으로는 못 이긴다 — **좌변은 선형, 우변은 제곱**이다.
-현재 걸어둔 방 Rate Limit 30 msg/s도 우변을 깎는 조치지만 근본 해결은 아니다.
-`docs/CODE_STYLE.md` §16(대량 broadcast의 channel contention·backpressure 고려)과 함께 본다.
-`[출처: chat/load-test-results/chatmessage/websocket-gateway/README.md, 2026-05-08 부하테스트]`
-
-##### 5.3-b 방별 순번 — 별도 설계 필요
-
+팬아웃 처리량 개선(구 5.3)은 배칭으로 해소했다(PR #265, 프레임당 24~34건). **순번만 남았다** —
 배칭 때 같이 넣으려 했으나 **`msgCnt` 를 순번으로 쓸 수 없다.**
 
 ```java
@@ -335,49 +349,7 @@ chatRoomPersistencePort.incrementMessageCount(roomId);   // $inc, 반환값 없�
 순번이 없으면 배칭의 유실(Kafka 오프셋 선커밋)을 클라이언트가 감지하지 못한다(→ 5.5). **다음 계약 변경 때 함께 설계한다.**
 `[출처: 2026-08-28 배칭 설계 / PR #265]`
 
-#### 5.4 부하테스트에서 아직 못 잰 것
-
-재측정은 마쳤다(→ [부하테스트 문서](chat/load-test-results/chatmessage/websocket-gateway/README.md)).
-보정 항목 다섯 중 넷을 반영했고 **하나가 남았다.**
-
-- **부하 중 DLQ 적체 여부** — 측정하지 않았다
-- **`stomp-in` 풀이 32/32 로 포화되던 원인** — 이번 측정에서 재현되지 않았다(큐 깊이 최대 0~2).
-  SerialGC 정지가 원인이었을 가능성이 크지만 **확인하지 않았다**
-
-`[출처: 2026-08-30 재측정]`
-
-#### 5.4-a outbox 발행 완료 행을 청소한다
-
-`OutboxService` 에 삭제 경로가 없다. 6월부터 쌓여 측정 시점에 **68만 행·1GB** 였고
-`status` 는 전부 `PUBLISHED` 였다.
-
-**이번 지연의 원인은 아니었다** — ULID 기본키라 삽입이 B-tree 오른쪽 끝으로 가고
-버퍼풀 적중률이 99.96% 였다. 다만 디스크·백업·복제가 무한히 자란다.
-
-보존 기간을 정하고 주기 삭제를 넣는다. 실패 재처리 창(현재 `max-retry-cnt` 3회)보다
-넉넉해야 한다.
-
-`[출처: 2026-08-30 부하테스트 중 outbox 테이블 조사]`
-
-#### 5.4-b 남은 서비스에 ParallelGC 를 적용한다
-
-컨테이너 메모리가 1,792MB 미만이면 JVM 이 server class machine 이 아니라고 판정해
-**SerialGC** 를 고른다. 배포 스크립트 전부가 이 조건에 걸려 있었고, full GC 가
-초 단위로 멈췄다(outbox-poller 평균 6,566ms).
-
-채팅 경로 셋(websocket-gateway · chat-service · outbox-poller)은 적용했다. 남은 것:
-
-```
-api-gateway                    모든 요청이 지난다
-oauth2-authorization-server    토큰 검증마다 gRPC 로 불린다
-user-service                   auth 체인
-config · eureka · notification · market 계열   트래픽이 적어 후순위
-```
-
-**앞의 셋은 측정으로 효과를 가를 수 없다** — k6 는 핸드셰이크 때만 이 경로를 지난다.
-"같은 함정이니 같이 고친다"는 근거로 적용한다.
-
-`[출처: 2026-08-30 GC 실측 / infra 저장소 커밋 6d03b99]`
+---
 
 #### 5.4-c STOMP CONNECT 가 산발적으로 도달하지 않는다
 
@@ -393,20 +365,33 @@ api-gateway 의 WebSocket 프록시 구간이 의심되지만 **확인하지 않
 
 `[출처: 2026-08-30 VU 100 3회 측정]`
 
-#### 5.9 뱃지 전송 — 남은 것
+---
 
-방 단위 conflation 은 적용했다(PR #263, 프레임 25배 감소). 근거·수치는
-[부하테스트 문서 §6](chat/load-test-results/chatmessage/websocket-gateway/README.md).
-**아래 둘이 남았다.**
+#### 5.5 브로드캐스트 유실을 클라이언트가 감지·복구할 경로가 없다
 
-##### 5.9-c 사용자 축 집계 — 다음 계약 변경 때 같이
+브로드캐스트 push는 DLQ·재시도가 없고 executor 큐 포화 시 버려지는데, **유실을 클라이언트가 감지해 재조회하는 경로가 없다**(2026-08-27 `crypto-project-frontend` 확인).
 
-5.9-a 는 **방 축**으로만 접었다. 라운드 수는 줄었지만 **라운드당 프레임 수는 그대로**다.
+- `ChatRoomPage.tsx`의 `client.onConnect`는 `subscribeChatRoomMessages`로 **재구독만** 하고 재조회하지 않는다. `onWebSocketClose`·`onStompError`도 `setIsConnected(false)`뿐이다.
+- 최근 메시지 로드 `useEffect`의 deps는 `[isLoggedIn, isInvalidRoomId, roomId]` — **마운트·방 변경에만** 돈다. 다른 `getChatMessages` 호출은 `lastMsgId`/`lastCreatedAtMs` 커서를 쓰는 **과거 스크롤** 경로다.
+- wire payload `StompChatMessagePayload{messageId, roomId, writerId, content, timestamp, clientMessageId}`에 **방별 순번이 없어** 클라이언트가 갭을 감지할 수단 자체가 없다.
+
+즉 연결을 유지한 채 broadcast가 유실되면 클라이언트는 알지 못하고, 방 재진입·새로고침 전까지 그 메시지가 보이지 않는다. ADR-003이 shedding을 택한 근거는 "재조회로 복구된다"가 아니라 "피크에서 전원을 지연시키는 것보다 일부 유실이 SLO에 유리하다"이며, 갭 복구는 미구현으로 남아 있다.
+
+착수 시 결정할 것: (a) 재연결 시 커서 기반 재조회(프론트만 수정, 갭 감지는 여전히 불가하나 재연결 구간은 덮인다), (b) payload에 방별 순번 추가 후 클라이언트 갭 감지(**STOMP wire payload 변경 = 외부 계약**, 프론트·k6 함께 → `.claude/rules/external-contracts.md`).
+
+`websocket-gateway/CLAUDE.md`와 `docs/modules/WEBSOCKET_GATEWAY.md` §6에 있던 "유실 시 클라이언트 REST 재조회 전제" 서술은 이 확인 결과에 맞춰 같은 커밋에서 정정했다.
+`[출처: 2026-08-27 ADR-003 리뷰 중 프론트 구현 대조]`
+
+---
+
+#### 5.9-c 뱃지를 사용자 축으로도 합친다 — 다음 계약 변경 때 같이
+
+conflation(PR #263)은 **방 축**으로만 접었다. 라운드 수는 줄었지만 **라운드당 프레임 수는 그대로**다.
 
 ```
 전   초당 80라운드 × 멤버 80 = 6,400 프레임
 후   초당  5라운드 × 멤버 80 =   400 프레임
-      ↑ 5.9-a 가 줄인 것      ↑ 아직 그대로
+      ↑ conflation 이 줄인 것   ↑ 아직 그대로
 ```
 
 한 사용자가 여러 방에 속하므로 **사용자 축으로 한 번 더 접을 수 있다.** 화면이 채팅방 목록 하나인데 방마다 프레임을 따로 보낼 이유가 없다.
@@ -426,7 +411,7 @@ api-gateway 의 WebSocket 프록시 구간이 의심되지만 **확인하지 않
 
 **배칭(#265) 때 같이 넣지 않은 이유**: **부하테스트가 방 1개**라 넣어도 숫자가 안 움직여 검증이 안 된다. 방이 여러 개인 조건을 만들 수 있을 때, 그리고 계약을 또 깨야 할 일이 생길 때 함께 한다(5.3-b 방별 순번과 묶으면 계약을 한 번만 깬다).
 
-##### 5.9-d flush 소요 시간을 재지 않고 있다 — 병렬화 판단 근거가 없다
+#### 5.9-d 뱃지 flush 소요 시간을 재지 않고 있다 — 병렬화 판단 근거가 없다
 
 전역 타이머 하나에 **단일 스레드가 전 방을 순회**한다. `upbit-connector` 의 `groupBy(code).sample(7s)` 는 그룹마다 타이머가 따로 돌고 `flatMap` 으로 병렬이지만, 채팅방은 무한히 늘어 타이머를 방마다 두면 폭증한다. 전역 하나를 고른 이유다.
 
@@ -454,145 +439,7 @@ flush 150ms  → 창 200ms 에 근접. 타이머 분산·병렬화 시점
 
 **코드는 4줄이지만 데이터는 나중에 못 얻는다** — 재배포 + 부하테스트 한 회차가 더 든다. 3차 측정에는 못 넣었고(2026-08-28 판단), 다음 회차에 넣는다.
 
-병렬화가 필요해지면 드레인은 단일 스레드로 두고 전송만 작은 풀로 뺀다. 맵은 여전히 한 스레드만 만지므로 `ConcurrentHashMap` 경합은 0으로 유지된다. **다만 이득은 제한적이다** — 목적지가 `brokerChannel` 큐 하나라 `putLock` 에서 다시 만난다(5.7 에서 `takeLock` 으로 이미 확인한 벽의 반대편). 병렬화의 목적은 처리량이 아니라 "한 방 때문에 전부 정지"를 막는 것이다.
-
----
-
----
-
-#### 5.10 outbound 처리량 상한의 원인이 소켓 write 블로킹으로 보인다 — 미확정
-
-스레드 수 실험(96 / 32 / 64)은 끝났고 64 로 확정했다. 이력과 실측은
-[부하테스트 문서 §1](chat/load-test-results/chatmessage/websocket-gateway/README.md).
-
-**남은 것은 왜 상한이 있는가다.** broker 는 스레드를 줄이자 활성이 5 → 8 로 늘어 개선됐는데(락 경합),
-outbound 는 96 → 32 에서 17 → 14 로 줄어 악화됐다. **같은 증상인데 원인이 다르다.**
-
-```
-broker    락 경합 O   스레드를 줄이니 실제 가동이 늘었다
-outbound  락 경합 X   스레드를 줄이니 여유만 사라졌다
-```
-
-후보는 1차 JFR 에서 관측된 **소켓 write 블로킹**(278바이트에 209ms)이다. I/O 대기로 스레드가 묶이면
-개수를 늘려도 줄여도 통과량이 안 바뀐다.
-
-**2026-08-30 재측정에서 이 가설은 지지되지 않았다.** VU 100 에서 outbound 큐 깊이가
-최대 0~2 이고 거절이 0 이다. 소켓 write 가 상한이라면 큐가 쌓여야 하는데 비어 있었다.
-
-당시 관측한 지연은 상당 부분 **SerialGC 정지**였다(게이트웨이 major GC 평균 3,462ms).
-ParallelGC 로 바꾸자 159ms 가 됐다.
-
-**소켓 write 블로킹이 없다고 확정한 것은 아니다** — VU 100 에서 드러나지 않았을 뿐이다.
-확정하려면 JFR 로 `jdk.SocketWrite` 를 떠야 하는데, 지금 호스트는 회차당 swapin 이
-10~40GB 라 블로킹이 I/O 때문인지 페이지 폴트 때문인지 못 가른다.
-**측정 환경 분리(→ 5.12) 이후에 판정한다.**
-`[출처: 2026-08-28 스레드 수 실험 / 2026-08-30 VU 100 3회 측정]`
-
----
-
-#### 5.14 조용히 사라지는 실패를 없앤다 — 입구에서 거절하고 알린다
-
-**원칙: 발신자가 결과를 모르는 실패를 만들지 않는다.**
-
-현재 침묵하는 경로가 둘이다.
-
-| 경로 | 발신자가 아는가 |
-|---|---|
-| inbound 큐 거절 | ❌ 핸들러 진입 전이라 `@MessageExceptionHandler` 그물에 안 걸린다 |
-| ACK 가 brokerChannel 에서 거절 | **해소됨** — ACK 는 `clientOutboundChannel` 로 직접 나간다(PR #267) |
-
-당시 VU 100 측정에서 ACK 성공률이 14.38% 였다. 저장은 거의 다 됐는데 발신자 대부분이 결과를 몰랐고,
-실패로 오인해 재전송하면 중복 메시지가 된다. **2026-08-30 재측정에서는 ACK 성공률 100%·실패 0 이다.**
-남은 것은 위 표의 첫 줄 — inbound 큐 거절이 발신자에게 통보되지 않는 문제다.
-
-**대응: 입구에서 미리 거절하고 이유를 알린다.**
-
-`StompController` 에 이미 같은 패턴이 있다 — rate limit 이 `clientMessageId` 를 담아 거절 ACK 를 보낸다.
-
-```java
-if (!rateLimiter.isAllowed(...)) {
-    throw new ChatMessageRateLimitExceededException(request.clientMessageId());
-}
-```
-
-```java
-@MessageExceptionHandler(ChatMessageRateLimitExceededException.class)
-@SendToUser("/queue/chat/ack")
-→ ofFailure(clientMessageId, "RATE_LIMIT_EXCEEDED")
-```
-
-여기에 backpressure 판정을 더한다.
-
-```java
-if (willExceedLatencyBudget()) {
-    throw new ChatMessageServerBusyException(request.clientMessageId());   // "SERVER_BUSY"
-}
-```
-
-**얻는 것 셋**
-
-1. **사용자가 안다** — 침묵 대신 "서버 혼잡, 재시도" + 어느 메시지인지(`clientMessageId`)
-2. **부하가 실제로 준다** — 입구에서 1건을 자르면 저장·outbox·Kafka·팬아웃 outbound N건을 통째로 안 만든다. 뒤에서 버리는 것보다 N배 싸다
-3. **거절 ACK 가 살아난다** — 통과량이 줄어 채널에 여유가 생기므로, 거절 통지 자체는 전달된다
-
-**판정 기준 후보**
-
-| 기준 | 성격 |
-|---|---|
-| outbound 큐 깊이 | 직접적. 현재 지표로 바로 가능 |
-| broker 큐 깊이 | |
-| **지연 예측(큐 ÷ 처리량)** | **SLO 와 직결.** "10초 안에 못 보낼 것 같으면 미리 거절" |
-
-세 번째가 ADR-003 의 SLO 정의와 맞물린다.
-
-**보류 (2026-08-28) — 운영계 이전 후에 한다.**
-
-임계값은 "이 부하에서 이만큼 밀리면 SLO 를 넘긴다" 는 실측에서 나온다. **개발계 수치로 임계값을 박으면 운영계에서 다시 재야 하므로 지금 넣는 의미가 없다.**
-
-```
-개발계   16GB 맥에 서비스·인프라·모니터링 23개 + 부하.  회차당 swapin 10~40GB
-         지연은 회차 편차가 크고, 큐 깊이도 그 영향을 받는다
-운영계   컨테이너 분리 후(→ 5.12) 피크테스트만 다시 돌리면 임계값이 나온다
-```
-
-**개발계에서 한 일의 의미는 임계값을 찾은 게 아니라 병목을 찾아 걷어낸 것이다.** 커넥션 점유시간 · 거절 정책 락 · executor 크기 · 뱃지 O(멤버수) · 프레임 수 · ACK 경로 — 이건 호스트가 바뀌어도 그대로 유효하다.
-
-**운영계에서 남은 절차는 둘뿐이다.**
-
-```
-1. 같은 피크테스트를 그대로 돌려 진짜 한계를 잰다
-2. 그 수치 이상의 요청이 아예 들어오지 못하게 막는다   ← 이 항목(5.14)
-```
-
-2번까지 하면 **"서버가 감당 못 하는 부하는 애초에 들어오지 않고, 거절될 때도 발신자가 이유를 안다"** 가 된다. 그게 이 작업의 최종 목표다.
-
-**선행 항목은 해소했다 (2026-08-28)**: `VALIDATION_ERROR` · `SERVER_ERROR` ACK 가 `clientMessageId` 를 담지 않아 어느 메시지가 실패했는지 짚지 못하던 문제는 예외 핸들러가 실패한 원본 메시지에서 읽도록 고쳤다. 이 항목(입구 거절)과는 별개 문제였는데 여기 묻어 있었다.
-`[출처: 2026-08-28 VU 100 측정 ACK 14.38% / SERVICE_FLOWS.md §15]`
-
-#### 5.15 측정 유효성 판정 기준 — `Pages free` 가 아니라 swapin 증가량으로 본다
-
-2026-08-28 3차 측정에서 `Pages free` 만으로 오염을 판단하다 두 번 틀렸다. **`Pages free` 는 파일 캐시가 먹어도 떨어지므로 단독 지표가 못 된다.** 실제로 웜업 직후 6,013MB → 63MB 로 떨어졌는데 그 회차는 정상이었다.
-
-**측정 중 swapin 증가량**을 쓴다.
-
-```bash
-SW0=$(vm_stat | awk '/Swapins/{gsub(/\./,"",$2); print $2}')
-# ... 측정 ...
-SW1=$(vm_stat | awk '/Swapins/{gsub(/\./,"",$2); print $2}')
-# 증가 바이트 = (SW1 - SW0) × 16384
-```
-
-| swapin 증가 | 판정 | 근거 |
-|---|---|---|
-| 32,470 MB | 무효 | p90 41.9초. 서버는 전 풀 거절 0 · CPU 0.5% |
-| 8,614 ~ 9,541 MB | 신뢰 불가 | 같은 조건 2회에서 p90 42.2초 vs 16.7초 (2.5배) |
-| 수백 MB 이하 | 유효 | 이 호스트에서는 미달성 |
-
-**회차마다 실행 전후 swapin·swap used 를 결과에 함께 기록한다.** 2차 측정은 이걸 안 남겨서 p90 4,333ms 를 어떤 호스트 조건에서 얻었는지 알 수 없고, 그래서 3차와 직접 비교가 성립하지 않는다.
-
-**유실·거절·큐 깊이·프레임 수는 서버가 직접 센 값이라 스왑과 무관하다.** 지연을 못 재는 회차에서도 이 지표들로는 판정할 수 있다 — 배칭(5.3) 효과를 지연 없이 검증할 수 있는 이유다.
-`[출처: 2026-08-28 뱃지 conflation 재측정 2회]`
-
+병렬화가 필요해지면 드레인은 단일 스레드로 두고 전송만 작은 풀로 뺀다. 맵은 여전히 한 스레드만 만지므로 `ConcurrentHashMap` 경합은 0으로 유지된다. **다만 이득은 제한적이다** — 목적지가 `brokerChannel` 큐 하나라 `putLock` 에서 다시 만난다(스레드 수 실험에서 `takeLock` 경합으로 확인한 벽의 반대편이다). 병렬화의 목적은 처리량이 아니라 "한 방 때문에 전부 정지"를 막는 것이다.
 
 ---
 
@@ -628,6 +475,11 @@ k6 부하 발생기는 이미 분리했다. 남은 것은 서버 쪽이다.
 | 네트워크 | 서비스 간 `localhost` 전제 |
 | `restart` 정책 | 대부분 `no` 라 재부팅 후 수동 복구가 필요하다(같이 정리) |
 
+**측정 장비가 생기면 함께 판정할 것**: outbound 처리량 상한. 1차에서 소켓 write 블로킹을 의심했지만
+지금 조건에서는 큐가 비어 있어 현상 자체가 재현되지 않는다. 부하를 더 올려 상한이 다시 보이면
+JFR 로 `jdk.SocketWrite` 를 떠서 판정한다 — 지금 호스트는 회차당 swapin 이 10~40GB 라 블로킹이
+I/O 때문인지 페이지 폴트 때문인지 못 가른다.
+
 **우선순위는 배칭(5.3)보다 낮다.** 배칭은 전송 횟수를 1/30 로 줄여 자릿수를 바꾸지만,
 장비 이전은 하드웨어만큼만 올린다. 팬아웃이 `M²` 인 이상 장비로는 못 이긴다.
 
@@ -661,17 +513,46 @@ group: chatmessage-broadcast-${app.instance-id}
 
 ---
 
-#### 5.5 브로드캐스트 유실을 클라이언트가 감지·복구할 경로가 없다
+#### 5.14 inbound 큐 거절만 발신자에게 통보되지 않는다
 
-브로드캐스트 push는 DLQ·재시도가 없고 executor 큐 포화 시 버려지는데, **유실을 클라이언트가 감지해 재조회하는 경로가 없다**(2026-08-27 `crypto-project-frontend` 확인).
+원칙(발신자가 결과를 모르는 실패를 만들지 않는다)과 경로별 현황은 `docs/SERVICE_FLOWS.md` §15.
+**남은 경로는 하나뿐이다.**
 
-- `ChatRoomPage.tsx`의 `client.onConnect`는 `subscribeChatRoomMessages`로 **재구독만** 하고 재조회하지 않는다. `onWebSocketClose`·`onStompError`도 `setIsConnected(false)`뿐이다.
-- 최근 메시지 로드 `useEffect`의 deps는 `[isLoggedIn, isInvalidRoomId, roomId]` — **마운트·방 변경에만** 돈다. 다른 `getChatMessages` 호출은 `lastMsgId`/`lastCreatedAtMs` 커서를 쓰는 **과거 스크롤** 경로다.
-- wire payload `StompChatMessagePayload{messageId, roomId, writerId, content, timestamp, clientMessageId}`에 **방별 순번이 없어** 클라이언트가 갭을 감지할 수단 자체가 없다.
+| 실패 경로 | 발신자가 아는가 | 상태 |
+|---|---|---|
+| 검증 실패 · 서버 오류 | ✅ `clientMessageId` 를 담은 실패 ACK | 해소(PR #267) |
+| Rate Limit 초과 | ✅ 〃 | 구현돼 있음(측정용으로 꺼 둔 상태 → 1.13) |
+| gRPC 실패 · 저장 실패 | ✅ 거절 ACK | 구현돼 있음 |
+| ACK 가 brokerChannel 에서 거절 | ✅ 브로커를 안 지난다 | 해소(PR #267) |
+| **inbound 큐 거절** | ❌ **모른다** | **남음** |
 
-즉 연결을 유지한 채 broadcast가 유실되면 클라이언트는 알지 못하고, 방 재진입·새로고침 전까지 그 메시지가 보이지 않는다. ADR-003이 shedding을 택한 근거는 "재조회로 복구된다"가 아니라 "피크에서 전원을 지연시키는 것보다 일부 유실이 SLO에 유리하다"이며, 갭 복구는 미구현으로 남아 있다.
+inbound 큐 거절만 `@MessageExceptionHandler` 그물에 안 걸린다. 컨트롤러에 들어오기 전에
+executor 가 버리기 때문이고, 발신자는 ACK 타임아웃으로만 눈치챈다.
 
-착수 시 결정할 것: (a) 재연결 시 커서 기반 재조회(프론트만 수정, 갭 감지는 여전히 불가하나 재연결 구간은 덮인다), (b) payload에 방별 순번 추가 후 클라이언트 갭 감지(**STOMP wire payload 변경 = 외부 계약**, 프론트·k6 함께 → `.claude/rules/external-contracts.md`).
+**대응: 입구에서 미리 거절하고 이유를 알린다.** 패턴은 이미 있다 — rate limit 이
+`clientMessageId` 를 담아 거절 ACK 를 보낸다. 같은 자리에 혼잡 판정을 하나 더 두면 된다.
 
-`websocket-gateway/CLAUDE.md`와 `docs/modules/WEBSOCKET_GATEWAY.md` §6에 있던 "유실 시 클라이언트 REST 재조회 전제" 서술은 이 확인 결과에 맞춰 같은 커밋에서 정정했다.
-`[출처: 2026-08-27 ADR-003 리뷰 중 프론트 구현 대조]`
+```java
+if (willExceedLatencyBudget()) {
+    throw new ChatMessageServerBusyException(request.clientMessageId());   // "SERVER_BUSY"
+}
+```
+
+얻는 것 셋 — ①사용자가 안다(어느 메시지인지까지) ②입구에서 1건을 자르면 저장·outbox·Kafka·
+팬아웃 N건을 통째로 안 만든다(뒤에서 버리는 것보다 N배 싸다) ③통과량이 줄어 거절 통지 자체는
+전달된다.
+
+**판정 기준 후보**
+
+| 기준 | 성격 |
+|---|---|
+| outbound 큐 깊이 | 직접적. 현재 지표로 바로 가능 |
+| broker 큐 깊이 | 〃 |
+| **지연 예측(큐 ÷ 처리량)** | **SLO 와 직결** — "10초 안에 못 보낼 것 같으면 미리 거절". ADR-003 의 지연 예산과 맞물린다 |
+
+**보류 — 운영 장비로 옮긴 뒤에 한다.** 임계값은 "이 부하에서 이만큼 밀리면 SLO 를 넘긴다"는
+실측에서 나오는데, 지금 호스트는 회차당 swapin 이 10~40GB 라 큐 깊이도 그 영향을 받는다.
+개발계 수치로 임계값을 박으면 운영계에서 다시 재야 한다(→ 5.12).
+
+남은 절차는 둘이다. ①같은 피크테스트로 진짜 한계를 잰다 ②그 이상은 입구에서 막는다.
+`[출처: 2026-08-28 VU 100 측정 / docs/SERVICE_FLOWS.md §15]`
