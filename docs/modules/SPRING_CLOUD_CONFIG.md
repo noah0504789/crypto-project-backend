@@ -70,31 +70,51 @@
 ## 6. 주요 흐름
 
 ### 6.1 설정 제공 (Config Server)
-```
-각 서비스 부팅: spring.config.import=configserver:http://crypto-spring-cloud-config:8888
- → Config Server가 profile(git,vault)로 병합:
-     Vault(order 1, KV v2, AppRole) + git(order 2, git-config-repo: 루트/dynamic/infrastructure)
- → 서비스에 property source 응답
-busrefresh(Kafka bus)로 런타임 갱신 브로드캐스트
+```mermaid
+graph TB
+  SVC["각 서비스 부팅<br/>spring.config.import=configserver:http://crypto-spring-cloud-config:8888"]
+  CS["Config Server<br/>profile(git,vault)로 병합"]
+  V[("Vault — order 1<br/>KV v2 · AppRole")]
+  G[("git-config-repo — order 2<br/>루트 · /dynamic · /infrastructure")]
+  RESP["서비스에 property source 응답"]
+  BUS["busrefresh (Kafka bus)<br/>런타임 갱신 브로드캐스트"]
+
+  SVC --> CS
+  V --> CS
+  G --> CS
+  CS --> RESP
+  BUS -.-> SVC
 ```
 
 ### 6.2 JWKS 제공 (JWT 검증측 대상)
-```
-GET /.well-known/jwks.json?keyName={key}
- → JwksService: VaultTransitKeyReader.readLatestKey(key)  (transit/keys/{key})
- → RsaPublicKeyParser.parse(PEM) → JwkSetFactory.create(RSAPublicKey, kid=key:version)
- → JWKS JSON (RS256, use=sig)
-소비: gateway ReactiveJwtDecoderConfig, oauth2-client JwtDecoderConfig (withJwkSetUri)
+```mermaid
+graph TB
+  REQ["GET /.well-known/jwks.json?keyName=key"]
+  SVC["JwksService"]
+  READ["VaultTransitKeyReader.readLatestKey(key)"]
+  VAULT[("Vault Transit<br/>transit/keys/key")]
+  PARSE["RsaPublicKeyParser.parse(PEM)"]
+  FACT["JwkSetFactory.create(RSAPublicKey, kid = key:version)"]
+  OUT["JWKS JSON — RS256, use=sig"]
+  CONS["소비: gateway ReactiveJwtDecoderConfig<br/>oauth2-client JwtDecoderConfig — withJwkSetUri"]
+
+  REQ --> SVC --> READ --> VAULT
+  VAULT -.->|"최신 버전 public key"| PARSE --> FACT --> OUT --> CONS
 ```
 
 ### 6.3 JWT 서명 대행 (JWT 발급측 대상)
-```
-POST /sign  { keyName, keyVersion, headerB64u, payloadB64u }
- → JwtSigningInputDigester: SHA-256(header.payload) → Base64
- → VaultTransitSigner.sign(keyName, keyVersion, digest)  (transit/sign/{keyName}, prehashed pkcs1v15 sha2-256)
- → VaultSignatureParser: vault 서명 → Base64Url
- → SignResponse { kid=keyName:keyVersion, alg=RS256, sigB64u }
-소비: oauth2-authorization-server Rs256JwtEncoder (jwtProperties.signUri)
+```mermaid
+graph TB
+  REQ["POST /sign<br/>SignRequest — keyName, keyVersion, headerB64u, payloadB64u"]
+  DIG["JwtSigningInputDigester<br/>SHA-256(header.payload) → Base64"]
+  SIGN["VaultTransitSigner.sign(keyName, keyVersion, digest)"]
+  VAULT[("Vault Transit<br/>transit/sign/keyName<br/>prehashed · pkcs1v15 · sha2-256")]
+  PARSE["VaultSignatureParser<br/>vault:vN:base64 → Base64Url"]
+  OUT["SignResponse — kid = keyName:keyVersion, alg = RS256, sigB64u"]
+  CONS["소비: oauth2-authorization-server Rs256JwtEncoder<br/>jwtProperties.signUri"]
+
+  REQ --> DIG --> SIGN --> VAULT
+  VAULT -.->|"signature"| PARSE --> OUT --> CONS
 ```
 
 ## 7. 엔드포인트 · 키(kid) 계약

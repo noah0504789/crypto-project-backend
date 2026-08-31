@@ -93,17 +93,30 @@ graph TB
 
 ## 5. 인바운드 — 메시지 송신 (STOMP → gRPC → ACK)
 
-```
-클라이언트 STOMP SEND /msg/chat.send  (StompChatMessageSendRequest)
-  → StompController @MessageMapping("/chat.send")  (@Valid)
-  → StompChatMessageMapper.toCommand  (messageId = ObjectId 생성, gateway-side)
-  → ChatMessageSendService.send
-      → ChatMessageCommandPort.save  → gRPC chat chatmessage.v1 save (비동기 CompletableFuture)
-          · 성공 → ChatMessageAckPort.success → /user/queue/chat/ack (성공 ACK)
-          · 실패 → GrpcClientException.resolve(code)
-                    · recordable → metrics
-                    · DEADLINE_EXCEEDED → gRPC hardDelete 보상(저장됐을 수 있는 메시지 제거)
-                    · → ChatMessageAckPort.failure → /user/queue/chat/ack (실패 ACK, code)
+```mermaid
+graph TB
+  C(("클라이언트"))
+  SEND["STOMP SEND /msg/chat.send<br/>StompChatMessageSendRequest"]
+  CTRL["StompController<br/>@MessageMapping(/chat.send) · @Valid"]
+  MAP["StompChatMessageMapper.toCommand<br/>messageId = ObjectId 생성 (gateway-side)"]
+  SVC["ChatMessageSendService.send"]
+  PORT["ChatMessageCommandPort.save"]
+  GRPC["gRPC chat chatmessage.v1 save<br/>비동기 CompletableFuture"]
+  RES{"결과"}
+  OKACK["ChatMessageAckPort.success"]
+  ERR["GrpcClientException.resolve(code)"]
+  MET["recordable → metrics"]
+  DL["DEADLINE_EXCEEDED<br/>→ gRPC hardDelete 보상<br/>저장됐을 수 있는 메시지 제거"]
+  FAILACK["ChatMessageAckPort.failure — code 포함"]
+  ACKQ["/user/queue/chat/ack"]
+
+  C --> SEND --> CTRL --> MAP --> SVC --> PORT --> GRPC --> RES
+  RES -->|"성공"| OKACK --> ACKQ
+  RES -->|"실패"| ERR
+  ERR --> MET
+  ERR --> DL
+  ERR --> FAILACK --> ACKQ
+  ACKQ -.-> C
 ```
 
 - 요청 검증(`StompChatMessageSendRequest`): `clientMessageId`/`roomId`/`writerId` `@NotBlank`, `content` `@NotBlank`+`@Size(max=1000)`. STOMP 예외는 `StompChatMessageExceptionHandler`.

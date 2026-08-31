@@ -25,7 +25,7 @@
 - **gRPC 계약(`user.v1`) 변경은 external-contracts 절차**: `protobuf/.../user/v1/user-service.proto`를 바꾸면 소비자(oauth2-client, oauth2-authorization-server)를 함께 재빌드하고 field number 재사용을 금지한다. proto 재생성: `./gradlew :protobuf:build`.
 - **REST 경로·포트·DB 설정은 원격 Config**: `git-config-repo/dynamic/user-service.yml`(`api-path.user.*`, 포트, `mysql.*`). 경로를 바꾸면 게이트웨이 route/security(`spring-cloud-api-gateway`)와 함께 검토한다.
 - **스키마 변경은 계약**: `user-bootstrap/.../sql/schema.sql`의 unique(`uk_user_public_id`, `uk_user_email`), FK, 기본 role 시드(`INSERT ... 'USER'`)를 영향 분석 없이 바꾸지 않는다. `nickname`에는 현재 DB unique가 없다(§확인 필요).
-- **X-User-Id 신뢰**: `UserController`는 게이트웨이가 넣는 `X-User-Id`(`HttpHeaderKey.USER_ID_VALUE`)를 `publicId`로 신뢰한다. 이 헤더 소비/신뢰 방식을 바꿀 때는 게이트웨이의 헤더 주입·외부 헤더 제거 여부와 함께 본다(미해결 항목, `../docs/modules/API_GATEWAY.md §18.1`).
+- **X-User-Id 신뢰**: `UserController`는 게이트웨이가 넣는 `X-User-Id`(`HttpHeaderKey.USER_ID_VALUE`)를 `publicId`로 신뢰한다. 이 헤더 소비/신뢰 방식을 바꿀 때는 게이트웨이의 헤더 주입·외부 헤더 제거 동작과 함께 본다(`../docs/modules/API_GATEWAY.md` §10).
 - 보안 관련(비밀번호 인코딩, 권한, 헤더 신뢰) 변경은 `../.claude/rules/security.md`도 함께 적용한다.
 
 ## 주요 파일 안내

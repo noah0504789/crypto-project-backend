@@ -72,21 +72,35 @@
 HTTP 토큰 엔드포인트(`/oauth2/token`, 포트 9000). Spring Authorization Server 표준 파이프라인 + 커스텀 훅.
 
 ### TOKEN_EXCHANGE (외부 로그인 → 내부 토큰)
-```
-oauth2-client → POST /oauth2/token (grant_type=token-exchange, client_secret_basic)
- → 표준 인증/토큰 생성 (access = JwtGenerator→Rs256JwtEncoder 서명)
- → access 커스터마이저: principal(email)로 user-service gRPC findByEmail → roles, id claim 추가
- → CustomAuthenticationSuccessHandler:
-      RotatingRefreshTokenPolicy.resolve → 신규 refresh 생성
-      authorizationService.save → refresh 토큰 Redis 캐시
-      access+refresh를 OAuth2AccessTokenResponse로 응답
+```mermaid
+graph TB
+  CLI["oauth2-client<br/>POST /oauth2/token<br/>grant_type=token-exchange · client_secret_basic"]
+  STD["표준 인증 · 토큰 생성<br/>access = JwtGenerator → Rs256JwtEncoder 서명"]
+  CUST["access 커스터마이저<br/>principal(email)로 user-service gRPC findByEmail<br/>→ roles · id claim 추가"]
+  USER["user-service<br/>gRPC user.v1"]
+  H["CustomAuthenticationSuccessHandler"]
+  ROT["RotatingRefreshTokenPolicy.resolve<br/>신규 refresh 생성"]
+  SAVE["authorizationService.save"]
+  REDIS[("Redis<br/>refresh 토큰 캐시")]
+  RES["access + refresh 를<br/>OAuth2AccessTokenResponse 로 응답"]
+
+  CLI --> STD --> CUST --> USER
+  USER -.-> CUST
+  CUST --> H --> ROT --> SAVE --> REDIS
+  SAVE --> RES
 ```
 
 ### REFRESH_TOKEN (재발급)
-```
-oauth2-client → POST /oauth2/token (grant_type=refresh_token)
- → CustomOAuth2AuthorizationService.findByToken(REFRESH_TOKEN): Redis에서 email 확인 후 Authorization 복원
- → reuseRefreshTokens(false) + RotatingRefreshTokenPolicy → access·refresh 모두 신규 발급(회전)
+```mermaid
+graph TB
+  CLI["oauth2-client<br/>POST /oauth2/token<br/>grant_type=refresh_token"]
+  FIND["CustomOAuth2AuthorizationService.findByToken(REFRESH_TOKEN)"]
+  REDIS[("Redis<br/>{auth}:refreshtoken:*")]
+  REST["email 확인 후 OAuth2Authorization 복원"]
+  ROT["reuseRefreshTokens(false)<br/>+ RotatingRefreshTokenPolicy"]
+  OUT["access · refresh 모두 신규 발급 (회전)"]
+
+  CLI --> FIND --> REDIS --> REST --> ROT --> OUT
 ```
 
 - refresh 회전이라 재발급마다 refresh도 새로 나온다(탈취 재사용 방지).

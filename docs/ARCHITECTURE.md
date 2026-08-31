@@ -1,8 +1,8 @@
 # ARCHITECTURE
 
 이 문서는 `crypto-project-backend`의 전체 시스템 구조와 모듈 관계를 사람이 읽기 위한 설명 문서다.
-모든 내용은 현재 브랜치의 실제 코드·설정을 근거로 하며, 각 항목에 관련 파일 경로를 함께 표기한다.
-문서와 코드가 어긋나면 **코드가 기준**이다. 코드만으로 의도를 알 수 없는 항목은 §11에 `확인 필요`로 분리했다.
+모든 내용은 현재 브랜치의 실제 코드·설정을 근거로 하며, 각 항목에 관련 클래스·설정 파일을 함께 표기한다.
+문서와 코드가 어긋나면 **코드가 기준**이다. 코드만으로 의도를 알 수 없는 항목은 판정하지 않고 [`../TODO.md`](../TODO.md)에서 관리한다.
 
 ---
 
@@ -23,26 +23,61 @@
 
 13개 실행 서비스와 인프라 구성 요소는 다음과 같다.
 
-```
-                         [ Frontend / Client ]
-                                  │  REST · WebSocket(STOMP)
-                                  ▼
-                     ┌───────────────────────────┐
-                     │  spring-cloud-api-gateway  │  JWT Resource Server, 라우팅, CORS, X-User-Id 전파
-                     └───────────────────────────┘
-             ┌────────────┬───────────┬────────────┬───────────────┐
-             ▼            ▼           ▼            ▼               ▼
-        oauth2-client   user       chat       websocket-gateway  (기타 REST)
-             │           │(gRPC)    │(gRPC)        │(gRPC→chat)
-             ▼           ▼          ▼              ▼
-   oauth2-authorization-server (gRPC auth.v1)   ...
-             │
-   ───────────────────────── 비동기(Kafka) ─────────────────────────
-   upbit-connector → (upbit-ticker-event) → market-detection → (price-alert-detected-event) → notification → (web-notification-broadcast-event) → websocket-gateway
-   각 서비스 Outbox → outbox-poller → Kafka → 소비 서비스
+```mermaid
+graph TB
+  FE(("Frontend / Client"))
+  GW["spring-cloud-api-gateway<br/>JWT Resource Server · 라우팅 · CORS · X-User-Id 전파"]
 
-   인프라: spring-cloud-eureka-server(디스커버리) · spring-cloud-config(Config+Vault)
-   저장소: MySQL(user·market·outbox) · MongoDB(chat·notification) · Redis Cluster(auth·chat·session)
+  subgraph SYNC["동기 경로"]
+    OC["oauth2-client"]
+    US["user"]
+    CH["chat"]
+    WG["websocket-gateway"]
+    ETC["기타 REST"]
+    AS["oauth2-authorization-server"]
+  end
+
+  subgraph ASYNC["비동기 경로 (Kafka)"]
+    UPC["upbit-connector"]
+    MD["market-detection"]
+    NOTI["notification"]
+    WG2["websocket-gateway"]
+    OBP["outbox-poller"]
+    SVCS["각 서비스 Outbox"]
+    CONS["소비 서비스"]
+  end
+
+  subgraph INFRA["인프라"]
+    EUR["spring-cloud-eureka-server<br/>디스커버리"]
+    CFG["spring-cloud-config<br/>Config + Vault"]
+  end
+
+  MYSQL[("MySQL<br/>user · market · outbox")]
+  MONGO[("MongoDB<br/>chat · notification")]
+  REDIS[("Redis Cluster<br/>auth · chat · session")]
+
+  FE -->|"REST · WebSocket(STOMP)"| GW
+  GW --> OC
+  GW --> US
+  GW --> CH
+  GW --> WG
+  GW --> ETC
+  OC -->|"gRPC auth.v1"| AS
+  US -->|"gRPC"| AS
+  WG -->|"gRPC → chat"| CH
+  GW -->|"gRPC auth.v1"| AS
+
+  UPC -->|"upbit-ticker-event"| MD
+  MD -->|"price-alert-detected-event"| NOTI
+  NOTI -->|"web-notification-broadcast-event"| WG2
+  SVCS --> OBP -->|"Kafka"| CONS
+
+  US --- MYSQL
+  CH --- MONGO
+  NOTI --- MONGO
+  AS --- REDIS
+  CH --- REDIS
+  WG --- REDIS
 ```
 
 서비스별 상세 역할은 §4를, 흐름은 `docs/SERVICE_FLOWS.md`를 참고한다.
@@ -114,19 +149,19 @@
 
 ### 서비스별 역할 요약
 
-- **user**: 로컬 회원가입/OAuth2 가입, 프로필 조회·수정, 권한. REST base `/user`(컨텍스트 `/api/v1`), gRPC `user.v1`. (`user/user-adapter-in/.../web/UserController.java`, `user/user-adapter-in/.../grpc/GrpcUserService.java`) — **상세: `docs/modules/USER.md`**
+- **user**: 로컬 회원가입/OAuth2 가입, 프로필 조회·수정, 권한. REST base `/user`(컨텍스트 `/api/v1`), gRPC `user.v1`. (`UserController`, `GrpcUserService`) — **상세: `docs/modules/USER.md`**
 - **oauth2-authorization-server**: 내부 OAuth2 Authorization Server. `TOKEN_EXCHANGE` + `REFRESH_TOKEN` 그랜트, Vault Transit RS256 서명, Redis 토큰 저장, gRPC `auth.v1`. (`oauth2-authorization-server-adapter-in/.../config/`, `-adapter-out/.../token/adapter/out/`) — **상세: `docs/modules/OAUTH2_AUTHORIZATION_SERVER.md`**
 - **oauth2-client**: 외부 OIDC 로그인(Google/Kakao) → 내부 AS token-exchange, refresh/logout, `OAuth2AuthorizedClient`(Redis) 관리. (`oauth2-client-adapter-in/.../config/`, `-application/.../authorizedclient/`) — **상세: `docs/modules/OAUTH2_CLIENT.md`**
-- **spring-cloud-api-gateway**: Reactive Gateway + JWT Resource Server. 라우팅·CORS·`X-User-Id` 전파·blacklist 검증·Redis token bucket 기반 HTTP/WebSocket handshake 속도 제한. (`spring-cloud-api-gateway/.../config/ReactiveRouteConfig.java`, `.../ratelimit/RateLimitConfig.java`, `ReactiveJwtDecoderConfig.java`, `CorsConfig.java`)
-- **chat**: 채팅방/메시지. MongoDB + Redis 캐시, gRPC `chatmessage.v1`, Outbox → Kafka, DLQ 소비. 쓰기는 캐시-우선 + Outbox, 영속은 Kafka consumer가 비동기 수행. (`chat/chat-adapter-in`, `chat/chat-adapter-out/.../persistence/MongoChatMessageAdapter.java`) — **상세: `docs/modules/CHAT.md`**
-- **websocket-gateway**: STOMP 게이트웨이. `chatmessage.v1` gRPC 클라이언트, Kafka broadcast consumer(인스턴스별 group) → 로컬 세션 보유자에게 STOMP push, 세션 위치 로컬+Redis(`{session}`). (`websocket-gateway/.../adapter/in/websocket/`, `.../adapter/in/stream/KafkaWebsocketGatewayBinder.java`) — **상세: `docs/modules/WEBSOCKET_GATEWAY.md`**
+- **spring-cloud-api-gateway**: Reactive Gateway + JWT Resource Server. 라우팅·CORS·`X-User-Id` 전파·blacklist 검증·Redis token bucket 기반 HTTP/WebSocket handshake 속도 제한. (`ReactiveRouteConfig`, `RateLimitConfig`, `ReactiveJwtDecoderConfig.java`, `CorsConfig.java`)
+- **chat**: 채팅방/메시지. MongoDB + Redis 캐시, gRPC `chatmessage.v1`, Outbox → Kafka, DLQ 소비. 쓰기는 캐시-우선 + Outbox, 영속은 Kafka consumer가 비동기 수행. (`chat/chat-adapter-in`, `MongoChatMessageAdapter`) — **상세: `docs/modules/CHAT.md`**
+- **websocket-gateway**: STOMP 게이트웨이. `chatmessage.v1` gRPC 클라이언트, Kafka broadcast consumer(인스턴스별 group) → 로컬 세션 보유자에게 STOMP push, 세션 위치 로컬+Redis(`{session}`). (`websocket-gateway/.../adapter/in/websocket/`, `KafkaWebsocketGatewayBinder`) — **상세: `docs/modules/WEBSOCKET_GATEWAY.md`**
 - **market**: 마켓 카탈로그·가격알림 설정. MySQL, gRPC `market.v1`(MarketService, PriceAlertSettingService), Caffeine 캐시 + `market-broadcast-event`로 인스턴스별 캐시 무효화. (`market/market-adapter-in/.../grpc/`) — **상세: `docs/modules/MARKET.md`**
-- **market-detection**: `upbit-ticker-event`를 소비해 Kafka Streams로 변동률을 탐지하고 `PriceAlertDetectedEvent`를 발행한다. 수집은 `upbit-connector` 소관이다. (`market-detection-application/.../dto/PriceChange.java`, `market-detection-adapter-in/.../stream/PriceAlertDetectionProcessor.java`) — **상세: `docs/modules/MARKET_DETECTION.md`**
-- **notification**: 알림 생성·저장·전달. Kafka consumer(`price-alert-detected-event`), MongoDB, `market.v1`(수신자 조회) gRPC 클라이언트, Outbox → `web-notification-broadcast-event`. (`notification/.../adapter/in/stream/KafkaNotificationBinder.java`, `notification/notification-adapter-out/.../grpc/PriceAlertRecipientQueryAdapter.java`) — **상세: `docs/modules/NOTIFICATION.md`**
-- **outbox-poller**: 모든 서비스의 Outbox/DLQ 레코드를 폴링 → Kafka 발행. `EventPublisherPort` 빈 보유 유일 서비스, dispatchType별(GENERAL/BROADCAST) 분리 폴링. (`outbox-poller/.../outbox/OutboxEventScheduler.java`, `.../infra/event/KafkaEventPublisher.java`) — **상세: `docs/modules/OUTBOX_POLLER.md`**
-- **spring-cloud-config**: Config Server(git + Vault), JWKS 엔드포인트, Vault Transit 서명 대행. (`spring-cloud-config/.../jwks/adapter/in/JwksController.java`, `-adapter-out/.../vault/`) — **상세: `docs/modules/SPRING_CLOUD_CONFIG.md`**
+- **market-detection**: `upbit-ticker-event`를 소비해 Kafka Streams로 변동률을 탐지하고 `PriceAlertDetectedEvent`를 발행한다. 수집은 `upbit-connector` 소관이다. (`PriceChange`, `PriceAlertDetectionProcessor`) — **상세: `docs/modules/MARKET_DETECTION.md`**
+- **notification**: 알림 생성·저장·전달. Kafka consumer(`price-alert-detected-event`), MongoDB, `market.v1`(수신자 조회) gRPC 클라이언트, Outbox → `web-notification-broadcast-event`. (`KafkaNotificationBinder`, `PriceAlertRecipientQueryAdapter`) — **상세: `docs/modules/NOTIFICATION.md`**
+- **outbox-poller**: 모든 서비스의 Outbox/DLQ 레코드를 폴링 → Kafka 발행. `EventPublisherPort` 빈 보유 유일 서비스, dispatchType별(GENERAL/BROADCAST) 분리 폴링. (`OutboxEventScheduler`, `KafkaEventPublisher`) — **상세: `docs/modules/OUTBOX_POLLER.md`**
+- **spring-cloud-config**: Config Server(git + Vault), JWKS 엔드포인트, Vault Transit 서명 대행. (`JwksController`, `-adapter-out/.../vault/`) — **상세: `docs/modules/SPRING_CLOUD_CONFIG.md`**
 - **spring-cloud-eureka-server**: 서비스 디스커버리(HTTP `lb://` + gRPC metadata 기반). (`spring-cloud-eureka-server/.../Main.java`, `git-config-repo/infrastructure/eureka-{server,client}.yml`) — **상세: `docs/modules/EUREKA_SERVER.md`**
-- **upbit-connector**: Upbit 외부 API 통신 전담 WebFlux 서비스. Reactor Netty로 실시간 시세를 수집해 종목별 스로틀을 적용하고 `upbit-ticker-event`로 발행한다(market-detection 소비). (`upbit-connector/upbit-connector-adapter-out/.../UpbitWebsocketTickerStreamAdapter.java`, `-application/.../UpbitTickerCollectService.java`) — **상세: `docs/modules/UPBIT_CONNECTOR.md`**
+- **upbit-connector**: Upbit 외부 API 통신 전담 WebFlux 서비스. Reactor Netty로 실시간 시세를 수집해 종목별 스로틀을 적용하고 `upbit-ticker-event`로 발행한다(market-detection 소비). (`UpbitWebsocketTickerStreamAdapter`, `UpbitTickerCollectService`) — **상세: `docs/modules/UPBIT_CONNECTOR.md`**
 
 ---
 
@@ -160,11 +195,11 @@
 ## 6. 데이터 저장소
 
 - **MySQL**: user, market, outbox-poller. `spring.sql.init`로 `classpath:sql/schema.sql` 초기화. 스키마 힌트:
-  - `user`: PK `id`(Snowflake), `public_id` UUID unique(updatable=false), `email` not null. `role`(name unique), `user_role`. (`user/user-adapter-out/.../JpaUser.java`, `JpaRole.java`, `JpaUserRole.java`)
-  - `market`: unique `uk_markets_market_code`. (`market/market-adapter-out/.../JpaMarket.java`)
-  - `price_alert_setting`: 복합 unique `(user_public_id, market_id)` + index `(market_id)`. (`.../JpaPriceAlertSetting.java`)
+  - `user`: PK `id`(Snowflake), `public_id` UUID unique(updatable=false), `email` not null. `role`(name unique), `user_role`. (`JpaUser`, `JpaRole.java`, `JpaUserRole.java`)
+  - `market`: unique `uk_markets_market_code`. (`JpaMarket`)
+  - `price_alert_setting`: 복합 unique `(user_public_id, market_id)` + index `(market_id)`. (`JpaPriceAlertSetting`)
 - **MongoDB**: chat, notification.
-  - `chat_room`: CompoundIndex `{category, msgCnt, _id}` partial `{deleted:false}`, `title` unique partial. (`chat/chat-adapter-out/.../MongoChatRoom.java`)
+  - `chat_room`: CompoundIndex `{category, msgCnt, _id}` partial `{deleted:false}`, `title` unique partial. (`MongoChatRoom`)
   - `chat_message`, `chat_room_membership`, `notification`, `notification_recipient`.
 - **Redis Cluster**: 6노드 구성(`git-config-repo/infrastructure/redis.yml`). 키는 `common-core/RedisKey` enum으로 중앙 관리. Cluster Hash Tag로 슬롯 고정: `{chat}`, `{auth}`, `{session}`.
 - **Read Replica 라우팅**: `common-jpa`에 라우팅 DataSource가 구현되어 있고, 이를 실제로 배선한 서비스는 **market 하나**다(`market/market-adapter-out/.../infra/config/DatasourceConfig.java`: write/read Hikari + `ReplicationRoutingDataSource` + `LazyConnectionDataSourceProxy`, 상세는 `docs/modules/MARKET.md §10`). **user는 `spring.datasource.write` 단일 Hikari만 구성**하며 read pool도 라우팅 DataSource도 두지 않는다(`user/user-adapter-out/.../infra/config/DataSourceConfig.java`, 상세는 `docs/modules/USER.md §10`). 라우팅 트리거는 `@ReadReplica`+Aspect이며 `@Transactional(readOnly=true)`만으로는 read로 가지 않는다(§8.6).
@@ -199,20 +234,20 @@ proto 4개(`protobuf/src/main/proto/**`)와 서버/클라이언트 매핑:
 
 ### 7.4 WebSocket / STOMP
 
-`websocket-gateway/.../adapter/in/websocket/config/StompConfig.java`:
+`StompConfig`:
 - 엔드포인트 `/ws`(SockJS), `/ws-native`. 브로커 `/topic`·`/queue`, appPrefix `/msg`, userPrefix `/user`.
 - 핸드셰이크에서 `X-User-Id`(게이트웨이 주입)로 STOMP Principal 결정.
 - Destination 계약(`common-core/StompDestination`): `/topic/chat/`(prefix), `/queue/chat/badge`, `/queue/chat/ack`, `/topic/notification/`(prefix). 인바운드 `@MessageMapping("/chat.send")`.
 - 아웃바운드 wire payload(클라이언트가 실제 수신하는 형태, 계약):
-  - `/topic/chat/{roomId}` 방 브로드캐스트 → **봉투** `StompChatMessageBatchPayload` `{ roomId, messages[] }`, 각 원소는 `StompChatMessagePayload` `{ messageId, roomId, writerId, content, timestamp(epoch millis, long), clientMessageId }`. 방 단위 100ms 시간창으로 묶어 보내며 **배칭이 꺼져 있어도 1건짜리 봉투로 나간다**(wire 형식 불변). 근거 `websocket-gateway-adapter-out/.../stomp/{BatchingChatMessageBroadcastAdapter,StompChatMessageBroadcastAdapter}.java` + `.../stomp/payload/StompChatMessageBatchPayload.java`. 주의: 내부 Kafka 이벤트 `contract/chatmessage/ChatMessageBroadcastEvent{ payload, clientMessageId }`와 **다르다** — gateway가 `ChatMessageBroadcastEventMapper`로 flat 변환 후 전송한다. 로컬 전달 여부는 gateway가 자기 구독 레지스트리(`LocalSessionCache.hasLocalSubscriber(roomId)`)로 판정하므로 이벤트가 멤버 목록을 싣지 않는다. `createdAt(Instant)`는 `timestamp(epochMilli)`로 변환(null이면 `0`).
-  - 알림 → `convertAndSendToUser(receiverId, "/topic/notification/", payload)`로 **사용자별** 전송, 클라이언트 구독 destination은 **`/user/topic/notification/`**(user-destination). payload `StompWebNotificationPayload` `{ notificationId, type, title, body, createdAtMs(epoch millis, long), link, data(Map<String,Object>) }`. `notificationId`는 REST 읽음 처리와 STOMP 중복 제거에 쓴다. 근거 `websocket-gateway-adapter-out/.../notification/adapter/out/stomp/StompWebNotificationAdapter.java` + `.../stomp/payload/StompWebNotificationPayload.java`. 흐름: Kafka `web-notification-broadcast-event` consume(`WebNotificationBroadcastEventMapper`) → command → 위 전송. 로컬 세션 있는 대상에게만 push.
+  - `/topic/chat/{roomId}` 방 브로드캐스트 → **봉투** `StompChatMessageBatchPayload` `{ roomId, messages[] }`, 각 원소는 `StompChatMessagePayload` `{ messageId, roomId, writerId, content, timestamp(epoch millis, long), clientMessageId }`. 방 단위 100ms 시간창으로 묶어 보내며 **배칭이 꺼져 있어도 1건짜리 봉투로 나간다**(wire 형식 불변). 근거 `BatchingChatMessageBroadcastAdapter`/`StompChatMessageBroadcastAdapter` + `StompChatMessageBatchPayload`. 주의: 내부 Kafka 이벤트 `contract/chatmessage/ChatMessageBroadcastEvent{ payload, clientMessageId }`와 **다르다** — gateway가 `ChatMessageBroadcastEventMapper`로 flat 변환 후 전송한다. 로컬 전달 여부는 gateway가 자기 구독 레지스트리(`LocalSessionCache.hasLocalSubscriber(roomId)`)로 판정하므로 이벤트가 멤버 목록을 싣지 않는다. `createdAt(Instant)`는 `timestamp(epochMilli)`로 변환(null이면 `0`).
+  - 알림 → `convertAndSendToUser(receiverId, "/topic/notification/", payload)`로 **사용자별** 전송, 클라이언트 구독 destination은 **`/user/topic/notification/`**(user-destination). payload `StompWebNotificationPayload` `{ notificationId, type, title, body, createdAtMs(epoch millis, long), link, data(Map<String,Object>) }`. `notificationId`는 REST 읽음 처리와 STOMP 중복 제거에 쓴다. 근거 `StompWebNotificationAdapter` + `StompWebNotificationPayload`. 흐름: Kafka `web-notification-broadcast-event` consume(`WebNotificationBroadcastEventMapper`) → command → 위 전송. 로컬 세션 있는 대상에게만 push.
 
 ---
 
 ## 8. 공통 아키텍처 패턴
 
 ### 8.1 Port & Adapter
-`application/port/in`(UseCase)·`port/out`(Persistence/Cache) 인터페이스를 `adapter/out`에서 구현. 예: `user/.../port/out/UserPersistencePort.java` ↔ `user/.../adapter/out/JpaUserAdapter.java`.
+`application/port/in`(UseCase)·`port/out`(Persistence/Cache) 인터페이스를 `adapter/out`에서 구현. 예: `UserPersistencePort` ↔ `JpaUserAdapter`.
 
 ### 8.2 Command / Query 분리
 `*CommandService`/`*QueryService`(+ `*CommandUseCase`/`*QueryUseCase`)로 분리. user/chat/market/notification 전 서비스 적용.
@@ -224,8 +259,8 @@ proto 4개(`protobuf/src/main/proto/**`)와 서버/클라이언트 매핑:
 Spring `ApplicationEventPublisher`를 직접 쓰지 않고 `EventUtils.raise(list)` → `@EventListener OutboxEventListListener` → `OutboxService.saveAll`로 Outbox 테이블에 기록(`common-outbox`). 이벤트는 `AbstractOutboxEvent`/`AbstractOutboxEventList` 상속.
 
 ### 8.5 Outbox / DLQ
-- `Outbox`(`common-outbox/.../outbox/domain/Outbox.java`): 도메인 메서드 `markPublished()`, `markFailed()`, `increaseRetryCnt()`, `isRetryExhausted(int)`. `getDestination()`이 `aggregateType`(=Kafka topic) 반환.
-- `Dlq`(`.../dlq/domain/Dlq.java`): `markPublished()`, `markPublishFailed()`, `markCompleted()`, `markFailed(String)`. 상태 enum `DlqStatus`.
+- `Outbox`(`Outbox`): 도메인 메서드 `markPublished()`, `markFailed()`, `increaseRetryCnt()`, `isRetryExhausted(int)`. `getDestination()`이 `aggregateType`(=Kafka topic) 반환.
+- `Dlq`(`Dlq`): `markPublished()`, `markPublishFailed()`, `markCompleted()`, `markFailed(String)`. 상태 enum `DlqStatus`.
 - `outbox-poller`가 `@Scheduled`로 general/broadcast/dlq를 분리 폴링 → `KafkaEventPublisher`(StreamBridge)로 발행. DLQ 폴러 on/off는 `DlqPollerController`.
 
 ### 8.6 Read Replica 라우팅
@@ -265,15 +300,17 @@ Spring `ApplicationEventPublisher`를 직접 쓰지 않고 `EventUtils.raise(lis
 
 ---
 
-## 11. 근거 경로 색인 (주요)
+## 11. 근거 색인 (주요)
 
-- 모듈 정의: `settings.gradle`
-- convention plugin: `build-logic/src/main/groovy/*.gradle`
-- CI task: 루트 `build.gradle`
-- 계약 enum: `common/common-core/.../enums/{RedisKey,KafkaTopic,KafkaHeaderKey,StompDestination,JwtClaimKey}.java`
-- Outbox/DLQ: `common/common-outbox/.../{outbox,dlq}/domain/`, `outbox-poller/.../`
-- Read Replica: `common/common-jpa/.../{annotation,aop,datasource}/`
-- gRPC proto: `protobuf/src/main/proto/{market,chatmessage,user,auth}/v1/*.proto`
-- Gateway: `spring-cloud-api-gateway/.../config/`
-- STOMP: `websocket-gateway/.../adapter/in/websocket/config/StompConfig.java`
-- 설정 저장소: `git-config-repo/{dynamic,infrastructure}/`
+| 대상 | 근거 |
+|---|---|
+| 모듈 정의 | `settings.gradle` |
+| convention plugin | `build-logic/src/main/groovy/*.gradle` |
+| CI task | 루트 `build.gradle` |
+| 계약 enum | `RedisKey` · `KafkaTopic` · `KafkaHeaderKey` · `StompDestination` · `JwtClaimKey` (`common-core`) |
+| Outbox/DLQ | `Outbox` · `Dlq` · `OutboxService` · `DlqService` (`common-outbox`), `OutboxEventScheduler` · `DlqEventScheduler` · `KafkaEventPublisher` (`outbox-poller`) |
+| Read Replica | `ReadReplica` · `ReadReplicaAspect` · `DataSourceContextHolder` · `ReplicationRoutingDataSource` (`common-jpa`) |
+| gRPC proto | `protobuf/src/main/proto/{market,chatmessage,user,auth}/v1/*.proto` |
+| Gateway | `ReactiveRouteConfig` · `ReactiveSecurityConfig` · `ReactiveJwtDecoderConfig` · `CorsConfig` · `RateLimitConfig` |
+| STOMP | `StompConfig` |
+| 설정 저장소 | `git-config-repo/{dynamic,infrastructure}/` |

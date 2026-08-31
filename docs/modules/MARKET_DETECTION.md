@@ -49,29 +49,41 @@ Upbit 실시간 시세(`upbit-ticker-event`)를 소비해 **단기 이동평균 
 
 ### 4.3 처리 (Kafka Streams → 임계 탐지 → `price-alert-detected-event`)
 
-- `priceAlertDetectionProcessor`(`Function<KStream<String, UpbitTickerEvent>, KStream<String, PriceAlertDetectedEvent>>`)가 KStream을 `PriceAlertDetectionProcessor`로 `process`한다. 입력 바인딩 `priceAlertDetectionProcessor-in-0` → **`upbit-ticker-event`**(`upbit-connector`가 발행), group `upbit-ticker-alert`.
-- `PriceAlertDetectionProcessor`(state store `upbit-ticker-store`, persistent WindowStore, retention/window `3m`):
-  1. Upbit `tradeTimestamp`(없으면 Kafka record timestamp)가 현재 시각보다 `max-event-age`(10s) 초과해 오래된 이벤트면 상태 저장과 알림 발행 없이 폐기한다.
-  2. Kafka record timestamp를 상태·출력 시각으로 사용하고, 윈도우 `[timestamp - 3m, timestamp]`의 저장 시세로 **이동평균** 계산(없으면 현재가로 fallback). Upbit 체결 시각은 stale 판정에만 사용해 기존 처리 의미를 유지한다.
-  3. `changeRate = (current - avg) / avg`.
-  4. 현재 시세를 store에 `put`.
-  5. `PriceAlertChangeRateThreshold.matchedBy(changeRate)`로 **초과한 임계값 전부**(절대값 기준 0%/3%/5%/7%) 매칭.
-  6. 매칭된 임계값마다 `PriceAlertDetectedEvent`(code·price·timestamp·avgInterval(=windowMinutes 3)·avgPrice·changeRate·threshold enum명)를 processor context로 forward한다.
-  7. 출력 KStream 바인딩 `priceAlertDetectionProcessor-out-0`이 `price-alert-detected-event`로 발행한다. WindowStore 갱신·출력 레코드·입력 offset은 Kafka Streams EOS 트랜잭션으로 함께 커밋된다.
+```mermaid
+graph TB
+  UC["upbit-connector<br/>Upbit WS → 종목별 스로틀"]
+  KIN[["Kafka<br/>upbit-ticker-event<br/>group upbit-ticker-alert"]]
+  BIND["priceAlertDetectionProcessor<br/>Function&lt;KStream&lt;String, UpbitTickerEvent&gt;, KStream&lt;String, PriceAlertDetectedEvent&gt;&gt;<br/>바인딩 priceAlertDetectionProcessor-in-0"]
+  STALE{"1 · stale 판정<br/>tradeTimestamp(없으면 record timestamp)가<br/>max-event-age 10s 초과"}
+  DROP["폐기 — 상태 저장·알림 발행 없음"]
+  AVG["2 · 이동평균<br/>record timestamp 기준 윈도우 [t-3m, t] 의 저장 시세<br/>없으면 현재가 fallback"]
+  RATE["3 · changeRate = (current - avg) / avg"]
+  PUT["4 · 현재 시세를 store 에 put"]
+  MATCH{"5 · PriceAlertChangeRateThreshold.matchedBy<br/>초과한 임계값 전부 — 절대값 0% · 3% · 5% · 7%"}
+  FWD["6 · 매칭된 임계값마다 PriceAlertDetectedEvent 를<br/>processor context 로 forward"]
+  OUTB["7 · 바인딩 priceAlertDetectionProcessor-out-0"]
+  KOUT[["Kafka<br/>price-alert-detected-event"]]
+  NOTI["notification"]
+  STORE[("WindowStore upbit-ticker-store<br/>persistent · retention·window 3m")]
+  TX["WindowStore 갱신 · 출력 레코드 · 입력 offset<br/>Kafka Streams EOS 트랜잭션으로 함께 커밋"]
+
+  UC --> KIN --> BIND --> STALE
+  STALE -->|"오래됨"| DROP
+  STALE -->|"유효"| AVG
+  STORE -.->|"윈도우 조회"| AVG
+  AVG --> RATE --> PUT --> MATCH
+  PUT -.-> STORE
+  MATCH -->|"매칭 없음"| DROP
+  MATCH -->|"매칭"| FWD --> OUTB --> KOUT --> NOTI
+  OUTB -.-> TX
+```
+
+- `PriceAlertDetectedEvent` 필드: code·price·timestamp·avgInterval(= windowMinutes 3)·avgPrice·changeRate·threshold enum명.
+- Upbit 체결 시각(`tradeTimestamp`)은 **stale 판정에만** 쓴다. 상태·출력 시각은 Kafka record timestamp를 사용해 기존 처리 의미를 유지한다.
+- 0% 임계값은 `abs(changeRate) >= 0.0`이므로 처리 가능한 모든 ticker에서 감지 이벤트를 만든다. 실제 사용자 알림은 notification이 market에 `종목 + 0%`를 설정한 수신자를 조회한 뒤 해당 사용자에게만 생성한다.
 - 소비자: `notification`(`price-alert-detected-event`).
 
-0% 임계값은 `abs(changeRate) >= 0.0`이므로 처리 가능한 모든 ticker에서 감지 이벤트를 만든다. 실제 사용자 알림은 notification이 market에 `종목 + 0%`를 설정한 수신자를 조회한 뒤 해당 사용자에게만 생성한다.
-
-### 4.4 흐름도
-
-```
-[upbit-connector] Upbit WS → 종목별 스로틀 → Kafka: upbit-ticker-event
-   → KStream(upbit-ticker-event) → PriceAlertDetectionProcessor
-        10s 초과 stale 폐기 → WindowStore(3m) 이동평균·변동률 → 임계 매칭(0/3/5/7%)
-   → Kafka: price-alert-detected-event → [notification]
-```
-
-### 4.5 Kafka Streams EOS 적용 배경과 트랜잭션 경계
+### 4.4 Kafka Streams EOS 적용 배경과 트랜잭션 경계
 
 이 모듈은 Outbox relay와 달리 Kafka 레코드를 소비해 상태 저장소를 갱신하고 다시 Kafka 레코드를 만드는 전형적인 **Consume–Process–Produce** 구조다. 입력 처리는 다음 세 결과를 하나의 논리적 작업으로 만든다.
 
@@ -158,10 +170,10 @@ market-detection은 stateful Kafka 처리 결과가 곧 Kafka 출력이고 외�
 
 | 파일 | 이유 |
 |---|---|
-| `market-detection-contract/.../PriceAlertDetectedEvent.java` · `PriceAlertDetectedPayloadKeys` | notification이 소비하는 발행 계약 |
+| `PriceAlertDetectedEvent` · `PriceAlertDetectedPayloadKeys` | notification이 소비하는 발행 계약 |
 | `common-core/PriceAlertChangeRateThreshold` | 3서비스 공유 임계값 계약(탐지·수신자 조회·정확 일치) |
-| `-application/dto/PriceChange.java` | 변동률 산식·임계 매칭 |
-| `-adapter-in/.../PriceAlertDetectionProcessor.java` / `StateStoreConfig.java` | WindowStore 접근·forward·store 정의 |
+| `PriceChange` | 변동률 산식·임계 매칭 |
+| `PriceAlertDetectionProcessor` / `StateStoreConfig.java` | WindowStore 접근·forward·store 정의 |
 | `git-config-repo/dynamic/market-detection.yml` | Streams 바인딩·토픽·store·트랜잭션 |
 
 ## 10. 관련 문서와 rules

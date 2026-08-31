@@ -50,14 +50,18 @@ Upbit 외부 API와의 통신을 전담하는 **리액티브(WebFlux/Reactor) �
 
 ## 4. 데이터 흐름 (1단계 구현됨)
 
-```
-market gRPC getEnabledMarkets (CompletableFuture → Mono) ─┐
-                                                          ▼
-Upbit WebSocket (wss://api.upbit.com/websocket/v1)
- → UpbitWebsocketTickerStreamAdapter: Flux<UpbitTickerEvent> (+ repeatWhen/retryWhen 재연결)
- → UpbitTickerCollectService: groupBy(code) → sample(ticker-publish-interval) → onBackpressureLatest
- → KafkaUpbitTickerPublishAdapter: StreamBridge(boundedElastic)
- → Kafka `upbit-ticker-event` → [market-detection Kafka Streams]
+```mermaid
+graph TB
+  MKT["market gRPC getEnabledMarkets<br/>CompletableFuture → Mono<br/>구독 종목 결정"]
+  WS(("Upbit WebSocket<br/>wss://api.upbit.com/websocket/v1"))
+  ADP["UpbitWebsocketTickerStreamAdapter<br/>Flux&lt;UpbitTickerEvent&gt;<br/>+ repeatWhen · retryWhen 재연결"]
+  COL["UpbitTickerCollectService<br/>groupBy(code) → sample(ticker-publish-interval)<br/>→ onBackpressureLatest"]
+  PUB["KafkaUpbitTickerPublishAdapter<br/>StreamBridge — boundedElastic"]
+  K[["Kafka<br/>upbit-ticker-event"]]
+  MD["market-detection<br/>Kafka Streams"]
+
+  MKT -->|"구독 종목"| ADP
+  WS --> ADP --> COL --> PUB --> K --> MD
 ```
 
 ### 4.1 종목별 스로틀 계약

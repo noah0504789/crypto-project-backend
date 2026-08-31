@@ -64,6 +64,41 @@
 
 Outbox 패턴의 핵심 모듈. **비즈니스 DB write와 이벤트 기록을 같은 트랜잭션에 묶어(transactional outbox)** 발행 유실을 막고, 실제 Kafka 전송은 `outbox-poller`가 별도로 폴링해 수행한다. 서비스는 Kafka로 직접 쏘지 않고 이 흐름만 사용한다.
 
+```mermaid
+graph TB
+  subgraph W["발행 (write-side) — 호출자 트랜잭션 안, 동기"]
+    S1["1 · 비즈니스 서비스<br/>OutboxEventListPublishPort.publish(eventList)"]
+    S2["2 · SpringOutboxEventListPublishAdapter<br/>null·empty면 skip"]
+    S3["3 · EventUtils.raise<br/>정적 홀더의 ApplicationEventPublisher.publishEvent"]
+    S4["4 · OutboxEventListListener.handleOutboxEventList<br/>@EventListener — 발행 스레드에서 동기 실행<br/>직렬화 + event.toOutbox(txId, payload)"]
+    S5["5 · OutboxService.saveAll<br/>@Transactional(transactionManager)"]
+  end
+
+  DB[("MySQL event.outbox<br/>status = PENDING")]
+  RB["비즈니스 write 롤백 시<br/>outbox row 도 함께 롤백"]
+
+  subgraph R["폴링 (relay) — outbox-poller, 비동기"]
+    S6["6 · OutboxService.publishPending(dispatchType)<br/>PENDING 을 createdAt 오름차순 batchSize 만큼 조회"]
+    S7["7 · EventPublisherPort.publish(outbox)<br/>→ KafkaEventPublisher"]
+    RES{"전송 결과"}
+    OK["outbox.markPublished()"]
+    RETRY["increaseRetryCnt()"]
+    EXH{"maxRetryCnt 초과"}
+    FAILED["markFailed()"]
+  end
+
+  K[["Kafka<br/>토픽 = outbox.getDestination() = aggregateType<br/>배치 레인 = dispatchType(GENERAL · BROADCAST)"]]
+
+  S1 --> S2 --> S3 --> S4 --> S5 --> DB
+  DB -.-> RB
+  DB --> S6 --> S7 --> K
+  S7 --> RES
+  RES -->|"성공"| OK
+  RES -->|"실패"| RETRY --> EXH
+  EXH -->|"예"| FAILED
+  EXH -->|"아니오"| S6
+```
+
 #### 발행 흐름 (write-side, 동기 · 트랜잭션 내)
 
 1. **서비스가 이벤트 목록 발행**: 비즈니스 서비스가 `OutboxEventListPublishPort.publish(eventList)`를 호출한다(예: `ChatMessageCommandService`, `ChatRoomCommandService`). 도메인 객체가 Spring 빈을 들고 있지 않아도 되도록, 발행은 이 포트를 통한다.
@@ -121,22 +156,36 @@ Outbox 패턴의 핵심 모듈. **비즈니스 DB write와 이벤트 기록을 �
 **왜 쓰나.** blue/green 무중단 배포에서 "앱이 기동됐다"와 "트래픽을 받아도 된다"를 분리하기 위해서다. Spring Boot 기본 `readinessState`는 기동이 끝나면 자동으로 UP이라 배포 오케스트레이션이 컷오버 시점을 통제할 수 없다. 그래서 배포 스크립트가 **명시적으로 on/off**하는 커스텀 readiness(`deploymentReadiness`, 초기값 `false`)를 두어, 스크립트가 검증을 마치기 전까지 새 인스턴스로 트래픽이 가지 않게 한다.
 
 **구성요소.**
-- `common-actuator-core`
-  - `DeploymentReadiness`: in-memory `AtomicBoolean`(**초기 `false`**) + `markReady()`/`markNotReady()`/`updatedAt()`.
-  - `DeploymentReadinessHealthIndicator`: `deploymentReadiness` 헬스 인디케이터. ready면 `UP`, 아니면 `OUT_OF_SERVICE`(+ `deploymentReady`/`updatedAt` 상세).
-  - `DeploymentControlProperties`: `deployment.control.token`(= `${DEPLOY_TOKEN}`).
-- `common-actuator-webmvc`(MVC 서비스) / `common-actuator-webflux`(gateway 등 WebFlux) — 동일 API의 서블릿/리액티브 쌍:
-  - 제어 엔드포인트 `/internal/deployment`: `GET /status`, `POST /ready`(→ `markReady`), `POST /not-ready`(→ `markNotReady`).
-  - `DeploymentControlAuthFilter`/`DeploymentControlAuthWebFilter`: **`/internal/deployment/**` 경로만** `X-Deploy-Token`(= `deployment.control.token`) 일치 검사, 불일치 시 401.
+
+| 모듈 | 구성요소 | 역할 |
+|---|---|---|
+| `common-actuator-core` | `DeploymentReadiness` | in-memory `AtomicBoolean`(**초기 `false`**) + `markReady()`/`markNotReady()`/`updatedAt()` |
+| `common-actuator-core` | `DeploymentReadinessHealthIndicator` | `deploymentReadiness` 헬스 인디케이터. ready면 `UP`, 아니면 `OUT_OF_SERVICE`(+ `deploymentReady`/`updatedAt` 상세) |
+| `common-actuator-core` | `DeploymentControlProperties` | `deployment.control.token`(= `${DEPLOY_TOKEN}`) |
+| `common-actuator-webmvc`(MVC) / `common-actuator-webflux`(gateway 등 WebFlux) | 제어 엔드포인트 `/internal/deployment` | `GET /status`, `POST /ready`(→ `markReady`), `POST /not-ready`(→ `markNotReady`) |
+| 〃 | `DeploymentControlAuthFilter` / `DeploymentControlAuthWebFilter` | **`/internal/deployment/**` 경로만** `X-Deploy-Token`(= `deployment.control.token`) 일치 검사, 불일치 시 401 |
+
+두 webmvc/webflux 모듈은 동일 API의 서블릿/리액티브 쌍이다.
 
 **health group 연동.** `git-config-repo/infrastructure/monitoring.yml`이 전 서비스 공통으로 `management.endpoint.health.group.readiness.include: readinessState,deploymentReadiness`를 설정한다. 따라서 `deploymentReadiness`가 `false`면 `/actuator/health/readiness`가 `OUT_OF_SERVICE`가 되고, 로드밸런서/헬스체크가 그 인스턴스를 트래픽 대상에서 뺀다(liveness 그룹은 `livenessState`만).
 
 **배포 스크립트 연동 흐름.** 실제 배포 스크립트는 별도 infra 저장소(`$INFRA_REPO_DIR/service/scripts/deploy/*.sh`, CD 워크플로우가 `DEPLOY_TOKEN`을 전달 → `docs/CI_CD.md §3`)에 있고 이 저장소에는 없다. 엔드포인트 설계상 blue/green 컷오버는 다음처럼 동작한다:
-```
-새 컨테이너 기동 → deploymentReadiness=false → /actuator/health/readiness=OUT_OF_SERVICE → LB 트래픽 제외
-배포 스크립트(검증 후): POST /internal/deployment/ready  (헤더 X-Deploy-Token)
-  → markReady → readiness=UP → LB 트래픽 유입 (컷오버)
-구 인스턴스 드레이닝: POST /internal/deployment/not-ready → OUT_OF_SERVICE → 트래픽 차단 후 컨테이너 종료
+```mermaid
+graph TB
+  NEW["새 컨테이너 기동"]
+  F["deploymentReadiness = false"]
+  OOS["/actuator/health/readiness = OUT_OF_SERVICE"]
+  EX["LB 트래픽 제외"]
+  SCRIPT["배포 스크립트 — 검증 후<br/>POST /internal/deployment/ready<br/>헤더 X-Deploy-Token"]
+  READY["markReady → readiness = UP"]
+  IN["LB 트래픽 유입 — 컷오버"]
+  DRAIN["구 인스턴스 드레이닝<br/>POST /internal/deployment/not-ready"]
+  OOS2["OUT_OF_SERVICE"]
+  STOP["트래픽 차단 후 컨테이너 종료"]
+
+  NEW --> F --> OOS --> EX
+  EX --> SCRIPT --> READY --> IN
+  IN --> DRAIN --> OOS2 --> STOP
 ```
 정확한 스크립트 호출 순서는 infra 저장소 소관이라 이 문서에서 코드로 검증하지 않는다(엔드포인트 계약만 기술). CD의 서비스별 전략(validated-recreate/blue-green)은 `docs/CI_CD.md §3`.
 

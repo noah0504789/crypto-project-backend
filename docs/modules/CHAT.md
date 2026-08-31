@@ -87,27 +87,27 @@ chat의 쓰기 경로는 **동기적으로 Redis 캐시에 반영하고 영속(M
 
 ## 6. 주요 클래스와 책임
 
-| 클래스 | 경로(요약) | 책임 |
-|---|---|---|
-| `ChatRoomController` | `chat-adapter-in/.../chatroom/adapter/in/web/` | 방 REST 10개 엔드포인트(§9) |
-| `ChatMessageController` | `chat-adapter-in/.../chatmessage/adapter/in/web/` | 메시지 목록 조회 1개(§9) |
-| `GrpcChatMessageService` | `chat-adapter-in/.../chatmessage/adapter/in/grpc/` | gRPC `save`/`HardDelete`(§10), 취소/데드라인 감지 |
-| `KafkaChatRoomBinder` / `KafkaChatMessageBinder` | `chat-adapter-in/.../adapter/in/stream/` | Kafka consumer 함수 빈(이벤트/DLQ) |
-| `ChatRoomCommandService` | `chat-application/.../chatroom/application/service/` | 방 create/update/join/leave/activity/delete — Outbox 발행 + 캐시 동기 반영(§7) |
-| `ChatRoomQueryService` | `chat-application/.../chatroom/application/service/` | 인기방/내 방/방 상세 조회(캐시-우선), lastRead·unread 계산 |
-| `ChatRoomQueryRepairService` | `chat-application/.../chatroom/application/service/` | 캐시 미스 복구(`SingleFlight` 하에 Mongo 로드 + 워밍업) |
-| `ChatRoomEventService` | `chat-application/.../chatroom/application/service/` | 방 이벤트 비동기 영속 + 캐시 복구, `@Retryable`/`@Recover`→DLQ |
-| `ChatRoomDlqService` | `chat-application/.../chatroom/application/service/` | 방 DLQ 이벤트 재처리 |
-| `ChatMessageCommandService` | `chat-application/.../chatmessage/application/service/` | 메시지 save/hardDelete(§10), Outbox 3종 발행 + 캐시 |
-| `ChatMessageQueryService` | `chat-application/.../chatmessage/application/service/` | 메시지 목록 조회(캐시-우선, 미스 시 repair) |
-| `ChatMessageQueryRepairService` | `chat-application/.../chatmessage/application/service/` | 메시지 캐시 미스 복구(분산락 하에 range 로드 + 워밍업) |
-| `ChatMessageEventService` | `chat-application/.../chatmessage/application/service/` | 메시지 이벤트 비동기 영속(멱등) + 방 카운터/스코어 갱신(멤버 전원 스코어는 `upsertUnreadActivity` 의 UNORDERED bulkWrite 한 번, PR #270 — 멤버당 왕복으로 되돌리지 않는다), →DLQ |
-| `MyChatRoomScoreCalculator` | `chat-domain/.../chatroom/domain/service/` | 내 방 정렬 스코어(안읽음 가중치) |
-| `MongoChatMessageAdapter` / `MongoChatRoomAdapter` | `chat-adapter-out/.../persistence/` | `*PersistencePort` 구현(MongoDB) |
-| `RedisChatMessageAdapter` / `RedisChatRoomAdapter` | `chat-adapter-out/.../cache/` | `*CachePort` 구현(Redis Cluster) |
-| `RedisCollectionRegistry` | `chat-application/.../infra/redis/` | master/replica `RedisSet`/`RedisZSet` 캐싱 획득 |
-| `ChatMessageScheduler` | `chat-adapter-out/.../scheduler/` | 매일 03:00 캐시에서 7일 초과 메시지 제거(§13) |
-| `ObjectIdChatRoomIdGeneratorAdapter` | `chat-adapter-out/.../id/` | 방 id = Mongo `ObjectId`(hex) 생성 |
+| 클래스 | 책임 |
+|---|---|
+| `ChatRoomController` | 방 REST 10개 엔드포인트(§9) |
+| `ChatMessageController` | 메시지 목록 조회 1개(§9) |
+| `GrpcChatMessageService` | gRPC `save`/`HardDelete`(§10), 취소/데드라인 감지 |
+| `KafkaChatRoomBinder` / `KafkaChatMessageBinder` | Kafka consumer 함수 빈(이벤트/DLQ) |
+| `ChatRoomCommandService` | 방 create/update/join/leave/activity/delete — Outbox 발행 + 캐시 동기 반영(§7) |
+| `ChatRoomQueryService` | 인기방/내 방/방 상세 조회(캐시-우선), lastRead·unread 계산 |
+| `ChatRoomQueryRepairService` | 캐시 미스 복구(`SingleFlight` 하에 Mongo 로드 + 워밍업) |
+| `ChatRoomEventService` | 방 이벤트 비동기 영속 + 캐시 복구, `@Retryable`/`@Recover`→DLQ |
+| `ChatRoomDlqService` | 방 DLQ 이벤트 재처리 |
+| `ChatMessageCommandService` | 메시지 save/hardDelete(§10), Outbox 3종 발행 + 캐시 |
+| `ChatMessageQueryService` | 메시지 목록 조회(캐시-우선, 미스 시 repair) |
+| `ChatMessageQueryRepairService` | 메시지 캐시 미스 복구(분산락 하에 range 로드 + 워밍업) |
+| `ChatMessageEventService` | 메시지 이벤트 비동기 영속(멱등) + 방 카운터/스코어 갱신(멤버 전원 스코어는 `upsertUnreadActivity` 의 UNORDERED bulkWrite 한 번, PR #270 — 멤버당 왕복으로 되돌리지 않는다), →DLQ |
+| `MyChatRoomScoreCalculator` | 내 방 정렬 스코어(안읽음 가중치) |
+| `MongoChatMessageAdapter` / `MongoChatRoomAdapter` | `*PersistencePort` 구현(MongoDB) |
+| `RedisChatMessageAdapter` / `RedisChatRoomAdapter` | `*CachePort` 구현(Redis Cluster) |
+| `RedisCollectionRegistry` | master/replica `RedisSet`/`RedisZSet` 캐싱 획득 |
+| `ChatMessageScheduler` | 매일 03:00 캐시에서 7일 초과 메시지 제거(§13) |
+| `ObjectIdChatRoomIdGeneratorAdapter` | 방 id = Mongo `ObjectId`(hex) 생성 |
 
 ## 7. 방 명령 흐름 (ChatRoomCommandService)
 
@@ -279,7 +279,7 @@ Kafka `event_id`는 추적 계약으로 함께 전달하지만, chat은 서로 �
 
 ## 12. 도메인 모델
 
-### `ChatRoom` (`chat-domain/.../chatroom/domain/model/ChatRoom.java`)
+### `ChatRoom` (`ChatRoom`)
 - 필드: `id`(ObjectId hex), `hostId`, `title`, `description`, `category`, `memberIds:Set<String>`, `msgCnt`, `lastMsgId`/`lastMsgContent`/`lastMsgCreatedAt`(최신 메시지 조인 결과), `createdAt`.
 - 팩토리: `create(...)`(호스트를 멤버로 시딩, `msgCnt=0`), `rehydrate(...)`(영속 복원), `rehydrateWithLatest(...)`(최신 메시지 포함 복원).
 - 행위: `validateWritable(writerId)`(멤버 아니면 `ChatRoomMembershipNotFoundException`), `addMember`/`removeMember`(멱등 boolean), `isLastMember`(마지막 멤버 → 퇴장 시 삭제 전환), `hasUnread(lastReadSeq)`(`lastReadSeq < msgCnt`), `popularity()`.
@@ -291,7 +291,7 @@ Kafka `event_id`는 추적 계약으로 함께 전달하지만, chat은 서로 �
   - `popularity`는 `round(calculate)`(Long)로 저장 — Redis zset score(double)와 소수 산식 시 경계에서 미세 오차 가능(정밀 불필요 전제). 커서(`ChatRoomCursor.lastPopularity`)는 Long 유지(프론트 API 계약 무변경).
   실행 간 zset은 다소 stale(수용). 항 추가(멤버 수·최근성 등)는 `calculate`에 가중치만 더하면 되며 §16 참고.
 
-### `ChatMessage` (`chat-domain/.../chatmessage/domain/model/ChatMessage.java`)
+### `ChatMessage` (`ChatMessage`)
 - 필드: `id`(ObjectId hex), `roomId`, `writerId`, `content`, `createdAt`.
 - 시간 변환은 `ServiceZoneUtils.ZONE_ID` 기준(`createdAtInstant`, `toEpochMillis`).
 
@@ -311,7 +311,7 @@ DB `chat`(authSource `chat`). `MongoConfig`가 커넥션 풀(min 20/max 200), `W
 |---|---|---|
 | `chat_room` | `idx_category_popularity` `{category:1, popularity:-1, _id:-1}` partial `{deleted:false}`; `title` unique partial `{deleted:false}` | soft-delete(`deleted`/`deletedAt`). 인기방 정렬/커서(저장된 `popularity` 필드)·후보 풀스캔 지원 |
 | `chat_message` | `idx_room_created_id` `{room_id:1, created_at:-1, _id:-1}` partial `{deleted:false}` | 방별 최신/이전 커서 조회 |
-| `chat_room_membership` | unique `{room_id, member_id}`; `my_rooms` `{member_id, score:-1, _id:-1}` | `id = "roomId|memberId"`, `lastMsgReadSeq`, `score`(unread 가중치 포함) |
+| `chat_room_membership` | unique `{room_id, member_id}`; `my_rooms` `{member_id, score:-1, _id:-1}` | `id = "roomId\|memberId"`, `lastMsgReadSeq`, `score`(unread 가중치 포함) |
 
 - 도메인 ↔ Mongo 매핑은 각 `Mongo*.fromDomain`/`toDomain`(+`toDomainWithLatest`)에서 수행.
 - 메시지 조회: `listLatestMessages`(정렬 desc + limit), `listMessagesBefore`(커스텀 repo `listMessagesBefore`), `findLatestMessageExcluding`(하드삭제 후 방 최신 시각 보정).

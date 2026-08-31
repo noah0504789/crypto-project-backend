@@ -15,7 +15,7 @@
 #### 1.1 JWT `aud`/`jti` 검증 부재
 게이트웨이 검증 체인은 issuer + blacklist + `id` claim만 확인(`ReactiveJwtDecoderConfig`). `aud`/`jti` 검증 코드는 확인되지 않음. 계약으로 둘지/validator를 추가할지 결정 필요. 현재 issuer가 단일이라 실제 위험도는 미판정.
 - `[oauth2-as]` 발급측 분석: `TokenConfig` access 커스터마이저는 `roles`·`id` claim만 명시 추가한다. 표준 `aud`(=client) 포함 여부는 Spring `JwtGenerator` 기본 동작에 의존하며 모듈 커스텀 코드에서 설정하지 않음 → 실제 발급 토큰으로 `aud` 유무 확인 필요.
-`[출처: SERVICE_FLOWS.md, ARCHITECTURE.md #2, API_GATEWAY.md §18.3 / oauth2-authorization-server 분석]`
+`[출처: SERVICE_FLOWS.md, ARCHITECTURE.md §2, API_GATEWAY.md §7 / oauth2-authorization-server 분석]`
 
 #### 1.4 토큰 엔드포인트 TLS 미적용
 `oauth2-authorization-server.yml`의 `server.port: 9000` 옆에 `# TODO: tsl` 주석. 내부 토큰 엔드포인트(HTTP) TLS 적용 계획 확인 필요.
@@ -28,7 +28,7 @@
 - WebSocket 핸드셰이크에서 `?access_token=` 쿼리로 토큰 전달(`WebsocketHandshakeAuthWebFilter.java:44`).
 - 쿼리 파라미터는 프록시 로그·브라우저 히스토리에 남을 수 있음. 인프라 마스킹 여부와 대체 방식(헤더/서브프로토콜) 도입 여부 확인 필요(브라우저 WebSocket API 제약 고려).
 - `[oauth2-client]` 로그인 redirect의 `?accessToken=` 생성 지점 확인됨: `CustomOAuth2LoginSuccessHandler`가 token-exchange 후 `frontend.successRedirectUri`에 쿼리로 붙여 `sendRedirect`.
-`[출처: SERVICE_FLOWS.md #3, ARCHITECTURE.md #4, API_GATEWAY.md §18.2 / oauth2-client 분석]`
+`[출처: SERVICE_FLOWS.md §3, ARCHITECTURE.md §4, API_GATEWAY.md §6 / oauth2-client 분석]`
 
 #### 1.6 로그아웃 시 JWT 미검증 파싱
 `CustomLogoutSuccessHandler.resolveSubject`는 JWT 검증 실패(`JwtValidationException`) 시 서명 미검증으로 subject를 파싱(`parseSubjectWithoutValidation`)해 블랙리스트/토큰 삭제에 사용한다. 만료 토큰으로도 로그아웃을 허용하려는 의도로 보이나, 서명 미검증 파싱을 어디까지 허용할지 확인 필요.
@@ -550,3 +550,26 @@ if (willExceedLatencyBudget()) {
 
 남은 절차는 둘이다. ①같은 피크테스트로 진짜 한계를 잰다 ②그 이상은 입구에서 막는다.
 `[출처: 2026-08-28 VU 100 측정 / docs/SERVICE_FLOWS.md §15]`
+
+---
+
+## 6. 테스트 공백
+
+### spring-cloud-api-gateway
+
+#### 6.1 issuer 검증 실패 케이스 단위 테스트 없음
+`JwtValidators.createDefaultWithIssuer(...)`가 만드는 issuer 검증 자체의 실패 경로를 직접 겨냥한 단위 테스트가 없다. 현재 테스트는 blacklist·`id` claim·필터 동작을 덮지만 잘못된 issuer 토큰이 거부되는지는 확인하지 않는다.
+`[출처: docs/modules/API_GATEWAY.md §14]`
+
+#### 6.2 `/internal/deployment/**` gateway 레벨 통합 테스트 없음
+`DeploymentControlAuthWebFilter`는 gateway에서 JWT `permitAll`인 경로를 `X-Deploy-Token`으로 별도 보호한다. 필터 자체 테스트는 `common-actuator-webflux` 쪽에만 있고, gateway 라우팅·security 체인과 결합된 상태의 통합 테스트가 없다.
+`[출처: docs/modules/API_GATEWAY.md §14]`
+
+#### 6.3 gRPC `DEADLINE_EXCEEDED` 실제 시간 경과 검증 없음
+공용 `GrpcOauth2AuthorizationServerClient` 테스트는 deadline이 적용된다는 사실은 검증하지만, 실제 시간 경과로 `DEADLINE_EXCEEDED`가 발생했을 때 gateway 인증 경로가 어떻게 동작하는지는 검증하지 않는다. blacklist 조회는 fail-closed 경로라 이 동작이 인증 전체 차단으로 이어진다.
+`[출처: docs/modules/API_GATEWAY.md §14]`
+
+#### 6.4 Route 계약 표 전체를 덮는 계약 테스트 없음
+`ReactiveRouteConfig`의 외부 Path·대상 Service ID·RewritePath·인증 요구사항이 `docs/modules/API_GATEWAY.md` §9 Route 계약 표와 일치하는지 자동 검증하는 파라미터화/계약 테스트가 없다. 현재 `ReactiveRouteE2ETest`는 `/user/me`·`/chat/rooms/me`·`/auth/logout` 등 대표 경로 일부만 덮는다. Route는 프론트·하위 서비스에 동시에 닿는 외부 계약이라 표와 코드가 어긋나면 문서로는 드러나지 않는다.
+`[출처: docs/modules/API_GATEWAY.md §14]`
+

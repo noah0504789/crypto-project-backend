@@ -68,32 +68,54 @@
 ## 6. 주요 흐름
 
 ### 6.1 로그인 (외부 OIDC → 내부 토큰)
-```
-GET /oauth2/authorization/{google|kakao}  → 외부 provider 인가
- → 콜백 /login/oauth2/code/*
- → CustomOidcUserService.loadUser:
-     provider 프로필 추출(sub/email/nickname)
-     userQueryService.findByEmail → 없으면 userCommandService.signUpOauth2 (user.v1 gRPC)
-     roles → GrantedAuthority, CustomOidcUser(getName()=email)
- → CustomOAuth2LoginSuccessHandler:
-     provider access token → 내부 AS token-exchange(my-authorization-server)
-     refresh 쿠키 설정 + sendRedirect(frontend successRedirectUri?accessToken=...)
+```mermaid
+graph TB
+  START["GET /oauth2/authorization/google · kakao"]
+  P(("외부 provider<br/>인가"))
+  CB["콜백 /login/oauth2/code/*"]
+  LOAD["CustomOidcUserService.loadUser"]
+  PROF["provider 프로필 추출<br/>sub · email · nickname"]
+  FIND["find-or-create"]
+  SIGNUP["userCommandService.signUpOauth2"]
+  USER["user-service<br/>gRPC user.v1"]
+  OIDC["roles → GrantedAuthority<br/>CustomOidcUser — getName() = email"]
+  H["CustomOAuth2LoginSuccessHandler"]
+  EX["provider access token<br/>→ 내부 AS token-exchange(my-authorization-server)"]
+  AS["oauth2-authorization-server"]
+  DONE["refresh 쿠키 설정<br/>+ sendRedirect(frontend successRedirectUri?accessToken=...)"]
+
+  START --> P --> CB --> LOAD --> PROF --> FIND
+  FIND -->|"userQueryService.findByEmail"| USER
+  FIND -->|"없으면 userCommandService.signUpOauth2"| SIGNUP --> USER
+  USER -.-> OIDC
+  OIDC --> H --> EX --> AS
+  AS -.-> DONE
 ```
 - AuthorizedClient는 로그인 시 `CustomOAuth2AuthorizedClientService.saveAuthorizedClient` → AS Redis(gRPC)에 저장. principalName = **email**.
 
 ### 6.2 재발급 (`POST /auth/refresh`)
-```
-refresh 쿠키 추출 → RefreshTokenService.reissue:
-   internal client(my-authorization-server)로 refresh grant → AS
- → 새 access(Authorization 헤더) + 새 refresh 쿠키, 201 Created
+```mermaid
+graph LR
+  C["refresh 쿠키 추출"]
+  SVC["RefreshTokenService.reissue<br/>internal client(my-authorization-server)로 refresh grant"]
+  AS["oauth2-authorization-server"]
+  RES["새 access — Authorization 헤더<br/>+ 새 refresh 쿠키<br/>201 Created"]
+
+  C --> SVC --> AS -.-> RES
 ```
 
 ### 6.3 로그아웃 (`POST /auth/logout`)
-```
-Authorization Bearer access → subject(email) 해석
- → BlacklistTokenService.register(access)        (AS gRPC, 이후 게이트웨이가 차단)
- → refresh 쿠키 삭제(maxAge 0)
- → authorizedClientService.removeAuthorizedClient(email)  (AS Redis 삭제)
+```mermaid
+graph TB
+  T["Authorization Bearer access<br/>→ subject(email) 해석"]
+  BL["BlacklistTokenService.register(access)<br/>AS gRPC"]
+  GW["이후 게이트웨이가 차단"]
+  CK["refresh 쿠키 삭제 — maxAge 0"]
+  RM["authorizedClientService.removeAuthorizedClient(email)"]
+  REDIS[("AS Redis<br/>AuthorizedClient 삭제")]
+
+  T --> BL --> CK --> RM --> REDIS
+  BL -.-> GW
 ```
 - AuthorizedClient **저장 기준(email) = 삭제 기준(email)**으로 일치(`CustomOidcUser.getName()`이 email 반환). 저장/삭제 키 불일치 이슈 없음(확인됨).
 
