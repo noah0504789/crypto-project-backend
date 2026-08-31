@@ -95,7 +95,7 @@ graph TB
 
 관련 문서: `docs/modules/OAUTH2_AUTHORIZATION_SERVER.md`(Grant·서명·Redis 저장·gRPC 계약·확인 필요).
 
-토큰 claim은 `roles`, `id`가 확인됨. TTL·`aud` 검증 관련은 §끝 "확인 필요" 참조.
+토큰 claim은 `roles`, `id`가 확인됨. TTL 값은 위 모듈 문서, `aud`/`jti` 검증 부재는 `TODO.md` 1.1.
 
 ---
 
@@ -176,7 +176,7 @@ graph TB
 
 관련 문서: `docs/modules/API_GATEWAY.md`.
 
-형식·서명·issuer·id 검증 실패 시 blacklist 원격 호출은 시작하지 않는다. gRPC 오류는 인증 실패 경로로 전파하며, 구독 취소는 gRPC 호출에도 전달한다. JWKS는 Config Server의 `/.well-known/jwks.json`에서 제공. `aud` 검증 여부는 §끝 "확인 필요" 참조.
+형식·서명·issuer·id 검증 실패 시 blacklist 원격 호출은 시작하지 않는다. gRPC 오류는 인증 실패 경로로 전파하며, 구독 취소는 gRPC 호출에도 전달한다. JWKS는 Config Server의 `/.well-known/jwks.json`에서 제공. `aud`/`jti` 검증 부재는 `TODO.md` 1.1.
 
 ---
 

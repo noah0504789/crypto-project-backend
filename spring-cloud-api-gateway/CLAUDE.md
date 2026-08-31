@@ -24,7 +24,7 @@
 - `lb://`, `lb:ws://` 뒤의 서비스 이름은 대상 서비스의 `spring.application.name`(Eureka 등록 이름)과 정확히 일치해야 한다.
 - Route/Security/JWT 관련 값을 바꿀 때는 로컬 코드뿐 아니라 Config Server 원격 설정도 함께 확인한다: `git-config-repo/dynamic/api-gateway.yml`(포트, `api-path.*` 패턴, gRPC 클라이언트), `git-config-repo/dynamic/jwt.yml`(issuer, JWKS, TTL).
 - `X-User-Id`, `X-From`, `X-Gateway` 헤더는 외부 계약으로 취급한다(→ `../.claude/rules/external-contracts.md`). 이름·의미를 임의로 바꾸지 않는다.
-- `X-User-Id` 값은 검증된 JWT의 `id` claim에서만 생성한다. 클라이언트가 보낸 원본 헤더를 그대로 신뢰하거나 전달하지 않는다. `X-User-Id`·`X-From` 같은 내부 신뢰 헤더를 변경할 때는 (1) `permitAll` 경로에서 외부 입력이 제거되는지, (2) 하위 서비스가 이 값을 어떻게 소비하는지를 함께 확인한다(둘 다 미확인 상태, 상세는 API_GATEWAY.md §18.1).
+- `X-User-Id` 값은 검증된 JWT의 `id` claim에서만 생성한다. 클라이언트가 보낸 원본 헤더를 그대로 신뢰하거나 전달하지 않는다. `X-User-Id`·`X-From` 같은 내부 신뢰 헤더를 변경할 때는 (1) `permitAll` 경로에서 외부 입력이 제거되는지, (2) 하위 서비스가 이 값을 어떻게 소비하는지를 함께 확인한다. (1)은 `IdentityPropagationGlobalFilter`가 모든 요청 입구에서 제거 후 인증된 경우에만 다시 `set` 하는 것으로 확인됐고 `IdentityPropagationE2ETest`가 고정한다. (2)는 소비 서비스마다 다르므로 해당 모듈 문서를 본다. 헤더 계약 상세는 `../docs/modules/API_GATEWAY.md` §10.
 - WebSocket 핸드셰이크(`WebsocketHandshakeAuthWebFilter`)는 일반 HTTP Bearer 인증과 별도의 인증 흐름이다(쿼리 파라미터 `access_token` 사용). 이 필터를 일반 HTTP 인증 로직과 동일하게 취급하지 않는다.
 - CORS를 변경할 때는 origin, `allowCredentials`, methods, exposed headers를 함께 확인한다(하나만 바꾸면 프론트 E2E가 깨질 수 있다).
 - Route·Header·JWT·CORS 변경은 관련 루트 rules를 함께 적용한다: `../.claude/rules/external-contracts.md`, `../.claude/rules/security.md`.

@@ -311,7 +311,7 @@ DB `chat`(authSource `chat`). `MongoConfig`가 커넥션 풀(min 20/max 200), `W
 |---|---|---|
 | `chat_room` | `idx_category_popularity` `{category:1, popularity:-1, _id:-1}` partial `{deleted:false}`; `title` unique partial `{deleted:false}` | soft-delete(`deleted`/`deletedAt`). 인기방 정렬/커서(저장된 `popularity` 필드)·후보 풀스캔 지원 |
 | `chat_message` | `idx_room_created_id` `{room_id:1, created_at:-1, _id:-1}` partial `{deleted:false}` | 방별 최신/이전 커서 조회 |
-| `chat_room_membership` | unique `{room_id, member_id}`; `my_rooms` `{member_id, score:-1, _id:-1}` | `id = "roomId|memberId"`, `lastMsgReadSeq`, `score`(unread 가중치 포함) |
+| `chat_room_membership` | unique `{room_id, member_id}`; `my_rooms` `{member_id, score:-1, _id:-1}` | `id = "roomId\|memberId"`, `lastMsgReadSeq`, `score`(unread 가중치 포함) |
 
 - 도메인 ↔ Mongo 매핑은 각 `Mongo*.fromDomain`/`toDomain`(+`toDomainWithLatest`)에서 수행.
 - 메시지 조회: `listLatestMessages`(정렬 desc + limit), `listMessagesBefore`(커스텀 repo `listMessagesBefore`), `findLatestMessageExcluding`(하드삭제 후 방 최신 시각 보정).
