@@ -3,40 +3,68 @@
 이 문서는 `crypto-project-backend`의 주요 기능이 실제로 어떻게 실행되는지를 사람이 읽기 위한 흐름 설명이다.
 각 흐름은 다음 형식을 따른다.
 
-```
-진입점 → Application Service → Domain → Outbound Adapter → 외부 시스템 또는 다음 서비스
+```mermaid
+graph LR
+  IN["진입점"] --> APP["Application Service"] --> DOM["Domain"] --> OUT["Outbound Adapter"] --> EXT["외부 시스템 또는 다음 서비스"]
 ```
 
-모든 흐름은 현재 코드에서 추적한 결과이며 근거 파일 경로를 함께 표기한다. 상태 표기:
-- **구현됨**: 진입점부터 아웃바운드까지 코드로 추적됨
-- **확인 필요**: 존재하지만 값·의도를 코드만으로 판단할 수 없음(임의로 설계/버그로 판정하지 않음)
+도형 규약: `[사각]` 코드/컴포넌트 · `[(원통)]` 데이터 저장소 · `[[겹사각]]` Kafka 토픽 · `((원))` 외부 시스템/클라이언트 · `{마름모}` 분기. 점선(`-.->`)은 응답·비동기 통보다.
+
+아래 흐름은 모두 진입점부터 아웃바운드까지 현재 코드에서 추적한 결과이며 근거 파일 경로를 함께 표기한다. 존재하지만 값·의도를 코드만으로 판단할 수 없는 항목은 본문에 `확인 필요`로 표시하고, 임의로 설계나 버그로 판정하지 않는다.
 
 전체 구조는 `docs/ARCHITECTURE.md`를 참고한다.
 
 ---
 
-## 1. 로컬 회원가입 — 구현됨
+## 1. 로컬 회원가입
 
-```
-POST /user/sign-up (UserController)
- → UserCommandUseCase.signUpLocal (UserCommandService)
- → User.ofLocal (도메인, 기본 role USER 부여) · PasswordEncoder(BCrypt)
- → UserPersistencePort → JpaUserAdapter (MySQL)
- → 201 Created (Location: /)
+```mermaid
+graph LR
+  REQ["POST /user/sign-up<br/>UserController"]
+  UC["UserCommandUseCase.signUpLocal<br/>UserCommandService"]
+  ENC["PasswordEncoder<br/>BCrypt"]
+  DOM["User.ofLocal<br/>도메인 · 기본 role USER 부여"]
+  PORT["UserPersistencePort"]
+  ADP["JpaUserAdapter"]
+  DB[("MySQL")]
+  RES["201 Created<br/>Location: /"]
+
+  REQ --> UC
+  UC --> ENC
+  UC --> DOM --> PORT --> ADP --> DB
+  DB -.-> RES
 ```
 
 근거: `user/user-adapter-in/.../web/UserController.java`, `user/user-application/.../account/application/service/UserCommandService.java`, `user/user-adapter-out/.../account/adapter/out/JpaUserAdapter.java`. user 서비스 전체 상세는 `docs/modules/USER.md`.
 
 ---
 
-## 2. OAuth2 로그인 — 구현됨
+## 2. OAuth2 소셜 로그인과 내부 토큰 발급
 
-```
-외부 provider(Google/Kakao) redirect
- → oauth2-client oauth2Login → CustomOidcUserService (프로필 추출)
- → (gRPC user.v1) UserClient.findByEmail / UserClient.signUpOauth2 (find-or-create; 구현 GrpcUserClient)
- → CustomOAuth2LoginSuccessHandler: RFC-8693 token-exchange(my-authorization-server)
- → refresh token 쿠키 설정 + SPA redirect(successRedirectUri)
+```mermaid
+graph TB
+  P(("외부 provider<br/>Google / Kakao"))
+
+  subgraph OC["oauth2-client"]
+    LOGIN["oauth2Login"]
+    OIDC["CustomOidcUserService<br/>프로필 추출"]
+    EXTRACT["Google · Kakao<br/>OidcProviderProfileExtractor"]
+    FIND{"find-or-create"}
+    SUCCESS["CustomOAuth2LoginSuccessHandler"]
+    COOKIE["refresh token 쿠키 설정<br/>+ SPA redirect · successRedirectUri"]
+  end
+
+  UCLI["GrpcUserClient<br/>gRPC user.v1"]
+  USER["user-service"]
+  AS["my-authorization-server<br/>RFC-8693 token-exchange"]
+
+  P -->|"redirect"| LOGIN --> OIDC --> EXTRACT --> FIND
+  FIND -->|"UserClient.findByEmail"| UCLI
+  FIND -->|"없으면 UserClient.signUpOauth2"| UCLI
+  UCLI --> USER
+  USER -.-> SUCCESS
+  SUCCESS --> AS
+  AS -.-> COOKIE
 ```
 
 근거: `oauth2-client/oauth2-client-application/.../oidc/.../CustomOidcUserService.java`, `.../oidc/profile/extractor/{Google,Kakao}OidcProviderProfileExtractor.java`, `oauth2-client/.../handler/CustomOAuth2LoginSuccessHandler.java`.
@@ -45,14 +73,24 @@ POST /user/sign-up (UserController)
 
 ---
 
-## 3. Access / Refresh Token 발급 — 구현됨
+## 3. Authorization Server의 Access / Refresh Token 발급
 
-```
-Authorization Server token endpoint
- → tokenGenerator(JwtGenerator) + jwtCustomizer(claim roles, id 주입)
- → Rs256JwtEncoder: header+payload base64url → Config Server /sign(Vault Transit)로 서명
- → CustomAuthenticationSuccessHandler: access+refresh 응답 작성
- → RedisAccessTokenAdapter / RedisRefreshTokenAdapter (Redis 저장, rotating refresh)
+```mermaid
+graph TB
+  EP["Authorization Server<br/>token endpoint"]
+  GEN["tokenGenerator · JwtGenerator<br/>+ jwtCustomizer · claim roles, id 주입"]
+  ENC["Rs256JwtEncoder<br/>header+payload base64url"]
+  CFG["Config Server /sign"]
+  VAULT(("Vault Transit"))
+  OK["CustomAuthenticationSuccessHandler<br/>access + refresh 응답 작성"]
+  RA["RedisAccessTokenAdapter"]
+  RR["RedisRefreshTokenAdapter<br/>rotating refresh"]
+  REDIS[("Redis")]
+
+  EP --> GEN --> ENC --> CFG --> VAULT
+  VAULT -.->|"서명"| OK
+  OK --> RA --> REDIS
+  OK --> RR --> REDIS
 ```
 
 근거: `oauth2-authorization-server-adapter-in/.../config/TokenConfig.java`, `-adapter-out/.../token/adapter/out/vault/Rs256JwtEncoder.java`, `-application/.../authorization/application/CustomAuthenticationSuccessHandler.java`, `-adapter-out/.../token/adapter/out/redis/RedisRefreshTokenAdapter.java`. 서버 전체 상세(Grant·서명·Redis 저장·gRPC 계약·확인 필요)는 `docs/modules/OAUTH2_AUTHORIZATION_SERVER.md`.
@@ -61,46 +99,79 @@ Authorization Server token endpoint
 
 ---
 
-## 4. Token 갱신 — 구현됨
+## 4. Refresh Token을 통한 Access Token 갱신
 
-```
-POST /auth/refresh (AuthController, oauth2-client)
- → RefreshTokenService.reissue → OAuth2RefreshTokenGrantRequest(my-authorization-server)
- → Authorization Server: reuseRefreshTokens(false) + RotatingRefreshTokenPolicy(신규 refresh 생성)
- → 새 refresh 쿠키 + Authorization 헤더 응답
+```mermaid
+graph LR
+  REQ["POST /auth/refresh<br/>AuthController · oauth2-client"]
+  SVC["RefreshTokenService.reissue"]
+  GRANT["OAuth2RefreshTokenGrantRequest<br/>my-authorization-server"]
+  AS["Authorization Server<br/>reuseRefreshTokens(false)"]
+  POL["RotatingRefreshTokenPolicy<br/>신규 refresh 생성"]
+  RES["새 refresh 쿠키<br/>+ Authorization 헤더 응답"]
+
+  REQ --> SVC --> GRANT --> AS --> POL
+  POL -.-> RES
 ```
 
 근거: `oauth2-client/oauth2-client-adapter-in/.../web/AuthController.java`, `oauth2-client-application/.../token/application/service/RefreshTokenService.java`, `oauth2-authorization-server/.../RotatingRefreshTokenPolicy.java`.
 
 ---
 
-## 5. Logout — 구현됨
+## 5. 로그아웃과 Access Token 블랙리스트 등록
 
-```
-POST /auth/logout (oauth2-client 로그아웃 URL)
- → CustomLogoutSuccessHandler:
-     1) bearer access token → subject 해석
-     2) BlacklistTokenService.register (access token 블랙리스트, auth 서버 gRPC)
-     3) refresh 쿠키 삭제(maxAge 0)
-     4) authorizedClientService.removeAuthorizedClient (email 기준 삭제)
- → 이후 게이트웨이 ReactiveBlacklistTokenValidator가 블랙리스트 토큰 차단
+```mermaid
+graph TB
+  REQ["POST /auth/logout<br/>oauth2-client 로그아웃 URL"]
+  H["CustomLogoutSuccessHandler"]
+  S1["1) bearer access token → subject 해석"]
+  S2["2) BlacklistTokenService.register<br/>access token 블랙리스트 · auth 서버 gRPC"]
+  S3["3) refresh 쿠키 삭제 · maxAge 0"]
+  S4["4) authorizedClientService.removeAuthorizedClient<br/>email 기준 삭제"]
+  AS["oauth2-authorization-server"]
+  GW["게이트웨이<br/>ReactiveBlacklistTokenValidator"]
+  BLOCK["블랙리스트 토큰 차단"]
+
+  REQ --> H
+  H --> S1 --> S2 --> S3 --> S4
+  S2 --> AS
+  AS -.->|"이후 요청"| GW --> BLOCK
 ```
 
 근거: `oauth2-client/.../CustomLogoutSuccessHandler.java`, `oauth2-client-adapter-in/.../config/SecurityFilterChainConfig.java`, `spring-cloud-api-gateway/.../validator/ReactiveBlacklistTokenValidator.java`.
 
 ---
 
-## 6. API Gateway 인증 — 구현됨
+## 6. API Gateway JWT 인증과 X-User-Id 전파
 
-```
-외부 요청 → spring-cloud-api-gateway
- → ReactiveSecurityConfig(oauth2ResourceServer, anyExchange denyAll 기본)
- → ReactiveJwtDecoderConfig: NimbusReactiveJwtDecoder(JWKS)에서 서명·issuer·id claim 검증
- → BlacklistAwareReactiveJwtDecoder: 로컬 검증 성공 후 ReactiveBlacklistTokenValidator 연결
- → Oauth2AuthorizationServerClient: future stub 결과를 CompletableFuture로 제공
- → GrpcBlacklistTokenClientAdapter: CompletableFuture를 구독 시점에 Mono로 변환
- → IdentityPropagationGlobalFilter: id claim → X-User-Id 헤더로 하위 서비스 전파
- → ReactiveRouteConfig 라우팅(lb://…, /api/v1 rewrite)
+```mermaid
+graph TB
+  REQ(("외부 요청"))
+
+  subgraph GW["spring-cloud-api-gateway"]
+    SEC["ReactiveSecurityConfig<br/>oauth2ResourceServer · anyExchange denyAll 기본"]
+    DEC["ReactiveJwtDecoderConfig<br/>NimbusReactiveJwtDecoder · JWKS"]
+    LOCAL{"서명 · issuer · id claim 검증"}
+    BL["BlacklistAwareReactiveJwtDecoder"]
+    VAL["ReactiveBlacklistTokenValidator"]
+    ADP["GrpcBlacklistTokenClientAdapter<br/>CompletableFuture → 구독 시점에 Mono 변환"]
+    ID["IdentityPropagationGlobalFilter<br/>id claim → X-User-Id 헤더"]
+    ROUTE["ReactiveRouteConfig 라우팅<br/>lb://… · /api/v1 rewrite"]
+    FAIL["인증 실패"]
+  end
+
+  JWKS["Config Server<br/>/.well-known/jwks.json"]
+  CLI["Oauth2AuthorizationServerClient<br/>future stub → CompletableFuture"]
+  AS["oauth2-authorization-server<br/>gRPC auth.v1"]
+  SVC["하위 서비스"]
+
+  REQ --> SEC --> DEC
+  JWKS -.->|"공개키"| DEC
+  DEC --> LOCAL
+  LOCAL -->|"실패 — 원격 호출 시작하지 않음"| FAIL
+  LOCAL -->|"성공"| BL --> VAL --> ADP --> CLI --> AS
+  AS -.->|"gRPC 오류는 인증 실패로 전파"| FAIL
+  AS -.->|"블랙리스트 아님"| ID --> ROUTE --> SVC
 ```
 
 근거: `spring-cloud-api-gateway/.../config/{ReactiveSecurityConfig,ReactiveJwtDecoderConfig,ReactiveRouteConfig}.java`, `.../filter/IdentityPropagationGlobalFilter.java`, `.../validator/{BlacklistAwareReactiveJwtDecoder,ReactiveBlacklistTokenValidator,RequiredUserIdClaimValidator}.java`, `.../adapter/out/grpc/GrpcBlacklistTokenClientAdapter.java`, `oauth2-authorization-server/.../client/GrpcOauth2AuthorizationServerClient.java`.
@@ -109,78 +180,142 @@ POST /auth/logout (oauth2-client 로그아웃 URL)
 
 ---
 
-## 7. WebSocket 연결 및 인증 — 구현됨
+## 7. WebSocket 핸드셰이크 인증과 STOMP Principal 결정
 
-```
-클라이언트 → gateway WebsocketHandshakeAuthWebFilter(order -1000)
- → ?access_token JWT 검증(id claim 필수) → X-User-Id 주입
- → websocket-gateway /ws(SockJS) 또는 /ws-native 핸드셰이크
- → StompConfig.determineUser: X-User-Id를 STOMP Principal로 설정
+```mermaid
+graph LR
+  C(("클라이언트"))
+  F["WebsocketHandshakeAuthWebFilter<br/>order -1000 · api-gateway"]
+  V["?access_token JWT 검증<br/>id claim 필수"]
+  H["X-User-Id 주입"]
+  WS["websocket-gateway<br/>/ws · SockJS 또는 /ws-native 핸드셰이크"]
+  PR["StompConfig.determineUser<br/>X-User-Id → STOMP Principal"]
+
+  C --> F --> V --> H --> WS --> PR
 ```
 
 근거: `spring-cloud-api-gateway/.../filter/WebsocketHandshakeAuthWebFilter.java`, `websocket-gateway/.../adapter/in/websocket/config/StompConfig.java`.
 
 ---
 
-## 8. 채팅 메시지 전송 — 구현됨
+## 8. STOMP 채팅 메시지 전송과 ACK
 
-```
-STOMP @MessageMapping("/chat.send") (StompController, websocket-gateway)
- → ChatMessageSendUseCase(ChatMessageSendService)
- → ChatMessageCommandPort → GrpcChatMessageCommandAdapter (gRPC chatmessage.v1)
- → chat GrpcChatMessageService.save → ChatMessageCommandService.save
-     (방 검증, Redis 캐시 반영, Outbox 이벤트 기록)
- → 비동기 ACK: ChatMessageAckPort (/queue/chat/ack)
- → DEADLINE_EXCEEDED 시 gRPC HardDelete 보상 호출
+```mermaid
+graph TB
+  subgraph WG["websocket-gateway"]
+    CTRL["StompController<br/>@MessageMapping /chat.send"]
+    UC["ChatMessageSendUseCase<br/>ChatMessageSendService"]
+    PORT["ChatMessageCommandPort"]
+    ADP["GrpcChatMessageCommandAdapter<br/>gRPC chatmessage.v1"]
+    ACK["ChatMessageAckPort<br/>/queue/chat/ack · 비동기 ACK"]
+  end
+
+  subgraph CH["chat-service"]
+    SVC["GrpcChatMessageService.save"]
+    CMD["ChatMessageCommandService.save<br/>방 검증 · Redis 캐시 반영 · Outbox 이벤트 기록"]
+    DEL["gRPC HardDelete<br/>보상 호출"]
+  end
+
+  RESULT{"gRPC 결과"}
+
+  CTRL --> UC --> PORT --> ADP --> SVC --> CMD
+  CMD -.-> RESULT
+  RESULT -->|"성공 · 실패"| ACK
+  RESULT -->|"DEADLINE_EXCEEDED"| DEL
 ```
 
 근거: `websocket-gateway/.../adapter/in/websocket/StompController.java`, `.../adapter/out/.../GrpcChatMessageCommandAdapter.java`, `chat/chat-adapter-in/.../grpc/GrpcChatMessageService.java`, `chat/chat-application/.../chatmessage/application/service/ChatMessageCommandService.java`.
 
 ---
 
-## 9. 채팅 메시지 저장 및 조회 — 구현됨
+## 9. 채팅 메시지 비동기 영속과 캐시 조회
 
-```
-저장:
- ChatMessageCommandService.save → Outbox 기록
- → outbox-poller → Kafka(chatmessage-event)
- → chat ChatMessageEventService.handle → MongoChatMessageAdapter.save (MongoDB, 방 카운터/스코어 갱신)
+```mermaid
+graph TB
+  subgraph W["저장"]
+    CMD["ChatMessageCommandService.save"]
+    OB[("MySQL event.outbox<br/>Outbox 기록")]
+    POLL["outbox-poller"]
+    K[["Kafka<br/>chatmessage-event"]]
+    EVT["chat ChatMessageEventService.handle"]
+    MADP["MongoChatMessageAdapter.save<br/>방 카운터 · 스코어 갱신"]
+  end
 
-조회:
- GET /chat/room/{roomId}/messages (ChatMessageController)
- → ChatMessageQueryService → MongoChatMessageAdapter / RedisChatMessageAdapter(캐시)
+  subgraph R["조회"]
+    REQ["GET /chat/room/:roomId/messages<br/>ChatMessageController"]
+    Q["ChatMessageQueryService"]
+    RADP["RedisChatMessageAdapter<br/>캐시"]
+    MADP2["MongoChatMessageAdapter"]
+  end
+
+  MONGO[("MongoDB")]
+  REDIS[("Redis")]
+
+  CMD --> OB --> POLL --> K --> EVT --> MADP --> MONGO
+  REQ --> Q
+  Q --> RADP --> REDIS
+  Q --> MADP2 --> MONGO
 ```
 
 근거: `chat/chat-application/.../chatmessage/application/service/{ChatMessageCommandService,ChatMessageQueryService}.java`, `chat/chat-adapter-out/.../persistence/MongoChatMessageAdapter.java`, `chat/chat-adapter-in/.../web/ChatMessageController.java`. chat 서비스 전체 상세(방/메시지 명령·조회·캐시·Kafka·DLQ·확인 필요)는 `docs/modules/CHAT.md`.
 
 ---
 
-## 10. Outbox 및 DLQ 처리 — 구현됨
+## 10. Outbox / DLQ 폴링을 통한 Kafka 발행
 
-```
-각 서비스 도메인 이벤트 → EventUtils.raise → OutboxEventListListener → Outbox/DLQ 테이블(MySQL)
+```mermaid
+graph TB
+  EV["각 서비스 도메인 이벤트"]
+  RAISE["EventUtils.raise"]
+  LIS["OutboxEventListListener"]
+  TBL[("MySQL<br/>Outbox / DLQ 테이블")]
 
-outbox-poller:
- OutboxEventScheduler(@Scheduled general/broadcast) · DlqEventScheduler(@Scheduled dlq)
- → OutboxService/DlqService.publishPending
- → KafkaEventPublisher(StreamBridge.send(destination, message))
-     헤더: transaction_id, dlq_id, __TypeId__, KafkaHeaders.KEY
- → 성공: markPublished / 실패: increaseRetryCnt → isRetryExhausted 시 markFailed
- → DLQ 폴러 on/off: POST /dlq-poller/start · /stop (DlqPollerController)
+  subgraph OP["outbox-poller"]
+    SCH1["OutboxEventScheduler<br/>@Scheduled general · broadcast"]
+    SCH2["DlqEventScheduler<br/>@Scheduled dlq"]
+    PUB["OutboxService / DlqService.publishPending"]
+    KP["KafkaEventPublisher<br/>StreamBridge.send(destination, message)"]
+    CTL["DlqPollerController<br/>POST /dlq-poller/start · /stop"]
+  end
+
+  K[["Kafka<br/>헤더: transaction_id · dlq_id<br/>__TypeId__ · KafkaHeaders.KEY"]]
+  RES{"발행 결과"}
+  OKN["markPublished"]
+  RETRY["increaseRetryCnt"]
+  EXH{"isRetryExhausted"}
+  FAILED["markFailed"]
+
+  EV --> RAISE --> LIS --> TBL
+  TBL --> SCH1 --> PUB
+  TBL --> SCH2 --> PUB
+  CTL -.->|"DLQ 폴러 on/off"| SCH2
+  PUB --> KP --> K
+  KP --> RES
+  RES -->|"성공"| OKN
+  RES -->|"실패"| RETRY --> EXH
+  EXH -->|"소진"| FAILED
+  EXH -->|"남음"| PUB
 ```
 
 근거: `common/common-outbox/.../adapter/in/OutboxEventListListener.java`, `outbox-poller/.../outbox/OutboxEventScheduler.java`, `.../dlq/DlqEventScheduler.java`, `.../infra/event/KafkaEventPublisher.java`, `.../dlq/DlqPollerController.java`.
 
 ---
 
-## 11. Upbit WebSocket 데이터 수집 — 구현됨
+## 11. Upbit WebSocket 시세 수집과 Kafka 발행
 
-```
-Upbit WebSocket (Reactor Netty)
- → UpbitWebsocketTickerStreamAdapter (ticker 구독·역직렬화·재연결)
- → UpbitTickerCollectService: groupBy(code) → sample(publish-interval) → onBackpressureLatest
- → KafkaUpbitTickerPublishAdapter (StreamBridge, boundedElastic)
- → Kafka(upbit-ticker-event)
+```mermaid
+graph LR
+  UP(("Upbit WebSocket"))
+
+  subgraph UC["upbit-connector"]
+    STREAM["UpbitWebsocketTickerStreamAdapter<br/>ticker 구독 · 역직렬화 · 재연결<br/>Reactor Netty"]
+    COL["UpbitTickerCollectService<br/>groupBy(code) → sample(publish-interval)<br/>→ onBackpressureLatest"]
+    PUB["KafkaUpbitTickerPublishAdapter<br/>StreamBridge · boundedElastic"]
+  end
+
+  K[["Kafka<br/>upbit-ticker-event"]]
+
+  UP --> STREAM --> COL --> PUB --> K
 ```
 
 수집 주체는 **upbit-connector**다(market-detection에서 이관). 값 타입은 `upbit-connector-contract`의 `UpbitTickerEvent`이며, 이 바인딩에서는 `__TypeId__` 헤더가 전달되지 않아 소비자가 선언된 타입으로 역직렬화한다(→ `docs/modules/UPBIT_CONNECTOR.md` §6.1).
@@ -191,25 +326,36 @@ Upbit WebSocket (Reactor Netty)
 
 ---
 
-## 12. 시장 데이터 처리 (Kafka Streams) — 구현됨
+## 12. Kafka Streams를 통한 가격 변동률 계산
 
-```
-Kafka(upbit-ticker-event)
- → KafkaMarketDetectionBinder.priceAlertDetectionProcessor (KStream)
- → PriceAlertDetectionProcessor.process:
-     WindowStore(upbit-ticker-store, window/retention 3m)로 이동평균·변동률 계산
+```mermaid
+graph LR
+  K[["Kafka<br/>upbit-ticker-event"]]
+  BIND["KafkaMarketDetectionBinder<br/>priceAlertDetectionProcessor · KStream"]
+  PROC["PriceAlertDetectionProcessor.process<br/>이동평균 · 변동률 계산"]
+  STORE[("WindowStore<br/>upbit-ticker-store<br/>window · retention 3m")]
+
+  K --> BIND --> PROC
+  PROC <--> STORE
 ```
 
 근거: `market-detection-adapter-in/.../stream/{KafkaMarketDetectionBinder,PriceAlertDetectionProcessor}.java`, `.../infra/config/StateStoreConfig.java`, `market-detection-application/.../dto/PriceChange.java`.
 
 ---
 
-## 13. 마켓 알림 생성 — 구현됨
+## 13. 임계치 매칭과 가격 알림 이벤트 발행
 
-```
-PriceAlertDetectionProcessor
- → PriceAlertChangeRateThreshold.matchedBy로 임계치 매칭
- → PriceAlertDetectedEvent 발행(KStream output → price-alert-detected-event)
+```mermaid
+graph LR
+  PROC["PriceAlertDetectionProcessor"]
+  TH{"PriceAlertChangeRateThreshold.matchedBy<br/>임계치 매칭"}
+  EVT["PriceAlertDetectedEvent 발행<br/>KStream output"]
+  K[["Kafka<br/>price-alert-detected-event"]]
+  DROP["발행 없음"]
+
+  PROC --> TH
+  TH -->|"매칭"| EVT --> K
+  TH -->|"미매칭"| DROP
 ```
 
 근거: `market-detection-application/.../service/PriceAlertDetectionService.java`, `market-detection-contract/.../PriceAlertDetectedEvent.java`.
@@ -218,29 +364,45 @@ PriceAlertDetectionProcessor
 
 ---
 
-## 14. 알림 전달 — 구현됨
+## 14. 가격 알림 생성·저장과 STOMP 전달
 
-```
-notification KafkaNotificationBinder.priceAlertDetectedEventConsumer (price-alert-detected-event 소비)
- → PriceAlertNotificationCommandService.create
-     수신자 조회: PriceAlertRecipientQueryPort → PriceAlertRecipientQueryAdapter
-                → (gRPC market.v1) PriceAlertSettingClient.findReceiverIds(marketCode, changeRate)
- → Outbox 기록(NotificationSaveEvent + WebNotificationBroadcastEvent)
+```mermaid
+graph TB
+  KIN[["Kafka<br/>price-alert-detected-event"]]
 
-저장:
- notificationEventConsumer → NotificationEventService → MongoNotificationAdapter (MongoDB)
+  subgraph NOTI["notification-service"]
+    CONS["KafkaNotificationBinder<br/>priceAlertDetectedEventConsumer"]
+    CMD["PriceAlertNotificationCommandService.create"]
+    PORT["PriceAlertRecipientQueryPort"]
+    RADP["PriceAlertRecipientQueryAdapter"]
+    OB[("Outbox 기록<br/>NotificationSaveEvent<br/>+ WebNotificationBroadcastEvent")]
+    NCONS["notificationEventConsumer"]
+    NSVC["NotificationEventService"]
+    MADP["MongoNotificationAdapter"]
+  end
 
-웹 전달:
- Outbox → outbox-poller → Kafka(web-notification-broadcast-event)
- → websocket-gateway KafkaWebsocketGatewayBinder.webNotificationBroadcastEventConsumer
- → STOMP push (/topic/notification/…)
+  MKT["PriceAlertSettingClient.findReceiverIds<br/>marketCode, changeRate · gRPC market.v1"]
+  MARKET["market-service"]
+  MONGO[("MongoDB")]
+  POLL["outbox-poller"]
+  KSAVE[["Kafka<br/>notification-event"]]
+  KWEB[["Kafka<br/>web-notification-broadcast-event"]]
+  WGC["websocket-gateway<br/>KafkaWebsocketGatewayBinder<br/>webNotificationBroadcastEventConsumer"]
+  PUSH["STOMP push<br/>/topic/notification/…"]
+
+  KIN --> CONS --> CMD
+  CMD -->|"수신자 조회"| PORT --> RADP --> MKT --> MARKET
+  MARKET -.-> CMD
+  CMD --> OB --> POLL
+  POLL --> KSAVE --> NCONS --> NSVC --> MADP --> MONGO
+  POLL --> KWEB --> WGC --> PUSH
 ```
 
 근거: `notification/notification-adapter-in/.../stream/KafkaNotificationBinder.java`, `notification/notification-application/.../service/PriceAlertNotificationCommandService.java`, `notification/notification-adapter-out/.../grpc/PriceAlertRecipientQueryAdapter.java`, `websocket-gateway/.../adapter/in/stream/KafkaWebsocketGatewayBinder.java`.
 
 ---
 
-## 15. 채팅 메시지 실패 경로 — 구현됨
+## 15. 채팅 메시지 실패 경로
 
 > **원칙: 발신자가 결과를 모르는 실패를 만들지 않는다.**
 >
@@ -287,10 +449,18 @@ notification KafkaNotificationBinder.priceAlertDetectedEventConsumer (price-aler
 
 **(1) `outbox FAILED`는 종착역이다.** `OutboxStatus.FAILED`를 쓰는 곳은 `JpaOutbox.markFailed()` 하나뿐이고, poller는 `PENDING`만 조회한다(`OutboxService.publishPending`). **쓰기만 하고 아무도 다시 읽지 않는다.** DLQ로도 넘어가지 않는다 — DLQ(`JpaDlq`)는 consumer 실패용이라 별개 경로다.
 
-```
-Mongo 저장 성공 + 발신자 성공 ACK
-  → Kafka 발행 재시도 소진 → FAILED
-  → 아무도 못 받고 재시도도 안 된다
+```mermaid
+graph LR
+  OK["Mongo 저장 성공<br/>+ 발신자 성공 ACK"]
+  EXH["Kafka 발행 재시도 소진"]
+  F[("Outbox FAILED")]
+  DEAD["아무도 못 받고<br/>재시도도 안 된다"]
+  POLL["outbox-poller<br/>PENDING 만 조회"]
+  DLQ[("DLQ · JpaDlq<br/>consumer 실패용 별개 경로")]
+
+  OK --> EXH --> F --> DEAD
+  F -.->|"읽지 않음"| POLL
+  F -.->|"넘어가지 않음"| DLQ
 ```
 
 이미 **TODO 4.6**(`FAILED` Outbox 재처리 경로 추가)으로 관리 중이다.

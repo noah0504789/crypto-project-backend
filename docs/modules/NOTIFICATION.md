@@ -52,19 +52,36 @@
 
 ## 5. 핵심 흐름 — 탐지 이벤트 → fan-out 알림
 
-```
-market-detection: PriceAlertDetectedEvent  →  Kafka: price-alert-detected-event
-  → [notification] priceAlertDetectedEventConsumer
-      → PriceAlertNotificationCommandService.create
-          1) Notification.createPriceAlert(...)  (제목/본문/messageParts 포맷)
-          2) market gRPC FindReceiverIds(code, threshold)  → 수신자 UUID 목록
-          3) NotificationEventList = NotificationSaveEvent(영속) + WebNotificationBroadcastEvent(push)
-          4) OutboxEventListPublishPort.publish → (MySQL Outbox) → outbox-poller → Kafka
-  → [notification] notificationEventConsumer (Kafka: notification-event)
-      → NotificationEventService.handle  @Transactional("notificationMongoTransactionManager")
-          → MongoDB: notification + notification_recipient(bulk) 저장
-  → WebNotificationBroadcastEvent (Kafka: web-notification-broadcast-event)
-      → [websocket-gateway] 온라인 사용자에게 STOMP push
+```mermaid
+graph TB
+  MD["market-detection<br/>PriceAlertDetectedEvent"]
+  KIN[["Kafka<br/>price-alert-detected-event"]]
+
+  subgraph N["notification"]
+    CONS["priceAlertDetectedEventConsumer"]
+    CMD["PriceAlertNotificationCommandService.create"]
+    S1["1 · Notification.createPriceAlert<br/>제목 · 본문 · messageParts 포맷"]
+    S2["2 · market gRPC FindReceiverIds(code, threshold)<br/>→ 수신자 UUID 목록"]
+    S3["3 · NotificationEventList<br/>= NotificationSaveEvent(영속) + WebNotificationBroadcastEvent(push)"]
+    S4["4 · OutboxEventListPublishPort.publish"]
+    NCONS["notificationEventConsumer"]
+    NSVC["NotificationEventService.handle<br/>@Transactional(notificationMongoTransactionManager)"]
+  end
+
+  MARKET["market-service"]
+  OB[("MySQL Outbox")]
+  POLL["outbox-poller"]
+  KSAVE[["Kafka<br/>notification-event"]]
+  KWEB[["Kafka<br/>web-notification-broadcast-event<br/>OutboxDispatchType.BROADCAST"]]
+  MONGO[("MongoDB<br/>notification + notification_recipient(bulk)")]
+  WG["websocket-gateway<br/>온라인 사용자에게 STOMP push"]
+
+  MD --> KIN --> CONS --> CMD --> S1 --> S2 --> S3 --> S4 --> OB
+  S2 --> MARKET
+  MARKET -.-> S3
+  OB --> POLL
+  POLL --> KSAVE --> NCONS --> NSVC --> MONGO
+  POLL --> KWEB --> WG
 ```
 
 - 쓰기는 **Outbox 경유**(chat/market과 동일 패턴, `../modules/COMMON.md §5.1` 참조). 영속(`NotificationSaveEvent`)과 push(`WebNotificationBroadcastEvent`)를 하나의 `NotificationEventList`로 묶어 발행한다.
