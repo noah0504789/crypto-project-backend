@@ -64,11 +64,26 @@ chat의 쓰기 경로는 **동기적으로 Redis 캐시에 반영하고 영속(M
 
 읽기 경로는 **캐시-우선, 미스 시 Mongo 로드 + 워밍업**이다(§8). 정상 흐름에서 REST 조회는 Redis만 조회하며, 캐시가 비었거나 인덱스가 없으면 `*QueryRepairService`가 Mongo에서 로드해 캐시를 채운 뒤 반환한다. **미스 폭주 방어 도구는 서브도메인 특성에 따라 다르다: 방 = `SingleFlight`, 메시지 = 분산락.**
 
-> **왜 방 info 는 `SingleFlight`, 메시지는 분산락으로 갈렸나**: chat 은 둘 다 **cache-first**(쓰기가 캐시 먼저, Mongo 는 async consumer)라 **캐시에 값이 있으면 최신, miss(evict/TTL/cold)에서만 Mongo 로드**가 필요하다. 두 도구 모두 **동기 대기**이며(SWR 처럼 즉답 아님 — §아래), 결정 요인은 **miss reload 의 비용**이다.
-> - **방(`ChatRoomQueryRepairService`) → `SingleFlight`**(구 분산락에서 전환): reload 가 방 상세(`findByIdWithLatestMessage`) 중심으로 **싸고** miss 도 드물어 전역 1회 보장(분산락)의 이득이 작다 → 락 획득·대기·타임아웃·복구 왕복 없이 같은 key 동시 로드만 1회로 합치는 **경량 동기 dedup**. 대기는 짧은 로드 시간뿐.
-> - **메시지(`ChatMessageQueryRepairService`) → 분산락 유지**: 메시지 캐시는 **TTL 없이 접근시간 + 시간지역성 스케줄러**로 축출하고 **최신순 접근**이라 최신은 write-through 로 상주(miss 없음), 과거 페이지는 소수 서버만 → **동시 miss 드묾**. 드문 miss 의 reload 가 **range 쿼리(무거움)** 라, **전역 1회 보장(분산락)**(`DistributedLockExecutor`, `CACHE_WARM_UP`)이 중복 range 를 막아 이득이고 대기 비용은 드물어 실질 없음.
->
-> `SingleFlight`(common-redisson)는 인스턴스 내 중복 로드 제거, 분산락은 클러스터 전역 1회. **SWR(만료값 즉시 반환 + 비동기 갱신)은 쓰지 않는다** — chat 은 cache-first라 캐시가 Mongo 보다 **앞서** 있어(DB=진실 아님), SWR 로 Mongo 재조회해 덮으면 아직 반영 안 된 최신 캐시를 뒤처진 값으로 되돌릴 위험이 있다. 따라서 miss 는 로드 완료까지 **동기 대기**(SingleFlight/락)한다. 데이터 특성별 캐시 전략 대비는 [`NOTIFICATION.md §7.1`](NOTIFICATION.md).
+### 미스 폭주 방어 — 방은 `SingleFlight`, 메시지는 분산락
+
+| | 방 (`SingleFlight`) | 메시지 (분산락) |
+|---|---|---|
+| 구현 | `common-redisson/SingleFlight`(in-process `ConcurrentHashMap`) | `common-redisson/DistributedLockExecutor`(Redisson `RLock`, `CACHE_WARM_UP`) |
+| 보장 범위 | 인스턴스 내 1회 (서버 N대면 최악 N회 로드) | 클러스터 전역 1회 |
+| miss reload 비용 | 싸다(방 상세 단건 `findByIdWithLatestMessage`) | 무겁다(range 쿼리) |
+| 동시 miss 빈도 | 드묾 | 더 드묾(최신 페이지는 write-through 로 상주) |
+| 코디네이션 비용 | 없음(맵 연산) | Redis 왕복 + 대기 |
+| 대기자의 회수 방식 | `CompletableFuture` 결과 공유 → **전원 동시 반환** | 락을 하나씩 재획득 → **직렬 통과**(§8) |
+| 획득 실패 | 없음 | 예산 소진 시 예외, 캐시 폴백 없음(§8) |
+
+**갈린 기준은 「miss reload 가 얼마나 비싼가」 하나다.** chat 은 방·메시지 둘 다 cache-first(쓰기가 캐시 먼저, Mongo 는 async consumer)라 캐시에 값이 있으면 그게 최신이고, miss(evict/TTL/cold)에서만 Mongo 로드가 필요하다. 그 드문 miss 에 요청이 몰릴 때 중복 로드를 막는 것이 두 도구의 공통 목적이고, 둘 다 **동기 대기**다(SWR 처럼 즉답이 아니다 — 아래).
+
+- **방 → `SingleFlight`**(구 분산락에서 전환): reload 가 싸고 miss 도 드물어 전역 1회 보장의 이득이 작다. 락 획득·대기·타임아웃·복구 왕복을 치를 값어치가 없어, 같은 key 동시 로드만 1회로 합치는 **경량 동기 dedup** 으로 충분하다. 대기는 짧은 로드 시간뿐이고 획득 실패라는 개념 자체가 없다.
+- **메시지 → 분산락 유지**: 메시지 캐시는 TTL 없이 **접근시간 + 시간지역성 스케줄러**로 축출하고 **최신순 접근**이라 최신 페이지는 상주하고 과거 페이지는 소수 서버만 본다 → 동시 miss 자체가 드물다. 그 드문 miss 의 reload 가 **range 쿼리**라 전역 1회 보장이 중복 range 를 막아 이득이고, 대기·획득 실패 비용은 드물게만 발생해 실질 부담이 없다.
+
+표의 마지막 두 행이 대가다. 분산락은 캐시로 회수되는 요청까지 **직렬로** 통과시키고, 예산을 넘기면 **실패**시킨다. 그 대가를 치를 만큼 reload 가 비쌀 때만 쓴다.
+
+**SWR(만료값 즉시 반환 + 비동기 갱신)은 쓰지 않는다.** chat 은 cache-first 라 캐시가 Mongo 보다 **앞서** 있어(DB = 진실 아님), SWR 로 Mongo 를 재조회해 덮으면 아직 반영 안 된 최신 캐시를 뒤처진 값으로 되돌릴 위험이 있다. 그래서 miss 는 로드 완료까지 동기 대기한다. 데이터 특성별 캐시 전략 대비는 [`NOTIFICATION.md §7.1`](NOTIFICATION.md).
 
 ## 6. 주요 클래스와 책임
 
@@ -119,12 +134,72 @@ chat의 쓰기 경로는 **동기적으로 Redis 캐시에 반영하고 영속(M
 
 ## 8. 조회 흐름 (Query — 캐시-우선 + repair)
 
-- **방 상세**(`getRoom`): `cache.findById` → 미스 시 `queryRepairService.repairRoom`(`SingleFlight`, Mongo `findByIdWithLatestMessage` + `warmUp`, 없으면 `ChatRoomNotFoundException`).
-- **내 방 상세/목록**(`getMyRoom`/`listMyRooms`): 방 + `lastReadSeq`(캐시 → 미스 시 Mongo)로 `MyChatRoomSummary` 구성. lastRead 캐시 미스면 `refreshActiveCacheSafely`로 캐시 재적재(unread 여부에 따라 스코어 계산).
-- **인기방 목록**(`listPopularRooms`): 카테고리별 zset 인덱스 조회. 커서 유무로 first/next 페이지 분기.
-- **메시지 목록**(`listMessages`): 캐시 zset 조회 → **비면** `queryRepairService.repairLatest`/`repairPrev`(Mongo 로드 + 캐시 워밍업).
-- `ChatRoomCacheLookupResult`가 캐시 조회 결과를 `hasNoIndex()`(인덱스 자체 없음 → 전체 repair) / `isAllHit()` / 부분 히트(miss id만 개별 repair 후 원래 순서로 merge)로 구분한다.
-- 조회는 커서 페이지네이션이며, 컨트롤러가 `limit+1`로 조회 후 `CursorPages.from(result, limit, mapper)`로 다음 커서 유무를 판정한다.
+| 조회 | 캐시에서 보는 것 | 미스 시 |
+|---|---|---|
+| 방 상세 `getRoom` | `cache.findById(roomId)` | `repairRoom`(`SingleFlight`) — Mongo `findByIdWithLatestMessage` + 워밍업. Mongo 에도 없으면 `ChatRoomNotFoundException` |
+| 내 방 상세 `getMyRoom` | 방 + `lastReadSeq` | 방 미스면 `repairRoom` 후 영속 lastRead 로 조립. lastRead 만 미스면 `refreshActiveCacheSafely` 로 재적재(unread 여부로 스코어 계산) |
+| 인기방 목록 `listPopularRooms` | 카테고리별 zset 인덱스(커서 유무로 first/next 분기) | 인덱스 자체 없음 → `repairPopularRooms`/`repairPopularRoomsAfter`. 부분 미스 → `repairRoomsByIds` 후 원래 순서로 merge |
+| 내 방 목록 `listMyRooms` | 내 활성 방 zset(커서 유무로 분기, 커서 스코어 계산) | 인덱스 자체 없음 → `repairMyRooms`/`repairMyRoomsBefore`. 부분 미스 → `repairRoomsByIds` 후 merge |
+| 메시지 목록 `listMessages` | 방별 메시지 zset(커서 유무로 latest/prev) | `repairLatest`/`repairPrev` — 분산락 → 캐시 재확인 → Mongo range + 워밍업 (아래 절) |
+| 제목 중복 `existsByTitle` | `cache.existsByTitle` | `persistence.existsByTitle` 로 폴백 |
+
+- 목록 계열의 캐시 결과는 `ChatRoomCacheLookupResult` 가 세 갈래로 구분한다: `hasNoIndex()`(인덱스 자체 없음 → 전체 repair) / `isAllHit()` / 부분 히트(miss id 만 개별 repair 후 원래 순서로 merge).
+- 조회는 커서 페이지네이션이며, 컨트롤러가 `limit+1`로 조회한 뒤 `CursorPages.from(result, limit, mapper)`로 다음 커서 유무를 판정한다.
+
+### 미스 시 실제 동작 — 캐시를 두 번 본다
+
+동시 미스 100건이 메시지 목록에 몰렸을 때:
+
+```mermaid
+sequenceDiagram
+  participant R1 as 요청 1
+  participant RN as 요청 2..100
+  participant L as 분산락 (Redis)
+  participant C as Redis 캐시
+  participant M as MongoDB
+
+  R1->>C: 1차 확인 (락 밖)
+  C-->>R1: miss
+  RN->>C: 1차 확인 (락 밖)
+  C-->>RN: miss
+  R1->>L: tryLock
+  L-->>R1: 획득
+  RN->>L: tryLock (대기)
+  R1->>C: 2차 확인 (락 안)
+  C-->>R1: miss
+  R1->>M: range 조회
+  M-->>R1: 결과
+  R1->>C: 워밍업
+  R1->>L: unlock
+  L-->>RN: 획득 (한 번에 한 명씩)
+  RN->>C: 2차 확인 (락 안)
+  C-->>RN: hit — Mongo 로 가지 않는다
+  RN->>L: unlock
+```
+
+**repair 에 들어갔다고 항상 Mongo 를 타는 것이 아니다.** 캐시 조회가 두 번 있다.
+
+1. **1차 (락/합류 밖)**: `ChatMessageQueryService.listMessages`·`ChatRoomQueryService.getRoom` 이 캐시를 먼저 본다. 히트면 repair 를 호출하지도 않는다.
+2. **2차 (락/합류 안)**: `*QueryRepairService` 가 락(또는 `SingleFlight`) 안에서 캐시를 **다시** 본다. 선행 요청이 워밍업을 끝냈으면 여기서 히트해 Mongo 를 타지 않는다.
+
+그래서 위 그림에서 **Mongo range 는 1회이고 나머지 99건은 캐시로 회수된다.** 다만 캐시 히트여도 락은 잡아야 하므로 **통과는 직렬**이다(각자 Redis 조회 1회 분량). 방(`SingleFlight`)은 이 부분이 다르다 — 대기자가 `CompletableFuture` 결과를 그대로 받아 재획득·재조회 없이 **전원 동시에** 반환한다.
+
+코드에서 2차는 `distributedLockExecutor.execute(key, () -> repairCachedMessages(cache.listLatestMessages(...), loader), CACHE_WARM_UP)` 형태다. 캐시 조회가 인자 자리에 있어 먼저 실행되는 것처럼 보이지만 **람다 몸통이라 락 획득 뒤에 실행된다.**
+
+### 락 정책과 실패 동작 (메시지 경로)
+
+`DistributedLockPolicy.CACHE_WARM_UP` 하나만 쓴다.
+
+| 파라미터 | 값 | 의미 |
+|---|---:|---|
+| `waitTimeMs` | 100 | `tryLock` 1회 대기 한도 |
+| `leaseTimeMs` | 3,000 | 보유 한도. 넘으면 자동 해제 |
+| `retryAttempts` | 3 | 획득 실패 시 추가 시도 |
+| `retryDelayMs` | 30 | 재시도 간격 |
+| (합계) | 약 490ms | 총 4회 시도 소진까지 |
+
+- **예산을 소진하면 `DistributedLockAcquireFailedException` 을 던진다.** 캐시로 폴백하거나 락 없이 로드하는 경로는 **없다** — 캐시에 값이 이미 있어도 조회 실패로 끝난다. 미스 폭주에 대해 DB 를 보호하는 대신 요청 일부를 실패시키는 선택이다.
+- 로드가 `leaseTimeMs`(3초)를 넘기면 보유자가 작업 중인 상태에서 락이 먼저 풀려 **전역 1회 보장이 깨질 수 있다**. 현재 range 크기에서 이 상황이 발생하는지는 측정하지 않았다(확인 필요).
 
 ## 9. REST API 계약
 
