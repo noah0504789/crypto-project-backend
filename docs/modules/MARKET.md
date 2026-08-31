@@ -50,21 +50,21 @@
 
 ## 5. 주요 클래스와 책임
 
-| 클래스 | 경로(요약) | 책임 |
-|---|---|---|
-| `MarketController` | `market-adapter-in/.../web/MarketController.java` | `GET /markets`(활성 마켓 목록) |
-| `PriceAlertSettingController` | `market-adapter-in/.../web/PriceAlertSettingController.java` | 내 설정 조회/변경(§6) |
-| `GrpcMarketService` | `market-adapter-in/.../grpc/GrpcMarketService.java` | gRPC `GetEnabledMarkets`(§7) |
-| `GrpcPriceAlertSettingService` | `market-adapter-in/.../grpc/GrpcPriceAlertSettingService.java` | gRPC `FindReceiverIds`(§7) |
-| `KafkaMarketBinder` | `market-adapter-in/.../stream/KafkaMarketBinder.java` | `marketCatalogChangedBroadcastEventConsumer`(카탈로그 변경 브로드캐스트 소비) |
-| `MarketQueryService` | `market-application/.../service/MarketQueryService.java` | 활성 마켓 조회(`@ReadReplica`+`@Cacheable`) |
-| `MarketCommandService` | `market-application/.../service/MarketCommandService.java` | 카탈로그 변경(`@Transactional`) + Outbox 발행 |
-| `MarketEventService` | `market-application/.../service/MarketEventService.java` | 카탈로그 변경 이벤트 수신 → `@CacheEvict`(§8) |
-| `PriceAlertSettingQueryService` | `market-application/.../service/PriceAlertSettingQueryService.java` | 내 설정 조회, 수신자 조회 |
-| `PriceAlertSettingCommandService` | `market-application/.../service/PriceAlertSettingCommandService.java` | 내 설정 create/update/delete(`@Transactional`) |
-| `JpaMarketAdapter` / `JpaPriceAlertSettingAdapter` | `market-adapter-out/.../persistence/` | `*PersistencePort` 구현 |
-| `CacheConfig` / `MarketCacheNames` | `market-application/.../config`·`.../cache` | Caffeine 매니저, 캐시 이름 상수 |
-| `GrpcMarketClient` / `GrpcPriceAlertSettingClient` | `market-client/.../` | `CompletableFuture<GrpcResponse>`를 제공하는 소비자용 gRPC 클라이언트(deadline 3500ms) |
+| 클래스 | 책임 |
+|---|---|
+| `MarketController` | `GET /markets`(활성 마켓 목록) |
+| `PriceAlertSettingController` | 내 설정 조회/변경(§6) |
+| `GrpcMarketService` | gRPC `GetEnabledMarkets`(§7) |
+| `GrpcPriceAlertSettingService` | gRPC `FindReceiverIds`(§7) |
+| `KafkaMarketBinder` | `marketCatalogChangedBroadcastEventConsumer`(카탈로그 변경 브로드캐스트 소비) |
+| `MarketQueryService` | 활성 마켓 조회(`@ReadReplica`+`@Cacheable`) |
+| `MarketCommandService` | 카탈로그 변경(`@Transactional`) + Outbox 발행 |
+| `MarketEventService` | 카탈로그 변경 이벤트 수신 → `@CacheEvict`(§8) |
+| `PriceAlertSettingQueryService` | 내 설정 조회, 수신자 조회 |
+| `PriceAlertSettingCommandService` | 내 설정 create/update/delete(`@Transactional`) |
+| `JpaMarketAdapter` / `JpaPriceAlertSettingAdapter` | `*PersistencePort` 구현 |
+| `CacheConfig` / `MarketCacheNames` | Caffeine 매니저, 캐시 이름 상수 |
+| `GrpcMarketClient` / `GrpcPriceAlertSettingClient` | `CompletableFuture<GrpcResponse>`를 제공하는 소비자용 gRPC 클라이언트(deadline 3500ms) |
 
 ## 6. REST API 계약
 

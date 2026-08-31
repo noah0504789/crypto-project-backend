@@ -10,7 +10,7 @@ graph LR
 
 도형 규약: `[사각]` 코드/컴포넌트 · `[(원통)]` 데이터 저장소 · `[[겹사각]]` Kafka 토픽 · `((원))` 외부 시스템/클라이언트 · `{마름모}` 분기. 점선(`-.->`)은 응답·비동기 통보다.
 
-아래 흐름은 모두 진입점부터 아웃바운드까지 현재 코드에서 추적한 결과이며 근거 파일 경로를 함께 표기한다. 존재하지만 값·의도를 코드만으로 판단할 수 없는 항목은 본문에 `확인 필요`로 표시하고, 임의로 설계나 버그로 판정하지 않는다.
+아래 흐름은 모두 진입점부터 아웃바운드까지 현재 코드에서 추적한 결과다. 각 절 끝의 `관련 문서:`는 그 흐름을 더 깊게 다루는 모듈 문서를 가리킨다. 존재하지만 값·의도를 코드만으로 판단할 수 없는 항목은 본문에 `확인 필요`로 표시하고, 임의로 설계나 버그로 판정하지 않는다.
 
 전체 구조는 `docs/ARCHITECTURE.md`를 참고한다.
 
@@ -35,7 +35,7 @@ graph LR
   DB -.-> RES
 ```
 
-근거: `user/user-adapter-in/.../web/UserController.java`, `user/user-application/.../account/application/service/UserCommandService.java`, `user/user-adapter-out/.../account/adapter/out/JpaUserAdapter.java`. user 서비스 전체 상세는 `docs/modules/USER.md`.
+관련 문서: `docs/modules/USER.md`.
 
 ---
 
@@ -67,9 +67,9 @@ graph TB
   AS -.-> COOKIE
 ```
 
-근거: `oauth2-client/oauth2-client-application/.../oidc/.../CustomOidcUserService.java`, `.../oidc/profile/extractor/{Google,Kakao}OidcProviderProfileExtractor.java`, `oauth2-client/.../handler/CustomOAuth2LoginSuccessHandler.java`.
+제공자는 Google·Kakao만 확인됨(Naver 등은 미확인).
 
-제공자는 Google·Kakao만 확인됨(Naver 등은 미확인). oauth2-client 전체 상세(로그인/재발급/로그아웃 흐름·쿠키·확인 필요)는 `docs/modules/OAUTH2_CLIENT.md`.
+관련 문서: `docs/modules/OAUTH2_CLIENT.md`(로그인/재발급/로그아웃 흐름·쿠키·확인 필요).
 
 ---
 
@@ -93,7 +93,7 @@ graph TB
   OK --> RR --> REDIS
 ```
 
-근거: `oauth2-authorization-server-adapter-in/.../config/TokenConfig.java`, `-adapter-out/.../token/adapter/out/vault/Rs256JwtEncoder.java`, `-application/.../authorization/application/CustomAuthenticationSuccessHandler.java`, `-adapter-out/.../token/adapter/out/redis/RedisRefreshTokenAdapter.java`. 서버 전체 상세(Grant·서명·Redis 저장·gRPC 계약·확인 필요)는 `docs/modules/OAUTH2_AUTHORIZATION_SERVER.md`.
+관련 문서: `docs/modules/OAUTH2_AUTHORIZATION_SERVER.md`(Grant·서명·Redis 저장·gRPC 계약·확인 필요).
 
 토큰 claim은 `roles`, `id`가 확인됨. TTL·`aud` 검증 관련은 §끝 "확인 필요" 참조.
 
@@ -114,7 +114,7 @@ graph LR
   POL -.-> RES
 ```
 
-근거: `oauth2-client/oauth2-client-adapter-in/.../web/AuthController.java`, `oauth2-client-application/.../token/application/service/RefreshTokenService.java`, `oauth2-authorization-server/.../RotatingRefreshTokenPolicy.java`.
+관련 문서: `docs/modules/OAUTH2_CLIENT.md`, `docs/modules/OAUTH2_AUTHORIZATION_SERVER.md`.
 
 ---
 
@@ -138,7 +138,7 @@ graph TB
   AS -.->|"이후 요청"| GW --> BLOCK
 ```
 
-근거: `oauth2-client/.../CustomLogoutSuccessHandler.java`, `oauth2-client-adapter-in/.../config/SecurityFilterChainConfig.java`, `spring-cloud-api-gateway/.../validator/ReactiveBlacklistTokenValidator.java`.
+관련 문서: `docs/modules/OAUTH2_CLIENT.md`, `docs/modules/API_GATEWAY.md`.
 
 ---
 
@@ -174,7 +174,7 @@ graph TB
   AS -.->|"블랙리스트 아님"| ID --> ROUTE --> SVC
 ```
 
-근거: `spring-cloud-api-gateway/.../config/{ReactiveSecurityConfig,ReactiveJwtDecoderConfig,ReactiveRouteConfig}.java`, `.../filter/IdentityPropagationGlobalFilter.java`, `.../validator/{BlacklistAwareReactiveJwtDecoder,ReactiveBlacklistTokenValidator,RequiredUserIdClaimValidator}.java`, `.../adapter/out/grpc/GrpcBlacklistTokenClientAdapter.java`, `oauth2-authorization-server/.../client/GrpcOauth2AuthorizationServerClient.java`.
+관련 문서: `docs/modules/API_GATEWAY.md`.
 
 형식·서명·issuer·id 검증 실패 시 blacklist 원격 호출은 시작하지 않는다. gRPC 오류는 인증 실패 경로로 전파하며, 구독 취소는 gRPC 호출에도 전달한다. JWKS는 Config Server의 `/.well-known/jwks.json`에서 제공. `aud` 검증 여부는 §끝 "확인 필요" 참조.
 
@@ -194,7 +194,7 @@ graph LR
   C --> F --> V --> H --> WS --> PR
 ```
 
-근거: `spring-cloud-api-gateway/.../filter/WebsocketHandshakeAuthWebFilter.java`, `websocket-gateway/.../adapter/in/websocket/config/StompConfig.java`.
+관련 문서: `docs/modules/API_GATEWAY.md`, `docs/modules/WEBSOCKET_GATEWAY.md`.
 
 ---
 
@@ -224,7 +224,7 @@ graph TB
   RESULT -->|"DEADLINE_EXCEEDED"| DEL
 ```
 
-근거: `websocket-gateway/.../adapter/in/websocket/StompController.java`, `.../adapter/out/.../GrpcChatMessageCommandAdapter.java`, `chat/chat-adapter-in/.../grpc/GrpcChatMessageService.java`, `chat/chat-application/.../chatmessage/application/service/ChatMessageCommandService.java`.
+관련 문서: `docs/modules/WEBSOCKET_GATEWAY.md`, `docs/modules/CHAT.md`.
 
 ---
 
@@ -257,7 +257,7 @@ graph TB
   Q --> MADP2 --> MONGO
 ```
 
-근거: `chat/chat-application/.../chatmessage/application/service/{ChatMessageCommandService,ChatMessageQueryService}.java`, `chat/chat-adapter-out/.../persistence/MongoChatMessageAdapter.java`, `chat/chat-adapter-in/.../web/ChatMessageController.java`. chat 서비스 전체 상세(방/메시지 명령·조회·캐시·Kafka·DLQ·확인 필요)는 `docs/modules/CHAT.md`.
+관련 문서: `docs/modules/CHAT.md`(방/메시지 명령·조회·캐시·Kafka·DLQ·확인 필요).
 
 ---
 
@@ -297,7 +297,7 @@ graph TB
   EXH -->|"남음"| PUB
 ```
 
-근거: `common/common-outbox/.../adapter/in/OutboxEventListListener.java`, `outbox-poller/.../outbox/OutboxEventScheduler.java`, `.../dlq/DlqEventScheduler.java`, `.../infra/event/KafkaEventPublisher.java`, `.../dlq/DlqPollerController.java`.
+관련 문서: `docs/modules/OUTBOX_POLLER.md`, `docs/modules/COMMON.md`.
 
 ---
 
@@ -322,7 +322,7 @@ graph LR
 
 종목별 첫 ticker로 Flux 그룹이 만들어진 시점부터 7초 구간을 세며, 각 구간의 최신값 최대 1개만 발행한다. Kafka가 느리면 같은 종목의 대기값은 최신 하나로 교체되지만, 실제 Kafka 발행 완료 시점 기준의 정확한 7초 간격을 보장하는 정책은 아니다(→ `docs/modules/UPBIT_CONNECTOR.md` §4.1).
 
-근거: `upbit-connector/upbit-connector-adapter-out/.../upbit/{UpbitWebsocketTickerStreamAdapter,KafkaUpbitTickerPublishAdapter,UpbitTickerCollectStarter}.java`, `upbit-connector-application/.../service/UpbitTickerCollectService.java`.
+관련 문서: `docs/modules/UPBIT_CONNECTOR.md`.
 
 ---
 
@@ -339,7 +339,7 @@ graph LR
   PROC <--> STORE
 ```
 
-근거: `market-detection-adapter-in/.../stream/{KafkaMarketDetectionBinder,PriceAlertDetectionProcessor}.java`, `.../infra/config/StateStoreConfig.java`, `market-detection-application/.../dto/PriceChange.java`.
+관련 문서: `docs/modules/MARKET_DETECTION.md`.
 
 ---
 
@@ -358,7 +358,7 @@ graph LR
   TH -->|"미매칭"| DROP
 ```
 
-근거: `market-detection-application/.../service/PriceAlertDetectionService.java`, `market-detection-contract/.../PriceAlertDetectedEvent.java`.
+관련 문서: `docs/modules/MARKET_DETECTION.md`.
 
 > 참고: 기존 문서는 이 출력 이벤트를 `UpbitTickerAlertEvent`/`WebNotificationBroadcastEvent`로 기술했으나, 실제 발행 계약은 `PriceAlertDetectedEvent`이며 notification 서비스가 이를 소비해 후속 이벤트를 만든다(§14).
 
@@ -398,7 +398,7 @@ graph TB
   POLL --> KWEB --> WGC --> PUSH
 ```
 
-근거: `notification/notification-adapter-in/.../stream/KafkaNotificationBinder.java`, `notification/notification-application/.../service/PriceAlertNotificationCommandService.java`, `notification/notification-adapter-out/.../grpc/PriceAlertRecipientQueryAdapter.java`, `websocket-gateway/.../adapter/in/stream/KafkaWebsocketGatewayBinder.java`.
+관련 문서: `docs/modules/NOTIFICATION.md`, `docs/modules/MARKET.md`, `docs/modules/WEBSOCKET_GATEWAY.md`.
 
 ---
 
@@ -491,7 +491,7 @@ k6의 ACK 타임아웃 건수가 부풀면 원인이 둘(inbound에서 잘림 / 
 
 WebSocket 핸드셰이크 실패, Kafka consumer 리밸런스 중 유실, Inbox 멱등 경로, DLQ consumer 자체 실패는 범위 밖이다.
 
-근거: `websocket-gateway/.../stomp/exception/StompChatMessageExceptionHandler.java`, `websocket-gateway/.../config/ExecutorConfig.java`, `websocket-gateway/.../chatmessage/adapter/out/stomp/{BatchingChatMessageBroadcastAdapter,DirectStompChatMessageAckAdapter}.java`, `websocket-gateway/.../chatroom/adapter/out/stomp/CoalescingMyChatRoomBadgeAdapter.java`, `websocket-gateway/.../chatmessage/application/service/ChatMessageSendService.java`, `chat/chat-application/.../service/{ChatMessageCommandService,ChatMessageEventService}.java`, `common/common-outbox/.../{OutboxService,JpaOutbox}.java`. 용량·큐 산정은 [`decisions/ADR-003-chat-capacity-target-and-connection-budget.md`](decisions/ADR-003-chat-capacity-target-and-connection-budget.md).
+관련 문서: `docs/modules/WEBSOCKET_GATEWAY.md`, `docs/modules/CHAT.md`. 용량·큐 산정은 [`decisions/ADR-003-chat-capacity-target-and-connection-budget.md`](decisions/ADR-003-chat-capacity-target-and-connection-budget.md).
 
 ### 15.5 이 표에서 출발해 고친 것들
 

@@ -170,10 +170,10 @@ market-detection은 stateful Kafka 처리 결과가 곧 Kafka 출력이고 외�
 
 | 파일 | 이유 |
 |---|---|
-| `market-detection-contract/.../PriceAlertDetectedEvent.java` · `PriceAlertDetectedPayloadKeys` | notification이 소비하는 발행 계약 |
+| `PriceAlertDetectedEvent` · `PriceAlertDetectedPayloadKeys` | notification이 소비하는 발행 계약 |
 | `common-core/PriceAlertChangeRateThreshold` | 3서비스 공유 임계값 계약(탐지·수신자 조회·정확 일치) |
-| `-application/dto/PriceChange.java` | 변동률 산식·임계 매칭 |
-| `-adapter-in/.../PriceAlertDetectionProcessor.java` / `StateStoreConfig.java` | WindowStore 접근·forward·store 정의 |
+| `PriceChange` | 변동률 산식·임계 매칭 |
+| `PriceAlertDetectionProcessor` / `StateStoreConfig.java` | WindowStore 접근·forward·store 정의 |
 | `git-config-repo/dynamic/market-detection.yml` | Streams 바인딩·토픽·store·트랜잭션 |
 
 ## 10. 관련 문서와 rules

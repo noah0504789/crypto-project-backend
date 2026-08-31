@@ -46,21 +46,21 @@
 
 ## 5. 주요 클래스와 책임
 
-| 클래스 | 경로(요약) | 책임 |
-|---|---|---|
-| `UserController` | `user-adapter-in/.../web/UserController.java` | REST 4개 엔드포인트(§6) |
-| `GrpcUserService` | `user-adapter-in/.../grpc/GrpcUserService.java` | gRPC `FindByEmail`, `SignUpOauth2`(§7) |
-| `GrpcUserMapper` | `user-adapter-in/.../grpc/GrpcUserMapper.java` | `User` → `GrpcUser` 변환(Timestamp 포함) |
-| `UserCommandService` | `user-application/.../service/UserCommandService.java` | `signUpLocal`/`signUpOauth2`/`updateProfile` (write, `@Transactional`) |
-| `UserQueryService` | `user-application/.../service/UserQueryService.java` | `findByPublicId`/`findByEmailWithRoles` (`@Transactional(readOnly=true)`) |
-| `UserPersistencePort` | `user-application/.../port/out/UserPersistencePort.java` | 영속성 아웃바운드 포트 |
-| `RolePersistencePort` | `user-application/.../role/.../port/out/RolePersistencePort.java` | Role 조회 포트 |
-| `UniqueUserNicknameValidator` | `user-application/.../validation/` | 닉네임 중복 검증(`existsByNickname`) |
-| `JpaUserAdapter` | `user-adapter-out/.../account/adapter/out/JpaUserAdapter.java` | `UserPersistencePort` 구현, 도메인↔JPA 매핑 |
-| `JpaRoleAdapter` | `user-adapter-out/.../role/adapter/out/JpaRoleAdapter.java` | `RolePersistencePort` 구현 |
-| `DataSourceConfig` | `user-adapter-out/.../infra/config/DataSourceConfig.java` | write/read Hikari + `ReplicationRoutingDataSource`(§10) |
-| `PasswordEncoderConfig` | `user-adapter-out/.../infra/config/PasswordEncoderConfig.java` | `BCryptPasswordEncoder(5)` |
-| `GrpcUserClient` | `user-client/.../GrpcUserClient.java` | `CompletableFuture<GrpcResponse>`를 제공하는 소비자용 gRPC 클라이언트(deadline 3500ms) |
+| 클래스 | 책임 |
+|---|---|
+| `UserController` | REST 4개 엔드포인트(§6) |
+| `GrpcUserService` | gRPC `FindByEmail`, `SignUpOauth2`(§7) |
+| `GrpcUserMapper` | `User` → `GrpcUser` 변환(Timestamp 포함) |
+| `UserCommandService` | `signUpLocal`/`signUpOauth2`/`updateProfile` (write, `@Transactional`) |
+| `UserQueryService` | `findByPublicId`/`findByEmailWithRoles` (`@Transactional(readOnly=true)`) |
+| `UserPersistencePort` | 영속성 아웃바운드 포트 |
+| `RolePersistencePort` | Role 조회 포트 |
+| `UniqueUserNicknameValidator` | 닉네임 중복 검증(`existsByNickname`) |
+| `JpaUserAdapter` | `UserPersistencePort` 구현, 도메인↔JPA 매핑 |
+| `JpaRoleAdapter` | `RolePersistencePort` 구현 |
+| `DataSourceConfig` | write/read Hikari + `ReplicationRoutingDataSource`(§10) |
+| `PasswordEncoderConfig` | `BCryptPasswordEncoder(5)` |
+| `GrpcUserClient` | `CompletableFuture<GrpcResponse>`를 제공하는 소비자용 gRPC 클라이언트(deadline 3500ms) |
 
 ## 6. REST API 계약
 
@@ -75,7 +75,7 @@
 
 - `UserResponse`(REST, `adapter-in/.../web/dto/UserResponse`): `{ id=publicId(UUID), nickname, email, createdAt(Instant) }`. 내부 PK(`id`, Snowflake)는 노출하지 않고 `publicId`를 `id`로 내보낸다.
 - `X-User-Id` 헤더는 게이트웨이가 검증된 JWT의 `id` claim에서 주입한다(`common-core/HttpHeaderKey.USER_ID_VALUE`). **UserController는 이 값을 그대로 신뢰**해 `publicId`로 사용하며 재검증하지 않는다.
-- 게이트웨이 인가 근거: `spring-cloud-api-gateway/.../ReactiveSecurityConfig.java`. GET `me/profile`·`{publicId}/profile`만 `hasRole(USER)`, 그 외 `/user/**`는 `permitAll`.
+- 게이트웨이 인가 근거: `ReactiveSecurityConfig`. GET `me/profile`·`{publicId}/profile`만 `hasRole(USER)`, 그 외 `/user/**`는 `permitAll`.
 - PATCH `/me/profile`는 게이트웨이 `ReactiveSecurityConfig`에서 `hasRole(USER)`를 요구한다. 애플리케이션에서도 `UserCommandService.updateProfile`가 `User.validateOwner(publicId)`로 소유자 인가를 명시 검증한다. `X-User-Id`는 게이트웨이가 입구에서 클라이언트 원본 헤더를 제거하고 검증된 JWT `id`로만 주입한다(`IdentityPropagationGlobalFilter`, 게이트웨이 경유 스푸핑 차단). 게이트웨이 **우회** 직접 접근 차단은 인프라 방어(서비스 포트 host-local 바인딩 등, infra `TODO.md` "보안 · 네트워크 노출").
 
 검증 규칙(`UserCreateRequest`, `UserProfileUpdateRequest`):
@@ -99,7 +99,7 @@ proto: `protobuf/src/main/proto/user/v1/user-service.proto`. 서버 구현 `Grpc
 
 ## 8. 도메인 모델
 
-### `User` (`user-domain/.../account/domain/model/User.java`)
+### `User` (`User`)
 - 필드: `id`(내부 PK, Snowflake), `publicId`(UUID, 외부 식별자), `sub`(OAuth2 provider subject), `email`, `nickname`, `password`(로컬만), `roles: Set<Role>`, `createdAt`/`updatedAt`.
 - 팩토리: `ofLocal(email,nickname,encodedPassword)`, `ofOAuth2(sub,email,nickname)`, `rehydrate(...)`(영속성 복원용).
 - 행위: `addRole`, `updateNickname`, `hasRole`, `getRoleNames`, `toInstant`(`ServiceZoneUtils.ZONE_ID` 기준), 정적 `getDefaultRole()=USER`.

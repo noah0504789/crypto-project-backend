@@ -38,21 +38,21 @@ Config Server 자체(백엔드 구성·Vault Transit 서명 대행·JWKS 제공)
 
 ## 4. 주요 클래스와 책임
 
-| 클래스 | 경로 | 책임 |
-|---|---|---|
-| `ReactiveRouteConfig` | `src/main/java/org/example/apigateway/config/ReactiveRouteConfig.java` | `RouteLocator` Bean 6개 정의(OAuth2 Client / User Service / Market Service / Notification / WebSocket Gateway / Chat Service 그룹). WebSocket 그룹 안에는 개별 Route 4건이 있음(§9) |
-| `ReactiveSecurityConfig` | `src/main/java/org/example/apigateway/config/ReactiveSecurityConfig.java` | `SecurityWebFilterChain`, 경로별 인가, 403 응답 |
-| `ReactiveJwtDecoderConfig` | `src/main/java/org/example/apigateway/config/ReactiveJwtDecoderConfig.java` | JWKS 기반 로컬 검증기와 비동기 blacklist 검증기를 조합 |
-| `CorsConfig` | `src/main/java/org/example/apigateway/config/CorsConfig.java` | CORS 정책 Bean 3종 |
-| `RateLimitConfig` | `src/main/java/org/example/apigateway/ratelimit/RateLimitConfig.java` | IP/User KeyResolver와 Route별 `RedisRateLimiter` Bucket 등록 |
-| `GatewayRateLimitProperties` | `src/main/java/org/example/apigateway/ratelimit/GatewayRateLimitProperties.java` | `gateway.rate-limit.*` 설정 바인딩·양수/Bucket 용량 검증 |
-| `IdentityPropagationGlobalFilter` | `src/main/java/org/example/apigateway/filter/IdentityPropagationGlobalFilter.java` | 일반 HTTP 요청의 클라이언트 `X-User-Id`·`X-From` 제거 + 검증된 JWT `id`로 `X-User-Id` 전파(`GlobalFilter`, `HIGHEST_PRECEDENCE`) |
-| `WebsocketHandshakeAuthWebFilter` | `src/main/java/org/example/apigateway/filter/WebsocketHandshakeAuthWebFilter.java` | WebSocket 핸드셰이크 전용 쿼리 토큰 인증(`WebFilter`, `@Order(-1000)`) |
-| `BlacklistTokenService` | `src/main/java/org/example/apigateway/oauth2/application/service/BlacklistTokenService.java` | `Mono<Boolean>` 기반 블랙리스트 조회 유스케이스 |
-| `GrpcBlacklistTokenClientAdapter` | `src/main/java/org/example/apigateway/oauth2/adapter/out/grpc/GrpcBlacklistTokenClientAdapter.java` | 공용 client의 `CompletableFuture<BoolValue>` blacklist 조회를 구독 시점에 `Mono<Boolean>`으로 변환 |
-| `BlacklistAwareReactiveJwtDecoder` | `src/main/java/org/example/apigateway/oauth2/validator/BlacklistAwareReactiveJwtDecoder.java` | Nimbus JWT 검증 성공 후 비동기 blacklist 검증을 연결 |
-| `ReactiveBlacklistTokenValidator` | `src/main/java/org/example/apigateway/oauth2/validator/ReactiveBlacklistTokenValidator.java` | 비동기 조회 결과가 blacklist이면 `invalid_token`으로 거부 |
-| `RequiredUserIdClaimValidator` | `src/main/java/org/example/apigateway/oauth2/validator/RequiredUserIdClaimValidator.java` | `OAuth2TokenValidator<Jwt>` — `id` claim 필수 검증 |
+| 클래스 | 책임 |
+|---|---|
+| `ReactiveRouteConfig` | `RouteLocator` Bean 6개 정의(OAuth2 Client / User Service / Market Service / Notification / WebSocket Gateway / Chat Service 그룹). WebSocket 그룹 안에는 개별 Route 4건이 있음(§9) |
+| `ReactiveSecurityConfig` | `SecurityWebFilterChain`, 경로별 인가, 403 응답 |
+| `ReactiveJwtDecoderConfig` | JWKS 기반 로컬 검증기와 비동기 blacklist 검증기를 조합 |
+| `CorsConfig` | CORS 정책 Bean 3종 |
+| `RateLimitConfig` | IP/User KeyResolver와 Route별 `RedisRateLimiter` Bucket 등록 |
+| `GatewayRateLimitProperties` | `gateway.rate-limit.*` 설정 바인딩·양수/Bucket 용량 검증 |
+| `IdentityPropagationGlobalFilter` | 일반 HTTP 요청의 클라이언트 `X-User-Id`·`X-From` 제거 + 검증된 JWT `id`로 `X-User-Id` 전파(`GlobalFilter`, `HIGHEST_PRECEDENCE`) |
+| `WebsocketHandshakeAuthWebFilter` | WebSocket 핸드셰이크 전용 쿼리 토큰 인증(`WebFilter`, `@Order(-1000)`) |
+| `BlacklistTokenService` | `Mono<Boolean>` 기반 블랙리스트 조회 유스케이스 |
+| `GrpcBlacklistTokenClientAdapter` | 공용 client의 `CompletableFuture<BoolValue>` blacklist 조회를 구독 시점에 `Mono<Boolean>`으로 변환 |
+| `BlacklistAwareReactiveJwtDecoder` | Nimbus JWT 검증 성공 후 비동기 blacklist 검증을 연결 |
+| `ReactiveBlacklistTokenValidator` | 비동기 조회 결과가 blacklist이면 `invalid_token`으로 거부 |
+| `RequiredUserIdClaimValidator` | `OAuth2TokenValidator<Jwt>` — `id` claim 필수 검증 |
 
 ## 5. 일반 HTTP 요청 처리 흐름
 
@@ -107,7 +107,7 @@ graph TB
   I -->|"없음 · 공백"| E401
   I -->|"있음"| SET --> RL --> R
 ```
-근거: `WebsocketHandshakeAuthWebFilter.java`, `ReactiveRouteConfig.java:49-79`. 쿼리 파라미터 이름은 `AuthTokenKey.ACCESS_TOKEN_QUERY`(`common-core/.../enums/AuthTokenKey.java`) = `access_token`.
+근거: `WebsocketHandshakeAuthWebFilter.java`, `ReactiveRouteConfig.java:49-79`. 쿼리 파라미터 이름은 `AuthTokenKey.ACCESS_TOKEN_QUERY`(`AuthTokenKey`) = `access_token`.
 
 ## 7. JWT 인증·검증 구조
 
@@ -142,7 +142,7 @@ graph TB
   issuer URI는 `git-config-repo/dynamic/jwt.yml`이 공통 `application.yml`의 `uri.internal.oauth2-authorization-server`를 참조한다.
 - 형식·서명·issuer·`id` 검증에 실패한 토큰은 원격 blacklist 조회를 시작하지 않는다. gRPC 오류는 인증 실패 경로로 전파하는 fail-closed 동작이며, 요청 취소 시 gRPC future도 취소한다.
 - **audience(`aud`) 검증은 확인되지 않음.** 위 검증기 외에 aud를 확인하는 코드는 없다(`ReactiveJwtDecoderConfig.java` 전체 검토 기준).
-- 사용 claim: `id`(`JwtClaimKey.USER_ID`), `roles`(`JwtClaimKey.ROLES`) — `common/common-core/.../enums/JwtClaimKey.java`.
+- 사용 claim: `id`(`JwtClaimKey.USER_ID`), `roles`(`JwtClaimKey.ROLES`) — `JwtClaimKey`.
 - Access Token 읽는 위치: 일반 요청은 `Authorization: Bearer` 헤더(Spring Security 기본), WebSocket은 `?access_token=` 쿼리 파라미터(§6).
 
 ## 8. 인가 규칙과 공개 경로
@@ -189,7 +189,7 @@ graph TB
 | `/ws/**`,`/ws-native`,`/ws-native/**`(HTTP) | websocket-gateway | `lb://websocket-gateway` | `dedupeResponseHeader`(CORS 3종) | `GET /ws/info/**`는 permitAll, 나머지 `GET`은 `hasRole(USER)` | `websocketGatewayRoutes("ws-http")` |
 | `/msg/**` | websocket-gateway | `lb://websocket-gateway` | 없음 | 아니오 | `websocketGatewayRoutes("sockjs-route")` |
 | `/chat/**` | chat-service | `lb://chat-service` | `X-From` 추가, `rewritePath(/chat(?<seg>/.*)?$ → /api/v1/chat${seg})`, `X-Gateway` 응답 | 일부 `GET`만 `hasRole(USER)`(§8 참고), 나머지 permitAll | `ReactiveRouteConfig.chatRoutes` |
-| `POST /internal/deployment/**` | Gateway 자신 | N/A(Route 아님, 로컬 컨트롤러) | `DeploymentControlAuthWebFilter`(`X-Deploy-Token`) | JWT는 permitAll, Deploy Token 별도 필요 | `ReactiveSecurityConfig.java:56`, `common/common-actuator-webflux/.../DeploymentControlAuthWebFilter.java` |
+| `POST /internal/deployment/**` | Gateway 자신 | N/A(Route 아님, 로컬 컨트롤러) | `DeploymentControlAuthWebFilter`(`X-Deploy-Token`) | JWT는 permitAll, Deploy Token 별도 필요 | `ReactiveSecurityConfig.java:56`, `DeploymentControlAuthWebFilter` |
 | `/actuator/**` | Gateway 자신 | N/A | 없음 | 아니오 | `ReactiveSecurityConfig.java:78` |
 
 ### 9.1 Redis Rate Limit 적용 표
@@ -286,7 +286,7 @@ Gateway가 생성·추가하는 헤더는 다음과 같다. Route·인증·Rate 
 | 일반 HTTP 인가 실패(403) | 커스텀 `accessDeniedHandler` — CORS 헤더 재설정 + JSON body(`timestamp`,`status`,`error:"FORBIDDEN"`,`message`,`path`) | `ReactiveSecurityConfig.java:91-92,108-148` |
 | WebSocket 핸드셰이크 인증 실패(401) | `WebsocketHandshakeAuthWebFilter.unauthorized` — 상태코드만 설정, JSON body 없음 | `WebsocketHandshakeAuthWebFilter.java:97-100` |
 | Rate Limit 초과(429) | `RequestRateLimiterGatewayFilterFactory` — 상태코드와 Rate Limit 헤더 설정, body 없음 | `ReactiveRouteConfig`, `RateLimitConfig` |
-| 배포 제어 인증 실패(401) | `DeploymentControlAuthWebFilter` — `{"message":"Unauthorized deployment control request"}` | `common/common-actuator-webflux/.../DeploymentControlAuthWebFilter.java` |
+| 배포 제어 인증 실패(401) | `DeploymentControlAuthWebFilter` — `{"message":"Unauthorized deployment control request"}` | `DeploymentControlAuthWebFilter` |
 
 세 인증 실패 처리(일반 401 / WebSocket 401 / 배포 제어 401)는 서로 다른 필터·바디 형식을 사용하며 통일되어 있지 않다.
 
@@ -326,14 +326,14 @@ Gateway가 생성·추가하는 헤더는 다음과 같다. Route·인증·Rate 
 
 | 파일 | 위험 사유 |
 |---|---|
-| `config/ReactiveSecurityConfig.java` | `authorizeExchange` 순서/패턴 변경이 `anyExchange().denyAll()` 기본값과 맞물려 전체 서비스 접근 불가 또는 과다 노출로 직결 |
-| `config/ReactiveJwtDecoderConfig.java` | JWT 검증 체인(issuer/blacklist/id) 변경은 전체 인증 우회/차단 위험 |
-| `oauth2/validator/{BlacklistAwareReactiveJwtDecoder,ReactiveBlacklistTokenValidator}.java` | 로컬 검증과 원격 blacklist 조회 순서·오류 의미 변경 시 인증 우회/전체 차단 위험 |
-| `oauth2/adapter/out/grpc/GrpcBlacklistTokenClientAdapter.java` | `CompletableFuture`를 Reactor 구독·오류·취소에 연결하는 방식 변경 시 Gateway 요청 처리 자원에 영향 |
-| `config/ReactiveRouteConfig.java` | Route path/RewritePath 변경은 프론트·하위 서비스에 동시 영향(외부 계약) |
-| `filter/IdentityPropagationGlobalFilter.java` | `X-User-Id` 헤더 계약 변경 시 모든 하위 서비스 영향 |
-| `filter/WebsocketHandshakeAuthWebFilter.java` | websocket-gateway 및 부하 테스트가 의존 |
-| `config/CorsConfig.java` | origin/method/credential 변경은 프론트 E2E 직접 영향 |
+| `ReactiveSecurityConfig` | `authorizeExchange` 순서/패턴 변경이 `anyExchange().denyAll()` 기본값과 맞물려 전체 서비스 접근 불가 또는 과다 노출로 직결 |
+| `ReactiveJwtDecoderConfig` | JWT 검증 체인(issuer/blacklist/id) 변경은 전체 인증 우회/차단 위험 |
+| `BlacklistAwareReactiveJwtDecoder`/`ReactiveBlacklistTokenValidator` | 로컬 검증과 원격 blacklist 조회 순서·오류 의미 변경 시 인증 우회/전체 차단 위험 |
+| `GrpcBlacklistTokenClientAdapter` | `CompletableFuture`를 Reactor 구독·오류·취소에 연결하는 방식 변경 시 Gateway 요청 처리 자원에 영향 |
+| `ReactiveRouteConfig` | Route path/RewritePath 변경은 프론트·하위 서비스에 동시 영향(외부 계약) |
+| `IdentityPropagationGlobalFilter` | `X-User-Id` 헤더 계약 변경 시 모든 하위 서비스 영향 |
+| `WebsocketHandshakeAuthWebFilter` | websocket-gateway 및 부하 테스트가 의존 |
+| `CorsConfig` | origin/method/credential 변경은 프론트 E2E 직접 영향 |
 | `git-config-repo/dynamic/{api-gateway,jwt}.yml` | 원격 config이지만 포트/JWKS/issuer/TTL 등 동작을 실질적으로 결정 |
 
 ## 17. 관련 문서와 rules
