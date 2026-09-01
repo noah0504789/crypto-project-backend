@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
@@ -100,9 +99,9 @@ public class MongoChatMessageAdapter implements ChatMessagePersistencePort {
                 repository.insert(newMessages);
             }
 
-            return newMessages.stream()
+            return Set.copyOf(newMessages.stream()
                     .map(message -> message.getId().toHexString())
-                    .collect(Collectors.toSet());
+                    .toList());
         } catch (InvalidResourceRequestException e) {
             throw e;
         } catch (Exception e) {
