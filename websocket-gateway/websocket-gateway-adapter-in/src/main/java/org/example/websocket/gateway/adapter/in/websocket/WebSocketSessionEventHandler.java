@@ -29,6 +29,7 @@ public class WebSocketSessionEventHandler {
     private final LocalSessionCache localSessionCache;
     private final SessionLocationPort sessionLocationPort;
     private final String ackDestination;
+    private final String badgeDestination;
 
     public WebSocketSessionEventHandler(
             MeterRegistry registry,
@@ -53,6 +54,8 @@ public class WebSocketSessionEventHandler {
         this.sessionLocationPort = sessionLocationPort;
         this.ackDestination = apiPathProperties.stomp().userDestinationPrefix()
                 + StompDestination.CHAT_ACK_QUEUE.destination();
+        this.badgeDestination = apiPathProperties.stomp().userDestinationPrefix()
+                + StompDestination.CHAT_ROOM_BADGE_QUEUE.destination();
     }
 
     @EventListener
@@ -100,6 +103,10 @@ public class WebSocketSessionEventHandler {
                 localSessionCache.registerAckSubscription(sessionId, subscriptionId);
             }
 
+            if (badgeDestination.equals(destination)) {
+                localSessionCache.registerBadgeSubscription(sessionId, subscriptionId);
+            }
+
             // 방 브로드캐스트를 보낼지 판정할 근거다. 이게 없으면 발신자가 멤버 목록을 실어 보내야 한다.
             String roomId = StompDestination.CHAT_ROOM_PREFIX.uriOf(destination);
             if (roomId != null) {
@@ -119,7 +126,7 @@ public class WebSocketSessionEventHandler {
 
         if (sessionId == null || subscriptionId == null) return;
 
-        localSessionCache.removeRoomSubscription(sessionId, subscriptionId);
+        localSessionCache.removeSubscription(sessionId, subscriptionId);
     }
 
     @EventListener

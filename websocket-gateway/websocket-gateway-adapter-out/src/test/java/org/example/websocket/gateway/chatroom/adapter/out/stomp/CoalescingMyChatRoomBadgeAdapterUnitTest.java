@@ -24,7 +24,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 class CoalescingMyChatRoomBadgeAdapterUnitTest {
 
     @Mock
-    private StompMyChatRoomBadgeAdapter delegate;
+    private DirectStompMyChatRoomBadgeAdapter delegate;
 
     private MeterRegistry registry;
 

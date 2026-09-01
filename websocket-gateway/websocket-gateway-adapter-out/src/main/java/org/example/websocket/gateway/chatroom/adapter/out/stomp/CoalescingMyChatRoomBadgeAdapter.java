@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class CoalescingMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
 
-    private final StompMyChatRoomBadgeAdapter delegate;
+    private final DirectStompMyChatRoomBadgeAdapter delegate;
     private final BadgeCoalesceProperties properties;
 
     private final Map<String, Pending> pending = new ConcurrentHashMap<>();
@@ -45,7 +45,7 @@ public class CoalescingMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
     private final Timer flushDuration;
 
     public CoalescingMyChatRoomBadgeAdapter(
-            StompMyChatRoomBadgeAdapter delegate,
+            DirectStompMyChatRoomBadgeAdapter delegate,
             BadgeCoalesceProperties properties,
             MeterRegistry registry
     ) {
@@ -69,7 +69,7 @@ public class CoalescingMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
 
     /**
      * 즉시 반환한다. 반환값은 "전송했다"가 아니라 "접수했다"는 뜻이다 —
-     * 실제 수신자 유무는 창이 닫힌 뒤 {@link StompMyChatRoomBadgeAdapter} 가 판정한다.
+     * 실제 수신자 유무는 창이 닫힌 뒤 {@link DirectStompMyChatRoomBadgeAdapter} 가 판정한다.
      */
     @Override
     public boolean send(MyChatRoomBadgeCommand command, String txId) {
