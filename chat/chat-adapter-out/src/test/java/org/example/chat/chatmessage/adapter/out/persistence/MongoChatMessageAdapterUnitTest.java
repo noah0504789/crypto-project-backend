@@ -3,8 +3,6 @@ package org.example.chat.chatmessage.adapter.out.persistence;
 import org.bson.types.ObjectId;
 import org.example.chat.chatmessage.application.exception.ChatMessagePersistException;
 import org.example.chat.chatmessage.application.exception.DuplicateChatMessageException;
-import org.example.chat.chatmessage.application.event.dlq.ChatMessageDlqEventList;
-import org.example.chat.chatmessage.application.event.ChatMessageEventList;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.exception.ChatPersistenceException;
 import org.example.chat.exception.InvalidResourceRequestException;
@@ -316,6 +314,25 @@ class MongoChatMessageAdapterUnitTest {
             assertThat(saved.getContent()).isEqualTo(CONTENT_1);
             assertThat(saved.getCreatedAt()).isEqualTo(time1);
             assertThat(saved.isDeleted()).isFalse();
+        }
+
+        @Test
+        @DisplayName("batch 저장은 기존 메시지를 제외하고 신규 메시지만 insert한다")
+        void saveAll_shouldInsertOnlyNewMessages() {
+            // given
+            ChatMessage first = chatMessage(MESSAGE_ID_1, domainTime1);
+            ChatMessage second = chatMessage(MESSAGE_ID_2, domainTime2);
+
+            given(repository.findExistingIds(Set.of(messageId1, messageId2)))
+                    .willReturn(Set.of(messageId1));
+
+            // when
+            Set<String> insertedIds = sut.saveAll(Set.of(first, second));
+
+            // then
+            assertThat(insertedIds).containsExactly(MESSAGE_ID_2);
+            verify(repository).findExistingIds(Set.of(messageId1, messageId2));
+            verify(repository).insert(anyList());
         }
 
         @Test

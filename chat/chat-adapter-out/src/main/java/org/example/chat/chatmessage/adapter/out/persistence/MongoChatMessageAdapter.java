@@ -14,6 +14,7 @@ import org.springframework.stereotype.Repository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 
 @Repository
@@ -73,6 +74,39 @@ public class MongoChatMessageAdapter implements ChatMessagePersistencePort {
             throw MongoChatPersistenceExceptionTranslator.translateChatMessageSave(
                     domain,
             "failed to save chat message. messageId=" + domain.getId() + ", roomId=" + domain.getRoomId(),
+                    e
+            );
+        }
+    }
+
+    @Override
+    public Set<String> saveAll(Set<ChatMessage> domains) {
+        if (domains == null || domains.isEmpty()) {
+            return Set.of();
+        }
+
+        try {
+            Set<ObjectId> ids = Set.copyOf(domains.stream()
+                    .map(domain -> objectId(domain.getId(), "messageId"))
+                    .toList());
+            Set<ObjectId> existingIds = repository.findExistingIds(ids);
+            List<MongoChatMessage> newMessages = domains.stream()
+                    .map(MongoChatMessage::fromDomain)
+                    .filter(message -> !existingIds.contains(message.getId()))
+                    .toList();
+
+            if (!newMessages.isEmpty()) {
+                repository.insert(newMessages);
+            }
+
+            return Set.copyOf(newMessages.stream()
+                    .map(message -> message.getId().toHexString())
+                    .toList());
+        } catch (InvalidResourceRequestException e) {
+            throw e;
+        } catch (Exception e) {
+            throw MongoChatPersistenceExceptionTranslator.translate(
+                    "failed to save chat messages in batch. size=" + domains.size(),
                     e
             );
         }

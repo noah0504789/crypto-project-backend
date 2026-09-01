@@ -3,6 +3,7 @@ package org.example.chat.chatmessage.adapter.in.stream;
 import lombok.extern.slf4j.Slf4j;
 import org.example.chat.chatmessage.application.port.in.ChatMessageDlqHandler;
 import org.example.chat.chatmessage.application.port.in.ChatMessageEventHandler;
+import org.example.chat.chatmessage.application.event.ChatMessagePersistEvent;
 import org.example.chat.chatmessage.application.port.out.ChatMessageMetricsPort;
 import org.example.common.event.HandleableEvent;
 import org.example.common.event.RecoverableEvent;
@@ -14,22 +15,29 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 
 import java.util.function.Consumer;
+import java.util.List;
 
 @Slf4j
 @Configuration
 public class KafkaChatMessageBinder {
 
     @Bean
-    public Consumer<Message<HandleableEvent<ChatMessageEventHandler>>> chatMessageEventConsumer(
+    public Consumer<List<Message<HandleableEvent<ChatMessageEventHandler>>>> chatMessageEventConsumer(
             ChatMessageEventHandler handler,
             ChatMessageMetricsPort metrics
     ) {
-        return message -> metrics.recordHandler(
-                () -> message.getPayload().handle(
-                        handler,
-                        message.getHeaders().get(KafkaHeaderKey.TRANSACTION_ID.value()) + ""
-                )
-        );
+        return messages -> metrics.recordHandler(() -> {
+            if (messages == null || messages.isEmpty()) {
+                return;
+            }
+
+            String txId = messages.get(0).getHeaders().get(KafkaHeaderKey.TRANSACTION_ID.value()) + "";
+            List<ChatMessagePersistEvent> events = messages.stream()
+                    .map(Message::getPayload)
+                    .map(ChatMessagePersistEvent.class::cast)
+                    .toList();
+            handler.handleBatch(events, txId);
+        });
     }
 
     @Bean

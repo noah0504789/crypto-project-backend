@@ -142,8 +142,8 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
     }
 
     @Override
-    public void incrementMessageCount(String id) {
-        chatRoomRepository.incrementRoomField(new ObjectId(id), "msgCnt", 1);
+    public void incrementMessageCount(String id, int count) {
+        chatRoomRepository.incrementRoomField(new ObjectId(id), "msgCnt", count);
     }
 
     @Override

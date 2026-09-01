@@ -218,8 +218,8 @@ class MongoChatRoomAdapterIntegrationTest {
             sut.save(chatRoom(roomId1, TITLE_1));
 
             // when
-            sut.incrementMessageCount(roomId1.toHexString());
-            sut.incrementMessageCount(roomId1.toHexString());
+            sut.incrementMessageCount(roomId1.toHexString(), 1);
+            sut.incrementMessageCount(roomId1.toHexString(), 1);
 
             // then
             ChatRoom found = sut.findById(roomId1.toHexString()).orElseThrow();
@@ -231,8 +231,8 @@ class MongoChatRoomAdapterIntegrationTest {
         void decrementMsgCnt() {
             // given
             sut.save(chatRoom(roomId1, TITLE_1));
-            sut.incrementMessageCount(roomId1.toHexString());
-            sut.incrementMessageCount(roomId1.toHexString());
+            sut.incrementMessageCount(roomId1.toHexString(), 1);
+            sut.incrementMessageCount(roomId1.toHexString(), 1);
 
             // when
             sut.decrementMessageCount(roomId1.toHexString());
@@ -663,7 +663,7 @@ class MongoChatRoomAdapterIntegrationTest {
 
     private void setMsgCnt(ObjectId roomId, int count) {
         for (int i = 0; i < count; i++) {
-            sut.incrementMessageCount(roomId.toHexString());
+            sut.incrementMessageCount(roomId.toHexString(), 1);
         }
     }
 

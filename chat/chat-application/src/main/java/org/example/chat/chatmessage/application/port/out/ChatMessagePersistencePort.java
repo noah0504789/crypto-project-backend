@@ -4,10 +4,13 @@ import org.example.chat.chatmessage.domain.model.ChatMessage;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface ChatMessagePersistencePort {
 
     ChatMessage save(ChatMessage chatMessage);
+
+    Set<String> saveAll(Set<ChatMessage> chatMessages);
 
     boolean hardDeleteById(String id);
 

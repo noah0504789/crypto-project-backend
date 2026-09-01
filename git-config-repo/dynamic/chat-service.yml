@@ -79,7 +79,8 @@ spring:
             consumer:
               reset-offsets: false
               start-offset: latest
-              ack-mode: record
+              ack-mode: batch
+              batch-mode: true
           chatRoomDlqEventConsumer-in-0:
             consumer:
               reset-offsets: false

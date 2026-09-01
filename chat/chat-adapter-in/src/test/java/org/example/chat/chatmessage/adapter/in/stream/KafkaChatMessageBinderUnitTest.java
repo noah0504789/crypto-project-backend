@@ -3,6 +3,7 @@ package org.example.chat.chatmessage.adapter.in.stream;
 import org.example.chat.chatmessage.application.port.in.ChatMessageDlqHandler;
 import org.example.chat.chatmessage.application.port.in.ChatMessageEventHandler;
 import org.example.chat.chatmessage.application.port.out.ChatMessageMetricsPort;
+import org.example.chat.chatmessage.application.event.ChatMessagePersistEvent;
 import org.example.common.enums.KafkaHeaderKey;
 import org.example.common.event.HandleableEvent;
 import org.example.common.event.RecoverableEvent;
@@ -18,6 +19,7 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 
 import java.util.function.Consumer;
+import java.util.List;
 
 import static org.mockito.Mockito.*;
 
@@ -51,31 +53,32 @@ class KafkaChatMessageBinderUnitTest {
     class ChatMessageEventConsumerTest {
 
         @Test
-        @DisplayName("payload handle에 ChatMessageEventHandler와 transaction_id를 전달한다")
+        @DisplayName("batch payload를 ChatMessageEventHandler에 전달한다")
         void should_handle_chat_message_event() {
             // given
             @SuppressWarnings("unchecked")
-            HandleableEvent<ChatMessageEventHandler> event = mock(HandleableEvent.class);
+            ChatMessagePersistEvent event = mock(ChatMessagePersistEvent.class);
+            HandleableEvent<ChatMessageEventHandler> eventPayload = event;
 
             doAnswer(invocation -> {
                 invocation.<Runnable>getArgument(0).run();
                 return null;
             }).when(metrics).recordHandler(any(Runnable.class));
 
-            Consumer<Message<HandleableEvent<ChatMessageEventHandler>>> consumer =
+            Consumer<List<Message<HandleableEvent<ChatMessageEventHandler>>>> consumer =
                     sut.chatMessageEventConsumer(chatMessageEventHandler, metrics);
 
             Message<HandleableEvent<ChatMessageEventHandler>> message = MessageBuilder
-                    .withPayload(event)
+                    .withPayload(eventPayload)
                     .setHeader(KafkaHeaderKey.TRANSACTION_ID.value(), txId)
                     .build();
 
             // when
-            consumer.accept(message);
+            consumer.accept(List.of(message));
 
             // then
             verify(metrics).recordHandler(any(Runnable.class));
-            verify(event).handle(chatMessageEventHandler, txId);
+            verify(chatMessageEventHandler).handleBatch(List.of(event), txId);
         }
     }
 
