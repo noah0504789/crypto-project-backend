@@ -323,7 +323,7 @@ class MongoChatMessageAdapterUnitTest {
             ChatMessage first = chatMessage(MESSAGE_ID_1, domainTime1);
             ChatMessage second = chatMessage(MESSAGE_ID_2, domainTime2);
 
-            given(repository.findExistingIds(List.of(messageId1, messageId2)))
+            given(repository.findExistingIds(Set.of(messageId1, messageId2)))
                     .willReturn(Set.of(messageId1));
 
             // when
@@ -331,7 +331,7 @@ class MongoChatMessageAdapterUnitTest {
 
             // then
             assertThat(insertedIds).containsExactly(MESSAGE_ID_2);
-            verify(repository).findExistingIds(List.of(messageId1, messageId2));
+            verify(repository).findExistingIds(Set.of(messageId1, messageId2));
             verify(repository).insert(anyList());
         }
 

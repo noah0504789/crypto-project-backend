@@ -24,7 +24,7 @@ public interface MongoChatMessageRepositoryCustom {
 
     List<MongoChatMessage> listLatestMessagesByRoomIdsFromSecondary(List<ObjectId> roomIds);
 
-    Set<ObjectId> findExistingIds(List<ObjectId> ids);
+    Set<ObjectId> findExistingIds(Set<ObjectId> ids);
 
     void softDeleteByRoomId(ObjectId roomId);
 

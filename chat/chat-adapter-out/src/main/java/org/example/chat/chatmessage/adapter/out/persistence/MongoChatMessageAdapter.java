@@ -86,9 +86,9 @@ public class MongoChatMessageAdapter implements ChatMessagePersistencePort {
         }
 
         try {
-            List<ObjectId> ids = domains.stream()
+            Set<ObjectId> ids = Set.copyOf(domains.stream()
                     .map(domain -> objectId(domain.getId(), "messageId"))
-                    .toList();
+                    .toList());
             Set<ObjectId> existingIds = repository.findExistingIds(ids);
             List<MongoChatMessage> newMessages = domains.stream()
                     .map(MongoChatMessage::fromDomain)
