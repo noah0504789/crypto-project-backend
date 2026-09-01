@@ -200,6 +200,7 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
         metrics.recordCommittedBatch(1, 1, event.getMemberIds().size());
     }
 
+    @Recover
     public void recover(
             TemporaryChatPersistenceException e,
             ChatMessagePersistEvent event,
