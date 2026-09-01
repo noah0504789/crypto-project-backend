@@ -60,12 +60,10 @@ class MicrometerChatMessageMetricsAdapterUnitTest {
         // when
         sut.recordMessageInsert(() -> { });
         sut.recordRoomCounter(() -> { });
-        sut.recordMembership(() -> { });
 
         // then
         assertThat(timerCount(ChatMessageMetricNames.STAGE_DURATION, "stage", "message_insert")).isEqualTo(1L);
         assertThat(timerCount(ChatMessageMetricNames.STAGE_DURATION, "stage", "room_counter")).isEqualTo(1L);
-        assertThat(timerCount(ChatMessageMetricNames.STAGE_DURATION, "stage", "membership")).isEqualTo(1L);
     }
 
     @Test
@@ -76,7 +74,7 @@ class MicrometerChatMessageMetricsAdapterUnitTest {
 
         try {
             // when
-            sut.recordCommittedBatch(3, 2, 10);
+            sut.recordCommittedBatch(3, 2);
 
             // then
             assertThat(counterCount(ChatMessageMetricNames.MESSAGES, "result", "new")).isZero();
@@ -88,7 +86,6 @@ class MicrometerChatMessageMetricsAdapterUnitTest {
             assertThat(counterCount(ChatMessageMetricNames.MESSAGES, "result", "new")).isEqualTo(3.0);
             assertThat(summaryTotal(ChatMessageMetricNames.BATCH_MESSAGES)).isEqualTo(3.0);
             assertThat(summaryTotal(ChatMessageMetricNames.BATCH_ROOMS)).isEqualTo(2.0);
-            assertThat(summaryTotal(ChatMessageMetricNames.MEMBERSHIP_DOCUMENTS)).isEqualTo(10.0);
         } finally {
             TransactionSynchronizationManager.clearSynchronization();
         }

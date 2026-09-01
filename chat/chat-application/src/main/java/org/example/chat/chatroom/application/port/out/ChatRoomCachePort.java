@@ -19,6 +19,12 @@ public interface ChatRoomCachePort {
 
     void rebuildPopularIndex(ChatRoomCategory category, List<ChatRoom> rooms);
 
+    /**
+     * 한 사용자의 내 방 정렬 인덱스를 통째 다시 만든다. Redis projection 이 비었을 때
+     * Mongo(방 watermark + 읽음 위치)로 계산한 결과를 심는 경로다.
+     */
+    void rebuildActiveIndex(String memberId, Map<String, Long> roomIdToScore);
+
     void updateRoom(
             String id,
             Map<String, Object> updates,

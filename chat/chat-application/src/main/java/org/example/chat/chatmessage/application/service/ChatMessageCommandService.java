@@ -11,7 +11,6 @@ import org.example.chat.chatmessage.application.service.result.ChatMessageSaveRe
 import org.example.chat.chatmessage.application.port.out.ChatMessageCachePort;
 import org.example.chat.chatmessage.application.port.out.ChatMessagePersistencePort;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
-import org.example.chat.chatroom.application.service.result.ChatRoomMembershipScore;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException;
 import org.example.chat.chatroom.domain.model.ChatRoom;
@@ -31,7 +30,6 @@ import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Set;
 
 @Slf4j
@@ -70,7 +68,7 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
         Set<String> memberIds = chatRoom.getMemberIds();
 
         publishPersistEvent(message, memberIds, command.clientMessageId());
-        saveCacheSafely(message, memberIds);
+        saveCacheSafely(message);
 
         return ChatMessageSaveResult.from(message);
     }
@@ -97,13 +95,11 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
 
         chatRoomPersistencePort.decrementMessageCount(roomId);
 
-        Long fallbackMsgCreatedAt = chatMessagePersistencePort.findLatestMessageExcluding(roomId, messageId)
+        long fallbackMsgCreatedAtMs = chatMessagePersistencePort.findLatestMessageExcluding(roomId, messageId)
                 .map(ChatMessage::createdAtEpochMillis)
                 .orElse(0L);
 
-        List<ChatRoomMembershipScore> chatRoomMembershipScores = chatRoomPersistencePort.refreshMembershipScores(roomId, fallbackMsgCreatedAt);
-
-        hardDeleteCacheSafely(messageId, roomId, chatRoomMembershipScores);
+        hardDeleteCacheSafely(messageId, roomId, fallbackMsgCreatedAtMs);
     }
 
     @Recover
@@ -132,7 +128,7 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
 
             ChatMessageEventList chatMessageEventList =
                     ChatMessageEventList.of(
-                            new ChatMessagePersistEvent(chatMessagePayload, memberIds),
+                            new ChatMessagePersistEvent(chatMessagePayload),
                             new ChatMessageBroadcastEvent(chatMessagePayload, clientMessageId),
                             new MyChatRoomBadgeBroadcastEvent(myChatRoomBadgePayload)
                     );
@@ -149,15 +145,12 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
         }
     }
 
-    private void saveCacheSafely(
-            ChatMessage message,
-            Set<String> memberIds
-    ) {
+    private void saveCacheSafely(ChatMessage message) {
         // outbox(영속 이벤트)가 커밋된 뒤에만 캐시에 반영한다. 커밋 전 캐싱 시 롤백되면 Mongo엔 없는데
         // 캐시엔 있는 유령 메시지가 생긴다. 커밋 후 캐시 실패는 로그만 남기고 조회 repair 가 흡수한다.
         AfterCommitExecutor.run(() -> {
             try {
-                chatMessageCachePort.save(message, memberIds);
+                chatMessageCachePort.save(message);
             } catch (Exception e) {
                 log.warn(
                         "[redis] chat message cache save failed after commit (repair will cover). chatMessageId={}, roomId={}",
@@ -173,13 +166,13 @@ public class ChatMessageCommandService implements ChatMessageCommandUseCase {
     private void hardDeleteCacheSafely(
             String messageId,
             String roomId,
-            List<ChatRoomMembershipScore> chatRoomMembershipScores
+            long fallbackMsgCreatedAtMs
     ) {
         // Mongo 삭제가 커밋된 뒤에만 캐시에서 제거한다. 커밋 전 제거 시 롤백되면 Mongo엔 남았는데 캐시엔 없어
         // 조회 repair 로 되살아나는 불일치가 생긴다. 커밋 후 제거 실패는 로그만 남기고 repair/TTL 이 흡수한다.
         AfterCommitExecutor.run(() -> {
             try {
-                chatMessageCachePort.hardDelete(messageId, roomId, chatRoomMembershipScores);
+                chatMessageCachePort.hardDelete(messageId, roomId, fallbackMsgCreatedAtMs);
             } catch (Exception e) {
                 log.warn(
                         "[redis] chat message hardDelete failed after commit. messageId={}, roomId={}, error={}",

@@ -77,8 +77,8 @@ class RedisChatRoomActivityProjectionAdapterIntegrationTest {
         @Test
         @DisplayName("메시지 저장이 방을 dirty 목록에 한 번만 남긴다")
         void save_multipleMessagesInSameRoom_marksRoomOnce() {
-            chatMessageAdapter.save(message("100000000000000000000001", MESSAGE_TIME_1), members());
-            chatMessageAdapter.save(message("100000000000000000000002", MESSAGE_TIME_2), members());
+            chatMessageAdapter.save(message("100000000000000000000001", MESSAGE_TIME_1));
+            chatMessageAdapter.save(message("100000000000000000000002", MESSAGE_TIME_2));
 
             Long dirtyRooms = masterHashRedisTemplate.opsForZSet().size(CHAT_ROOM_ACTIVITY_RECENT_INDEX.keyFor());
             Double activityMs = masterHashRedisTemplate.opsForZSet()
@@ -96,7 +96,7 @@ class RedisChatRoomActivityProjectionAdapterIntegrationTest {
         @Test
         @DisplayName("claim 한 방은 dirty 에서 빠지고 inflight 로 옮겨진다")
         void claimDirtyRooms_dirtyRoom_movesToInflight() {
-            chatMessageAdapter.save(message("100000000000000000000001", MESSAGE_TIME_1), members());
+            chatMessageAdapter.save(message("100000000000000000000001", MESSAGE_TIME_1));
 
             List<ChatRoomActivityClaim> claims = sut.claimDirtyRooms(10, NOW_MS);
 
@@ -111,7 +111,7 @@ class RedisChatRoomActivityProjectionAdapterIntegrationTest {
         @Test
         @DisplayName("같은 방을 두 번 claim 하지 않는다")
         void claimDirtyRooms_calledTwice_returnsRoomOnce() {
-            chatMessageAdapter.save(message("100000000000000000000001", MESSAGE_TIME_1), members());
+            chatMessageAdapter.save(message("100000000000000000000001", MESSAGE_TIME_1));
 
             sut.claimDirtyRooms(10, NOW_MS);
             List<ChatRoomActivityClaim> second = sut.claimDirtyRooms(10, NOW_MS);
@@ -127,7 +127,7 @@ class RedisChatRoomActivityProjectionAdapterIntegrationTest {
         @Test
         @DisplayName("읽지 않은 멤버에게만 unread 가중치를 준다")
         void project_partiallyReadRoom_appliesUnreadBoostOnlyToUnreadMembers() {
-            chatMessageAdapter.save(message("100000000000000000000001", MESSAGE_TIME_1), members());
+            chatMessageAdapter.save(message("100000000000000000000001", MESSAGE_TIME_1));
             long createdAtMs = (long) createdAtMs(MESSAGE_TIME_1);
 
             // 방 latest_msg_seq 는 메시지 저장으로 1 이 됐다. 읽음 위치가 그 값에 도달한 멤버만 read 다.
@@ -138,20 +138,21 @@ class RedisChatRoomActivityProjectionAdapterIntegrationTest {
             assertThat(result.cacheMiss()).isFalse();
             assertThat(result.updatedMembers()).isEqualTo(3);
             assertThat(activeScore(MEMBER_ID)).isEqualTo(MyChatRoomScoreCalculator.read(createdAtMs));
-            assertThat(activeScore(OTHER_MEMBER_ID)).isEqualTo(MyChatRoomScoreCalculator.unread(createdAtMs));
+            // 작성자는 저장 시점에 읽음 위치가 watermark 까지 올라가 read 다
+            assertThat(activeScore(OTHER_MEMBER_ID)).isEqualTo(MyChatRoomScoreCalculator.read(createdAtMs));
             assertThat(activeScore(HOST_ID)).isEqualTo(MyChatRoomScoreCalculator.unread(createdAtMs));
         }
 
         @Test
         @DisplayName("claim 이후 도착한 메시지의 최신 시각까지 같은 flush 로 반영한다")
         void project_messageArrivedAfterClaim_usesLatestCachedActivity() {
-            chatMessageAdapter.save(message("100000000000000000000001", MESSAGE_TIME_1), members());
+            chatMessageAdapter.save(message("100000000000000000000001", MESSAGE_TIME_1));
             List<ChatRoomActivityClaim> claims = sut.claimDirtyRooms(10, NOW_MS);
-            chatMessageAdapter.save(message("100000000000000000000002", MESSAGE_TIME_2), members());
+            chatMessageAdapter.save(message("100000000000000000000002", MESSAGE_TIME_2));
 
             sut.project(claims.get(0).roomId(), claims.get(0).activityMs());
 
-            assertThat(activeScore(OTHER_MEMBER_ID))
+            assertThat(activeScore(HOST_ID))
                     .isEqualTo(UNREAD_BOOST + (long) createdAtMs(MESSAGE_TIME_2));
         }
 
@@ -182,7 +183,7 @@ class RedisChatRoomActivityProjectionAdapterIntegrationTest {
         @Test
         @DisplayName("성공하면 inflight 에서 제거한다")
         void project_success_removesInflight() {
-            chatMessageAdapter.save(message("100000000000000000000001", MESSAGE_TIME_1), members());
+            chatMessageAdapter.save(message("100000000000000000000001", MESSAGE_TIME_1));
             sut.claimDirtyRooms(10, NOW_MS);
 
             sut.project(ROOM_ID, (long) createdAtMs(MESSAGE_TIME_1));
@@ -194,7 +195,7 @@ class RedisChatRoomActivityProjectionAdapterIntegrationTest {
         @Test
         @DisplayName("방 캐시가 없으면 cacheMiss 로 알리고 inflight 에 남긴다")
         void project_roomCacheEvicted_returnsCacheMiss() {
-            chatMessageAdapter.save(message("100000000000000000000001", MESSAGE_TIME_1), members());
+            chatMessageAdapter.save(message("100000000000000000000001", MESSAGE_TIME_1));
             sut.claimDirtyRooms(10, NOW_MS);
             chatRoomAdapter.invalidateRoomInfo(ROOM_ID);
 
@@ -213,7 +214,7 @@ class RedisChatRoomActivityProjectionAdapterIntegrationTest {
         @Test
         @DisplayName("claim timeout 을 넘긴 방만 회수하고 lease 를 연장한다")
         void reclaimStalledRooms_stalledRoom_returnsRoomAndRenewsLease() {
-            chatMessageAdapter.save(message("100000000000000000000001", MESSAGE_TIME_1), members());
+            chatMessageAdapter.save(message("100000000000000000000001", MESSAGE_TIME_1));
             sut.claimDirtyRooms(10, NOW_MS);
 
             assertThat(sut.reclaimStalledRooms(NOW_MS - 1, 10, NOW_MS + 5_000)).isEmpty();
@@ -263,7 +264,7 @@ class RedisChatRoomActivityProjectionAdapterIntegrationTest {
         @Test
         @DisplayName("실패한 방을 dirty 로 되돌리고 inflight 에서 뺀다")
         void requeueDirty_claimedRoom_movesBackToDirty() {
-            chatMessageAdapter.save(message("100000000000000000000001", MESSAGE_TIME_1), members());
+            chatMessageAdapter.save(message("100000000000000000000001", MESSAGE_TIME_1));
             sut.claimDirtyRooms(10, NOW_MS);
 
             sut.requeueDirty(ROOM_ID, (long) createdAtMs(MESSAGE_TIME_1));
@@ -285,10 +286,6 @@ class RedisChatRoomActivityProjectionAdapterIntegrationTest {
                 0L,
                 LocalDateTime.of(2026, 1, 1, 0, 0)
         );
-    }
-
-    private Set<String> members() {
-        return Set.of(HOST_ID, MEMBER_ID, OTHER_MEMBER_ID);
     }
 
     private ChatMessage message(String messageId, LocalDateTime createdAt) {

@@ -17,7 +17,6 @@ import org.springframework.data.mongodb.core.index.Index;
 import org.springframework.test.context.ContextConfiguration;
 
 import java.util.List;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -57,227 +56,66 @@ class MongoChatRoomMembershipRepositoryImplIntegrationTest {
         mongoTemplate.indexOps(MongoChatRoomMembership.class)
                 .ensureIndex(new Index()
                         .on("memberId", Sort.Direction.ASC)
-                        .on("score", Sort.Direction.DESC)
-                        .on("roomId", Sort.Direction.DESC)
+                        .on("_id", Sort.Direction.DESC)
                         .named("my_rooms"));
     }
 
     @Nested
-    @DisplayName("listLatestActiveMemberships")
-    class ListLatestActiveMembershipsTest {
+    @DisplayName("listMemberships")
+    class ListMembershipsTest {
 
         @Test
-        @DisplayName("memberId 기준으로 score desc, roomId desc 순서로 최신 활성 방 목록을 조회한다")
-        void listLatestActiveMemberships_shouldReturnByMemberOrderedByScoreDescAndIdDesc() {
-            saveMembership(roomId1, memberId1, 100L);
-            saveMembership(roomId2, memberId1, 300L);
-            saveMembership(roomId3, memberId1, 200L);
-            saveMembership(roomId4, memberId2, 400L);
+        @DisplayName("사용자의 membership 만 조회한다")
+        void listMemberships_shouldReturnOnlyOwnMemberships() {
+            saveMembership(roomId1, memberId1, 0L);
+            saveMembership(roomId2, memberId1, 10L);
+            saveMembership(roomId3, memberId2, 20L);
 
-            List<MongoChatRoomMembership> actual =
-                    sut.listLatestActiveMemberships(memberId1, 10);
+            List<MongoChatRoomMembership> actual = sut.listMemberships(memberId1, 10);
 
-            assertRoomIds(actual, roomId2, roomId3, roomId1);
+            assertThat(actual)
+                    .extracting(MongoChatRoomMembership::getRoomId)
+                    .containsExactlyInAnyOrder(roomId1, roomId2);
         }
 
         @Test
-        @DisplayName("score가 같으면 roomId desc 순서로 조회한다")
-        void listLatestActiveMemberships_shouldSortByIdDescWhenScoreSame() {
-            saveMembership(roomId1, memberId1, 300L);
-            saveMembership(roomId2, memberId1, 300L);
-            saveMembership(roomId3, memberId1, 300L);
+        @DisplayName("읽음 위치를 그대로 돌려준다")
+        void listMemberships_shouldReturnLastMsgReadSeq() {
+            saveMembership(roomId1, memberId1, 7L);
 
-            List<MongoChatRoomMembership> actual =
-                    sut.listLatestActiveMemberships(memberId1, 10);
+            List<MongoChatRoomMembership> actual = sut.listMemberships(memberId1, 10);
 
-            assertRoomIds(actual, roomId3, roomId2, roomId1);
-        }
-
-        @Test
-        @DisplayName("limit 개수만큼 조회한다")
-        void listLatestActiveMemberships_shouldApplyLimit() {
-            saveMembership(roomId1, memberId1, 100L);
-            saveMembership(roomId2, memberId1, 300L);
-            saveMembership(roomId3, memberId1, 200L);
-
-            List<MongoChatRoomMembership> actual =
-                    sut.listLatestActiveMemberships(memberId1, 2);
-
-            assertRoomIds(actual, roomId2, roomId3);
-        }
-    }
-
-    @Nested
-    @DisplayName("listActiveMembershipsBefore")
-    class ListActiveMembershipsBeforeTest {
-
-        @Test
-        @DisplayName("커서보다 이전 데이터를 score desc, _id desc 순서로 조회한다")
-        void listActiveMembershipsBefore_shouldReturnItemsBeforeCursor() {
-            saveMembership(roomId1, memberId1, 100L);
-            saveMembership(roomId2, memberId1, 200L);
-            saveMembership(roomId3, memberId1, 300L);
-            saveMembership(roomId4, memberId1, 400L);
-
-            List<MongoChatRoomMembership> actual =
-                    sut.listActiveMembershipsBefore(
-                            memberId1,
-                            roomId3.toHexString(),
-                            300L,
-                            10
-                    );
-
-            assertRoomIds(actual, roomId2, roomId1);
-        }
-
-        @Test
-        @DisplayName("score가 같으면 roomId가 커서보다 작은 데이터만 조회한다")
-        void listActiveMembershipsBefore_shouldReturnSameScoreItemsWithLowerRoomId() {
-            saveMembership(roomId1, memberId1, 300L);
-            saveMembership(roomId2, memberId1, 300L);
-            saveMembership(roomId3, memberId1, 300L);
-            saveMembership(roomId4, memberId1, 200L);
-
-            List<MongoChatRoomMembership> actual =
-                    sut.listActiveMembershipsBefore(
-                            memberId1,
-                            roomId3.toHexString(),
-                            300L,
-                            10
-                    );
-
-            assertRoomIds(actual, roomId2, roomId1, roomId4);
-        }
-
-        @Test
-        @DisplayName("다른 memberId의 데이터는 제외한다")
-        void listActiveMembershipsBefore_shouldExcludeOtherMemberItems() {
-            saveMembership(roomId1, memberId1, 100L);
-            saveMembership(roomId2, memberId1, 200L);
-            saveMembership(roomId3, memberId1, 300L);
-            saveMembership(roomId4, memberId2, 200L);
-
-            List<MongoChatRoomMembership> actual =
-                    sut.listActiveMembershipsBefore(
-                            memberId1,
-                            roomId3.toHexString(),
-                            300L,
-                            10
-                    );
-
-            assertRoomIds(actual, roomId2, roomId1);
+            assertThat(actual).singleElement()
+                    .extracting(MongoChatRoomMembership::getLastMsgReadSeq)
+                    .isEqualTo(7L);
         }
 
         @Test
         @DisplayName("limit 개수만큼 조회한다")
-        void listActiveMembershipsBefore_shouldApplyLimit() {
-            saveMembership(roomId1, memberId1, 100L);
-            saveMembership(roomId2, memberId1, 200L);
-            saveMembership(roomId3, memberId1, 300L);
-            saveMembership(roomId4, memberId1, 400L);
+        void listMemberships_shouldApplyLimit() {
+            saveMembership(roomId1, memberId1, 0L);
+            saveMembership(roomId2, memberId1, 0L);
+            saveMembership(roomId3, memberId1, 0L);
+            saveMembership(roomId4, memberId1, 0L);
 
-            List<MongoChatRoomMembership> actual =
-                    sut.listActiveMembershipsBefore(
-                            memberId1,
-                            roomId4.toHexString(),
-                            400L,
-                            2
-                    );
+            List<MongoChatRoomMembership> actual = sut.listMemberships(memberId1, 2);
 
-            assertRoomIds(actual, roomId3, roomId2);
-        }
-    }
-
-    @Nested
-    @DisplayName("upsert")
-    class UpsertTest {
-
-        @Test
-        @DisplayName("없으면 새 membership을 생성한다")
-        void upsert_shouldInsertMembershipWhenNotExists() {
-            sut.upsertUnreadActivity(roomId1.toHexString(), Set.of(memberId1), 100L);
-
-            MongoChatRoomMembership actual = mongoTemplate.findById(
-                    MongoChatRoomMembership.generateId(
-                            roomId1.toHexString(),
-                            memberId1
-                    ),
-                    MongoChatRoomMembership.class
-            );
-
-            assertThat(actual).isNotNull();
-            assertThat(actual.getRoomId()).isEqualTo(roomId1);
-            assertThat(actual.getMemberId()).isEqualTo(memberId1);
-            assertThat(actual.getScore()).isEqualTo(100L);
-            assertThat(actual.getLastMsgReadSeq()).isEqualTo(0L);
-        }
-
-        @Test
-        @DisplayName("이미 있으면 score만 갱신한다")
-        void upsert_shouldUpdateScoreWhenExists() {
-            saveMembership(roomId1, memberId1, 100L);
-
-            sut.upsertUnreadActivity(roomId1.toHexString(), Set.of(memberId1), 300L);
-
-            MongoChatRoomMembership actual = mongoTemplate.findById(
-                    MongoChatRoomMembership.generateId(
-                            roomId1.toHexString(),
-                            memberId1
-                    ),
-                    MongoChatRoomMembership.class
-            );
-
-            assertThat(actual).isNotNull();
-            assertThat(actual.getScore()).isEqualTo(300L);
-            assertThat(actual.getRoomId()).isEqualTo(roomId1);
-            assertThat(actual.getMemberId()).isEqualTo(memberId1);
-        }
-    }
-
-    @Nested
-    @DisplayName("updateScore")
-    class UpdateScoreTest {
-
-        @Test
-        @DisplayName("membership score를 수정한다")
-        void updateScore_shouldUpdateScore() {
-            saveMembership(roomId1, memberId1, 100L);
-
-            String id = MongoChatRoomMembership.generateId(
-                    roomId1.toHexString(),
-                    memberId1
-            );
-
-            sut.updateScore(id, 500L);
-
-            MongoChatRoomMembership actual = mongoTemplate.findById(
-                    id,
-                    MongoChatRoomMembership.class
-            );
-
-            assertThat(actual).isNotNull();
-            assertThat(actual.getScore()).isEqualTo(500L);
+            assertThat(actual).hasSize(2);
         }
     }
 
     private void saveMembership(
             ObjectId roomId,
             String memberId,
-            Long score
+            Long lastMsgReadSeq
     ) {
         MongoChatRoomMembership membership = MongoChatRoomMembership.builder()
                 .id(MongoChatRoomMembership.generateId(roomId.toHexString(), memberId))
                 .roomId(roomId)
                 .memberId(memberId)
-                .score(score)
+                .lastMsgReadSeq(lastMsgReadSeq)
                 .build();
 
         mongoTemplate.save(membership);
-    }
-
-    private void assertRoomIds(List<MongoChatRoomMembership> actual, ObjectId... expected) {
-        assertThat(actual)
-                .extracting(MongoChatRoomMembership::getRoomId)
-                .containsExactly(expected);
     }
 }

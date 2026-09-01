@@ -9,11 +9,14 @@ import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.common.redisson.singleflight.SingleFlight;
+import org.example.chat.chatroom.application.properties.MyChatRoomProperties;
+import org.example.chat.chatroom.application.service.result.MyChatRoomState;
+import org.example.chat.chatroom.domain.service.MyChatRoomScoreCalculator;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -30,6 +33,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class ChatRoomQueryRepairServiceUnitTest {
 
+    private static final MyChatRoomProperties MY_CHAT_ROOM_PROPERTIES = new MyChatRoomProperties(300);
+
     @Mock
     private ChatRoomCachePort cache;
 
@@ -39,9 +44,13 @@ class ChatRoomQueryRepairServiceUnitTest {
     @Mock
     private SingleFlight singleFlight;
 
-    @InjectMocks
     private ChatRoomQueryRepairService sut;
 
+
+    @BeforeEach
+    void setUp() {
+        sut = new ChatRoomQueryRepairService(cache, persistence, MY_CHAT_ROOM_PROPERTIES, singleFlight);
+    }
 
     @Mock
     private ChatRoom room;
@@ -436,31 +445,37 @@ class ChatRoomQueryRepairServiceUnitTest {
             // then
             assertThat(result).containsExactly(room);
 
-            verify(persistence, never()).listLatestActiveRooms(anyString(), anyInt());
+            verify(persistence, never()).listMyRoomStates(anyString(), anyInt());
             verify(cache, never()).warmUpList(anyList());
         }
 
         @Test
-        @DisplayName("인덱스가 없으면 영속 저장소에서 최근 활성 채팅방 목록을 조회하고 warm-up 한다")
-        void should_load_my_rooms_from_persistence_and_warm_up_when_index_missing() {
+        @DisplayName("인덱스가 없으면 Mongo 의 방 watermark 와 읽음 위치로 정렬 인덱스를 재생성하고 warm-up 한다")
+        void should_rebuild_my_room_index_from_persistence_when_index_missing() {
             // given
             givenLockExecutorRunsSupplier();
-
-            List<ChatRoom> stored = List.of(room, room2);
+            givenUnreadRoom(room, "room-1", 200L);
+            givenReadRoom(room2, "room-2", 100L);
 
             when(cache.listLatestActiveRooms("member-1", 10))
                     .thenReturn(noIndex());
-            when(persistence.listLatestActiveRooms("member-1", 10))
-                    .thenReturn(stored);
+            when(persistence.listMyRoomStates("member-1", 300))
+                    .thenReturn(List.of(new MyChatRoomState(room2, 5L), new MyChatRoomState(room, 0L)));
 
             // when
             List<ChatRoom> result = sut.repairMyRooms("member-1", 10);
 
-            // then
+            // then: 안읽은 방이 위로 온다
             assertThat(result).containsExactly(room, room2);
 
-            verify(persistence, times(1)).listLatestActiveRooms("member-1", 10);
-            verify(cache, times(1)).warmUpList(eq(stored));
+            verify(cache).warmUpList(eq(List.of(room, room2)));
+            verify(cache).rebuildActiveIndex(
+                    "member-1",
+                    Map.of(
+                            "room-1", MyChatRoomScoreCalculator.unread(200L),
+                            "room-2", MyChatRoomScoreCalculator.read(100L)
+                    )
+            );
         }
 
         @Test
@@ -491,7 +506,7 @@ class ChatRoomQueryRepairServiceUnitTest {
             // then
             assertThat(result).containsExactly(room, room2);
 
-            verify(persistence, never()).listLatestActiveRooms(anyString(), anyInt());
+            verify(persistence, never()).listMyRoomStates(anyString(), anyInt());
             verify(persistence).findByIdWithLatestMessage("room-2");
             verify(cache).warmUp(room2);
         }
@@ -502,28 +517,35 @@ class ChatRoomQueryRepairServiceUnitTest {
     class RepairMyRoomsBeforeTest {
 
         @Test
-        @DisplayName("인덱스가 없으면 영속 저장소에서 커서 이전 활성 채팅방 목록을 조회하고 warm-up 한다")
-        void should_load_my_rooms_before_from_persistence_and_warm_up_when_index_missing() {
+        @DisplayName("인덱스가 없으면 인덱스를 재생성하고 커서보다 뒤에 오는 방만 돌려준다")
+        void should_rebuild_my_room_index_and_return_rooms_after_cursor_when_index_missing() {
             // given
             givenLockExecutorRunsSupplier();
+            givenReadRoom(room, "room-1", 2000L);
+            givenReadRoom(room2, "room-2", 1000L);
 
-            List<ChatRoom> stored = List.of(room, room2);
             ListMyChatRoomsQuery query = myRoomsBeforeQuery();
+            long cursorScore = MyChatRoomScoreCalculator.read(1500L);
 
-            when(cache.listActiveRoomsBefore("member-1", "last-room", 1234L, 10))
+            when(cache.listActiveRoomsBefore("member-1", "last-room", cursorScore, 10))
                     .thenReturn(noIndex());
-            when(persistence.listActiveRoomsBefore("member-1", "last-room", 1234L, 10))
-                    .thenReturn(stored);
+            when(persistence.listMyRoomStates("member-1", 300))
+                    .thenReturn(List.of(new MyChatRoomState(room, 9L), new MyChatRoomState(room2, 9L)));
 
             // when
-            List<ChatRoom> result = sut.repairMyRoomsBefore(query, 1234L);
+            List<ChatRoom> result = sut.repairMyRoomsBefore(query, cursorScore);
 
-            // then
-            assertThat(result).containsExactly(room, room2);
+            // then: 커서보다 점수가 낮은 방만 남는다. 인덱스 재생성은 전체로 한다
+            assertThat(result).containsExactly(room2);
 
-            verify(persistence, times(1))
-                    .listActiveRoomsBefore("member-1", "last-room", 1234L, 10);
-            verify(cache, times(1)).warmUpList(eq(stored));
+            verify(cache).warmUpList(eq(List.of(room, room2)));
+            verify(cache).rebuildActiveIndex(
+                    "member-1",
+                    Map.of(
+                            "room-1", MyChatRoomScoreCalculator.read(2000L),
+                            "room-2", MyChatRoomScoreCalculator.read(1000L)
+                    )
+            );
         }
 
         @Test
@@ -556,10 +578,22 @@ class ChatRoomQueryRepairServiceUnitTest {
             // then
             assertThat(result).containsExactly(room, room2);
 
-            verify(persistence, never()).listActiveRoomsBefore(anyString(), anyString(), anyLong(), anyInt());
+            verify(persistence, never()).listMyRoomStates(anyString(), anyInt());
             verify(persistence).findByIdWithLatestMessage("room-2");
             verify(cache).warmUp(room2);
         }
+    }
+
+    private void givenUnreadRoom(ChatRoom target, String roomId, long lastMsgCreatedAtMs) {
+        when(target.getId()).thenReturn(roomId);
+        when(target.lastMsgCreatedAtMs()).thenReturn(lastMsgCreatedAtMs);
+        when(target.hasUnread(anyLong())).thenReturn(true);
+    }
+
+    private void givenReadRoom(ChatRoom target, String roomId, long lastMsgCreatedAtMs) {
+        when(target.getId()).thenReturn(roomId);
+        when(target.lastMsgCreatedAtMs()).thenReturn(lastMsgCreatedAtMs);
+        when(target.hasUnread(anyLong())).thenReturn(false);
     }
 
     private void givenLockExecutorRunsSupplier() {

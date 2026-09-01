@@ -7,11 +7,10 @@ import org.example.common.test.testcontainer.MongoDBTestContainerInitializer;
 import org.bson.types.ObjectId;
 import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessage;
 import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessageRepository;
-import org.example.chat.chatroom.application.service.result.ChatRoomMembershipScore;
+import org.example.chat.chatroom.application.service.result.MyChatRoomState;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException;
-import org.example.chat.chatroom.domain.service.MyChatRoomScoreCalculator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -31,6 +30,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataMongoTest
@@ -284,7 +284,7 @@ class MongoChatRoomAdapterIntegrationTest {
             sut.save(chatRoom(roomId1, TITLE_1));
 
             // when
-            sut.activateMembership(roomId1.toHexString(), MEMBER_ID, READ_SEQ_10, SCORE_1000);
+            sut.activateMembership(roomId1.toHexString(), MEMBER_ID, READ_SEQ_10);
 
             // then
             MongoChatRoomMembership found = findMembership(roomId1, MEMBER_ID);
@@ -292,7 +292,6 @@ class MongoChatRoomAdapterIntegrationTest {
             assertThat(found.getRoomId()).isEqualTo(roomId1);
             assertThat(found.getMemberId()).isEqualTo(MEMBER_ID);
             assertThat(found.getLastMsgReadSeq()).isEqualTo(READ_SEQ_10);
-            assertThat(found.getScore()).isEqualTo(SCORE_1000);
         }
 
         @Test
@@ -300,7 +299,7 @@ class MongoChatRoomAdapterIntegrationTest {
         void getLastReadSeq() {
             // given
             sut.save(chatRoom(roomId1, TITLE_1));
-            sut.activateMembership(roomId1.toHexString(), MEMBER_ID, READ_SEQ_77, SCORE_1000);
+            sut.activateMembership(roomId1.toHexString(), MEMBER_ID, READ_SEQ_77);
 
             // when
             Long lastReadSeq = sut.getLastReadSeq(roomId1.toHexString(), MEMBER_ID);
@@ -315,7 +314,7 @@ class MongoChatRoomAdapterIntegrationTest {
             // given
             sut.save(chatRoom(roomId1, TITLE_1));
             sut.joinMembership(roomId1.toHexString(), MEMBER_ID);
-            sut.activateMembership(roomId1.toHexString(), MEMBER_ID, READ_SEQ_10, SCORE_1000);
+            sut.activateMembership(roomId1.toHexString(), MEMBER_ID, READ_SEQ_10);
 
             // when
             sut.leaveMembership(roomId1.toHexString(), MEMBER_ID);
@@ -326,59 +325,6 @@ class MongoChatRoomAdapterIntegrationTest {
             assertThat(membershipRepository.findById(membershipId(roomId1, MEMBER_ID))).isEmpty();
         }
 
-        @Test
-        @DisplayName("updateMembershipScores는 여러 멤버의 unread activity score를 upsert한다")
-        void updateMembershipScores() {
-            // given
-            sut.save(chatRoom(roomId1, TITLE_1));
-
-            // when
-            sut.updateMembershipScores(
-                    roomId1.toHexString(),
-                    Set.of(MEMBER_ID, OTHER_MEMBER_ID),
-                    SCORE_3000
-            );
-
-            // then
-            MongoChatRoomMembership member1 = findMembership(roomId1, MEMBER_ID);
-            MongoChatRoomMembership member2 = findMembership(roomId1, OTHER_MEMBER_ID);
-
-            assertThat(member1.getScore())
-                    .isEqualTo(MyChatRoomScoreCalculator.unread(SCORE_3000));
-            assertThat(member2.getScore())
-                    .isEqualTo(MyChatRoomScoreCalculator.unread(SCORE_3000));
-
-            assertThat(member1.getLastMsgReadSeq()).isEqualTo(0L);
-            assertThat(member2.getLastMsgReadSeq()).isEqualTo(0L);
-        }
-
-        @Test
-        @DisplayName("refreshMembershipScores는 기존 unread 상태를 유지하면서 score를 재계산한다")
-        void refreshMembershipScores() {
-            // given
-            sut.save(chatRoom(roomId1, TITLE_1));
-
-            saveMembership(readMembership(roomId1, MEMBER_ID, READ_SEQ_10, SCORE_1000));
-            saveMembership(unreadMembership(roomId1, OTHER_MEMBER_ID, SCORE_2000));
-
-            // when
-            List<ChatRoomMembershipScore> result =
-                    sut.refreshMembershipScores(roomId1.toHexString(), SCORE_9999);
-
-            // then
-            assertThat(result)
-                    .extracting(ChatRoomMembershipScore::memberId)
-                    .containsExactlyInAnyOrder(MEMBER_ID, OTHER_MEMBER_ID);
-
-            MongoChatRoomMembership readMember = findMembership(roomId1, MEMBER_ID);
-            MongoChatRoomMembership unreadMember = findMembership(roomId1, OTHER_MEMBER_ID);
-
-            assertThat(readMember.getScore())
-                    .isEqualTo(MyChatRoomScoreCalculator.read(SCORE_9999));
-
-            assertThat(unreadMember.getScore())
-                    .isEqualTo(MyChatRoomScoreCalculator.unread(SCORE_9999));
-        }
     }
 
     @Nested
@@ -495,51 +441,51 @@ class MongoChatRoomAdapterIntegrationTest {
         }
 
         @Test
-        @DisplayName("listLatestActive는 membership 조회 결과를 채팅방 도메인으로 변환하고 최신 메시지를 붙인다")
-        void listLatestActive() {
+        @DisplayName("listMyRoomStates는 사용자의 membership 과 방을 함께 반환한다(정렬은 하지 않는다)")
+        void listMyRoomStates() {
             // given
             sut.save(chatRoom(roomId1, TITLE_1));
             sut.save(chatRoom(roomId2, TITLE_2));
-            sut.save(chatRoom(roomId3, TITLE_3));
 
-            saveMembership(readMembership(roomId1, MEMBER_ID, READ_SEQ_0, SCORE_1000));
-            saveMembership(readMembership(roomId2, MEMBER_ID, READ_SEQ_0, SCORE_3000));
-            saveMembership(readMembership(roomId3, MEMBER_ID, READ_SEQ_0, SCORE_2000));
+            saveMembership(readMembership(roomId1, MEMBER_ID, READ_SEQ_10));
+            saveMembership(readMembership(roomId2, MEMBER_ID, READ_SEQ_0));
 
             saveMessage(messageId1, roomId2, "room2-latest", latestTime, false);
 
             // when
-            List<ChatRoom> result = sut.listLatestActiveRooms(MEMBER_ID, 10);
+            List<MyChatRoomState> result = sut.listMyRoomStates(MEMBER_ID, 10);
 
             // then
-            assertRoomIds(result, roomId2, roomId3, roomId1);
-            assertThat(result.get(0).getLastMsgContent()).isEqualTo("room2-latest");
+            assertThat(result)
+                    .extracting(state -> state.room().getId(), MyChatRoomState::lastMsgReadSeq)
+                    .containsExactlyInAnyOrder(
+                            tuple(roomId1.toHexString(), READ_SEQ_10),
+                            tuple(roomId2.toHexString(), READ_SEQ_0)
+                    );
+
+            assertThat(result)
+                    .filteredOn(state -> state.room().getId().equals(roomId2.toHexString()))
+                    .singleElement()
+                    .satisfies(state -> assertThat(state.room().getLastMsgContent()).isEqualTo("room2-latest"));
         }
 
         @Test
-        @DisplayName("listActiveBefore는 membership cursor 이후 목록을 채팅방 도메인으로 변환한다")
-        void listActiveBefore() {
+        @DisplayName("listMyRoomStates는 상한까지만 읽는다")
+        void listMyRoomStatesLimit() {
             // given
             sut.save(chatRoom(roomId1, TITLE_1));
             sut.save(chatRoom(roomId2, TITLE_2));
             sut.save(chatRoom(roomId3, TITLE_3));
-            sut.save(chatRoom(roomId4, "커서방"));
 
-            saveMembership(readMembership(roomId4, MEMBER_ID, READ_SEQ_0, SCORE_4000));
-            saveMembership(readMembership(roomId3, MEMBER_ID, READ_SEQ_0, SCORE_3000));
-            saveMembership(readMembership(roomId2, MEMBER_ID, READ_SEQ_0, SCORE_2000));
-            saveMembership(readMembership(roomId1, MEMBER_ID, READ_SEQ_0, SCORE_1000));
+            saveMembership(readMembership(roomId1, MEMBER_ID, READ_SEQ_0));
+            saveMembership(readMembership(roomId2, MEMBER_ID, READ_SEQ_0));
+            saveMembership(readMembership(roomId3, MEMBER_ID, READ_SEQ_0));
 
             // when
-            List<ChatRoom> result = sut.listActiveRoomsBefore(
-                    MEMBER_ID,
-                    roomId4.toHexString(),
-                    SCORE_4000,
-                    10
-            );
+            List<MyChatRoomState> result = sut.listMyRoomStates(MEMBER_ID, 2);
 
             // then
-            assertRoomIds(result, roomId3, roomId2, roomId1);
+            assertThat(result).hasSize(2);
         }
 
         @Test
@@ -571,7 +517,7 @@ class MongoChatRoomAdapterIntegrationTest {
             // given
             sut.save(chatRoom(roomId1, TITLE_1));
 
-            saveMembership(readMembership(roomId1, MEMBER_ID, READ_SEQ_10, SCORE_1000));
+            saveMembership(readMembership(roomId1, MEMBER_ID, READ_SEQ_10));
             MongoChatMessage message = saveMessage(messageId1, roomId1, "삭제될 메시지", latestTime, false);
 
             // when
@@ -621,31 +567,8 @@ class MongoChatRoomAdapterIntegrationTest {
                 .build());
     }
 
-    private MongoChatRoomMembership readMembership(
-            ObjectId roomId,
-            String memberId,
-            Long lastMsgReadSeq,
-            Long lastMsgCreatedAt
-    ) {
-        return MongoChatRoomMembership.ofReadActivity(
-                roomId.toHexString(),
-                memberId,
-                lastMsgReadSeq,
-                MyChatRoomScoreCalculator.read(lastMsgCreatedAt)
-        );
-    }
-
-    private MongoChatRoomMembership unreadMembership(
-            ObjectId roomId,
-            String memberId,
-            Long lastMsgCreatedAt
-    ) {
-        return MongoChatRoomMembership.builder()
-                .id(MongoChatRoomMembership.generateId(roomId.toHexString(), memberId))
-                .roomId(roomId)
-                .memberId(memberId)
-                .score(MyChatRoomScoreCalculator.unread(lastMsgCreatedAt))
-                .build();
+    private MongoChatRoomMembership readMembership(ObjectId roomId, String memberId, Long lastMsgReadSeq) {
+        return MongoChatRoomMembership.ofReadActivity(roomId.toHexString(), memberId, lastMsgReadSeq);
     }
 
     private void saveMembership(MongoChatRoomMembership membership) {

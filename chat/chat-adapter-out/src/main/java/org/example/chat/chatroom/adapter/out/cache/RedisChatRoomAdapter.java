@@ -46,6 +46,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
     private final RedisScript<Boolean> invalidateChatRoomInfo_lua;
     private final RedisScript<Boolean> rebuildPopularRoomIndex_lua;
     private final RedisScript<Boolean> updateChatRoomLastReadSeq_lua;
+    private final RedisScript<Boolean> rebuildMyActiveRoomIndex_lua;
 
     public RedisChatRoomAdapter(
             @Qualifier("masterHashRedisTemplate") RedisTemplate<String, String> masterHashRedisTemplate,
@@ -66,6 +67,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
             @Qualifier("invalidateChatRoomInfo_lua") RedisScript<Boolean> invalidateChatRoomInfo_lua,
             @Qualifier("rebuildPopularRoomIndex_lua") RedisScript<Boolean> rebuildPopularRoomIndex_lua,
             @Qualifier("updateChatRoomLastReadSeq_lua") RedisScript<Boolean> updateChatRoomLastReadSeq_lua,
+            @Qualifier("rebuildMyActiveRoomIndex_lua") RedisScript<Boolean> rebuildMyActiveRoomIndex_lua,
             ChatCacheProperties chatCacheProperties
     ) {
         this.chatRoomCacheTtlSeconds = chatCacheProperties.roomTtlSeconds();
@@ -87,6 +89,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
         this.invalidateChatRoomInfo_lua = invalidateChatRoomInfo_lua;
         this.rebuildPopularRoomIndex_lua = rebuildPopularRoomIndex_lua;
         this.updateChatRoomLastReadSeq_lua = updateChatRoomLastReadSeq_lua;
+        this.rebuildMyActiveRoomIndex_lua = rebuildMyActiveRoomIndex_lua;
     }
 
     @Override
@@ -326,6 +329,24 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
 
         if (!masterHashRedisTemplate.execute(rebuildPopularRoomIndex_lua, keys, args.toArray())) {
             throw new ChatCacheException("[redis] chatroom rebuildPopularIndex() failed!");
+        }
+    }
+
+    @Override
+    public void rebuildActiveIndex(String memberId, Map<String, Long> roomIdToScore) {
+        String recentRoomKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(memberId);
+
+        List<String> keys = List.of(recentRoomKey);
+
+        List<String> args = new ArrayList<>();
+        args.add(String.valueOf(roomIdToScore.size()));
+        roomIdToScore.forEach((roomId, score) -> {
+            args.add(String.valueOf(score));
+            args.add(roomId);
+        });
+
+        if (!masterHashRedisTemplate.execute(rebuildMyActiveRoomIndex_lua, keys, args.toArray())) {
+            throw new ChatCacheException("[redis] chatroom rebuildActiveIndex() failed!");
         }
     }
 

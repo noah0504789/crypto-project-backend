@@ -11,23 +11,20 @@ import org.example.common.outbox.domain.OutboxDomainType;
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 import org.example.contract.chatmessage.ChatMessagePayload;
 
-import java.util.Set;
-
+/**
+ * 멤버 목록을 싣지 않는다. 정렬 projection 은 방 단위 projector 가 맡으므로 이 이벤트에
+ * 방 크기에 비례하는 payload 를 실을 이유가 없다(→ {@code docs/modules/CHAT.md} §5).
+ */
 @Getter
 @ToString
 public class ChatMessagePersistEvent extends AbstractOutboxEvent implements HandleableEvent<ChatMessageEventHandler> {
 
     private final ChatMessagePayload payload;
-    private final Set<String> memberIds;
 
     @JsonCreator
-    public ChatMessagePersistEvent(
-            @JsonProperty("payload") ChatMessagePayload payload,
-            @JsonProperty("memberIds") Set<String> memberIds
-    ) {
+    public ChatMessagePersistEvent(@JsonProperty("payload") ChatMessagePayload payload) {
         super(KafkaTopic.CHAT_MESSAGE.getTopicName(), payload.id(), payload.roomId());
         this.payload = payload;
-        this.memberIds = memberIds == null ? Set.of() : Set.copyOf(memberIds);
     }
 
     @Override

@@ -22,7 +22,6 @@ public class MicrometerChatMessageMetricsAdapter implements ChatMessageMetricsPo
     private final Map<ChatMessageInsertStage, Timer> stageTimers;
     private final DistributionSummary batchMessageSummary;
     private final DistributionSummary batchRoomSummary;
-    private final DistributionSummary membershipDocumentSummary;
     private final Counter newMessageCounter;
     private final Counter duplicateMessageCounter;
     private final Counter retryableFailureCounter;
@@ -50,13 +49,6 @@ public class MicrometerChatMessageMetricsAdapter implements ChatMessageMetricsPo
                 "rooms",
                 "Number of distinct rooms in a committed persistence batch"
         );
-        this.membershipDocumentSummary = summary(
-                registry,
-                ChatMessageMetricNames.MEMBERSHIP_DOCUMENTS,
-                "documents",
-                "Number of membership documents updated by a committed persistence batch"
-        );
-
         this.newMessageCounter = messageCounter(registry, "new");
         this.duplicateMessageCounter = messageCounter(registry, "duplicate");
         this.retryableFailureCounter = Counter.builder(ChatMessageMetricNames.RETRY_FAILURES)
@@ -89,20 +81,10 @@ public class MicrometerChatMessageMetricsAdapter implements ChatMessageMetricsPo
     }
 
     @Override
-    public void recordMembership(Runnable action) {
-        recordStage(ChatMessageInsertStage.MEMBERSHIP, action);
-    }
-
-    @Override
-    public void recordCommittedBatch(
-            int messageCount,
-            int roomCount,
-            int membershipDocumentCount
-    ) {
+    public void recordCommittedBatch(int messageCount, int roomCount) {
         AfterCommitExecutor.run(() -> {
             batchMessageSummary.record(messageCount);
             batchRoomSummary.record(roomCount);
-            membershipDocumentSummary.record(membershipDocumentCount);
             newMessageCounter.increment(messageCount);
         });
     }

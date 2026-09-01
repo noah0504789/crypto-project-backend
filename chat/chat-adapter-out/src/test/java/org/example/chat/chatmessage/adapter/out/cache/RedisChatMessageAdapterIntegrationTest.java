@@ -4,7 +4,6 @@ import org.example.common.test.config.TestBootApplication;
 import config.TestRedisConfig;
 import org.example.common.test.testcontainer.RedisTestContainerInitializer;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
-import org.example.chat.chatroom.application.service.result.ChatRoomMembershipScore;
 import org.example.common.time.Clock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,7 +18,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -81,14 +79,13 @@ class RedisChatMessageAdapterIntegrationTest {
     class SaveTest {
 
         @Test
-        @DisplayName("메시지를 저장하면 message zset, access zset, room msgCnt, recent score를 갱신한다")
+        @DisplayName("메시지를 저장하면 message zset, access zset, room msgCnt, 작성자 상태, dirty 표시를 갱신한다")
         void save() {
             // given
-            Set<String> memberIds = Set.of(WRITER_ID, MEMBER_ID, OTHER_MEMBER_ID);
             ChatMessage message = message(MESSAGE_ID_1, CONTENT_1, WRITER_ID, time1);
 
             // when
-            sut.save(message, memberIds);
+            sut.save(message);
 
             // then: save 직후 access score는 message createdAt 기준
             String messageAccessKey = CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX.keyFor(ROOM_ID);
@@ -123,38 +120,33 @@ class RedisChatMessageAdapterIntegrationTest {
             assertThat(msgCnt).isEqualTo("1");
             assertThat(latestMsgSeq).isEqualTo("1");
 
+            // then: 작성자는 자기 메시지를 읽은 것으로 본다
             String writerRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(WRITER_ID);
             Double writerRecentScore = masterHashRedisTemplate.opsForZSet()
                     .score(writerRecentKey, ROOM_ID);
 
             assertThat(writerRecentScore).isNotNull();
             assertThat(writerRecentScore.longValue()).isEqualTo(message.createdAtEpochMillis());
+            assertThat(masterHashRedisTemplate.opsForHash().get(CHAT_ROOM_LAST_READ_SEQ.keyFor(ROOM_ID), WRITER_ID))
+                    .isEqualTo("1");
 
-            String memberRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(MEMBER_ID);
-            Double memberRecentScore = masterHashRedisTemplate.opsForZSet()
-                    .score(memberRecentKey, ROOM_ID);
-
-            assertThat(memberRecentScore).isNotNull();
-            assertThat(memberRecentScore.longValue()).isEqualTo(UNREAD_BOOST + message.createdAtEpochMillis());
-
-            String otherMemberRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(OTHER_MEMBER_ID);
-            Double otherMemberRecentScore = masterHashRedisTemplate.opsForZSet()
-                    .score(otherMemberRecentKey, ROOM_ID);
-
-            assertThat(otherMemberRecentScore).isNotNull();
-            assertThat(otherMemberRecentScore.longValue()).isEqualTo(UNREAD_BOOST + message.createdAtEpochMillis());
+            // then: 나머지 멤버 점수는 여기서 건드리지 않고 방만 dirty 로 남긴다
+            assertThat(masterHashRedisTemplate.opsForZSet()
+                    .score(CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(MEMBER_ID), ROOM_ID)).isNull();
+            assertThat(masterHashRedisTemplate.opsForZSet()
+                    .score(CHAT_ROOM_ACTIVITY_RECENT_INDEX.keyFor(), ROOM_ID))
+                    .isEqualTo((double) message.createdAtEpochMillis());
         }
 
         @Test
         @DisplayName("같은 메시지를 중복 저장하면 멱등 처리되어 msgCnt가 중복 증가하지 않는다")
         void saveIdempotent() {
             // given
-            Set<String> memberIds = Set.of(WRITER_ID, MEMBER_ID);
             ChatMessage message = message(MESSAGE_ID_1, CONTENT_1, WRITER_ID, time1);
 
             // when
-            sut.save(message, memberIds);
-            sut.save(message, memberIds);
+            sut.save(message);
+            sut.save(message);
 
             // then
             List<ChatMessage> latest = sut.listLatestMessages(ROOM_ID, 10);
@@ -182,7 +174,7 @@ class RedisChatMessageAdapterIntegrationTest {
             ChatMessage message = message(MESSAGE_ID_1, CONTENT_1, WRITER_ID, time1);
 
             // when
-            sut.save(message, Set.of(WRITER_ID));
+            sut.save(message);
 
             // then
             assertThat(masterHashRedisTemplate.opsForHash().get(roomInfoKey, "msg_cnt"))
@@ -192,52 +184,25 @@ class RedisChatMessageAdapterIntegrationTest {
         }
 
         @Test
-        @DisplayName("memberIds에 writer만 있으면 writer recent score만 갱신한다")
-        void saveWithWriterOnlyMemberIds() {
-            // given
-            Set<String> memberIds = Set.of(WRITER_ID);
-            ChatMessage message = message(MESSAGE_ID_1, CONTENT_1, WRITER_ID, time1);
-
+        @DisplayName("같은 방에 메시지가 여러 건 들어와도 dirty 원소는 하나로 합쳐지고 최신 시각을 남긴다")
+        void saveConflatesDirtyRoom() {
             // when
-            sut.save(message, memberIds);
+            sut.save(message(MESSAGE_ID_1, CONTENT_1, WRITER_ID, time1));
+            sut.save(message(MESSAGE_ID_2, CONTENT_2, WRITER_ID, time2));
 
             // then
-            String writerRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(WRITER_ID);
-            Double writerRecentScore = masterHashRedisTemplate.opsForZSet()
-                    .score(writerRecentKey, ROOM_ID);
+            String dirtyKey = CHAT_ROOM_ACTIVITY_RECENT_INDEX.keyFor();
 
-            assertThat(writerRecentScore).isNotNull();
-            assertThat(writerRecentScore.longValue()).isEqualTo(message.createdAtEpochMillis());
-
-            String memberRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(MEMBER_ID);
-            Double memberRecentScore = masterHashRedisTemplate.opsForZSet()
-                    .score(memberRecentKey, ROOM_ID);
-
-            assertThat(memberRecentScore).isNull();
-
-            String otherMemberRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(OTHER_MEMBER_ID);
-            Double otherMemberRecentScore = masterHashRedisTemplate.opsForZSet()
-                    .score(otherMemberRecentKey, ROOM_ID);
-
-            assertThat(otherMemberRecentScore).isNull();
-        }
-
-        @Test
-        @DisplayName("memberIds가 null이면 NullPointerException을 던진다")
-        void saveWithNullMemberIds() {
-            // given
-            ChatMessage message = message(MESSAGE_ID_1, CONTENT_1, WRITER_ID, time1);
-
-            // when & then
-            assertThatThrownBy(() -> sut.save(message, null))
-                    .isInstanceOf(NullPointerException.class);
+            assertThat(masterHashRedisTemplate.opsForZSet().size(dirtyKey)).isEqualTo(1);
+            assertThat(masterHashRedisTemplate.opsForZSet().score(dirtyKey, ROOM_ID))
+                    .isEqualTo((double) message(MESSAGE_ID_2, CONTENT_2, WRITER_ID, time2).createdAtEpochMillis());
         }
 
         @Test
         @DisplayName("message가 null이면 NullPointerException을 던진다")
         void saveWithNullMessage() {
             // when & then
-            assertThatThrownBy(() -> sut.save(null, Set.of(WRITER_ID, MEMBER_ID)))
+            assertThatThrownBy(() -> sut.save(null))
                     .isInstanceOf(NullPointerException.class);
         }
     }
@@ -337,7 +302,7 @@ class RedisChatMessageAdapterIntegrationTest {
     class HardDeleteTest {
 
         @Test
-        @DisplayName("latest 200 안에 메시지가 있으면 메시지를 삭제하고 msgCnt를 감소시키며 membership score를 복구한다")
+        @DisplayName("latest 200 안에 메시지가 있으면 메시지를 삭제하고 msgCnt 를 감소시키며 방을 dirty 로 남긴다")
         void hardDeleteApplied() {
             // given
             ChatMessage message1 = message(MESSAGE_ID_1, CONTENT_1, WRITER_ID, time1);
@@ -349,19 +314,10 @@ class RedisChatMessageAdapterIntegrationTest {
             masterHashRedisTemplate.opsForHash().put(roomInfoKey, "msg_cnt", "2");
             masterHashRedisTemplate.opsForHash().put(roomInfoKey, "latest_msg_seq", "2");
 
-            String memberRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(MEMBER_ID);
-            String otherMemberRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(OTHER_MEMBER_ID);
-
-            masterHashRedisTemplate.opsForZSet().add(memberRecentKey, ROOM_ID, 9999D);
-            masterHashRedisTemplate.opsForZSet().add(otherMemberRecentKey, ROOM_ID, 8888D);
-
-            List<ChatRoomMembershipScore> chatRoomMembershipScores = List.of(
-                    new ChatRoomMembershipScore(MEMBER_ID, 0L),
-                    new ChatRoomMembershipScore(OTHER_MEMBER_ID, 1234L)
-            );
+            long fallbackMsgCreatedAtMs = message1.createdAtEpochMillis();
 
             // when
-            sut.hardDelete(MESSAGE_ID_2, ROOM_ID, chatRoomMembershipScores);
+            sut.hardDelete(MESSAGE_ID_2, ROOM_ID, fallbackMsgCreatedAtMs);
 
             // then
             List<ChatMessage> latest = sut.listLatestMessages(ROOM_ID, 10);
@@ -375,17 +331,14 @@ class RedisChatMessageAdapterIntegrationTest {
             Object latestMsgSeq = masterHashRedisTemplate.opsForHash()
                     .get(roomInfoKey, "latest_msg_seq");
 
+            // watermark 는 hard delete 로 줄지 않는다
             assertThat(msgCnt).isEqualTo("1");
             assertThat(latestMsgSeq).isEqualTo("2");
 
-            assertThat(masterHashRedisTemplate.opsForZSet().score(memberRecentKey, ROOM_ID))
-                    .isNull();
-
-            Double otherScore = masterHashRedisTemplate.opsForZSet()
-                    .score(otherMemberRecentKey, ROOM_ID);
-
-            assertThat(otherScore).isNotNull();
-            assertThat(otherScore.longValue()).isEqualTo(1234L);
+            // 정렬 점수 보정은 projector 몫이라 방만 dirty 로 남는다
+            assertThat(masterHashRedisTemplate.opsForZSet()
+                    .score(CHAT_ROOM_ACTIVITY_RECENT_INDEX.keyFor(), ROOM_ID))
+                    .isEqualTo((double) fallbackMsgCreatedAtMs);
         }
 
         @Test
@@ -399,7 +352,7 @@ class RedisChatMessageAdapterIntegrationTest {
             masterHashRedisTemplate.opsForHash().put(roomInfoKey, "msg_cnt", "1");
 
             // when
-            sut.hardDelete(MESSAGE_ID_2, ROOM_ID, List.of());
+            sut.hardDelete(MESSAGE_ID_2, ROOM_ID, 0L);
 
             // then
             List<ChatMessage> latest = sut.listLatestMessages(ROOM_ID, 10);
@@ -415,8 +368,8 @@ class RedisChatMessageAdapterIntegrationTest {
         }
 
         @Test
-        @DisplayName("membershipScores가 null이어도 삭제를 수행한다")
-        void hardDeleteWithNullMembershipScores() {
+        @DisplayName("남은 최신 메시지가 없어 fallback 시각이 0이어도 삭제를 수행한다")
+        void hardDeleteWithZeroFallbackTime() {
             // given
             ChatMessage message1 = message(MESSAGE_ID_1, CONTENT_1, WRITER_ID, time1);
             sut.warmUpList(List.of(message1), ROOM_ID);
@@ -425,7 +378,7 @@ class RedisChatMessageAdapterIntegrationTest {
             masterHashRedisTemplate.opsForHash().put(roomInfoKey, "msg_cnt", "1");
 
             // when
-            sut.hardDelete(MESSAGE_ID_1, ROOM_ID, null);
+            sut.hardDelete(MESSAGE_ID_1, ROOM_ID, 0L);
 
             // then
             assertThat(sut.listLatestMessages(ROOM_ID, 10)).isEmpty();
@@ -440,7 +393,7 @@ class RedisChatMessageAdapterIntegrationTest {
         @DisplayName("스크립트 결과가 알 수 없는 값이면 RuntimeException을 던진다")
         void hardDeleteUnknownResult() {
             // when & then
-            assertThatThrownBy(() -> sut.hardDelete("", ROOM_ID, List.of()))
+            assertThatThrownBy(() -> sut.hardDelete("", ROOM_ID, 0L))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("[redis] chatmessage delete failed");
         }

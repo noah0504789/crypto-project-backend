@@ -15,12 +15,4 @@ public final class MyChatRoomScoreCalculator {
     public static long read(long lastMsgCreatedAt) {
         return lastMsgCreatedAt;
     }
-
-    public static long rescoreKeepingUnreadState(long score, long fallbackMsgCreatedAt) {
-        return fallbackMsgCreatedAt + (isUnread(score) ? UNREAD_PRIORITY_WEIGHT : 0);
-    }
-
-    private static boolean isUnread(long score) {
-        return score >= UNREAD_PRIORITY_WEIGHT;
-    }
 }

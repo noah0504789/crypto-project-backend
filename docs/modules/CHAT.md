@@ -149,7 +149,25 @@ recent(ZSET)   메시지 100건 → 원소 1개   → flush 1번 처리
 
 **두 ZSET 은 내구성 큐가 아니라 "처리할 방을 모아 두는 coalescing 작업 목록"이다.** 유실될 수 있고, 그래서 Mongo 기준 재생성 경로가 항상 함께 있다.
 
-**전환 상태(이 PR)**: 기존 멤버별 fan-out(`storeChatMessage.lua` 의 멤버 ZADD, `ChatMessageEventService.recordMemberships`)을 **그대로 두고** projector 를 함께 돌린다. 두 경로의 결과 차이는 `chat.room.activity.projection.score.mismatches` 로 본다. 따라서 이 단계에서는 쓰기량이 줄지 않는다 — 감소는 fan-out 을 제거하는 다음 단계에서 측정된다.
+**멤버별 fan-out 은 남아 있지 않다.** 메시지 저장이 건드리는 멤버 상태는 **작성자 하나**뿐이다(자기 메시지는 읽은 것으로 보고 `last_read` 를 방 watermark 까지 올린다). 나머지 멤버는 flush 때 한 번에 반영된다. Mongo membership 은 `lastMsgReadSeq` 같은 사용자 고유 상태만 갖고 정렬 점수를 저장하지 않는다.
+
+메시지 hard delete 도 멤버별 점수를 되돌리지 않는다. 방을 dirty 로 올려 두면 projector 가 남은 최신 메시지를 기준으로 다시 계산한다. watermark 는 hard delete 로 줄지 않는다.
+
+| 경로 | 이전 | 지금 |
+|---|---|---|
+| 메시지 저장(Redis) | 멤버 N 명 ZADD | 작성자 1건 + dirty 표시 |
+| 메시지 영속(Mongo) | 방별 membership bulkWrite(N 문서) | 메시지 insert + 방 watermark |
+| hard delete | 멤버 N 명 점수 재계산 | dirty 표시 |
+| 내 방 목록 정렬 | Mongo membership `score` 인덱스 | Redis projection, 미스 시 Mongo 재생성 |
+
+**표의 「지금」은 메시지 저장 경로만 본 것이다.** 두 저장소의 성질이 다르다.
+
+| | 쓰기 연산 수 | 성질 |
+|---|---|---|
+| Mongo membership | 302 → **0** | 정렬 점수를 저장하지 않기로 했으므로 **제거**다. 배치가 아니다 |
+| Redis active ZSET | 메시지당 302 → **flush당 302** | 연산 수는 그대로고 **빈도만** 옮겼다. flush 안에서 멤버마다 `ZADD` 를 그대로 돈다 |
+
+**"멤버 수 비례 쓰기를 없앴다"는 Mongo 에만 참이다.** Redis 는 여전히 `O(members)` 이며, 이득은 한 flush 창에 같은 방 메시지가 몇 건 몰리느냐에 비례한다(§5 앞부분).
 
 읽기 경로는 **캐시-우선, 미스 시 Mongo 로드 + 워밍업**이다(§8). 정상 흐름에서 REST 조회는 Redis만 조회하며, 캐시가 비었거나 인덱스가 없으면 `*QueryRepairService`가 Mongo에서 로드해 캐시를 채운 뒤 반환한다. **미스 폭주 방어 도구는 서브도메인 특성에 따라 다르다: 방 = `SingleFlight`, 메시지 = 분산락.**
 
@@ -231,9 +249,11 @@ recent(ZSET)   메시지 100건 → 원소 1개   → flush 1번 처리
 | 방 상세 `getRoom` | `cache.findById(roomId)` | `repairRoom`(`SingleFlight`) — Mongo `findByIdWithLatestMessage` + 워밍업. Mongo 에도 없으면 `ChatRoomNotFoundException` |
 | 내 방 상세 `getMyRoom` | 방 + `lastReadSeq` | 방 미스면 `repairRoom` 후 영속 lastRead 로 조립. lastRead 만 미스면 `refreshActiveCacheSafely` 로 재적재(unread 여부로 스코어 계산) |
 | 인기방 목록 `listPopularRooms` | 카테고리별 zset 인덱스(커서 유무로 first/next 분기) | 인덱스 자체 없음 → `repairPopularRooms`/`repairPopularRoomsAfter`. 부분 미스 → `repairRoomsByIds` 후 원래 순서로 merge |
-| 내 방 목록 `listMyRooms` | 내 활성 방 zset(커서 유무로 분기, 커서 스코어 계산) | 인덱스 자체 없음 → `repairMyRooms`/`repairMyRoomsBefore`. 부분 미스 → `repairRoomsByIds` 후 merge |
+| 내 방 목록 `listMyRooms` | 내 활성 방 zset(커서 유무로 분기, 커서 스코어 계산) | 인덱스 자체 없음 → Mongo 재생성(아래). 부분 미스 → `repairRoomsByIds` 후 merge |
 | 메시지 목록 `listMessages` | 방별 메시지 zset(커서 유무로 latest/prev) | `repairLatest`/`repairPrev` — 분산락 → 캐시 재확인 → Mongo range + 워밍업 (아래 절) |
 | 제목 중복 `existsByTitle` | `cache.existsByTitle` | `persistence.existsByTitle` 로 폴백 |
+
+**내 방 정렬 인덱스가 통째로 비면 Mongo 로 다시 만든다.** 정렬 키 `(unread, lastMsgCreatedAt, roomId)` 는 방 쪽 사실과 사용자 읽음 위치가 섞여 있어 Mongo 인덱스 하나로 정렬할 수 없다. 그래서 `ChatRoomQueryRepairService` 가 사용자의 membership 과 방을 `chat.my-room.rebuild-limit`(기본 300)까지 읽어 `MyChatRoomScoreCalculator` 로 계산·정렬하고, 그 결과로 ZSET 을 통째로 심은 뒤 요청한 페이지만 잘라 돌려준다. **이 상한을 넘는 방을 가진 사용자는 오래된 방이 목록에서 빠질 수 있다.**
 
 - 목록 계열의 캐시 결과는 `ChatRoomCacheLookupResult` 가 세 갈래로 구분한다: `hasNoIndex()`(인덱스 자체 없음 → 전체 repair) / `isAllHit()` / 부분 히트(miss id 만 개별 repair 후 원래 순서로 merge).
 - 조회는 커서 페이지네이션이며, 컨트롤러가 `limit+1`로 조회한 뒤 `CursorPages.from(result, limit, mapper)`로 다음 커서 유무를 판정한다.
@@ -393,7 +413,6 @@ Kafka `event_id`는 추적 계약으로 함께 전달하지만, chat은 서로 �
 
 ### `MyChatRoomScoreCalculator` (내 방 정렬 스코어)
 - `unread(ms) = ms + 100_000_000_000_000L`(안읽음 가중치), `read(ms) = ms`. → 안읽은 방이 항상 상단 정렬.
-- `rescoreKeepingUnreadState(score, fallbackMs)`: 기존 unread 상태를 보존한 채 재산정. `MongoChatRoomMembership.score`와 Redis active zset 스코어의 공통 규칙.
 - **설계 의도**: 이 스코어 산정은 엄밀히는 `ChatRoom`(및 멤버십)의 도메인 로직이라 `ChatRoom`에 두는 것이 원칙에 맞다. 다만 unread 가중치 상수·재산정 규칙을 한곳에 모아 **가독성을 높이려고 상태 없는(`private` 생성자 + `static` 메서드) 도메인 서비스로 의도적으로 분리**했다. 여전히 `chat-domain` 소속 도메인 로직이며 `ChatRoom.hasUnread`와 짝을 이룬다 — 스코어 규칙을 바꾸면 두 곳(도메인 서비스 + Redis/Mongo 스코어 기록 경로)을 함께 본다.
 
 ## 13. 영속성 · 스키마 (MongoDB)
@@ -404,10 +423,10 @@ DB `chat`(authSource `chat`). `MongoConfig`가 커넥션 풀(min 20/max 200), `W
 |---|---|---|
 | `chat_room` | `idx_category_popularity` `{category:1, popularity:-1, _id:-1}` partial `{deleted:false}`; `title` unique partial `{deleted:false}` | soft-delete(`deleted`/`deletedAt`). 인기방 정렬/커서(저장된 `popularity` 필드)·후보 풀스캔 지원. `latestMsgSeq`는 메시지 저장 때 원자 증가 |
 | `chat_message` | `idx_room_created_id` `{room_id:1, created_at:-1, _id:-1}` partial `{deleted:false}` | 방별 최신/이전 커서 조회 |
-| `chat_room_membership` | unique `{room_id, member_id}`; `my_rooms` `{member_id, score:-1, _id:-1}` | `id = "roomId\|memberId"`, `lastMsgReadSeq`(방 watermark 기준 읽음 위치), `score`(비동기 projector 전환 전까지 dual-write하는 호환 projection) |
+| `chat_room_membership` | unique `{room_id, member_id}`; `my_rooms` `{member_id, _id:-1}` | `id = "roomId\|memberId"`, `lastMsgReadSeq`(방 watermark 기준 읽음 위치). **정렬 점수는 저장하지 않는다** — 정렬은 Redis projection 이 담당하고 이 컬렉션은 재생성 source 다 |
 
 - 도메인 ↔ Mongo 매핑은 각 `Mongo*.fromDomain`/`toDomain`(+`toDomainWithLatest`)에서 수행.
-- `latestMsgSeq`가 없는 기존 방 문서는 최초 갱신 시 현재 `msgCnt`를 시작점으로 사용한다. PR3에서는 기존 내 방 정렬 경로를 깨지 않도록 membership `score`를 함께 갱신하며, 비동기 projector 전환 뒤 이 dual-write를 제거한다.
+- `latestMsgSeq`가 없는 기존 방 문서는 최초 갱신 시 현재 `msgCnt`를 시작점으로 사용한다.
 - REST `ChatRoomResponse`는 보관 메시지 수인 `msgCnt`와 읽음 위치 watermark인 `latestMsgSeq`를 별도 필드로 반환한다. 클라이언트는 activity의 `lastMsgReadSeq`에 `latestMsgSeq`를 전달한다.
 - `unreadMsgCnt`는 `latestMsgSeq - lastMsgReadSeq`인 watermark 거리다. hard delete된 메시지의 순번도 재사용하지 않으므로, 삭제가 섞인 구간에서는 현재 화면에 남은 미열람 메시지 개수와 다를 수 있다.
 - 메시지 조회: `listLatestMessages`(정렬 desc + limit), `listMessagesBefore`(커스텀 repo `listMessagesBefore`), `findLatestMessageExcluding`(하드삭제 후 방 최신 시각 보정).
@@ -452,10 +471,9 @@ application의 outbound port `ChatMessageMetricsPort`가 계측 의도를 정의
 | 논리 지표 | Micrometer 이름 | 타입 | 태그·의미 |
 |---|---|---|---|
 | consumer handler 전체 | `chat.message.persistence.handler` | `Timer` | `result=success\|failure`; 재시도와 transaction 종료를 포함한 event 1건의 전체 처리 시간 |
-| Mongo 단계 | `chat.message.persistence.stage` | `Timer` | `stage=message_insert\|room_counter\|membership`; 메시지 insert, 방 watermark, 전환기 membership projection 갱신 시간을 분리 |
+| Mongo 단계 | `chat.message.persistence.stage` | `Timer` | `stage=message_insert\|room_counter`; 메시지 insert 와 방 watermark 갱신 시간을 분리 |
 | 처리 단위 메시지 수 | `chat.message.persistence.batch.messages` | `DistributionSummary` | 커밋된 batch의 신규 메시지 수 |
 | 처리 단위 방 수 | `chat.message.persistence.batch.rooms` | `DistributionSummary` | 커밋된 batch의 고유 방 수 |
-| 멤버십 갱신 문서 수 | `chat.message.persistence.membership.documents` | `DistributionSummary` | 비동기 projector 전환 전 dual-write되는 membership projection 문서 수 |
 | 신규·중복 메시지 수 | `chat.message.persistence.messages` | `Counter` | `result=new\|duplicate`; Mongo transaction `afterCommit`에서만 증가 |
 | 재시도 가능 실패 | `chat.message.persistence.retry.failures` | `Counter` | `TemporaryChatPersistenceException`이 발생한 attempt 수. retry exhausted 직전의 마지막 실패도 포함 |
 | DLQ 전이 | `chat.message.persistence.dlq.transitions` | `Counter` | `result=published\|publish_failed`; recover의 DLQ 발행 결과 |
@@ -479,8 +497,8 @@ application 의 `ChatRoomActivityProjectionMetricsPort` 가 계측 의도를 정
 | 기존 fan-out 과의 차이 | `chat.room.activity.projection.score.mismatches` | `Counter` | projector 계산이 기존 fan-out 이 써 둔 score 와 다른 멤버 수 |
 | dirty 적체 | `chat.room.activity.projection.dirty.backlog` | `Gauge` | flush 시점에 남아 있는 dirty 방 수 |
 
-`score.mismatches` 는 두 경로를 함께 돌리는 동안의 **대조용**이다. 읽은 멤버를 read score 로
-되돌리는 정상 차이도 포함하므로 0 이 목표값이 아니다. `dirty.backlog` 가 계속 늘면 flush 주기나
+`score.mismatches` 는 projector 가 계산한 값이 ZSET 에 이미 있던 값과 다른 멤버 수다. 정상 갱신에서도
+올라가므로 0 이 목표값이 아니라 **변화량의 추이**를 본다. `dirty.backlog` 가 계속 늘면 flush 주기나
 `claim-batch-size` 가 활동량을 못 따라가는 것이다.
 
 ## 16. 확인 필요 항목

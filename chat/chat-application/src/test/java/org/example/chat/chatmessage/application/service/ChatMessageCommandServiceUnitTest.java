@@ -6,7 +6,6 @@ import org.example.chat.chatmessage.application.event.ChatMessageEventList;
 import org.example.chat.chatmessage.application.port.out.ChatMessageCachePort;
 import org.example.chat.chatmessage.application.port.out.ChatMessagePersistencePort;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
-import org.example.chat.chatroom.application.service.result.ChatRoomMembershipScore;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.domain.exception.ChatRoomMembershipNotFoundException;
 import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException;
@@ -29,7 +28,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -123,8 +121,7 @@ class ChatMessageCommandServiceUnitTest {
                                             && message.getWriterId().equals(writerId)
                                             && message.getContent().equals(content)
                                             && message.getCreatedAt().equals(createdAt)
-                            ),
-                            eq(chatRoom.getMemberIds())
+                            )
                     );
 
             then(chatMessagePersistencePort)
@@ -266,7 +263,7 @@ class ChatMessageCommandServiceUnitTest {
 
             doThrow(exception)
                     .when(chatMessageCachePort)
-                    .save(any(ChatMessage.class), eq(chatRoom.getMemberIds()));
+                    .save(any(ChatMessage.class));
 
             // when & then: 캐시 실패해도 예외 전파 없이 정상 반환(조회 repair 가 흡수)
             assertThatCode(() -> sut.save(command))
@@ -285,7 +282,7 @@ class ChatMessageCommandServiceUnitTest {
                     .publish(any(ChatMessageEventList.class));
 
             inOrder.verify(chatMessageCachePort)
-                    .save(any(ChatMessage.class), eq(chatRoom.getMemberIds()));
+                    .save(any(ChatMessage.class));
         }
     }
 
@@ -294,15 +291,10 @@ class ChatMessageCommandServiceUnitTest {
     class HardDeleteTest {
 
         @Test
-        @DisplayName("메시지 삭제에 성공하면 방 메시지 수를 감소시키고 최신 메시지 기준으로 멤버십 점수를 갱신한 뒤 캐시에서 삭제한다")
-        void hardDelete_shouldDeleteMessageRefreshScoresAndDeleteCache() {
+        @DisplayName("메시지 삭제에 성공하면 방 메시지 수를 감소시키고 남은 최신 메시지 시각과 함께 캐시에서 삭제한다")
+        void hardDelete_shouldDeleteMessageAndDeleteCacheWithFallbackTime() {
             // given
             ChatMessage latestMessage = latestMessage();
-
-            List<ChatRoomMembershipScore> scores = List.of(
-                    mock(ChatRoomMembershipScore.class),
-                    mock(ChatRoomMembershipScore.class)
-            );
 
             given(chatMessagePersistencePort.hardDeleteById(messageId))
                     .willReturn(true);
@@ -310,8 +302,6 @@ class ChatMessageCommandServiceUnitTest {
             given(chatMessagePersistencePort.findLatestMessageExcluding(roomId, messageId))
                     .willReturn(Optional.of(latestMessage));
 
-            given(chatRoomPersistencePort.refreshMembershipScores(roomId, latestCreatedAtMs))
-                    .willReturn(scores);
 
             // when
             sut.hardDelete(messageId, roomId);
@@ -332,11 +322,9 @@ class ChatMessageCommandServiceUnitTest {
             inOrder.verify(chatMessagePersistencePort)
                     .findLatestMessageExcluding(roomId, messageId);
 
-            inOrder.verify(chatRoomPersistencePort)
-                    .refreshMembershipScores(roomId, latestCreatedAtMs);
 
             inOrder.verify(chatMessageCachePort)
-                    .hardDelete(messageId, roomId, scores);
+                    .hardDelete(messageId, roomId, latestCreatedAtMs);
 
             then(outboxEventListPublishPort)
                     .shouldHaveNoInteractions();
@@ -372,21 +360,15 @@ class ChatMessageCommandServiceUnitTest {
         }
 
         @Test
-        @DisplayName("삭제 후 남은 최신 메시지가 없으면 fallbackMsgCreatedAt을 0으로 점수 갱신한다")
+        @DisplayName("삭제 후 남은 최신 메시지가 없으면 fallbackMsgCreatedAt을 0으로 캐시에 넘긴다")
         void hardDelete_shouldUseZeroFallbackMsgCreatedAt_whenLatestMessageDoesNotExist() {
             // given
-            List<ChatRoomMembershipScore> scores = List.of(
-                    mock(ChatRoomMembershipScore.class)
-            );
-
             given(chatMessagePersistencePort.hardDeleteById(messageId))
                     .willReturn(true);
 
             given(chatMessagePersistencePort.findLatestMessageExcluding(roomId, messageId))
                     .willReturn(Optional.empty());
 
-            given(chatRoomPersistencePort.refreshMembershipScores(roomId, 0L))
-                    .willReturn(scores);
 
             // when
             sut.hardDelete(messageId, roomId);
@@ -407,11 +389,8 @@ class ChatMessageCommandServiceUnitTest {
             inOrder.verify(chatMessagePersistencePort)
                     .findLatestMessageExcluding(roomId, messageId);
 
-            inOrder.verify(chatRoomPersistencePort)
-                    .refreshMembershipScores(roomId, 0L);
-
             inOrder.verify(chatMessageCachePort)
-                    .hardDelete(messageId, roomId, scores);
+                    .hardDelete(messageId, roomId, 0L);
         }
 
         @Test
@@ -420,22 +399,16 @@ class ChatMessageCommandServiceUnitTest {
             // given
             ChatMessage latestMessage = latestMessage();
 
-            List<ChatRoomMembershipScore> scores = List.of(
-                    mock(ChatRoomMembershipScore.class)
-            );
-
             given(chatMessagePersistencePort.hardDeleteById(messageId))
                     .willReturn(true);
 
             given(chatMessagePersistencePort.findLatestMessageExcluding(roomId, messageId))
                     .willReturn(Optional.of(latestMessage));
 
-            given(chatRoomPersistencePort.refreshMembershipScores(roomId, latestCreatedAtMs))
-                    .willReturn(scores);
 
             doThrow(new RuntimeException("cache hard delete failed"))
                     .when(chatMessageCachePort)
-                    .hardDelete(messageId, roomId, scores);
+                    .hardDelete(messageId, roomId, latestCreatedAtMs);
 
             // when & then
             assertThatCode(() -> sut.hardDelete(messageId, roomId))
@@ -443,7 +416,7 @@ class ChatMessageCommandServiceUnitTest {
 
             then(chatMessageCachePort)
                     .should()
-                    .hardDelete(messageId, roomId, scores);
+                    .hardDelete(messageId, roomId, latestCreatedAtMs);
         }
 
         @Test

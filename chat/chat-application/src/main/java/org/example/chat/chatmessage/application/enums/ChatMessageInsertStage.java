@@ -7,8 +7,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum ChatMessageInsertStage {
     MESSAGE_INSERT("message_insert"),
-    ROOM_COUNTER("room_counter"),
-    MEMBERSHIP("membership");
+    ROOM_COUNTER("room_counter");
 
     private final String stageTagValue;
 }

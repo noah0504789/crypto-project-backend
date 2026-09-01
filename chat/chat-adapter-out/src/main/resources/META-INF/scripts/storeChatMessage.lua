@@ -1,8 +1,9 @@
 local messageKey = KEYS[1]
 local messageAccessKey = KEYS[2]
 local roomInfoKey = KEYS[3]
-local activityDirtyKey = KEYS[4]
-local writerRecentKey = KEYS[5]
+local lastReadKey = KEYS[4]
+local activityDirtyKey = KEYS[5]
+local writerRecentKey = KEYS[6]
 
 local messageId = ARGV[1]
 local roomId = ARGV[2]
@@ -26,18 +27,19 @@ if not redis.call("HGET", roomInfoKey, "latest_msg_seq") then
 end
 
 redis.call("HINCRBY", roomInfoKey, "msg_cnt", 1)
-redis.call("HINCRBY", roomInfoKey, "latest_msg_seq", 1)
+local latestMsgSeq = tonumber(redis.call("HINCRBY", roomInfoKey, "latest_msg_seq", 1))
+
+-- 보낸 사람은 자기 메시지를 읽은 것으로 본다. 읽음 위치를 방 watermark 까지 올려 두면
+-- projector 가 계산해도 같은 결론이 나오고, 목록에서 자기 방이 즉시 최신으로 올라온다.
+local writerLastRead = tonumber(redis.call("HGET", lastReadKey, writerId))
+if writerLastRead == nil or latestMsgSeq > writerLastRead then
+    redis.call("HSET", lastReadKey, writerId, latestMsgSeq)
+end
 
 redis.call("ZADD", writerRecentKey, createdAtMs, roomId)
 
-local UNREAD_BOOST = 100000000000000
-for i = 6, #KEYS do
-    redis.call("ZADD", KEYS[i], UNREAD_BOOST + createdAtMs, roomId)
-end
-
--- 방 activity 를 projector 작업 목록에 올린다. 메시지 상태 갱신과 같은 원자 단위여야
--- "메시지는 반영됐는데 dirty 만 빠진" 상태가 생기지 않는다. 같은 방이 여러 번 들어와도
--- ZSET 원소는 하나로 합쳐지고, 늦게 도착한 과거 메시지가 최신 활동 시각을 되돌리지 않는다.
+-- 나머지 멤버의 정렬 점수는 여기서 갱신하지 않는다. 메시지당 O(members) 쓰기를 없애려고
+-- 방을 dirty 로만 표시하고, 반영은 projector 가 방 단위로 한 번에 한다(→ docs/modules/CHAT.md §5).
 local dirtyScore = tonumber(redis.call("ZSCORE", activityDirtyKey, roomId))
 if dirtyScore == nil or createdAtMs > dirtyScore then
     redis.call("ZADD", activityDirtyKey, createdAtMs, roomId)

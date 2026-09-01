@@ -5,20 +5,18 @@ import org.bson.types.ObjectId;
 import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessage;
 import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessageRepository;
 import org.example.chat.chatroom.application.service.result.ChatRoomMemberReadState;
-import org.example.chat.chatroom.application.service.result.ChatRoomMembershipScore;
+import org.example.chat.chatroom.application.service.result.MyChatRoomState;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.chat.chatroom.domain.exception.ChatRoomMembershipNotFoundException;
 import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException;
-import org.example.chat.chatroom.domain.service.MyChatRoomScoreCalculator;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -72,26 +70,14 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
     }
 
     @Override
-    public List<ChatRoom> listLatestActiveRooms(String memberId, int limit) {
-        return membershipRepository.listLatestActiveMemberships(memberId, limit)
+    public List<MyChatRoomState> listMyRoomStates(String memberId, int limit) {
+        return membershipRepository.listMemberships(memberId, limit)
                 .stream()
-                .map(membership -> membership.getRoomId().toHexString())
-                .map(this::findByIdWithLatestMessageFromPrimary)
-                .flatMap(Optional::stream)
-                .toList();
-    }
-
-    @Override
-    public List<ChatRoom> listActiveRoomsBefore(
-            String memberId,
-            String lastRoomId,
-            Long score,
-            int limit
-    ) {
-        return membershipRepository.listActiveMembershipsBefore(memberId, lastRoomId, score, limit)
-                .stream()
-                .map(membership -> membership.getRoomId().toHexString())
-                .map(this::findByIdWithLatestMessageFromSecondary)
+                .map(membership -> findByIdWithLatestMessageFromSecondary(membership.getRoomId().toHexString())
+                        .map(room -> new MyChatRoomState(
+                                room,
+                                membership.getLastMsgReadSeq() == null ? 0L : membership.getLastMsgReadSeq()
+                        )))
                 .flatMap(Optional::stream)
                 .toList();
     }
@@ -134,27 +120,6 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
     }
 
     @Override
-    public void updateMembershipScores(String id, Set<String> memberIds, long lastMsgCreatedAtMs) {
-        long score = MyChatRoomScoreCalculator.unread(lastMsgCreatedAtMs);
-
-        membershipRepository.upsertUnreadActivity(id, memberIds, score);
-    }
-
-    @Override
-    public List<ChatRoomMembershipScore> refreshMembershipScores(String id, long fallbackMsgCreatedAtMs) {
-        return membershipRepository.findAllByRoomId(new ObjectId(id))
-                .stream()
-                .map(membership -> {
-                    long score = membership.getScore() == null ? 0L : membership.getScore();
-                    long newScore = MyChatRoomScoreCalculator.rescoreKeepingUnreadState(score, fallbackMsgCreatedAtMs);
-                    membershipRepository.updateScore(membership.getId(), newScore);
-
-                    return new ChatRoomMembershipScore(membership.getMemberId(), newScore);
-                })
-                .toList();
-    }
-
-    @Override
     public long updateMessageState(String id, int count, long lastMessageCreatedAtMs) {
         return chatRoomRepository.updateMessageState(
                         new ObjectId(id),
@@ -171,10 +136,8 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
     }
 
     @Override
-    public void activateMembership(String id, String memberId, Long lastMsgReadSeq, Long lastMsgCreatedAtMs) {
-        long score = MyChatRoomScoreCalculator.read(lastMsgCreatedAtMs);
-
-        membershipRepository.save(MongoChatRoomMembership.ofReadActivity(id, memberId, lastMsgReadSeq, score));
+    public void activateMembership(String id, String memberId, Long lastMsgReadSeq) {
+        membershipRepository.save(MongoChatRoomMembership.ofReadActivity(id, memberId, lastMsgReadSeq));
     }
 
     @Override

@@ -3,7 +3,6 @@ package org.example.chat.chatmessage.adapter.out.cache;
 import lombok.extern.slf4j.Slf4j;
 import org.example.chat.chatmessage.application.port.out.ChatMessageCachePort;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
-import org.example.chat.chatroom.application.service.result.ChatRoomMembershipScore;
 import org.example.common.redis.failover.CacheFailOpen;
 import org.example.common.time.Clock;
 import org.example.chat.infra.redis.RedisCollectionRegistry;
@@ -95,7 +94,7 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
     }
 
     @Override
-    public void save(ChatMessage message, Set<String> memberIds_) {
+    public void save(ChatMessage message) {
         String id = message.getId();
         String roomId = message.getRoomId();
         Instant createdAt = message.createdAtInstant();
@@ -103,20 +102,16 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
         String content = message.getContent();
         String writerId = message.getWriterId();
 
-        List<String> keys = new ArrayList<>();
-        String messageKey = CHAT_MESSAGE_INFO.keyFor(roomId);
-        String messageAccessKey = CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX.keyFor(roomId);
-        String roomInfoKey = CHAT_ROOM_INFO.keyFor(roomId);
-        String activityDirtyKey = CHAT_ROOM_ACTIVITY_RECENT_INDEX.keyFor();
-        String writerRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(writerId);
-
-        Collections.addAll(keys, messageKey, messageAccessKey, roomInfoKey, activityDirtyKey, writerRecentKey);
-
-        Set<String> memberIds = new HashSet<>(memberIds_);
-        memberIds.remove(writerId);
-        memberIds.stream()
-                .map(CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX::keyFor)
-                .forEach(keys::add);
+        // 멤버별 정렬 점수는 여기서 갱신하지 않는다. 방을 dirty 로 표시하면 projector 가
+        // 방 단위로 한 번에 반영한다(→ ChatRoomActivityProjectionPort).
+        List<String> keys = List.of(
+                CHAT_MESSAGE_INFO.keyFor(roomId),
+                CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX.keyFor(roomId),
+                CHAT_ROOM_INFO.keyFor(roomId),
+                CHAT_ROOM_LAST_READ_SEQ.keyFor(roomId),
+                CHAT_ROOM_ACTIVITY_RECENT_INDEX.keyFor(),
+                CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(writerId)
+        );
 
         List<String> args = new ArrayList<>();
         args.add(id);
@@ -151,34 +146,18 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
     }
 
     @Override
-    public void hardDelete(String id, String roomId, List<ChatRoomMembershipScore> membershipScores) {
-        List<ChatRoomMembershipScore> validScores = membershipScores == null
-                ? List.of()
-                : membershipScores.stream()
-                    .filter(Objects::nonNull)
-                    .filter(score -> score.memberId() != null)
-                    .toList();
+    public void hardDelete(String id, String roomId, long fallbackMsgCreatedAtMs) {
+        List<String> keys = List.of(
+                CHAT_MESSAGE_INFO.keyFor(roomId),
+                CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX.keyFor(roomId),
+                CHAT_ROOM_INFO.keyFor(roomId),
+                CHAT_ROOM_ACTIVITY_RECENT_INDEX.keyFor()
+        );
 
-        List<String> keys = new ArrayList<>();
-        String messageKey = CHAT_MESSAGE_INFO.keyFor(roomId);
-        String messageAccessKey = CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX.keyFor(roomId);
-        String roomInfoKey = CHAT_ROOM_INFO.keyFor(roomId);
-        Collections.addAll(keys, messageKey, messageAccessKey, roomInfoKey);
-        validScores.stream()
-                .map(ChatRoomMembershipScore::memberId)
-                .map(CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX::keyFor)
-                .forEach(keys::add);
+        // 삭제 뒤 정렬 점수 보정은 projector 에 맡긴다. 남은 최신 메시지 기준으로 다시 계산된다.
+        Object[] args = {id, roomId, String.valueOf(fallbackMsgCreatedAtMs)};
 
-        List<String> args = new ArrayList<>();
-        args.add(id);
-        args.add(roomId);
-        args.add(validScores.size()+"");
-        for (ChatRoomMembershipScore chatRoomMembershipScore : validScores) {
-            Long score = chatRoomMembershipScore.score();
-            args.add(String.valueOf(score == null ? 0L : score));
-        }
-
-        Long result = masterHashRedisTemplate.execute(deleteChatMessage_lua, keys, args.toArray());
+        Long result = masterHashRedisTemplate.execute(deleteChatMessage_lua, keys, args);
 
         if (result == 1L) {
             log.info("[redis] chatmessage delete applied. messageId={}, roomId={}", id, roomId);

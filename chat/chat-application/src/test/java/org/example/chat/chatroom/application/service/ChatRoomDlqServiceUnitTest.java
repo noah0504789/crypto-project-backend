@@ -236,12 +236,7 @@ class ChatRoomDlqServiceUnitTest {
             // then
             then(persistence)
                     .should()
-                    .activateMembership(
-                            ROOM_ID,
-                            MEMBER_ID,
-                            lastMsgSeq,
-                            lastMsgMs
-                    );
+                    .activateMembership(ROOM_ID, MEMBER_ID, lastMsgSeq);
 
             then(cache)
                     .shouldHaveNoInteractions();

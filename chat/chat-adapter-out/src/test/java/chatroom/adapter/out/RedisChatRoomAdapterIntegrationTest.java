@@ -651,6 +651,56 @@ class RedisChatRoomAdapterIntegrationTest {
     }
 
     @Nested
+    @DisplayName("rebuildActiveIndex")
+    class RebuildActiveIndexTest {
+
+        @Test
+        @DisplayName("내 방 정렬 인덱스를 주어진 방·점수로 통째 재구성한다")
+        void rebuildActiveIndex() {
+            // given
+            sut.save(newRoom("room-a", "A"));
+            sut.save(newRoom("room-b", "B"));
+
+            // when
+            sut.rebuildActiveIndex(MEMBER_ID, Map.of("room-a", 300L, "room-b", 100L));
+
+            // then: score 내림차순
+            assertThat(sut.listLatestActiveRooms(MEMBER_ID, 10).orderedIds())
+                    .containsExactly("room-a", "room-b");
+        }
+
+        @Test
+        @DisplayName("재구성 전 항목은 남지 않는다")
+        void rebuildActiveIndexReplacesExisting() {
+            // given
+            sut.save(newRoom("room-a", "A"));
+            sut.save(newRoom("room-b", "B"));
+            sut.updateActivityScore("room-a", MEMBER_ID, 999L);
+
+            // when
+            sut.rebuildActiveIndex(MEMBER_ID, Map.of("room-b", 100L));
+
+            // then
+            assertThat(sut.listLatestActiveRooms(MEMBER_ID, 10).orderedIds())
+                    .containsExactly("room-b");
+        }
+
+        @Test
+        @DisplayName("빈 목록으로 재구성하면 인덱스가 비워진다")
+        void rebuildActiveIndexWithEmpty() {
+            // given
+            sut.save(newRoom("room-a", "A"));
+            sut.updateActivityScore("room-a", MEMBER_ID, 999L);
+
+            // when
+            sut.rebuildActiveIndex(MEMBER_ID, Map.of());
+
+            // then
+            assertThat(sut.listLatestActiveRooms(MEMBER_ID, 10).orderedIds()).isEmpty();
+        }
+    }
+
+    @Nested
     @DisplayName("pagination")
     class PaginationTest {
 
