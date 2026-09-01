@@ -1,6 +1,5 @@
 package org.example.websocket.gateway.chatmessage.adapter.out.stomp;
 
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
@@ -9,8 +8,6 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties(prefix = "websocket.chat-message.batch")
 public record ChatMessageBatchProperties(
-        @NotNull Boolean enabled,
-
         @Positive Long windowMs,
 
         // 넘으면 버리지 않고 창이 닫히기 전에 내보낸다.

@@ -90,14 +90,12 @@ websocket:
   # 방 단위 conflation. 구간의 마지막 1건만 보내고 나머지는 버린다. 근거는 PR #263, 유지 이유는 chat/load-test-results/chatmessage/websocket-gateway/README.md §3-0
   badge:
     coalesce:
-      enabled: true
       window-ms: 200
 
   chat-message:
     # 방 단위 배칭. conflation 과 달리 한 건도 버리지 않는다. 근거는 PR #265, 유지 이유는 chat/load-test-results/chatmessage/websocket-gateway/README.md §3-0
     # window-ms 를 뱃지(200ms)보다 짧게 잡는다 — 메시지는 사용자가 기다리는 내용이다.
     batch:
-      enabled: true
       window-ms: 100
       max-batch-size: 300
 

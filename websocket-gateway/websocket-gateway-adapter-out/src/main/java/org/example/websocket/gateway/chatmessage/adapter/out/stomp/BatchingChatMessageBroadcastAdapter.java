@@ -78,10 +78,6 @@ public class BatchingChatMessageBroadcastAdapter implements ChatMessageBroadcast
     /** 반환값은 "접수했다"는 뜻이다. */
     @Override
     public boolean broadcast(ChatMessageBroadcastCommand command, String txId) {
-        if (!properties.enabled()) {
-            return delegate.broadcast(command, txId);
-        }
-
         if (!delegate.hasLocalSubscriber(command.roomId())) {
             return false;
         }
@@ -115,17 +111,12 @@ public class BatchingChatMessageBroadcastAdapter implements ChatMessageBroadcast
 
     @PostConstruct
     public void start() {
-        if (!properties.enabled()) {
-            log.info("[chat-batch] disabled. 메시지마다 즉시 전송으로 동작한다");
-            return;
-        }
-
         long windowMs = properties.windowMs();
 
         // fixedRate 로 바꾸지 않는다. 밀린 실행이 몰려 부하를 키운다.
         scheduler.scheduleWithFixedDelay(this::flush, windowMs, windowMs, TimeUnit.MILLISECONDS);
 
-        log.info("[chat-batch] enabled. windowMs={}, maxBatchSize={}", windowMs, properties.maxBatchSize());
+        log.info("[chat-batch] started. windowMs={}, maxBatchSize={}", windowMs, properties.maxBatchSize());
     }
 
     public void flush() {

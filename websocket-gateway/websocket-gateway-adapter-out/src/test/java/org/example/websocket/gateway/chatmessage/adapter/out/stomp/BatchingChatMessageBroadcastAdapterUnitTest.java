@@ -20,7 +20,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,10 +39,10 @@ class BatchingChatMessageBroadcastAdapterUnitTest {
         registry = new SimpleMeterRegistry();
     }
 
-    private BatchingChatMessageBroadcastAdapter sut(boolean enabled, int maxBatchSize) {
+    private BatchingChatMessageBroadcastAdapter sut(int maxBatchSize) {
         return new BatchingChatMessageBroadcastAdapter(
                 delegate,
-                new ChatMessageBatchProperties(enabled, 100L, maxBatchSize),
+                new ChatMessageBatchProperties(100L, maxBatchSize),
                 registry
         );
     }
@@ -72,7 +71,7 @@ class BatchingChatMessageBroadcastAdapterUnitTest {
     void doesNotSendBeforeFlush() {
         // given
         when(delegate.hasLocalSubscriber(anyString())).thenReturn(true);
-        BatchingChatMessageBroadcastAdapter sut = sut(true, 300);
+        BatchingChatMessageBroadcastAdapter sut = sut(300);
 
         // when
         boolean accepted = sut.broadcast(command(roomId, "m1", "첫 번째"), "tx-1");
@@ -87,7 +86,7 @@ class BatchingChatMessageBroadcastAdapterUnitTest {
     void batchesInArrivalOrder() {
         // given
         when(delegate.hasLocalSubscriber(anyString())).thenReturn(true);
-        BatchingChatMessageBroadcastAdapter sut = sut(true, 300);
+        BatchingChatMessageBroadcastAdapter sut = sut(300);
 
         sut.broadcast(command(roomId, "m1", "첫 번째"), "tx-1");
         sut.broadcast(command(roomId, "m2", "두 번째"), "tx-2");
@@ -109,7 +108,7 @@ class BatchingChatMessageBroadcastAdapterUnitTest {
     void separatesRooms() {
         // given
         when(delegate.hasLocalSubscriber(anyString())).thenReturn(true);
-        BatchingChatMessageBroadcastAdapter sut = sut(true, 300);
+        BatchingChatMessageBroadcastAdapter sut = sut(300);
 
         sut.broadcast(command(roomId, "m1", "방1"), "tx-1");
         sut.broadcast(command(otherRoomId, "m2", "방2"), "tx-2");
@@ -128,7 +127,7 @@ class BatchingChatMessageBroadcastAdapterUnitTest {
     void flushesImmediatelyOnOverflow() {
         // given
         when(delegate.hasLocalSubscriber(anyString())).thenReturn(true);
-        BatchingChatMessageBroadcastAdapter sut = sut(true, 2);
+        BatchingChatMessageBroadcastAdapter sut = sut(2);
 
         // when — 두 번째 적재에서 상한에 닿는다
         sut.broadcast(command(roomId, "m1", "첫 번째"), "tx-1");
@@ -146,7 +145,7 @@ class BatchingChatMessageBroadcastAdapterUnitTest {
     void skipsWhenNoLocalMember() {
         // given
         when(delegate.hasLocalSubscriber(anyString())).thenReturn(false);
-        BatchingChatMessageBroadcastAdapter sut = sut(true, 300);
+        BatchingChatMessageBroadcastAdapter sut = sut(300);
 
         // when
         boolean accepted = sut.broadcast(command(roomId, "m1", "안 감"), "tx-1");
@@ -162,7 +161,7 @@ class BatchingChatMessageBroadcastAdapterUnitTest {
     void doesNotResendAfterFlush() {
         // given
         when(delegate.hasLocalSubscriber(anyString())).thenReturn(true);
-        BatchingChatMessageBroadcastAdapter sut = sut(true, 300);
+        BatchingChatMessageBroadcastAdapter sut = sut(300);
         sut.broadcast(command(roomId, "m1", "한 번"), "tx-1");
         sut.flush();
 
@@ -173,32 +172,4 @@ class BatchingChatMessageBroadcastAdapterUnitTest {
         verify(delegate).broadcastBatch(anyString(), any(), anyString());
     }
 
-    @Test
-    @DisplayName("배칭을 끄면 즉시 delegate 로 위임한다")
-    void delegatesImmediatelyWhenDisabled() {
-        // given
-        BatchingChatMessageBroadcastAdapter sut = sut(false, 300);
-        ChatMessageBroadcastCommand command = command(roomId, "m1", "즉시");
-
-        // when
-        sut.broadcast(command, "tx-1");
-
-        // then
-        verify(delegate).broadcast(command, "tx-1");
-        verify(delegate, never()).broadcastBatch(anyString(), any(), anyString());
-    }
-
-    @Test
-    @DisplayName("배칭을 끄면 스케줄러를 띄우지 않는다")
-    void doesNotStartSchedulerWhenDisabled() {
-        // given
-        BatchingChatMessageBroadcastAdapter sut = sut(false, 300);
-
-        // when
-        sut.start();
-        sut.flush();
-
-        // then
-        verifyNoInteractions(delegate);
-    }
 }
