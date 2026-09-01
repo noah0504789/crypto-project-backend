@@ -123,9 +123,21 @@ chat:
     # 인기방 zset 재구축(3시간마다)
     popularity-refresh:
       cron: "0 0 */3 * * *"
+    # 방 activity projection 반영 주기. flush 간격이 곧 "내 방 목록이 최신으로 올라오기까지"
+    # 허용하는 지연이다. reclaim 은 claim 한 채 죽은 방을 Mongo 기준으로 회수한다.
+    room-activity-projection:
+      flush-delay-ms: 500
+      reclaim-delay-ms: 10000
   popular-room:
     # Redis 인기방 zset 에 담는 상위 방 개수
     index-size: 100
+  room-activity-projection:
+    # flush 한 번에 가져오는 dirty 방 수 상한
+    claim-batch-size: 200
+    # claim 한 방을 처리하지 못한 채 죽었다고 보는 기준. 지나면 Mongo 기준 재생성으로 회수한다
+    claim-timeout-ms: 30000
+    # 회수 한 번에 처리하는 방 수 상한
+    reclaim-batch-size: 200
   retry:
     # Outbox/Mongo 일시 실패 재시도(@Retryable). 소진 시 DLQ 로 전이
     max-attempts: 3

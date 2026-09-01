@@ -13,6 +13,8 @@ public enum RedisKey {
     CHAT_ROOM_TITLE_UNIQUE_INDEX("{chat}:room:title:idx", 0),
     CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX("{chat}:popular-room:%s", 1),
     CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX("{chat}:active-room:%s", 1),
+    CHAT_ROOM_ACTIVITY_RECENT_INDEX("{chat}:room:activity:recent", 0),
+    CHAT_ROOM_ACTIVITY_INFLIGHT_INDEX("{chat}:room:activity:inflight", 0),
 
     CHAT_MESSAGE_INFO("{chat}:message:%s", 1),
     CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX("{chat}:room:%s:message-access", 1),
@@ -45,12 +47,8 @@ public enum RedisKey {
     }
 
     public String extractIdentifier(String key) {
-        validateExtractable();
-
-        int placeholderIndex = pattern.indexOf("%s");
-
-        String prefix = pattern.substring(0, placeholderIndex);
-        String suffix = pattern.substring(placeholderIndex + 2);
+        String prefix = identifierPrefix();
+        String suffix = identifierSuffix();
 
         if (!key.startsWith(prefix) || !key.endsWith(suffix)) {
             throw new InfrastructureException(
@@ -59,6 +57,23 @@ public enum RedisKey {
         }
 
         return key.substring(prefix.length(), key.length() - suffix.length());
+    }
+
+    /**
+     * 식별자 앞뒤 고정 문자열. Lua 안에서 멤버마다 키를 조립해야 하는 경우
+     * (예: 방 하나의 projection 이 멤버 N 명의 key 를 만든다) 패턴 정의처를 이 enum 하나로
+     * 유지하기 위해 스크립트에 넘긴다.
+     */
+    public String identifierPrefix() {
+        validateExtractable();
+
+        return pattern.substring(0, pattern.indexOf("%s"));
+    }
+
+    public String identifierSuffix() {
+        validateExtractable();
+
+        return pattern.substring(pattern.indexOf("%s") + 2);
     }
 
     private void validateArgCount(String... args) {

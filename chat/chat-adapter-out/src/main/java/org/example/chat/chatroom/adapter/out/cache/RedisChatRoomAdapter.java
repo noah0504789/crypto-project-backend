@@ -45,6 +45,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
     private final RedisScript<Boolean> invalidateChatRoomActivity_lua;
     private final RedisScript<Boolean> invalidateChatRoomInfo_lua;
     private final RedisScript<Boolean> rebuildPopularRoomIndex_lua;
+    private final RedisScript<Boolean> updateChatRoomLastReadSeq_lua;
 
     public RedisChatRoomAdapter(
             @Qualifier("masterHashRedisTemplate") RedisTemplate<String, String> masterHashRedisTemplate,
@@ -64,6 +65,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
             @Qualifier("invalidateChatRoomActivity_lua") RedisScript<Boolean> invalidateChatRoomActivity_lua,
             @Qualifier("invalidateChatRoomInfo_lua") RedisScript<Boolean> invalidateChatRoomInfo_lua,
             @Qualifier("rebuildPopularRoomIndex_lua") RedisScript<Boolean> rebuildPopularRoomIndex_lua,
+            @Qualifier("updateChatRoomLastReadSeq_lua") RedisScript<Boolean> updateChatRoomLastReadSeq_lua,
             ChatCacheProperties chatCacheProperties
     ) {
         this.chatRoomCacheTtlSeconds = chatCacheProperties.roomTtlSeconds();
@@ -84,6 +86,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
         this.invalidateChatRoomActivity_lua = invalidateChatRoomActivity_lua;
         this.invalidateChatRoomInfo_lua = invalidateChatRoomInfo_lua;
         this.rebuildPopularRoomIndex_lua = rebuildPopularRoomIndex_lua;
+        this.updateChatRoomLastReadSeq_lua = updateChatRoomLastReadSeq_lua;
     }
 
     @Override
@@ -406,7 +409,13 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
     @Override
     public void updateLastReadSeq(String id, String memberId, Long lastReadSeq) {
         String lastReadKey = CHAT_ROOM_LAST_READ_SEQ.keyFor(id);
-        hash.update(lastReadKey, memberId, String.valueOf(lastReadSeq));
+
+        List<String> keys = List.of(lastReadKey);
+        List<String> args = List.of(memberId, String.valueOf(lastReadSeq == null ? 0L : lastReadSeq));
+
+        if (!masterHashRedisTemplate.execute(updateChatRoomLastReadSeq_lua, keys, args.toArray())) {
+            throw new ChatCacheException("[redis] chatroom updateLastReadSeq() failed!");
+        }
     }
 
     @Override
