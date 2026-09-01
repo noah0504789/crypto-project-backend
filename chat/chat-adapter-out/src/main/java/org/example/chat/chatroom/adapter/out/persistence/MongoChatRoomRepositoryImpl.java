@@ -5,7 +5,10 @@ import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.common.time.Clock;
 import org.springframework.data.mongodb.MongoExpression;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.mongodb.core.aggregation.AggregationExpression;
 import org.springframework.data.mongodb.core.aggregation.AggregationUpdate;
+import org.springframework.data.mongodb.core.aggregation.ArithmeticOperators;
+import org.springframework.data.mongodb.core.aggregation.ConditionalOperators;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
@@ -133,17 +136,21 @@ public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCusto
             Instant lastMessageCreatedAt
     ) {
         Query query = new Query(Criteria.where("_id").is(roomId));
+        AggregationExpression currentMessageSequence = ConditionalOperators
+                .ifNull("latestMessageSeq")
+                .thenValueOf(ConditionalOperators.ifNull("msgCnt").then(0));
+        AggregationExpression nextMessageSequence = ArithmeticOperators
+                .valueOf(currentMessageSequence)
+                .add(count);
+        AggregationExpression nextMessageCount = ArithmeticOperators
+                .valueOf(ConditionalOperators.ifNull("msgCnt").then(0))
+                .add(count);
+
         AggregationUpdate update = AggregationUpdate.update()
                 .set("latestMessageSeq")
-                .toValue(MongoExpression.create(
-                        "{ $add: [ { $ifNull: [ '$latestMessageSeq', { $ifNull: [ '$msgCnt', 0 ] } ] }, ?0 ] }",
-                        count
-                ))
+                .toValue(nextMessageSequence)
                 .set("msgCnt")
-                .toValue(MongoExpression.create(
-                        "{ $add: [ { $ifNull: [ '$msgCnt', 0 ] }, ?0 ] }",
-                        count
-                ))
+                .toValue(nextMessageCount)
                 .set("lastMsgCreatedAt")
                 .toValue(MongoExpression.create(
                         "{ $max: [ '$lastMsgCreatedAt', ?0 ] }",
