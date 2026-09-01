@@ -46,6 +46,8 @@ public interface ChatRoomPersistencePort {
 
     ChatRoom updateRoomAndReturn(String id, Map<String, Object> updates);
 
+    long advanceMessageWatermark(String id, int count, long lastMessageCreatedAtMs);
+
     void incrementMessageCount(String id, int count);
 
     void decrementMessageCount(String id);

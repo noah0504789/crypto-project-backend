@@ -16,6 +16,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.time.Instant;
 
 @Repository
 public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCustom {
@@ -121,6 +122,26 @@ public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCusto
                 update,
                 MongoChatRoom.class
         );
+    }
+
+    @Override
+    public Optional<MongoChatRoom> advanceMessageWatermark(
+            ObjectId roomId,
+            int count,
+            Instant lastMessageCreatedAt
+    ) {
+        Query query = new Query(Criteria.where("_id").is(roomId));
+        Update update = new Update()
+                .inc("msgCnt", count)
+                .inc("latestMessageSeq", count)
+                .max("lastMsgCreatedAt", lastMessageCreatedAt);
+
+        return Optional.ofNullable(primaryMongoTemplate.findAndModify(
+                query,
+                update,
+                FindAndModifyOptions.options().returnNew(true),
+                MongoChatRoom.class
+        ));
     }
 
     @Override

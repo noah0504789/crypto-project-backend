@@ -91,7 +91,7 @@ class ChatMessageEventServiceUnitTest {
         }
 
         @Test
-        @DisplayName("채팅 메시지 저장 이벤트를 처리하면 메시지를 저장하고 채팅방 메시지 수와 멤버십 점수를 갱신한다")
+        @DisplayName("채팅 메시지 저장 이벤트를 처리하면 메시지를 저장하고 채팅방 watermark를 갱신한다")
         void handle_shouldSaveMessageAndUpdateRoomState_whenPersistEvent() {
             // given
             ChatMessage message = chatMessage();
@@ -120,14 +120,7 @@ class ChatMessageEventServiceUnitTest {
                     ));
 
             inOrder.verify(chatRoomPersistencePort)
-                    .incrementMessageCount(roomId, 1);
-
-            inOrder.verify(chatRoomPersistencePort)
-                    .updateMembershipScores(
-                            eq(roomId),
-                            eq(memberIds),
-                            eq(message.createdAtEpochMillis())
-                    );
+                    .advanceMessageWatermark(roomId, 1, message.createdAtEpochMillis());
         }
 
         @Test
@@ -183,8 +176,8 @@ class ChatMessageEventServiceUnitTest {
         }
 
         @Test
-        @DisplayName("채팅방 메시지 수 증가 중 예외가 발생하면 멤버십 점수 갱신을 수행하지 않고 예외를 전파한다")
-        void handle_shouldStopWhenIncrementMessageCountFails() {
+        @DisplayName("채팅방 watermark 증가 중 예외가 발생하면 예외를 전파한다")
+        void handle_shouldStopWhenAdvanceMessageWatermarkFails() {
             // given
             RuntimeException exception =
                     new RuntimeException("increment message count failed");
@@ -199,7 +192,7 @@ class ChatMessageEventServiceUnitTest {
 
             doThrow(exception)
                     .when(chatRoomPersistencePort)
-                    .incrementMessageCount(roomId, 1);
+                    .advanceMessageWatermark(roomId, 1, message.createdAtEpochMillis());
 
             // when & then
             assertThatThrownBy(() -> sut.handle(event, txId))
@@ -214,7 +207,7 @@ class ChatMessageEventServiceUnitTest {
                     .save(any(ChatMessage.class));
 
             inOrder.verify(chatRoomPersistencePort)
-                    .incrementMessageCount(roomId, 1);
+                    .advanceMessageWatermark(roomId, 1, message.createdAtEpochMillis());
 
             then(chatRoomPersistencePort)
                     .should(never())
@@ -261,7 +254,7 @@ class ChatMessageEventServiceUnitTest {
     class HandleBatchChatMessagePersistEventTest {
 
         @Test
-        @DisplayName("신규 메시지만 방 카운터와 멤버십 갱신에 반영한다")
+        @DisplayName("신규 메시지만 방 watermark 갱신에 반영한다")
         void handleBatch_shouldApplyRoomUpdatesOnlyToInsertedMessages() {
             // given
             doAnswer(invocation -> {
@@ -272,11 +265,6 @@ class ChatMessageEventServiceUnitTest {
                 invocation.<Runnable>getArgument(0).run();
                 return null;
             }).when(metrics).recordRoomCounter(any(Runnable.class));
-            doAnswer(invocation -> {
-                invocation.<Runnable>getArgument(0).run();
-                return null;
-            }).when(metrics).recordMembership(any(Runnable.class));
-
             ChatMessage secondMessage = ChatMessage.rehydrate(
                     "100000000000000000000002",
                     roomId,
@@ -297,12 +285,12 @@ class ChatMessageEventServiceUnitTest {
 
             // then
             then(chatMessagePersistencePort).should().saveAll(anySet());
-            then(chatRoomPersistencePort).should().incrementMessageCount(roomId, 1);
-            then(chatRoomPersistencePort).should().updateMembershipScores(
+            then(chatRoomPersistencePort).should().advanceMessageWatermark(
                     roomId,
-                    Set.of(memberId1, memberId2),
+                    1,
                     secondMessage.createdAtEpochMillis()
             );
+            then(chatRoomPersistencePort).should(never()).updateMembershipScores(any(), any(), anyLong());
             then(metrics).should().recordDuplicateMessage();
         }
     }

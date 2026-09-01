@@ -18,8 +18,11 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.index.Index;
 import org.springframework.data.mongodb.core.index.PartialIndexFilter;
 import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.test.context.ContextConfiguration;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -234,6 +237,27 @@ class MongoChatRoomRepositoryImplIntegrationTest {
             // then
             MongoChatRoom found = sut.findById(roomId1).orElseThrow();
             assertThat(found.getMsgCnt()).isEqualTo(2L);
+        }
+
+        @Test
+        @DisplayName("advanceMessageWatermark는 msgCnt와 latestMessageSeq를 함께 증가시키고 최신 시각을 유지한다")
+        void advanceMessageWatermark() {
+            // given
+            saveRoom(roomId1, "워터마크방", 5);
+            mongoTemplate.updateFirst(
+                    new Query(Criteria.where("_id").is(roomId1)),
+                    new Update().set("latestMessageSeq", 5L),
+                    MongoChatRoom.class
+            );
+            Instant latest = Instant.parse("2026-01-01T00:00:00Z");
+
+            // when
+            MongoChatRoom updated = sut.advanceMessageWatermark(roomId1, 3, latest).orElseThrow();
+
+            // then
+            assertThat(updated.getMsgCnt()).isEqualTo(8L);
+            assertThat(updated.getLatestMessageSeq()).isEqualTo(8L);
+            assertThat(updated.getLastMsgCreatedAt()).isEqualTo(latest);
         }
 
         @Test

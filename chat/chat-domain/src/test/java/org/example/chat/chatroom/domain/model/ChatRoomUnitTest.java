@@ -929,6 +929,29 @@ class ChatRoomUnitTest {
         }
 
         @Test
+        @DisplayName("보관 메시지 수와 무관하게 latestMessageSeq를 기준으로 읽지 않음을 판단한다")
+        void hasUnread_shouldUseLatestMessageSeq() {
+            // given
+            ChatRoom chatRoom = ChatRoom.rehydrate(
+                    ROOM_ID,
+                    HOST_ID,
+                    "title",
+                    "description",
+                    category,
+                    Set.of(HOST_ID),
+                    5L,
+                    20L,
+                    LocalDateTime.now()
+            );
+
+            // when
+            boolean result = chatRoom.hasUnread(10L);
+
+            // then
+            assertThat(result).isTrue();
+        }
+
+        @Test
         @DisplayName("lastReadSeq가 null이면 0으로 보고 읽지 않은 메시지 여부를 판단한다")
         void hasUnread_shouldTreatNullLastReadSeqAsZero() {
             // given

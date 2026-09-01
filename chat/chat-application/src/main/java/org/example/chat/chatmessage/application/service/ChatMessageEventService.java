@@ -88,14 +88,11 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
         recordDuplicates(events.size() - insertedIds.size());
 
         RoomBatch roomBatch = groupByRoom(insertedIds, eventsById, domainsById);
-        recordRoomCounters(roomBatch.messageIdsByRoom());
-        recordMemberships(roomBatch.latestEventByRoom(), domainsById);
+        recordRoomWatermarks(roomBatch.latestEventByRoom(), roomBatch.messageIdsByRoom(), domainsById);
         metrics.recordCommittedBatch(
                 insertedIds.size(),
                 roomBatch.messageIdsByRoom().size(),
-                roomBatch.latestEventByRoom().values().stream()
-                        .mapToInt(event -> event.getMemberIds().size())
-                        .sum()
+                0
         );
     }
 
@@ -150,22 +147,17 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
                 .compare(left, right) >= 0 ? left : right;
     }
 
-    private void recordRoomCounters(Map<String, List<String>> messageIdsByRoom) {
-        messageIdsByRoom.forEach((roomId, messageIds) -> metrics.recordRoomCounter(
-                () -> chatRoomPersistencePort.incrementMessageCount(roomId, messageIds.size())
-        ));
-    }
-
-    private void recordMemberships(
+    private void recordRoomWatermarks(
             Map<String, ChatMessagePersistEvent> latestEventByRoom,
+            Map<String, List<String>> messageIdsByRoom,
             Map<String, ChatMessage> domainsById
     ) {
         latestEventByRoom.forEach((roomId, event) -> {
             ChatMessage domain = domainsById.get(event.getPayload().id());
-            metrics.recordMembership(
-                    () -> chatRoomPersistencePort.updateMembershipScores(
+            metrics.recordRoomCounter(
+                    () -> chatRoomPersistencePort.advanceMessageWatermark(
                             roomId,
-                            event.getMemberIds(),
+                            messageIdsByRoom.get(roomId).size(),
                             domain.createdAtEpochMillis()
                     )
             );
@@ -189,15 +181,10 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
             return;
         }
 
-        metrics.recordRoomCounter(() -> chatRoomPersistencePort.incrementMessageCount(roomId, 1));
-        metrics.recordMembership(
-                () -> chatRoomPersistencePort.updateMembershipScores(
-                        roomId,
-                        event.getMemberIds(),
-                        domain.createdAtEpochMillis()
-                )
+        metrics.recordRoomCounter(
+                () -> chatRoomPersistencePort.advanceMessageWatermark(roomId, 1, domain.createdAtEpochMillis())
         );
-        metrics.recordCommittedBatch(1, 1, event.getMemberIds().size());
+        metrics.recordCommittedBatch(1, 1, 0);
     }
 
     @Recover
@@ -229,7 +216,7 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
             runRecover(
                     txId,
                     e,
-                    () -> publishPersistDlqEvent(domain, event.getMemberIds(), e.getMessage()),
+                    () -> publishPersistDlqEvent(domain, e.getMessage()),
                     event.getPayload()
             );
         });
@@ -258,11 +245,11 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
         }
     }
 
-    private void publishPersistDlqEvent(ChatMessage domain, Set<String> memberIds, String errorMessage) {
+    private void publishPersistDlqEvent(ChatMessage domain, String errorMessage) {
         ChatMessagePayload chatMessagePayload = ChatMessagePayloadMapper.fromDomain(domain);
         ChatMessageDlqEventList chatMessageDlqEventList =
                 ChatMessageDlqEventList.of(
-                    new ChatMessagePersistDlqEvent(chatMessagePayload, memberIds, errorMessage)
+                    new ChatMessagePersistDlqEvent(chatMessagePayload, errorMessage)
                 );
 
         dlqEventListPublishPort.publish(chatMessageDlqEventList);

@@ -27,6 +27,7 @@ public class ChatRoom {
     private ChatRoomCategory category;
     private Set<String> memberIds;
     private Long msgCnt;
+    private Long latestMessageSeq;
     private String lastMsgId;
     private String lastMsgContent;
     private Instant lastMsgCreatedAt;
@@ -47,6 +48,7 @@ public class ChatRoom {
                 .description(description)
                 .category(category)
                 .msgCnt(0L)
+                .latestMessageSeq(0L)
                 .memberIds(new HashSet<>(Set.of(hostId)))
                 .createdAt(createdAt)
                 .build();
@@ -56,6 +58,7 @@ public class ChatRoom {
         return ChatRoom.builder()
                 .id(id)
                 .msgCnt(0L)
+                .latestMessageSeq(0L)
                 .category(category)
                 .createdAt(createdAt)
                 .build();
@@ -71,6 +74,20 @@ public class ChatRoom {
             Long msgCnt,
             LocalDateTime createdAt
     ) {
+        return rehydrate(id, hostId, title, description, category, memberIds, msgCnt, msgCnt, createdAt);
+    }
+
+    public static ChatRoom rehydrate(
+            String id,
+            String hostId,
+            String title,
+            String description,
+            ChatRoomCategory category,
+            Set<String> memberIds,
+            Long msgCnt,
+            Long latestMessageSeq,
+            LocalDateTime createdAt
+    ) {
         return ChatRoom.builder()
                 .id(id)
                 .hostId(hostId)
@@ -79,6 +96,7 @@ public class ChatRoom {
                 .category(category)
                 .memberIds(memberIds == null ? new HashSet<>() : new HashSet<>(memberIds))
                 .msgCnt(msgCnt)
+                .latestMessageSeq(latestMessageSeq == null ? 0L : latestMessageSeq)
                 .createdAt(createdAt)
                 .build();
     }
@@ -96,6 +114,26 @@ public class ChatRoom {
             Instant lastMsgCreatedAt,
             LocalDateTime createdAt
     ) {
+        return rehydrateWithLatest(
+                id, hostId, title, description, category, memberIds, msgCnt, msgCnt,
+                lastMsgId, lastMsgContent, lastMsgCreatedAt, createdAt
+        );
+    }
+
+    public static ChatRoom rehydrateWithLatest(
+            String id,
+            String hostId,
+            String title,
+            String description,
+            ChatRoomCategory category,
+            Set<String> memberIds,
+            Long msgCnt,
+            Long latestMessageSeq,
+            String lastMsgId,
+            String lastMsgContent,
+            Instant lastMsgCreatedAt,
+            LocalDateTime createdAt
+    ) {
         return ChatRoom.builder()
                 .id(id)
                 .hostId(hostId)
@@ -104,6 +142,7 @@ public class ChatRoom {
                 .category(category)
                 .memberIds(memberIds == null ? new HashSet<>() : new HashSet<>(memberIds))
                 .msgCnt(msgCnt)
+                .latestMessageSeq(latestMessageSeq == null ? 0L : latestMessageSeq)
                 .lastMsgId(lastMsgId == null ? "" : lastMsgId)
                 .lastMsgContent(lastMsgContent == null ? "" : lastMsgContent)
                 .lastMsgCreatedAt(lastMsgCreatedAt)
@@ -193,9 +232,9 @@ public class ChatRoom {
 
     public boolean hasUnread(Long lastReadSeq) {
         if (lastReadSeq == null) lastReadSeq = 0L;
-        if (msgCnt == null) return false;
+        long latestSeq = latestMessageSeq == null ? (msgCnt == null ? 0L : msgCnt) : latestMessageSeq;
 
-        return lastReadSeq < msgCnt;
+        return lastReadSeq < latestSeq;
     }
 
     @Override
