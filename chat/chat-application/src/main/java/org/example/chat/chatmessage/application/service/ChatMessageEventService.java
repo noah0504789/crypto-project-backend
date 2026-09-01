@@ -92,7 +92,7 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
                 .collect(Collectors.toMap(ChatMessage::getId, domain -> domain));
         Set<String> insertedIds = new HashSet<>();
         metrics.recordMessageInsert(() -> insertedIds.addAll(
-                chatMessagePersistencePort.saveAll(List.copyOf(domainByMessageId.values()))
+                chatMessagePersistencePort.saveAll(Set.copyOf(domainByMessageId.values()))
         ));
 
         long duplicateCount = events.size() - insertedIds.size();

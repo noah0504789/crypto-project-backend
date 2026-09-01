@@ -80,7 +80,7 @@ public class MongoChatMessageAdapter implements ChatMessagePersistencePort {
     }
 
     @Override
-    public Set<String> saveAll(List<ChatMessage> domains) {
+    public Set<String> saveAll(Set<ChatMessage> domains) {
         if (domains == null || domains.isEmpty()) {
             return Set.of();
         }

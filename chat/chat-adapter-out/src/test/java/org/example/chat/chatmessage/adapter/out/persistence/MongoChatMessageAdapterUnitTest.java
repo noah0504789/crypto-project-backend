@@ -327,7 +327,7 @@ class MongoChatMessageAdapterUnitTest {
                     .willReturn(Set.of(messageId1));
 
             // when
-            Set<String> insertedIds = sut.saveAll(List.of(first, second));
+            Set<String> insertedIds = sut.saveAll(Set.of(first, second));
 
             // then
             assertThat(insertedIds).containsExactly(MESSAGE_ID_2);

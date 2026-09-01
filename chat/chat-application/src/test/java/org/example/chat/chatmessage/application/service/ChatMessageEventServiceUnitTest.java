@@ -289,14 +289,14 @@ class ChatMessageEventServiceUnitTest {
                     ChatMessagePayloadMapper.fromDomain(secondMessage),
                     Set.of(memberId1, memberId2)
             );
-            given(chatMessagePersistencePort.saveAll(anyList()))
+            given(chatMessagePersistencePort.saveAll(anySet()))
                     .willReturn(Set.of(secondMessage.getId()));
 
             // when
             sut.handleBatch(List.of(firstEvent, secondEvent), txId);
 
             // then
-            then(chatMessagePersistencePort).should().saveAll(anyList());
+            then(chatMessagePersistencePort).should().saveAll(anySet());
             then(chatRoomPersistencePort).should().incrementMessageCount(roomId, 1);
             then(chatRoomPersistencePort).should().updateMembershipScores(
                     roomId,

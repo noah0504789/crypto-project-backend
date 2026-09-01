@@ -10,7 +10,7 @@ public interface ChatMessagePersistencePort {
 
     ChatMessage save(ChatMessage chatMessage);
 
-    Set<String> saveAll(List<ChatMessage> chatMessages);
+    Set<String> saveAll(Set<ChatMessage> chatMessages);
 
     boolean hardDeleteById(String id);
 
