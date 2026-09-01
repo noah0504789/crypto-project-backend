@@ -1,0 +1,450 @@
+1788245696 gateway chat_badge_coalesced_total{instanceId="13268adc6faf"} 5867.0
+1788245696 gateway chat_badge_direct_failed_total{instanceId="13268adc6faf"} 56549.0
+1788245696 gateway chat_badge_direct_sent_total{instanceId="13268adc6faf"} 22877.0
+1788245696 gateway chat_badge_flush_seconds_count{instanceId="13268adc6faf"} 6344
+1788245696 gateway chat_badge_flush_seconds_sum{instanceId="13268adc6faf"} 8.068514376
+1788245696 gateway chat_badge_flush_seconds_max{instanceId="13268adc6faf"} 0.001794383
+1788245696 gateway chat_badge_flushed_total{instanceId="13268adc6faf"} 263.0
+1788245696 gateway chat_badge_pending{instanceId="13268adc6faf"} 0.0
+1788245696 gateway chat_message_ack_direct_failed_total{instanceId="13268adc6faf"} 0.0
+1788245696 gateway chat_message_ack_direct_sent_total{instanceId="13268adc6faf"} 6540.0
+1788245696 gateway chat_message_batch_buffered_total{instanceId="13268adc6faf"} 6130.0
+1788245696 gateway chat_message_batch_frames_total{instanceId="13268adc6faf"} 486.0
+1788245696 gateway chat_message_batch_overflow_total{instanceId="13268adc6faf"} 0.0
+1788245696 gateway chat_message_batch_pending_rooms{instanceId="13268adc6faf"} 0.0
+1788245696 gateway chat_message_batch_size_count{instanceId="13268adc6faf"} 486
+1788245696 gateway chat_message_batch_size_sum{instanceId="13268adc6faf"} 6130.0
+1788245696 gateway chat_message_batch_size_max{instanceId="13268adc6faf"} 0.0
+1788245696 gateway executor_active_threads{instanceId="13268adc6faf",name="brokerChannelExecutor"} 0.0
+1788245696 gateway executor_active_threads{instanceId="13268adc6faf",name="chat.message.ack"} NaN
+1788245696 gateway executor_active_threads{instanceId="13268adc6faf",name="chatMessageAckExecutor"} 0.0
+1788245696 gateway executor_active_threads{instanceId="13268adc6faf",name="clientInboundChannelExecutor"} 0.0
+1788245696 gateway executor_active_threads{instanceId="13268adc6faf",name="clientOutboundChannelExecutor"} 0.0
+1788245696 gateway executor_active_threads{instanceId="13268adc6faf",name="messageBrokerTaskScheduler"} 0.0
+1788245696 gateway executor_active_threads{instanceId="13268adc6faf",name="stomp.broker"} NaN
+1788245696 gateway executor_active_threads{instanceId="13268adc6faf",name="stomp.inbound"} NaN
+1788245696 gateway executor_active_threads{instanceId="13268adc6faf",name="stomp.outbound"} NaN
+1788245696 gateway executor_active_threads{instanceId="13268adc6faf",name="stompBrokerExecutor"} 0.0
+1788245696 gateway executor_active_threads{instanceId="13268adc6faf",name="stompInboundExecutor"} 0.0
+1788245696 gateway executor_active_threads{instanceId="13268adc6faf",name="stompOutboundExecutor"} 0.0
+1788245696 gateway executor_active_threads{instanceId="13268adc6faf",name="taskScheduler"} 0.0
+1788245696 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="brokerChannelExecutor"} 1448.0
+1788245696 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="chat.message.ack"} 0.0
+1788245696 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="chatMessageAckExecutor"} 10628.0
+1788245696 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="clientInboundChannelExecutor"} 21408.0
+1788245696 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="clientOutboundChannelExecutor"} 74057.0
+1788245696 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="messageBrokerTaskScheduler"} 129.0
+1788245696 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="stomp.broker"} 0.0
+1788245696 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="stomp.inbound"} 0.0
+1788245696 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="stomp.outbound"} 0.0
+1788245696 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="stompBrokerExecutor"} 1448.0
+1788245696 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="stompInboundExecutor"} 21408.0
+1788245696 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="stompOutboundExecutor"} 74057.0
+1788245696 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="taskScheduler"} 0.0
+1788245696 gateway executor_idle_seconds_count{instanceId="13268adc6faf",name="chat.message.ack"} 0
+1788245696 gateway executor_idle_seconds_sum{instanceId="13268adc6faf",name="chat.message.ack"} 0.0
+1788245696 gateway executor_idle_seconds_count{instanceId="13268adc6faf",name="stomp.broker"} 0
+1788245696 gateway executor_idle_seconds_sum{instanceId="13268adc6faf",name="stomp.broker"} 0.0
+1788245696 gateway executor_idle_seconds_count{instanceId="13268adc6faf",name="stomp.inbound"} 0
+1788245696 gateway executor_idle_seconds_sum{instanceId="13268adc6faf",name="stomp.inbound"} 0.0
+1788245696 gateway executor_idle_seconds_count{instanceId="13268adc6faf",name="stomp.outbound"} 0
+1788245696 gateway executor_idle_seconds_sum{instanceId="13268adc6faf",name="stomp.outbound"} 0.0
+1788245696 gateway executor_idle_seconds_max{instanceId="13268adc6faf",name="chat.message.ack"} 0.0
+1788245696 gateway executor_idle_seconds_max{instanceId="13268adc6faf",name="stomp.broker"} 0.0
+1788245696 gateway executor_idle_seconds_max{instanceId="13268adc6faf",name="stomp.inbound"} 0.0
+1788245696 gateway executor_idle_seconds_max{instanceId="13268adc6faf",name="stomp.outbound"} 0.0
+1788245696 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="brokerChannelExecutor"} 32.0
+1788245696 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="chat.message.ack"} NaN
+1788245696 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="chatMessageAckExecutor"} 16.0
+1788245696 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="clientInboundChannelExecutor"} 32.0
+1788245696 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="clientOutboundChannelExecutor"} 64.0
+1788245696 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="messageBrokerTaskScheduler"} 12.0
+1788245696 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="stomp.broker"} NaN
+1788245696 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="stomp.inbound"} NaN
+1788245696 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="stomp.outbound"} NaN
+1788245696 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="stompBrokerExecutor"} 32.0
+1788245696 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="stompInboundExecutor"} 32.0
+1788245696 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="stompOutboundExecutor"} 64.0
+1788245696 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="taskScheduler"} 1.0
+1788245696 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="brokerChannelExecutor"} 32.0
+1788245696 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="chat.message.ack"} NaN
+1788245696 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="chatMessageAckExecutor"} 16.0
+1788245696 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="clientInboundChannelExecutor"} 32.0
+1788245696 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="clientOutboundChannelExecutor"} 64.0
+1788245696 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="messageBrokerTaskScheduler"} 2.147483647E9
+1788245696 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="stomp.broker"} NaN
+1788245696 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="stomp.inbound"} NaN
+1788245696 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="stomp.outbound"} NaN
+1788245696 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="stompBrokerExecutor"} 32.0
+1788245696 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="stompInboundExecutor"} 32.0
+1788245696 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="stompOutboundExecutor"} 64.0
+1788245696 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="taskScheduler"} 2.147483647E9
+1788245696 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="brokerChannelExecutor"} 32.0
+1788245696 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="chat.message.ack"} NaN
+1788245696 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="chatMessageAckExecutor"} 16.0
+1788245696 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="clientInboundChannelExecutor"} 32.0
+1788245696 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="clientOutboundChannelExecutor"} 64.0
+1788245696 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="messageBrokerTaskScheduler"} 12.0
+1788245696 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="stomp.broker"} NaN
+1788245696 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="stomp.inbound"} NaN
+1788245696 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="stomp.outbound"} NaN
+1788245696 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="stompBrokerExecutor"} 32.0
+1788245696 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="stompInboundExecutor"} 32.0
+1788245696 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="stompOutboundExecutor"} 64.0
+1788245696 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="taskScheduler"} 0.0
+1788245696 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="brokerChannelExecutor"} 3000.0
+1788245696 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="chat.message.ack"} NaN
+1788245696 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="chatMessageAckExecutor"} 2000.0
+1788245696 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="clientInboundChannelExecutor"} 600.0
+1788245696 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="clientOutboundChannelExecutor"} 30000.0
+1788245696 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="messageBrokerTaskScheduler"} 2.147483647E9
+1788245696 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="stomp.broker"} NaN
+1788245696 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="stomp.inbound"} NaN
+1788245696 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="stomp.outbound"} NaN
+1788245696 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="stompBrokerExecutor"} 3000.0
+1788245696 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="stompInboundExecutor"} 600.0
+1788245696 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="stompOutboundExecutor"} 30000.0
+1788245696 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="taskScheduler"} 2.147483647E9
+1788245696 gateway executor_queued_tasks{instanceId="13268adc6faf",name="brokerChannelExecutor"} 0.0
+1788245696 gateway executor_queued_tasks{instanceId="13268adc6faf",name="chat.message.ack"} NaN
+1788245696 gateway executor_queued_tasks{instanceId="13268adc6faf",name="chatMessageAckExecutor"} 0.0
+1788245696 gateway executor_queued_tasks{instanceId="13268adc6faf",name="clientInboundChannelExecutor"} 0.0
+1788245696 gateway executor_queued_tasks{instanceId="13268adc6faf",name="clientOutboundChannelExecutor"} 0.0
+1788245696 gateway executor_queued_tasks{instanceId="13268adc6faf",name="messageBrokerTaskScheduler"} 1.0
+1788245696 gateway executor_queued_tasks{instanceId="13268adc6faf",name="stomp.broker"} NaN
+1788245696 gateway executor_queued_tasks{instanceId="13268adc6faf",name="stomp.inbound"} NaN
+1788245696 gateway executor_queued_tasks{instanceId="13268adc6faf",name="stomp.outbound"} NaN
+1788245696 gateway executor_queued_tasks{instanceId="13268adc6faf",name="stompBrokerExecutor"} 0.0
+1788245696 gateway executor_queued_tasks{instanceId="13268adc6faf",name="stompInboundExecutor"} 0.0
+1788245696 gateway executor_queued_tasks{instanceId="13268adc6faf",name="stompOutboundExecutor"} 0.0
+1788245696 gateway executor_queued_tasks{instanceId="13268adc6faf",name="taskScheduler"} 0.0
+1788245696 gateway executor_seconds_count{instanceId="13268adc6faf",name="chat.message.ack"} 0
+1788245696 gateway executor_seconds_sum{instanceId="13268adc6faf",name="chat.message.ack"} 0.0
+1788245696 gateway executor_seconds_count{instanceId="13268adc6faf",name="stomp.broker"} 0
+1788245696 gateway executor_seconds_sum{instanceId="13268adc6faf",name="stomp.broker"} 0.0
+1788245696 gateway executor_seconds_count{instanceId="13268adc6faf",name="stomp.inbound"} 0
+1788245696 gateway executor_seconds_sum{instanceId="13268adc6faf",name="stomp.inbound"} 0.0
+1788245696 gateway executor_seconds_count{instanceId="13268adc6faf",name="stomp.outbound"} 0
+1788245696 gateway executor_seconds_sum{instanceId="13268adc6faf",name="stomp.outbound"} 0.0
+1788245696 gateway executor_seconds_max{instanceId="13268adc6faf",name="chat.message.ack"} 0.0
+1788245696 gateway executor_seconds_max{instanceId="13268adc6faf",name="stomp.broker"} 0.0
+1788245696 gateway executor_seconds_max{instanceId="13268adc6faf",name="stomp.inbound"} 0.0
+1788245696 gateway executor_seconds_max{instanceId="13268adc6faf",name="stomp.outbound"} 0.0
+1788245696 gateway jvm_gc_pause_seconds_count{action="end of major GC",cause="Ergonomics",gc="PS MarkSweep",instanceId="13268adc6faf"} 1
+1788245696 gateway jvm_gc_pause_seconds_sum{action="end of major GC",cause="Ergonomics",gc="PS MarkSweep",instanceId="13268adc6faf"} 1.374
+1788245696 gateway jvm_gc_pause_seconds_count{action="end of major GC",cause="Metadata GC Threshold",gc="PS MarkSweep",instanceId="13268adc6faf"} 1
+1788245696 gateway jvm_gc_pause_seconds_sum{action="end of major GC",cause="Metadata GC Threshold",gc="PS MarkSweep",instanceId="13268adc6faf"} 0.239
+1788245696 gateway jvm_gc_pause_seconds_count{action="end of minor GC",cause="Allocation Failure",gc="PS Scavenge",instanceId="13268adc6faf"} 127
+1788245696 gateway jvm_gc_pause_seconds_sum{action="end of minor GC",cause="Allocation Failure",gc="PS Scavenge",instanceId="13268adc6faf"} 4.15
+1788245696 gateway jvm_gc_pause_seconds_count{action="end of minor GC",cause="GCLocker Initiated GC",gc="PS Scavenge",instanceId="13268adc6faf"} 1
+1788245696 gateway jvm_gc_pause_seconds_sum{action="end of minor GC",cause="GCLocker Initiated GC",gc="PS Scavenge",instanceId="13268adc6faf"} 0.009
+1788245696 gateway jvm_gc_pause_seconds_count{action="end of minor GC",cause="Metadata GC Threshold",gc="PS Scavenge",instanceId="13268adc6faf"} 1
+1788245696 gateway jvm_gc_pause_seconds_sum{action="end of minor GC",cause="Metadata GC Threshold",gc="PS Scavenge",instanceId="13268adc6faf"} 0.003
+1788245696 gateway jvm_gc_pause_seconds_max{action="end of major GC",cause="Ergonomics",gc="PS MarkSweep",instanceId="13268adc6faf"} 0.0
+1788245696 gateway jvm_gc_pause_seconds_max{action="end of major GC",cause="Metadata GC Threshold",gc="PS MarkSweep",instanceId="13268adc6faf"} 0.0
+1788245696 gateway jvm_gc_pause_seconds_max{action="end of minor GC",cause="Allocation Failure",gc="PS Scavenge",instanceId="13268adc6faf"} 0.062
+1788245696 gateway jvm_gc_pause_seconds_max{action="end of minor GC",cause="GCLocker Initiated GC",gc="PS Scavenge",instanceId="13268adc6faf"} 0.0
+1788245696 gateway jvm_gc_pause_seconds_max{action="end of minor GC",cause="Metadata GC Threshold",gc="PS Scavenge",instanceId="13268adc6faf"} 0.0
+1788245696 gateway jvm_memory_used_bytes{area="heap",id="PS Eden Space",instanceId="13268adc6faf"} 2.9989896E7
+1788245696 gateway jvm_memory_used_bytes{area="heap",id="PS Old Gen",instanceId="13268adc6faf"} 1.22672056E8
+1788245696 gateway jvm_memory_used_bytes{area="heap",id="PS Survivor Space",instanceId="13268adc6faf"} 1050320.0
+1788245696 gateway jvm_memory_used_bytes{area="nonheap",id="CodeHeap 'non-nmethods'",instanceId="13268adc6faf"} 1521280.0
+1788245696 gateway jvm_memory_used_bytes{area="nonheap",id="CodeHeap 'non-profiled nmethods'",instanceId="13268adc6faf"} 1.0816256E7
+1788245696 gateway jvm_memory_used_bytes{area="nonheap",id="CodeHeap 'profiled nmethods'",instanceId="13268adc6faf"} 2.1075328E7
+1788245696 gateway jvm_memory_used_bytes{area="nonheap",id="Compressed Class Space",instanceId="13268adc6faf"} 1.3764392E7
+1788245696 gateway jvm_memory_used_bytes{area="nonheap",id="Metaspace",instanceId="13268adc6faf"} 1.11812488E8
+1788245696 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="ack",pool="broker"} 0.0
+1788245696 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="ack",pool="inbound"} 0.0
+1788245696 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="ack",pool="outbound"} 0.0
+1788245696 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="badge",pool="broker"} 0.0
+1788245696 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="badge",pool="inbound"} 0.0
+1788245696 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="badge",pool="outbound"} 0.0
+1788245696 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="broadcast",pool="broker"} 0.0
+1788245696 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="broadcast",pool="inbound"} 0.0
+1788245696 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="broadcast",pool="outbound"} 0.0
+1788245696 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="none",pool="broker"} 0.0
+1788245696 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="none",pool="inbound"} 0.0
+1788245696 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="none",pool="outbound"} 0.0
+1788245696 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="notification",pool="broker"} 0.0
+1788245696 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="notification",pool="inbound"} 0.0
+1788245696 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="notification",pool="outbound"} 0.0
+1788245696 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="other",pool="broker"} 0.0
+1788245696 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="other",pool="inbound"} 0.0
+1788245696 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="other",pool="outbound"} 0.0
+1788245696 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="unknown",pool="broker"} 0.0
+1788245696 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="unknown",pool="inbound"} 0.0
+1788245696 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="unknown",pool="outbound"} 0.0
+1788245696 gateway ws_active_sessions{instanceId="13268adc6faf"} 0.0
+1788245696 gateway ws_grpc_client_errors_total{code="DEADLINE_EXCEEDED",instanceId="13268adc6faf",method="hardDelete",target="chat-service"} 1570.0
+1788245696 gateway ws_grpc_client_errors_total{code="DEADLINE_EXCEEDED",instanceId="13268adc6faf",method="save",target="chat-service"} 2452.0
+1788245696 gateway ws_local_sessions{instanceId="13268adc6faf"} 0.0
+1788245696 gateway ws_local_subscribed_rooms{instanceId="13268adc6faf"} 0.0
+1788245696 chat executor_active_threads{name="applicationTaskExecutor"} 0.0
+1788245696 chat executor_active_threads{name="taskScheduler"} 0.0
+1788245696 chat executor_completed_tasks_total{name="applicationTaskExecutor"} 0.0
+1788245696 chat executor_completed_tasks_total{name="taskScheduler"} 0.0
+1788245696 chat executor_pool_core_threads{name="applicationTaskExecutor"} 8.0
+1788245696 chat executor_pool_core_threads{name="taskScheduler"} 1.0
+1788245696 chat executor_pool_max_threads{name="applicationTaskExecutor"} 2.147483647E9
+1788245696 chat executor_pool_max_threads{name="taskScheduler"} 2.147483647E9
+1788245696 chat executor_pool_size_threads{name="applicationTaskExecutor"} 0.0
+1788245696 chat executor_pool_size_threads{name="taskScheduler"} 1.0
+1788245696 chat executor_queue_remaining_tasks{name="applicationTaskExecutor"} 2.147483647E9
+1788245696 chat executor_queue_remaining_tasks{name="taskScheduler"} 2.147483647E9
+1788245696 chat executor_queued_tasks{name="applicationTaskExecutor"} 0.0
+1788245696 chat executor_queued_tasks{name="taskScheduler"} 2.0
+1788245696 chat hikaricp_connections{pool="write-pool"} 30.0
+1788245696 chat hikaricp_connections_acquire_seconds_count{pool="write-pool"} 6668
+1788245696 chat hikaricp_connections_acquire_seconds_sum{pool="write-pool"} 6489.114637547
+1788245696 chat hikaricp_connections_acquire_seconds_max{pool="write-pool"} 0.001379539
+1788245696 chat hikaricp_connections_active{pool="write-pool"} 0.0
+1788245696 chat hikaricp_connections_creation_seconds_count{pool="write-pool"} 0
+1788245696 chat hikaricp_connections_creation_seconds_sum{pool="write-pool"} 0.0
+1788245696 chat hikaricp_connections_creation_seconds_max{pool="write-pool"} 0.0
+1788245696 chat hikaricp_connections_idle{pool="write-pool"} 30.0
+1788245696 chat hikaricp_connections_max{pool="write-pool"} 30.0
+1788245696 chat hikaricp_connections_min{pool="write-pool"} 30.0
+1788245696 chat hikaricp_connections_pending{pool="write-pool"} 0.0
+1788245696 chat hikaricp_connections_timeout_total{pool="write-pool"} 374.0
+1788245696 chat hikaricp_connections_usage_seconds_count{pool="write-pool"} 6294
+1788245696 chat hikaricp_connections_usage_seconds_sum{pool="write-pool"} 2088.332
+1788245696 chat hikaricp_connections_usage_seconds_max{pool="write-pool"} 0.0
+1788245696 chat jvm_gc_pause_seconds_count{action="end of major GC",cause="Ergonomics",gc="PS MarkSweep"} 3
+1788245696 chat jvm_gc_pause_seconds_sum{action="end of major GC",cause="Ergonomics",gc="PS MarkSweep"} 2.357
+1788245696 chat jvm_gc_pause_seconds_count{action="end of minor GC",cause="Allocation Failure",gc="PS Scavenge"} 280
+1788245696 chat jvm_gc_pause_seconds_sum{action="end of minor GC",cause="Allocation Failure",gc="PS Scavenge"} 6.545
+1788245696 chat jvm_gc_pause_seconds_max{action="end of major GC",cause="Ergonomics",gc="PS MarkSweep"} 0.0
+1788245696 chat jvm_gc_pause_seconds_max{action="end of minor GC",cause="Allocation Failure",gc="PS Scavenge"} 0.027
+1788245696 chat jvm_memory_used_bytes{area="heap",id="PS Eden Space"} 6.2582544E7
+1788245696 chat jvm_memory_used_bytes{area="heap",id="PS Old Gen"} 1.65475368E8
+1788245696 chat jvm_memory_used_bytes{area="heap",id="PS Survivor Space"} 1293600.0
+1788245696 chat jvm_memory_used_bytes{area="nonheap",id="CodeHeap 'non-nmethods'"} 1670016.0
+1788245696 chat jvm_memory_used_bytes{area="nonheap",id="CodeHeap 'non-profiled nmethods'"} 2.1303424E7
+1788245696 chat jvm_memory_used_bytes{area="nonheap",id="CodeHeap 'profiled nmethods'"} 2.6560384E7
+1788245696 chat jvm_memory_used_bytes{area="nonheap",id="Compressed Class Space"} 2.0979016E7
+1788245696 chat jvm_memory_used_bytes{area="nonheap",id="Metaspace"} 1.62048344E8
+1788245866 gateway chat_badge_coalesced_total{instanceId="13268adc6faf"} 11757.0
+1788245866 gateway chat_badge_direct_failed_total{instanceId="13268adc6faf"} 78769.0
+1788245866 gateway chat_badge_direct_sent_total{instanceId="13268adc6faf"} 33877.0
+1788245866 gateway chat_badge_flush_seconds_count{instanceId="13268adc6faf"} 7182
+1788245866 gateway chat_badge_flush_seconds_sum{instanceId="13268adc6faf"} 8.47008048
+1788245866 gateway chat_badge_flush_seconds_max{instanceId="13268adc6faf"} 0.0351761
+1788245866 gateway chat_badge_flushed_total{instanceId="13268adc6faf"} 373.0
+1788245866 gateway chat_badge_pending{instanceId="13268adc6faf"} 0.0
+1788245866 gateway chat_message_ack_direct_failed_total{instanceId="13268adc6faf"} 0.0
+1788245866 gateway chat_message_ack_direct_sent_total{instanceId="13268adc6faf"} 12540.0
+1788245866 gateway chat_message_batch_buffered_total{instanceId="13268adc6faf"} 12130.0
+1788245866 gateway chat_message_batch_frames_total{instanceId="13268adc6faf"} 676.0
+1788245866 gateway chat_message_batch_overflow_total{instanceId="13268adc6faf"} 0.0
+1788245866 gateway chat_message_batch_pending_rooms{instanceId="13268adc6faf"} 0.0
+1788245866 gateway chat_message_batch_size_count{instanceId="13268adc6faf"} 676
+1788245866 gateway chat_message_batch_size_sum{instanceId="13268adc6faf"} 12130.0
+1788245866 gateway chat_message_batch_size_max{instanceId="13268adc6faf"} 112.0
+1788245866 gateway executor_active_threads{instanceId="13268adc6faf",name="brokerChannelExecutor"} 0.0
+1788245866 gateway executor_active_threads{instanceId="13268adc6faf",name="chat.message.ack"} NaN
+1788245866 gateway executor_active_threads{instanceId="13268adc6faf",name="chatMessageAckExecutor"} 0.0
+1788245866 gateway executor_active_threads{instanceId="13268adc6faf",name="clientInboundChannelExecutor"} 0.0
+1788245866 gateway executor_active_threads{instanceId="13268adc6faf",name="clientOutboundChannelExecutor"} 0.0
+1788245866 gateway executor_active_threads{instanceId="13268adc6faf",name="messageBrokerTaskScheduler"} 0.0
+1788245866 gateway executor_active_threads{instanceId="13268adc6faf",name="stomp.broker"} NaN
+1788245866 gateway executor_active_threads{instanceId="13268adc6faf",name="stomp.inbound"} NaN
+1788245866 gateway executor_active_threads{instanceId="13268adc6faf",name="stomp.outbound"} NaN
+1788245866 gateway executor_active_threads{instanceId="13268adc6faf",name="stompBrokerExecutor"} 0.0
+1788245866 gateway executor_active_threads{instanceId="13268adc6faf",name="stompInboundExecutor"} 0.0
+1788245866 gateway executor_active_threads{instanceId="13268adc6faf",name="stompOutboundExecutor"} 0.0
+1788245866 gateway executor_active_threads{instanceId="13268adc6faf",name="taskScheduler"} 0.0
+1788245866 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="brokerChannelExecutor"} 2228.0
+1788245866 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="chat.message.ack"} 0.0
+1788245866 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="chatMessageAckExecutor"} 22628.0
+1788245866 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="clientInboundChannelExecutor"} 40908.0
+1788245866 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="clientOutboundChannelExecutor"} 110257.0
+1788245866 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="messageBrokerTaskScheduler"} 146.0
+1788245866 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="stomp.broker"} 0.0
+1788245866 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="stomp.inbound"} 0.0
+1788245866 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="stomp.outbound"} 0.0
+1788245866 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="stompBrokerExecutor"} 2228.0
+1788245866 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="stompInboundExecutor"} 40908.0
+1788245866 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="stompOutboundExecutor"} 110257.0
+1788245866 gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="taskScheduler"} 0.0
+1788245866 gateway executor_idle_seconds_count{instanceId="13268adc6faf",name="chat.message.ack"} 0
+1788245866 gateway executor_idle_seconds_sum{instanceId="13268adc6faf",name="chat.message.ack"} 0.0
+1788245866 gateway executor_idle_seconds_count{instanceId="13268adc6faf",name="stomp.broker"} 0
+1788245866 gateway executor_idle_seconds_sum{instanceId="13268adc6faf",name="stomp.broker"} 0.0
+1788245866 gateway executor_idle_seconds_count{instanceId="13268adc6faf",name="stomp.inbound"} 0
+1788245866 gateway executor_idle_seconds_sum{instanceId="13268adc6faf",name="stomp.inbound"} 0.0
+1788245866 gateway executor_idle_seconds_count{instanceId="13268adc6faf",name="stomp.outbound"} 0
+1788245866 gateway executor_idle_seconds_sum{instanceId="13268adc6faf",name="stomp.outbound"} 0.0
+1788245866 gateway executor_idle_seconds_max{instanceId="13268adc6faf",name="chat.message.ack"} 0.0
+1788245866 gateway executor_idle_seconds_max{instanceId="13268adc6faf",name="stomp.broker"} 0.0
+1788245866 gateway executor_idle_seconds_max{instanceId="13268adc6faf",name="stomp.inbound"} 0.0
+1788245866 gateway executor_idle_seconds_max{instanceId="13268adc6faf",name="stomp.outbound"} 0.0
+1788245866 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="brokerChannelExecutor"} 32.0
+1788245866 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="chat.message.ack"} NaN
+1788245866 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="chatMessageAckExecutor"} 16.0
+1788245866 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="clientInboundChannelExecutor"} 32.0
+1788245866 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="clientOutboundChannelExecutor"} 64.0
+1788245866 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="messageBrokerTaskScheduler"} 12.0
+1788245866 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="stomp.broker"} NaN
+1788245866 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="stomp.inbound"} NaN
+1788245866 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="stomp.outbound"} NaN
+1788245866 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="stompBrokerExecutor"} 32.0
+1788245866 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="stompInboundExecutor"} 32.0
+1788245866 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="stompOutboundExecutor"} 64.0
+1788245866 gateway executor_pool_core_threads{instanceId="13268adc6faf",name="taskScheduler"} 1.0
+1788245866 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="brokerChannelExecutor"} 32.0
+1788245866 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="chat.message.ack"} NaN
+1788245866 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="chatMessageAckExecutor"} 16.0
+1788245866 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="clientInboundChannelExecutor"} 32.0
+1788245866 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="clientOutboundChannelExecutor"} 64.0
+1788245866 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="messageBrokerTaskScheduler"} 2.147483647E9
+1788245866 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="stomp.broker"} NaN
+1788245866 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="stomp.inbound"} NaN
+1788245866 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="stomp.outbound"} NaN
+1788245866 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="stompBrokerExecutor"} 32.0
+1788245866 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="stompInboundExecutor"} 32.0
+1788245866 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="stompOutboundExecutor"} 64.0
+1788245866 gateway executor_pool_max_threads{instanceId="13268adc6faf",name="taskScheduler"} 2.147483647E9
+1788245866 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="brokerChannelExecutor"} 32.0
+1788245866 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="chat.message.ack"} NaN
+1788245866 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="chatMessageAckExecutor"} 16.0
+1788245866 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="clientInboundChannelExecutor"} 32.0
+1788245866 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="clientOutboundChannelExecutor"} 64.0
+1788245866 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="messageBrokerTaskScheduler"} 12.0
+1788245866 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="stomp.broker"} NaN
+1788245866 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="stomp.inbound"} NaN
+1788245866 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="stomp.outbound"} NaN
+1788245866 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="stompBrokerExecutor"} 32.0
+1788245866 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="stompInboundExecutor"} 32.0
+1788245866 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="stompOutboundExecutor"} 64.0
+1788245866 gateway executor_pool_size_threads{instanceId="13268adc6faf",name="taskScheduler"} 0.0
+1788245866 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="brokerChannelExecutor"} 3000.0
+1788245866 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="chat.message.ack"} NaN
+1788245866 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="chatMessageAckExecutor"} 2000.0
+1788245866 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="clientInboundChannelExecutor"} 600.0
+1788245866 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="clientOutboundChannelExecutor"} 30000.0
+1788245866 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="messageBrokerTaskScheduler"} 2.147483647E9
+1788245866 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="stomp.broker"} NaN
+1788245866 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="stomp.inbound"} NaN
+1788245866 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="stomp.outbound"} NaN
+1788245866 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="stompBrokerExecutor"} 3000.0
+1788245866 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="stompInboundExecutor"} 600.0
+1788245866 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="stompOutboundExecutor"} 30000.0
+1788245866 gateway executor_queue_remaining_tasks{instanceId="13268adc6faf",name="taskScheduler"} 2.147483647E9
+1788245866 gateway executor_queued_tasks{instanceId="13268adc6faf",name="brokerChannelExecutor"} 0.0
+1788245866 gateway executor_queued_tasks{instanceId="13268adc6faf",name="chat.message.ack"} NaN
+1788245866 gateway executor_queued_tasks{instanceId="13268adc6faf",name="chatMessageAckExecutor"} 0.0
+1788245866 gateway executor_queued_tasks{instanceId="13268adc6faf",name="clientInboundChannelExecutor"} 0.0
+1788245866 gateway executor_queued_tasks{instanceId="13268adc6faf",name="clientOutboundChannelExecutor"} 0.0
+1788245866 gateway executor_queued_tasks{instanceId="13268adc6faf",name="messageBrokerTaskScheduler"} 1.0
+1788245866 gateway executor_queued_tasks{instanceId="13268adc6faf",name="stomp.broker"} NaN
+1788245866 gateway executor_queued_tasks{instanceId="13268adc6faf",name="stomp.inbound"} NaN
+1788245866 gateway executor_queued_tasks{instanceId="13268adc6faf",name="stomp.outbound"} NaN
+1788245866 gateway executor_queued_tasks{instanceId="13268adc6faf",name="stompBrokerExecutor"} 0.0
+1788245866 gateway executor_queued_tasks{instanceId="13268adc6faf",name="stompInboundExecutor"} 0.0
+1788245866 gateway executor_queued_tasks{instanceId="13268adc6faf",name="stompOutboundExecutor"} 0.0
+1788245866 gateway executor_queued_tasks{instanceId="13268adc6faf",name="taskScheduler"} 0.0
+1788245866 gateway executor_seconds_count{instanceId="13268adc6faf",name="chat.message.ack"} 0
+1788245866 gateway executor_seconds_sum{instanceId="13268adc6faf",name="chat.message.ack"} 0.0
+1788245866 gateway executor_seconds_count{instanceId="13268adc6faf",name="stomp.broker"} 0
+1788245866 gateway executor_seconds_sum{instanceId="13268adc6faf",name="stomp.broker"} 0.0
+1788245866 gateway executor_seconds_count{instanceId="13268adc6faf",name="stomp.inbound"} 0
+1788245866 gateway executor_seconds_sum{instanceId="13268adc6faf",name="stomp.inbound"} 0.0
+1788245866 gateway executor_seconds_count{instanceId="13268adc6faf",name="stomp.outbound"} 0
+1788245866 gateway executor_seconds_sum{instanceId="13268adc6faf",name="stomp.outbound"} 0.0
+1788245866 gateway executor_seconds_max{instanceId="13268adc6faf",name="chat.message.ack"} 0.0
+1788245866 gateway executor_seconds_max{instanceId="13268adc6faf",name="stomp.broker"} 0.0
+1788245866 gateway executor_seconds_max{instanceId="13268adc6faf",name="stomp.inbound"} 0.0
+1788245866 gateway executor_seconds_max{instanceId="13268adc6faf",name="stomp.outbound"} 0.0
+1788245866 gateway jvm_gc_pause_seconds_count{action="end of major GC",cause="Ergonomics",gc="PS MarkSweep",instanceId="13268adc6faf"} 1
+1788245866 gateway jvm_gc_pause_seconds_sum{action="end of major GC",cause="Ergonomics",gc="PS MarkSweep",instanceId="13268adc6faf"} 1.374
+1788245866 gateway jvm_gc_pause_seconds_count{action="end of major GC",cause="Metadata GC Threshold",gc="PS MarkSweep",instanceId="13268adc6faf"} 1
+1788245866 gateway jvm_gc_pause_seconds_sum{action="end of major GC",cause="Metadata GC Threshold",gc="PS MarkSweep",instanceId="13268adc6faf"} 0.239
+1788245866 gateway jvm_gc_pause_seconds_count{action="end of minor GC",cause="Allocation Failure",gc="PS Scavenge",instanceId="13268adc6faf"} 159
+1788245866 gateway jvm_gc_pause_seconds_sum{action="end of minor GC",cause="Allocation Failure",gc="PS Scavenge",instanceId="13268adc6faf"} 5.292
+1788245866 gateway jvm_gc_pause_seconds_count{action="end of minor GC",cause="GCLocker Initiated GC",gc="PS Scavenge",instanceId="13268adc6faf"} 1
+1788245866 gateway jvm_gc_pause_seconds_sum{action="end of minor GC",cause="GCLocker Initiated GC",gc="PS Scavenge",instanceId="13268adc6faf"} 0.009
+1788245866 gateway jvm_gc_pause_seconds_count{action="end of minor GC",cause="Metadata GC Threshold",gc="PS Scavenge",instanceId="13268adc6faf"} 1
+1788245866 gateway jvm_gc_pause_seconds_sum{action="end of minor GC",cause="Metadata GC Threshold",gc="PS Scavenge",instanceId="13268adc6faf"} 0.003
+1788245866 gateway jvm_gc_pause_seconds_max{action="end of major GC",cause="Ergonomics",gc="PS MarkSweep",instanceId="13268adc6faf"} 0.0
+1788245866 gateway jvm_gc_pause_seconds_max{action="end of major GC",cause="Metadata GC Threshold",gc="PS MarkSweep",instanceId="13268adc6faf"} 0.0
+1788245866 gateway jvm_gc_pause_seconds_max{action="end of minor GC",cause="Allocation Failure",gc="PS Scavenge",instanceId="13268adc6faf"} 0.26
+1788245866 gateway jvm_gc_pause_seconds_max{action="end of minor GC",cause="GCLocker Initiated GC",gc="PS Scavenge",instanceId="13268adc6faf"} 0.0
+1788245866 gateway jvm_gc_pause_seconds_max{action="end of minor GC",cause="Metadata GC Threshold",gc="PS Scavenge",instanceId="13268adc6faf"} 0.0
+1788245866 gateway jvm_memory_used_bytes{area="heap",id="PS Eden Space",instanceId="13268adc6faf"} 9.6635256E7
+1788245866 gateway jvm_memory_used_bytes{area="heap",id="PS Old Gen",instanceId="13268adc6faf"} 1.463344E8
+1788245866 gateway jvm_memory_used_bytes{area="heap",id="PS Survivor Space",instanceId="13268adc6faf"} 1181744.0
+1788245866 gateway jvm_memory_used_bytes{area="nonheap",id="CodeHeap 'non-nmethods'",instanceId="13268adc6faf"} 1521280.0
+1788245866 gateway jvm_memory_used_bytes{area="nonheap",id="CodeHeap 'non-profiled nmethods'",instanceId="13268adc6faf"} 1.5764992E7
+1788245866 gateway jvm_memory_used_bytes{area="nonheap",id="CodeHeap 'profiled nmethods'",instanceId="13268adc6faf"} 2.0285952E7
+1788245866 gateway jvm_memory_used_bytes{area="nonheap",id="Compressed Class Space",instanceId="13268adc6faf"} 1.3771744E7
+1788245866 gateway jvm_memory_used_bytes{area="nonheap",id="Metaspace",instanceId="13268adc6faf"} 1.12279304E8
+1788245866 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="ack",pool="broker"} 0.0
+1788245866 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="ack",pool="inbound"} 0.0
+1788245866 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="ack",pool="outbound"} 0.0
+1788245866 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="badge",pool="broker"} 0.0
+1788245866 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="badge",pool="inbound"} 0.0
+1788245866 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="badge",pool="outbound"} 0.0
+1788245866 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="broadcast",pool="broker"} 0.0
+1788245866 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="broadcast",pool="inbound"} 0.0
+1788245866 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="broadcast",pool="outbound"} 0.0
+1788245866 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="none",pool="broker"} 0.0
+1788245866 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="none",pool="inbound"} 0.0
+1788245866 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="none",pool="outbound"} 0.0
+1788245866 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="notification",pool="broker"} 0.0
+1788245866 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="notification",pool="inbound"} 0.0
+1788245866 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="notification",pool="outbound"} 0.0
+1788245866 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="other",pool="broker"} 0.0
+1788245866 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="other",pool="inbound"} 0.0
+1788245866 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="other",pool="outbound"} 0.0
+1788245866 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="unknown",pool="broker"} 0.0
+1788245866 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="unknown",pool="inbound"} 0.0
+1788245866 gateway stomp_executor_rejected_total{instanceId="13268adc6faf",kind="unknown",pool="outbound"} 0.0
+1788245866 gateway ws_active_sessions{instanceId="13268adc6faf"} 0.0
+1788245866 gateway ws_grpc_client_errors_total{code="DEADLINE_EXCEEDED",instanceId="13268adc6faf",method="hardDelete",target="chat-service"} 1570.0
+1788245866 gateway ws_grpc_client_errors_total{code="DEADLINE_EXCEEDED",instanceId="13268adc6faf",method="save",target="chat-service"} 2452.0
+1788245866 gateway ws_local_sessions{instanceId="13268adc6faf"} 0.0
+1788245866 gateway ws_local_subscribed_rooms{instanceId="13268adc6faf"} 0.0
+1788245866 chat executor_active_threads{name="applicationTaskExecutor"} 0.0
+1788245866 chat executor_active_threads{name="taskScheduler"} 0.0
+1788245866 chat executor_completed_tasks_total{name="applicationTaskExecutor"} 0.0
+1788245866 chat executor_completed_tasks_total{name="taskScheduler"} 0.0
+1788245866 chat executor_pool_core_threads{name="applicationTaskExecutor"} 8.0
+1788245866 chat executor_pool_core_threads{name="taskScheduler"} 1.0
+1788245866 chat executor_pool_max_threads{name="applicationTaskExecutor"} 2.147483647E9
+1788245866 chat executor_pool_max_threads{name="taskScheduler"} 2.147483647E9
+1788245866 chat executor_pool_size_threads{name="applicationTaskExecutor"} 0.0
+1788245866 chat executor_pool_size_threads{name="taskScheduler"} 1.0
+1788245866 chat executor_queue_remaining_tasks{name="applicationTaskExecutor"} 2.147483647E9
+1788245866 chat executor_queue_remaining_tasks{name="taskScheduler"} 2.147483647E9
+1788245866 chat executor_queued_tasks{name="applicationTaskExecutor"} 0.0
+1788245866 chat executor_queued_tasks{name="taskScheduler"} 2.0
+1788245866 chat hikaricp_connections{pool="write-pool"} 30.0
+1788245866 chat hikaricp_connections_acquire_seconds_count{pool="write-pool"} 12692
+1788245866 chat hikaricp_connections_acquire_seconds_sum{pool="write-pool"} 7424.239478358
+1788245866 chat hikaricp_connections_acquire_seconds_max{pool="write-pool"} 2.392815639
+1788245866 chat hikaricp_connections_active{pool="write-pool"} 0.0
+1788245866 chat hikaricp_connections_creation_seconds_count{pool="write-pool"} 0
+1788245866 chat hikaricp_connections_creation_seconds_sum{pool="write-pool"} 0.0
+1788245866 chat hikaricp_connections_creation_seconds_max{pool="write-pool"} 0.0
+1788245866 chat hikaricp_connections_idle{pool="write-pool"} 30.0
+1788245866 chat hikaricp_connections_max{pool="write-pool"} 30.0
+1788245866 chat hikaricp_connections_min{pool="write-pool"} 30.0
+1788245866 chat hikaricp_connections_pending{pool="write-pool"} 0.0
+1788245866 chat hikaricp_connections_timeout_total{pool="write-pool"} 374.0
+1788245866 chat hikaricp_connections_usage_seconds_count{pool="write-pool"} 12318
+1788245866 chat hikaricp_connections_usage_seconds_sum{pool="write-pool"} 3123.065
+1788245866 chat hikaricp_connections_usage_seconds_max{pool="write-pool"} 1.22
+1788245866 chat jvm_gc_pause_seconds_count{action="end of major GC",cause="Ergonomics",gc="PS MarkSweep"} 3
+1788245866 chat jvm_gc_pause_seconds_sum{action="end of major GC",cause="Ergonomics",gc="PS MarkSweep"} 2.357
+1788245866 chat jvm_gc_pause_seconds_count{action="end of minor GC",cause="Allocation Failure",gc="PS Scavenge"} 385
+1788245866 chat jvm_gc_pause_seconds_sum{action="end of minor GC",cause="Allocation Failure",gc="PS Scavenge"} 8.337
+1788245866 chat jvm_gc_pause_seconds_max{action="end of major GC",cause="Ergonomics",gc="PS MarkSweep"} 0.0
+1788245866 chat jvm_gc_pause_seconds_max{action="end of minor GC",cause="Allocation Failure",gc="PS Scavenge"} 0.226
+1788245866 chat jvm_memory_used_bytes{area="heap",id="PS Eden Space"} 1.755892E7
+1788245866 chat jvm_memory_used_bytes{area="heap",id="PS Old Gen"} 2.26592296E8
+1788245866 chat jvm_memory_used_bytes{area="heap",id="PS Survivor Space"} 1.916944E7
+1788245866 chat jvm_memory_used_bytes{area="nonheap",id="CodeHeap 'non-nmethods'"} 1656192.0
+1788245866 chat jvm_memory_used_bytes{area="nonheap",id="CodeHeap 'non-profiled nmethods'"} 2.736E7
+1788245866 chat jvm_memory_used_bytes{area="nonheap",id="CodeHeap 'profiled nmethods'"} 2.3147776E7
+1788245866 chat jvm_memory_used_bytes{area="nonheap",id="Compressed Class Space"} 2.09864E7
+1788245866 chat jvm_memory_used_bytes{area="nonheap",id="Metaspace"} 1.62549832E8
