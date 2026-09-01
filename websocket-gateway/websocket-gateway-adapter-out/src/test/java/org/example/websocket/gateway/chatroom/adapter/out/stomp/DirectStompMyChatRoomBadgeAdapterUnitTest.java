@@ -21,6 +21,10 @@ import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @DisplayName("DirectStompMyChatRoomBadgeAdapter")
 class DirectStompMyChatRoomBadgeAdapterUnitTest {
@@ -54,9 +58,13 @@ class DirectStompMyChatRoomBadgeAdapterUnitTest {
         MappingJackson2MessageConverter messageConverter = new MappingJackson2MessageConverter();
         messageConverter.setObjectMapper(new ObjectMapper().findAndRegisterModules());
 
+        return sut(new DirectStompSessionSender(clientOutboundChannel, messageConverter));
+    }
+
+    private DirectStompMyChatRoomBadgeAdapter sut(DirectStompSessionSender sessionSender) {
         return new DirectStompMyChatRoomBadgeAdapter(
                 localSessionCache,
-                new DirectStompSessionSender(clientOutboundChannel, messageConverter),
+                sessionSender,
                 new ApiPathProperties(
                         null,
                         new ApiPathProperties.Stomp("/msg", "/user"),
@@ -80,6 +88,7 @@ class DirectStompMyChatRoomBadgeAdapterUnitTest {
         assertThat(sent).isTrue();
         assertThat(captured).hasSize(1);
         assertThat(registry.counter("chat.badge.direct.sent").count()).isEqualTo(1.0);
+        assertThat(registry.counter("chat.badge.direct.skipped").count()).isZero();
         assertThat(registry.counter("chat.badge.direct.failed").count()).isZero();
     }
 
@@ -113,19 +122,40 @@ class DirectStompMyChatRoomBadgeAdapterUnitTest {
         // then
         assertThat(sent).isFalse();
         assertThat(captured).isEmpty();
+        assertThat(registry.counter("chat.badge.direct.skipped").count()).isZero();
         assertThat(registry.counter("chat.badge.direct.failed").count()).isEqualTo(1.0);
     }
 
     @Test
-    @DisplayName("로컬 세션이 없으면 보내지 않는다")
-    void doesNotSendWhenNoLocalSession() {
+    @DisplayName("outbound 전송이 실패하면 direct failed로 센다")
+    void countsOutboundFailure() {
+        // given
+        DirectStompSessionSender sessionSender = mock(DirectStompSessionSender.class);
+        when(sessionSender.send(anyString(), anyString(), anyString(), any())).thenReturn(false);
+        localSessionCache.register(sessionId, userId);
+        localSessionCache.registerBadgeSubscription(sessionId, subscriptionId);
+
+        // when
+        boolean sent = sut(sessionSender).send(command, "tx-1");
+
+        // then
+        assertThat(sent).isFalse();
+        assertThat(registry.counter("chat.badge.direct.sent").count()).isZero();
+        assertThat(registry.counter("chat.badge.direct.skipped").count()).isZero();
+        assertThat(registry.counter("chat.badge.direct.failed").count()).isEqualTo(1.0);
+    }
+
+    @Test
+    @DisplayName("로컬 세션이 없으면 실패가 아니라 정상 skip으로 센다")
+    void skipsWhenNoLocalSession() {
         // when
         boolean sent = sut().send(command, "tx-1");
 
         // then
         assertThat(sent).isFalse();
         assertThat(captured).isEmpty();
-        assertThat(registry.counter("chat.badge.direct.failed").count()).isEqualTo(1.0);
+        assertThat(registry.counter("chat.badge.direct.skipped").count()).isEqualTo(1.0);
+        assertThat(registry.counter("chat.badge.direct.failed").count()).isZero();
     }
 
     @Test
@@ -159,6 +189,7 @@ class DirectStompMyChatRoomBadgeAdapterUnitTest {
         // then
         assertThat(captured).isEmpty();
         assertThat(registry.counter("chat.badge.direct.sent").count()).isZero();
+        assertThat(registry.counter("chat.badge.direct.skipped").count()).isZero();
         assertThat(registry.counter("chat.badge.direct.failed").count()).isEqualTo(1.0);
     }
 

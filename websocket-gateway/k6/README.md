@@ -109,7 +109,7 @@ Vault·Mongo 컨테이너만 떠 있으면 되고 서비스 전체를 띄울 필
 
   **유실·거절·큐 깊이·프레임 수는 서버가 직접 센 값이라 스왑과 무관하다.** 지연을 못 재는 회차에서도 그 지표로는 판정할 수 있다.
 - **서버가 직접 센 값과 클라이언트 집계를 분리해 읽는다.** 프레임 수·큐 깊이·거절·유실은 호스트 스왑과 무관하지만 p90·ACK 성공률은 크게 흔들린다.
-- **뱃지 우회는 서버 지표로 판정한다.** `chat_badge_flush_seconds` 를 `chat_badge_flushed_total` 과 같이 보고, `chat_badge_direct_failed_total=0`, `stomp_executor_rejected_total{pool="broker",kind="badge"}=0` 인지 확인한다. 지연값으로 효과를 판정하지 않는다.
+- **뱃지 우회는 서버 지표로 판정한다.** `chat_badge_flush_seconds` 를 `chat_badge_flushed_total` 과 같이 보고, `chat_badge_direct_failed_total=0`, `stomp_executor_rejected_total{pool="broker",kind="badge"}=0` 인지 확인한다. `chat_badge_direct_skipped_total` 은 이 인스턴스에 로컬 세션이 없는 방 멤버를 정상적으로 건너뛴 수다. 단일 게이트웨이에서 VU 100명이 모두 붙고 방 멤버가 302명이면 `flushed × 202`가 기대값이며 실패에 합치지 않는다. 지연값으로 효과를 판정하지 않는다.
 - **계측 자체가 측정을 바꾼다.** 1초마다 프로세스를 띄우는 샘플러(`tools/sample-outbox.sh`)를 붙인 회차만 ACK 100% → 8% 로 무너진 적이 있다. 이미 떠 있는 Prometheus·`jcmd` 를 먼저 쓴다.
 
 ## k6 를 서버와 분리해서 돌린다

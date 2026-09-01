@@ -441,7 +441,7 @@ graph TB
 | **broker 큐 거절 — ACK** | **발신자가 영영 모름** | 없음 | **이 채널을 안 탄다**(#267) |
 | **outbound 큐 거절** | **수신자 1명** | 없음 | 프레임 수 감소 (#265) |
 | consumer 처리 실패 | 해당 이벤트 | `@Retryable` 소진 → `@Recover`가 DLQ 발행 | — |
-| 로컬 세션 없음 | — | 정상(다중 인스턴스 설계) | — |
+| 로컬 세션 없음 | — | 정상(다중 인스턴스 설계) | 뱃지 대상은 `chat.badge.direct.skipped` 로 관측 |
 
 거절이 무엇이었는지는 `stomp.executor.rejected{pool, kind}` 로 갈라 본다(#266). `kind` 는 `broadcast`·`ack`·`badge`·`notification` 이다.
 

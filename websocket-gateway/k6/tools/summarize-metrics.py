@@ -25,6 +25,7 @@ COUNTERS = (
     "chat_message_ack_direct_sent_total",
     "chat_message_ack_direct_failed_total",
     "chat_badge_direct_sent_total",
+    "chat_badge_direct_skipped_total",
     "chat_badge_direct_failed_total",
     "executor_completed_tasks_total",
 )

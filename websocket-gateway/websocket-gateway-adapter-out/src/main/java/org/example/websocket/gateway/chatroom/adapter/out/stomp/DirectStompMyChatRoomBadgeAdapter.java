@@ -24,6 +24,7 @@ public class DirectStompMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
     private final String badgeDestination;
 
     private final Counter sent;
+    private final Counter skipped;
     private final Counter failed;
 
     public DirectStompMyChatRoomBadgeAdapter(
@@ -40,8 +41,11 @@ public class DirectStompMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
         this.sent = Counter.builder("chat.badge.direct.sent")
                 .description("brokerChannel 을 건너뛰고 보낸 뱃지 프레임 수")
                 .register(registry);
+        this.skipped = Counter.builder("chat.badge.direct.skipped")
+                .description("로컬 세션이 없어 정상적으로 건너뛴 뱃지 대상 사용자 수")
+                .register(registry);
         this.failed = Counter.builder("chat.badge.direct.failed")
-                .description("세션·구독 부재나 전송 오류로 직접 보내지 못한 뱃지 수")
+                .description("로컬 세션은 있지만 구독 부재나 전송 오류로 직접 보내지 못한 뱃지 대상 사용자 수")
                 .register(registry);
     }
 
@@ -51,21 +55,21 @@ public class DirectStompMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
         boolean sentAny = false;
 
         for (String memberId : command.memberIds()) {
-            if (sendToUser(memberId, payload)) {
-                sentAny = true;
-            } else {
-                failed.increment();
+            switch (sendToUser(memberId, payload)) {
+                case SENT -> sentAny = true;
+                case SKIPPED -> skipped.increment();
+                case FAILED -> failed.increment();
             }
         }
 
         return sentAny;
     }
 
-    private boolean sendToUser(String userId, StompMyChatRoomBadgePayload payload) {
+    private SendResult sendToUser(String userId, StompMyChatRoomBadgePayload payload) {
         Set<String> sessions = localSessionCache.findSessions(userId);
 
         if (sessions.isEmpty()) {
-            return false;
+            return SendResult.SKIPPED;
         }
 
         List<SessionTarget> targets = new ArrayList<>(sessions.size());
@@ -74,7 +78,7 @@ public class DirectStompMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
             String subscriptionId = localSessionCache.findBadgeSubscriptionId(sessionId);
 
             if (subscriptionId == null) {
-                return false;
+                return SendResult.FAILED;
             }
 
             targets.add(new SessionTarget(sessionId, subscriptionId));
@@ -82,13 +86,19 @@ public class DirectStompMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
 
         for (SessionTarget target : targets) {
             if (!sessionSender.send(badgeDestination, target.sessionId(), target.subscriptionId(), payload)) {
-                return false;
+                return SendResult.FAILED;
             }
 
             sent.increment();
         }
 
-        return true;
+        return SendResult.SENT;
+    }
+
+    private enum SendResult {
+        SENT,
+        SKIPPED,
+        FAILED
     }
 
     private record SessionTarget(String sessionId, String subscriptionId) {
