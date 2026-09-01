@@ -16,7 +16,6 @@ import org.springframework.messaging.MessageHeaders;
 
 import java.util.function.Consumer;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Configuration
@@ -36,7 +35,7 @@ public class KafkaChatMessageBinder {
             List<ChatMessagePersistEvent> events = messages.stream()
                     .map(Message::getPayload)
                     .map(ChatMessagePersistEvent.class::cast)
-                    .collect(Collectors.toList());
+                    .toList();
             handler.handleBatch(events, txId);
         });
     }
