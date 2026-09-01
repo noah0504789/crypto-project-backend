@@ -9,13 +9,13 @@ import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.example.websocket.gateway.chatroom.application.port.out.MyChatRoomBadgePort;
 import org.example.websocket.gateway.chatroom.application.service.command.MyChatRoomBadgeCommand;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -33,12 +33,7 @@ public class CoalescingMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
     private final BadgeCoalesceProperties properties;
 
     private final Map<String, Pending> pending = new ConcurrentHashMap<>();
-    private final ScheduledExecutorService scheduler =
-            Executors.newSingleThreadScheduledExecutor(runnable -> {
-                Thread thread = new Thread(runnable, "badge-coalesce-");
-                thread.setDaemon(true);
-                return thread;
-            });
+    private final ScheduledExecutorService scheduler;
 
     private final Counter coalesced;
     private final Counter flushed;
@@ -47,10 +42,12 @@ public class CoalescingMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
     public CoalescingMyChatRoomBadgeAdapter(
             DirectStompMyChatRoomBadgeAdapter delegate,
             BadgeCoalesceProperties properties,
+            @Qualifier("badgeCoalesceScheduler") ScheduledExecutorService scheduler,
             MeterRegistry registry
     ) {
         this.delegate = delegate;
         this.properties = properties;
+        this.scheduler = scheduler;
 
         this.coalesced = Counter.builder("chat.badge.coalesced")
                 .description("같은 방의 앞선 뱃지를 덮어써서 전송하지 않은 건수")
@@ -130,8 +127,6 @@ public class CoalescingMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
 
     @PreDestroy
     public void stop() {
-        scheduler.shutdown();
-
         // 남은 버퍼를 한 번 비우고 내려간다. 종료 중 유실을 줄이려는 최선 노력이며 보장은 아니다.
         flush();
     }

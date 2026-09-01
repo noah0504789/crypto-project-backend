@@ -13,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.concurrent.ScheduledExecutorService;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -29,6 +30,9 @@ class BatchingChatMessageBroadcastAdapterUnitTest {
     @Mock
     private StompChatMessageBroadcastAdapter delegate;
 
+    @Mock
+    private ScheduledExecutorService scheduler;
+
     private MeterRegistry registry;
 
     private final String roomId = "room-1";
@@ -43,6 +47,7 @@ class BatchingChatMessageBroadcastAdapterUnitTest {
         return new BatchingChatMessageBroadcastAdapter(
                 delegate,
                 new ChatMessageBatchProperties(100L, maxBatchSize),
+                scheduler,
                 registry
         );
     }

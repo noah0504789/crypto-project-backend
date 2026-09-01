@@ -12,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.Set;
+import java.util.concurrent.ScheduledExecutorService;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -24,6 +25,9 @@ class CoalescingMyChatRoomBadgeAdapterUnitTest {
 
     @Mock
     private DirectStompMyChatRoomBadgeAdapter delegate;
+
+    @Mock
+    private ScheduledExecutorService scheduler;
 
     private MeterRegistry registry;
 
@@ -41,6 +45,7 @@ class CoalescingMyChatRoomBadgeAdapterUnitTest {
         return new CoalescingMyChatRoomBadgeAdapter(
                 delegate,
                 new BadgeCoalesceProperties(200L),
+                scheduler,
                 registry
         );
     }

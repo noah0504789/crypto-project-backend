@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.websocket.gateway.chatmessage.adapter.out.stomp.payload.StompChatMessagePayload;
 import org.example.websocket.gateway.chatmessage.application.port.out.ChatMessageBroadcastPort;
 import org.example.websocket.gateway.chatmessage.application.service.command.ChatMessageBroadcastCommand;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
@@ -17,7 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -36,13 +36,8 @@ public class BatchingChatMessageBroadcastAdapter implements ChatMessageBroadcast
 
     private final Map<String, RoomBuffer> pending = new ConcurrentHashMap<>();
 
-    // 공유 금지. CallerRunsPolicy 로 한쪽이 늘어지면 서로 멈춘다.
-    private final ScheduledExecutorService scheduler =
-            Executors.newSingleThreadScheduledExecutor(runnable -> {
-                Thread thread = new Thread(runnable, "chat-batch-");
-                thread.setDaemon(true);
-                return thread;
-            });
+    // 뱃지 scheduler 와 공유하지 않는다. 한쪽 flush 가 늘어지면 다른 쪽까지 멈춘다.
+    private final ScheduledExecutorService scheduler;
 
     private final Counter buffered;
     private final Counter frames;
@@ -52,10 +47,12 @@ public class BatchingChatMessageBroadcastAdapter implements ChatMessageBroadcast
     public BatchingChatMessageBroadcastAdapter(
             StompChatMessageBroadcastAdapter delegate,
             ChatMessageBatchProperties properties,
+            @Qualifier("chatMessageBatchScheduler") ScheduledExecutorService scheduler,
             MeterRegistry registry
     ) {
         this.delegate = delegate;
         this.properties = properties;
+        this.scheduler = scheduler;
 
         this.buffered = Counter.builder("chat.message.batch.buffered")
                 .description("배칭 버퍼에 적재한 메시지 수")
@@ -147,8 +144,6 @@ public class BatchingChatMessageBroadcastAdapter implements ChatMessageBroadcast
 
     @PreDestroy
     public void stop() {
-        scheduler.shutdown();
-
         flush();
     }
 
