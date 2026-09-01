@@ -101,12 +101,6 @@ websocket:
       window-ms: 100
       max-batch-size: 300
 
-    # ACK 를 brokerChannel 없이 clientOutboundChannel 로 직접 보낸다. 근거는 PR #267, 유지 이유는 chat/load-test-results/chatmessage/websocket-gateway/README.md §3-0
-    # 세션·구독 정보가 없으면 기존 경로로 넘긴다(chat.message.ack.direct.fallback 로 관측).
-    ack:
-      direct:
-        enabled: true
-
 app:
   rate-limit:
     chat-message:

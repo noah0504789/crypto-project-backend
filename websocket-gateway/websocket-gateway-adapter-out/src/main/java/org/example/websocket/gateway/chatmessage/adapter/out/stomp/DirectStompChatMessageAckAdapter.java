@@ -10,7 +10,6 @@ import org.example.websocket.gateway.chatmessage.application.port.out.ChatMessag
 import org.example.websocket.gateway.chatmessage.application.service.result.ChatMessageAckResult;
 import org.example.websocket.gateway.session.application.cache.LocalSessionCache;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Primary;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.converter.MessageConverter;
@@ -24,35 +23,26 @@ import java.util.Set;
  * ACK 를 brokerChannel 없이 clientOutboundChannel 로 직접 보낸다. 도입 근거는 PR #267 —
  * {@code convertAndSendToUser} 가 사용자 목적지를 세션 수만큼 brokerChannel 로 되돌려
  * 거절된 broker 태스크의 97% 가 ACK 였다.
- *
- * <p>구독 ID 가 없으면 클라이언트가 프레임을 매칭하지 못하므로, 하나라도 빠지면 기존 경로로 넘긴다.
  */
 @Slf4j
-@Primary
 @Component
 public class DirectStompChatMessageAckAdapter implements ChatMessageAckPort {
 
-    private final StompChatMessageAckAdapter delegate;
-    private final ChatMessageAckDirectProperties properties;
     private final LocalSessionCache localSessionCache;
     private final MessageChannel clientOutboundChannel;
     private final MessageConverter messageConverter;
     private final String ackDestination;
 
     private final Counter sent;
-    private final Counter fallback;
+    private final Counter failed;
 
     public DirectStompChatMessageAckAdapter(
-            StompChatMessageAckAdapter delegate,
-            ChatMessageAckDirectProperties properties,
             LocalSessionCache localSessionCache,
             @Qualifier("clientOutboundChannel") MessageChannel clientOutboundChannel,
             @Qualifier("brokerMessageConverter") MessageConverter messageConverter,
             ApiPathProperties apiPathProperties,
             MeterRegistry registry
     ) {
-        this.delegate = delegate;
-        this.properties = properties;
         this.localSessionCache = localSessionCache;
         this.clientOutboundChannel = clientOutboundChannel;
         this.messageConverter = messageConverter;
@@ -62,8 +52,8 @@ public class DirectStompChatMessageAckAdapter implements ChatMessageAckPort {
         this.sent = Counter.builder("chat.message.ack.direct.sent")
                 .description("brokerChannel 을 건너뛰고 보낸 ACK 프레임 수")
                 .register(registry);
-        this.fallback = Counter.builder("chat.message.ack.direct.fallback")
-                .description("세션·구독 정보가 없어 기존 경로로 넘긴 ACK 수")
+        this.failed = Counter.builder("chat.message.ack.direct.failed")
+                .description("세션·구독 부재나 전송 오류로 직접 보내지 못한 ACK 수")
                 .register(registry);
     }
 
@@ -71,26 +61,19 @@ public class DirectStompChatMessageAckAdapter implements ChatMessageAckPort {
     public void success(String userId, ChatMessageAckResult result) {
         send(userId, StompChatMessageAckPayload.ofSuccess(
                 result.messageId(), result.clientMessageId(), result.success(), result.timestamp()
-        ), () -> delegate.success(userId, result));
+        ));
     }
 
     @Override
     public void failure(String userId, String clientMessageId, String errorCode) {
-        send(userId, StompChatMessageAckPayload.ofFailure(clientMessageId, errorCode),
-                () -> delegate.failure(userId, clientMessageId, errorCode));
+        send(userId, StompChatMessageAckPayload.ofFailure(clientMessageId, errorCode));
     }
 
-    private void send(String userId, StompChatMessageAckPayload payload, Runnable fallbackSend) {
-        if (!properties.enabled()) {
-            fallbackSend.run();
-            return;
-        }
-
+    private void send(String userId, StompChatMessageAckPayload payload) {
         Set<String> sessions = localSessionCache.findSessions(userId);
 
         if (sessions.isEmpty()) {
-            fallback.increment();
-            fallbackSend.run();
+            failed.increment();
             return;
         }
 
@@ -109,8 +92,7 @@ public class DirectStompChatMessageAckAdapter implements ChatMessageAckPort {
         }
 
         if (!sentAny) {
-            fallback.increment();
-            fallbackSend.run();
+            failed.increment();
         }
     }
 

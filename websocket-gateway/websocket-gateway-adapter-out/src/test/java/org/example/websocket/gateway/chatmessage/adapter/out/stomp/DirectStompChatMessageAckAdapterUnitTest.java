@@ -8,9 +8,6 @@ import org.example.websocket.gateway.session.application.cache.LocalSessionCache
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
@@ -20,18 +17,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 
-@ExtendWith(MockitoExtension.class)
 @DisplayName("DirectStompChatMessageAckAdapter")
 class DirectStompChatMessageAckAdapterUnitTest {
-
-    @Mock
-    private StompChatMessageAckAdapter delegate;
 
     private MeterRegistry registry;
     private LocalSessionCache localSessionCache;
@@ -53,10 +41,8 @@ class DirectStompChatMessageAckAdapterUnitTest {
         clientOutboundChannel.subscribe(captured::add);
     }
 
-    private DirectStompChatMessageAckAdapter sut(boolean enabled) {
+    private DirectStompChatMessageAckAdapter sut() {
         return new DirectStompChatMessageAckAdapter(
-                delegate,
-                new ChatMessageAckDirectProperties(enabled),
                 localSessionCache,
                 clientOutboundChannel,
                 new MappingJackson2MessageConverter(),
@@ -82,12 +68,12 @@ class DirectStompChatMessageAckAdapterUnitTest {
         localSessionCache.registerAckSubscription(sessionId, subscriptionId);
 
         // when
-        sut(true).success(userId, result);
+        sut().success(userId, result);
 
         // then
         assertThat(captured).hasSize(1);
-        verifyNoInteractions(delegate);
         assertThat(registry.counter("chat.message.ack.direct.sent").count()).isEqualTo(1.0);
+        assertThat(registry.counter("chat.message.ack.direct.failed").count()).isZero();
     }
 
     @Test
@@ -98,7 +84,7 @@ class DirectStompChatMessageAckAdapterUnitTest {
         localSessionCache.registerAckSubscription(sessionId, subscriptionId);
 
         // when
-        sut(true).success(userId, result);
+        sut().success(userId, result);
 
         // then
         SimpMessageHeaderAccessor accessor = headersOf(captured.get(0));
@@ -109,30 +95,28 @@ class DirectStompChatMessageAckAdapterUnitTest {
     }
 
     @Test
-    @DisplayName("구독 정보가 없으면 보내지 않고 기존 경로로 넘긴다")
-    void fallsBackWhenSubscriptionUnknown() {
+    @DisplayName("구독 정보가 없으면 보내지 않는다")
+    void doesNotSendWhenSubscriptionUnknown() {
         // given — 세션은 있지만 ACK 구독을 아직 안 했다
         localSessionCache.register(sessionId, userId);
 
         // when
-        sut(true).success(userId, result);
+        sut().success(userId, result);
 
         // then
         assertThat(captured).isEmpty();
-        verify(delegate).success(userId, result);
-        assertThat(registry.counter("chat.message.ack.direct.fallback").count()).isEqualTo(1.0);
+        assertThat(registry.counter("chat.message.ack.direct.failed").count()).isEqualTo(1.0);
     }
 
     @Test
-    @DisplayName("로컬 세션이 없으면 기존 경로로 넘긴다")
-    void fallsBackWhenNoLocalSession() {
+    @DisplayName("로컬 세션이 없으면 보내지 않는다")
+    void doesNotSendWhenNoLocalSession() {
         // when
-        sut(true).failure(userId, "client-1", "SERVER_ERROR");
+        sut().failure(userId, "client-1", "SERVER_ERROR");
 
         // then
         assertThat(captured).isEmpty();
-        verify(delegate).failure(userId, "client-1", "SERVER_ERROR");
-        assertThat(registry.counter("chat.message.ack.direct.fallback").count()).isEqualTo(1.0);
+        assertThat(registry.counter("chat.message.ack.direct.failed").count()).isEqualTo(1.0);
     }
 
     @Test
@@ -145,27 +129,11 @@ class DirectStompChatMessageAckAdapterUnitTest {
         localSessionCache.registerAckSubscription("session-2", "sub-1");
 
         // when
-        sut(true).success(userId, result);
+        sut().success(userId, result);
 
         // then
         assertThat(captured).hasSize(2);
         assertThat(registry.counter("chat.message.ack.direct.sent").count()).isEqualTo(2.0);
-    }
-
-    @Test
-    @DisplayName("끄면 세션을 알아도 기존 경로로 보낸다")
-    void delegatesWhenDisabled() {
-        // given
-        localSessionCache.register(sessionId, userId);
-        localSessionCache.registerAckSubscription(sessionId, subscriptionId);
-
-        // when
-        sut(false).success(userId, result);
-
-        // then
-        assertThat(captured).isEmpty();
-        verify(delegate).success(userId, result);
-        assertThat(registry.counter("chat.message.ack.direct.fallback").count()).isZero();
     }
 
     @Test
@@ -176,11 +144,10 @@ class DirectStompChatMessageAckAdapterUnitTest {
         localSessionCache.registerAckSubscription(sessionId, subscriptionId);
 
         // when
-        sut(true).failure(userId, "client-1", "RATE_LIMIT_EXCEEDED");
+        sut().failure(userId, "client-1", "RATE_LIMIT_EXCEEDED");
 
         // then
         assertThat(captured).hasSize(1);
-        verify(delegate, never()).failure(anyString(), anyString(), anyString());
-        verify(delegate, never()).success(anyString(), any());
+        assertThat(registry.counter("chat.message.ack.direct.failed").count()).isZero();
     }
 }

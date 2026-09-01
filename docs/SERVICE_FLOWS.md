@@ -474,7 +474,7 @@ outbound 1건 버림 = 1명이 못 받음
 
 300명 방이면 300배다. **부하 결과에서 `stomp.executor.rejected`를 합산하면 안 된다.** `pool` 로 나누고 `kind` 로 다시 나눠 읽는다(#266) — 같은 broker 거절이어도 브로드캐스트·뱃지·ACK 의 피해가 전부 다르다.
 
-**ACK 와 뱃지는 이제 이 채널을 지나지 않는다**(#267, 5.9-e). 세션과 목적지별 구독 ID 를 직접 찾아 `clientOutboundChannel` 로 보낸다. 뱃지는 기존 broker 경로로 폴백하지 않는다.
+**ACK 와 뱃지는 이제 이 채널을 지나지 않는다**(#267, 5.9-e). 세션과 목적지별 구독 ID 를 직접 찾아 `clientOutboundChannel` 로 보내며, 둘 다 기존 broker 경로로 폴백하지 않는다.
 
 **(3) inbound 거절과 outbound 거절은 의미가 다르다.**
 

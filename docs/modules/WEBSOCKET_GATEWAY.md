@@ -177,7 +177,7 @@ graph TB
 | outbound | `/user/topic/notification/` | `convertAndSendToUser` | `StompWebNotificationPayload` |
 
 - 이들은 프론트와 `websocket-gateway/k6` 부하 테스트가 의존하는 **외부 계약**이다. 변경 전 의존성 확인(→ `../../.claude/rules/external-contracts.md`). 특히 `/topic/chat/{roomId}` wire는 내부 Kafka `ChatMessageBroadcastEvent`와 구조가 다르다.
-- **ACK 는 brokerChannel 을 지나지 않는다.** `LocalSessionCache` 에서 세션과 구독 ID 를 찾아 `clientOutboundChannel` 로 직접 보낸다(`DirectStompChatMessageAckAdapter`). 세션이나 구독을 못 찾으면 기존 `convertAndSendToUser` 경로로 넘긴다(`chat.message.ack.direct.fallback` 로 관측). 구독 ID 는 `SessionSubscribeEvent` 에서 잡아 `LocalSessionCache` 에 함께 둔다 — 없으면 클라이언트가 MESSAGE 프레임을 매칭하지 못한다.
+- **ACK 는 brokerChannel 을 지나지 않는다.** `LocalSessionCache` 에서 세션과 구독 ID 를 찾아 `clientOutboundChannel` 로 직접 보낸다(`DirectStompChatMessageAckAdapter`). 세션이나 구독을 못 찾거나 전송에 실패하면 보내지 않고 `chat.message.ack.direct.failed` 로 센다. 구독 ID 는 `SessionSubscribeEvent` 에서 잡아 `LocalSessionCache` 에 함께 둔다 — 없으면 클라이언트가 MESSAGE 프레임을 매칭하지 못한다.
 - **뱃지도 brokerChannel 을 지나지 않는다.** `DirectStompMyChatRoomBadgeAdapter` 가 같은 방식으로 세션·뱃지 구독 ID 를 헤더에 넣어 직접 보낸다. 찾지 못하거나 전송에 실패하면 보내지 않고 `chat.badge.direct.failed` 로 센다.
 - 메시지 변환: `MappingJackson2MessageConverter`(JSON), 커스텀 executor(broker/inbound/outbound `ThreadPoolTaskExecutor`), broker cacheLimit 8192.
 
@@ -193,7 +193,7 @@ graph TB
 
 - application: `ChatMessageSendServiceUnitTest`, `LocalSessionCacheUnitTest`(세션·ACK·뱃지 구독 ID, unsubscribe·세션 제거 시 동반 삭제)
 - adapter-in: `StompControllerUnitTest`, `StompChatMessageExceptionHandlerUnitTest`(실패 ACK 의 `clientMessageId`), `ExecutorConfigUnitTest`, `ExecutorConfigRejectionKindUnitTest`(거절 태스크 목적지 분류), `RedisChatMessageRateLimiter*Test`
-- adapter-out: `BatchingChatMessageBroadcastAdapterUnitTest`(순서 보존·상한 초과 즉시 전송), `CoalescingMyChatRoomBadgeAdapterUnitTest`(마지막 1건·타임스탬프 역전·flush Timer), `DirectStompMyChatRoomBadgeAdapterUnitTest`(헤더 3종·세션·구독 부재·다중 세션), `DirectStompChatMessageAckAdapterUnitTest`(헤더 3종·폴백·다중 세션·disabled), `GrpcChatMessageCommandAdapterUnitTest`, `RedisSessionLocationAdapterUnitTest`
+- adapter-out: `BatchingChatMessageBroadcastAdapterUnitTest`(순서 보존·상한 초과 즉시 전송), `CoalescingMyChatRoomBadgeAdapterUnitTest`(마지막 1건·타임스탬프 역전·flush Timer), `DirectStompMyChatRoomBadgeAdapterUnitTest`·`DirectStompChatMessageAckAdapterUnitTest`(헤더 3종·세션·구독 부재·다중 세션), `GrpcChatMessageCommandAdapterUnitTest`, `RedisSessionLocationAdapterUnitTest`
 - bootstrap: `BootSmokeTest` — 실제 `git-config-repo` 설정을 import 하므로 **설정 키 누락이 부팅 실패로 잡힌다**
 - 부하: [`chat/load-test-results/.../README.md`](../../chat/load-test-results/chatmessage/websocket-gateway/README.md) — 결과는 §2. **거기 지연 수치는 목표치도 확정 용량도 아니다.** 16GB 단일 호스트에 컨테이너 23개를 올린 상태라 같은 조건 3회에서 p90 이 3배까지 흔들린다. 피크·SLO 는 운영계에서 다시 잰다. 확정된 것은 **유실 0·ACK 실패 0**과 **병목이 어디였는가**다
 
