@@ -1,6 +1,5 @@
 package org.example.websocket.gateway.chatroom.adapter.out.stomp;
 
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
@@ -10,8 +9,6 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties(prefix = "websocket.badge.coalesce")
 public record BadgeCoalesceProperties(
-        @NotNull Boolean enabled,
-
         // 방 하나에 대해 이 시간 안에 들어온 뱃지는 마지막 1건만 전송한다.
         // 창을 키울수록 brokerChannel 태스크는 줄고 뱃지 갱신 지연은 늘어난다.
         @Positive Long windowMs

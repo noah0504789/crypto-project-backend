@@ -12,10 +12,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.Set;
+import java.util.concurrent.ScheduledExecutorService;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -24,7 +24,10 @@ import static org.mockito.Mockito.verifyNoInteractions;
 class CoalescingMyChatRoomBadgeAdapterUnitTest {
 
     @Mock
-    private StompMyChatRoomBadgeAdapter delegate;
+    private DirectStompMyChatRoomBadgeAdapter delegate;
+
+    @Mock
+    private ScheduledExecutorService scheduler;
 
     private MeterRegistry registry;
 
@@ -38,10 +41,11 @@ class CoalescingMyChatRoomBadgeAdapterUnitTest {
         registry = new SimpleMeterRegistry();
     }
 
-    private CoalescingMyChatRoomBadgeAdapter sut(boolean enabled) {
+    private CoalescingMyChatRoomBadgeAdapter sut() {
         return new CoalescingMyChatRoomBadgeAdapter(
                 delegate,
-                new BadgeCoalesceProperties(enabled, 200L),
+                new BadgeCoalesceProperties(200L),
+                scheduler,
                 registry
         );
     }
@@ -54,7 +58,7 @@ class CoalescingMyChatRoomBadgeAdapterUnitTest {
     @DisplayName("창이 닫히기 전에는 delegate 로 나가지 않는다")
     void doesNotSendBeforeFlush() {
         // given
-        CoalescingMyChatRoomBadgeAdapter sut = sut(true);
+        CoalescingMyChatRoomBadgeAdapter sut = sut();
 
         // when
         boolean accepted = sut.send(command(roomId, "첫 번째", baseTime), "tx-1");
@@ -68,7 +72,7 @@ class CoalescingMyChatRoomBadgeAdapterUnitTest {
     @DisplayName("같은 방의 연속 뱃지는 마지막 1건만 전송한다")
     void coalescesSameRoom() {
         // given
-        CoalescingMyChatRoomBadgeAdapter sut = sut(true);
+        CoalescingMyChatRoomBadgeAdapter sut = sut();
         MyChatRoomBadgeCommand last = command(roomId, "세 번째", baseTime.plusSeconds(2));
 
         sut.send(command(roomId, "첫 번째", baseTime), "tx-1");
@@ -89,7 +93,7 @@ class CoalescingMyChatRoomBadgeAdapterUnitTest {
     @DisplayName("방이 다르면 합치지 않고 각각 전송한다")
     void doesNotCoalesceAcrossRooms() {
         // given
-        CoalescingMyChatRoomBadgeAdapter sut = sut(true);
+        CoalescingMyChatRoomBadgeAdapter sut = sut();
         MyChatRoomBadgeCommand first = command(roomId, "방1", baseTime);
         MyChatRoomBadgeCommand second = command(otherRoomId, "방2", baseTime);
 
@@ -111,7 +115,7 @@ class CoalescingMyChatRoomBadgeAdapterUnitTest {
     @DisplayName("늦게 도착한 과거 뱃지가 최신 뱃지를 덮지 않는다")
     void keepsLatestByTimestamp() {
         // given
-        CoalescingMyChatRoomBadgeAdapter sut = sut(true);
+        CoalescingMyChatRoomBadgeAdapter sut = sut();
         MyChatRoomBadgeCommand newer = command(roomId, "최신", baseTime.plusSeconds(10));
 
         sut.send(newer, "tx-new");
@@ -128,7 +132,7 @@ class CoalescingMyChatRoomBadgeAdapterUnitTest {
     @DisplayName("창을 비운 뒤 다시 flush 해도 재전송하지 않는다")
     void doesNotResendAfterFlush() {
         // given
-        CoalescingMyChatRoomBadgeAdapter sut = sut(true);
+        CoalescingMyChatRoomBadgeAdapter sut = sut();
         sut.send(command(roomId, "한 번", baseTime), "tx-1");
         sut.flush();
 
@@ -139,33 +143,4 @@ class CoalescingMyChatRoomBadgeAdapterUnitTest {
         verify(delegate).send(any(), any());
     }
 
-    @Test
-    @DisplayName("합치기를 끄면 즉시 delegate 로 위임한다")
-    void delegatesImmediatelyWhenDisabled() {
-        // given
-        CoalescingMyChatRoomBadgeAdapter sut = sut(false);
-        MyChatRoomBadgeCommand command = command(roomId, "즉시", baseTime);
-
-        // when
-        sut.send(command, "tx-1");
-
-        // then
-        verify(delegate).send(command, "tx-1");
-        assertThat(registry.counter("chat.badge.flushed").count()).isZero();
-    }
-
-    @Test
-    @DisplayName("합치기를 끄면 스케줄러를 띄우지 않는다")
-    void doesNotStartSchedulerWhenDisabled() {
-        // given
-        CoalescingMyChatRoomBadgeAdapter sut = sut(false);
-
-        // when
-        sut.start();
-        sut.flush();
-
-        // then
-        verify(delegate, never()).send(any(), any());
-        assertThat(registry.timer("chat.badge.flush").count()).isEqualTo(1L);
-    }
 }

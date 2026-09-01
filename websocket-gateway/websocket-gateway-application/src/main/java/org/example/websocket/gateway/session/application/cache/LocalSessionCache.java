@@ -41,6 +41,15 @@ public class LocalSessionCache {
         return (subscriptions == null) ? null : subscriptions.ackSubscriptionId;
     }
 
+    public void registerBadgeSubscription(String sessionId, String subscriptionId) {
+        subscriptionsOf(sessionId).badgeSubscriptionId = subscriptionId;
+    }
+
+    public String findBadgeSubscriptionId(String sessionId) {
+        SessionSubscriptions subscriptions = sessionToSubscriptions.get(sessionId);
+        return (subscriptions == null) ? null : subscriptions.badgeSubscriptionId;
+    }
+
     public void registerRoomSubscription(String sessionId, String subscriptionId, String roomId) {
         roomToSessions.computeIfAbsent(roomId, key -> ConcurrentHashMap.newKeySet()).add(sessionId);
         subscriptionsOf(sessionId).rooms.put(subscriptionId, roomId);
@@ -57,6 +66,21 @@ public class LocalSessionCache {
         if (!subscriptions.rooms.containsValue(roomId)) {
             detachRoom(sessionId, roomId);
         }
+    }
+
+    public void removeSubscription(String sessionId, String subscriptionId) {
+        SessionSubscriptions subscriptions = sessionToSubscriptions.get(sessionId);
+        if (subscriptions == null) return;
+
+        if (subscriptionId.equals(subscriptions.ackSubscriptionId)) {
+            subscriptions.ackSubscriptionId = null;
+        }
+
+        if (subscriptionId.equals(subscriptions.badgeSubscriptionId)) {
+            subscriptions.badgeSubscriptionId = null;
+        }
+
+        removeRoomSubscription(sessionId, subscriptionId);
     }
 
     public boolean hasLocalSubscriber(String roomId) {
@@ -121,6 +145,9 @@ public class LocalSessionCache {
 
         // ACK 를 brokerChannel 없이 보내려면 구독 ID 가 필요하다. 없으면 클라이언트가 프레임을 매칭하지 못한다.
         private volatile String ackSubscriptionId;
+
+        // 뱃지 직접 전송도 같은 이유로 구독 ID 를 함께 보관한다.
+        private volatile String badgeSubscriptionId;
 
         // UNSUBSCRIBE 프레임에는 목적지가 없고 구독 ID 만 온다. 그 ID 로 방을 되찾는다.
         private final Map<String, String> rooms = new ConcurrentHashMap<>();

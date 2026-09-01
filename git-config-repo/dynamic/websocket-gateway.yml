@@ -90,22 +90,14 @@ websocket:
   # 방 단위 conflation. 구간의 마지막 1건만 보내고 나머지는 버린다. 근거는 PR #263, 유지 이유는 chat/load-test-results/chatmessage/websocket-gateway/README.md §3-0
   badge:
     coalesce:
-      enabled: true
       window-ms: 200
 
   chat-message:
     # 방 단위 배칭. conflation 과 달리 한 건도 버리지 않는다. 근거는 PR #265, 유지 이유는 chat/load-test-results/chatmessage/websocket-gateway/README.md §3-0
     # window-ms 를 뱃지(200ms)보다 짧게 잡는다 — 메시지는 사용자가 기다리는 내용이다.
     batch:
-      enabled: true
       window-ms: 100
       max-batch-size: 300
-
-    # ACK 를 brokerChannel 없이 clientOutboundChannel 로 직접 보낸다. 근거는 PR #267, 유지 이유는 chat/load-test-results/chatmessage/websocket-gateway/README.md §3-0
-    # 세션·구독 정보가 없으면 기존 경로로 넘긴다(chat.message.ack.direct.fallback 로 관측).
-    ack:
-      direct:
-        enabled: true
 
 app:
   rate-limit:

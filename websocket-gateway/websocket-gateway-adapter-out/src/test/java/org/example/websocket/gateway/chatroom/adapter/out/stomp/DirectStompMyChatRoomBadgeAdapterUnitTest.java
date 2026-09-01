@@ -1,9 +1,10 @@
-package org.example.websocket.gateway.chatmessage.adapter.out.stomp;
+package org.example.websocket.gateway.chatroom.adapter.out.stomp;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.example.common.properties.ApiPathProperties;
-import org.example.websocket.gateway.chatmessage.application.service.result.ChatMessageAckResult;
+import org.example.websocket.gateway.chatroom.application.service.command.MyChatRoomBadgeCommand;
 import org.example.websocket.gateway.session.application.cache.LocalSessionCache;
 import org.example.websocket.gateway.websocket.adapter.out.stomp.DirectStompSessionSender;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,13 +15,15 @@ import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.support.ExecutorSubscribableChannel;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DisplayName("DirectStompChatMessageAckAdapter")
-class DirectStompChatMessageAckAdapterUnitTest {
+@DisplayName("DirectStompMyChatRoomBadgeAdapter")
+class DirectStompMyChatRoomBadgeAdapterUnitTest {
 
     private MeterRegistry registry;
     private LocalSessionCache localSessionCache;
@@ -29,8 +32,13 @@ class DirectStompChatMessageAckAdapterUnitTest {
 
     private final String userId = "user-1";
     private final String sessionId = "session-1";
-    private final String subscriptionId = "sub-0";
-    private final ChatMessageAckResult result = new ChatMessageAckResult("msg-1", "client-1", true, 1L);
+    private final String subscriptionId = "badge-sub-1";
+    private final MyChatRoomBadgeCommand command = new MyChatRoomBadgeCommand(
+            "room-1",
+            Set.of(userId),
+            "새 메시지",
+            Instant.parse("2026-09-01T00:00:00Z")
+    );
 
     @BeforeEach
     void setUp() {
@@ -42,11 +50,13 @@ class DirectStompChatMessageAckAdapterUnitTest {
         clientOutboundChannel.subscribe(captured::add);
     }
 
-    private DirectStompChatMessageAckAdapter sut() {
-        return new DirectStompChatMessageAckAdapter(
+    private DirectStompMyChatRoomBadgeAdapter sut() {
+        MappingJackson2MessageConverter messageConverter = new MappingJackson2MessageConverter();
+        messageConverter.setObjectMapper(new ObjectMapper().findAndRegisterModules());
+
+        return new DirectStompMyChatRoomBadgeAdapter(
                 localSessionCache,
-                new DirectStompSessionSender(clientOutboundChannel, new MappingJackson2MessageConverter()),
-                // 이 어댑터가 쓰는 것은 stomp().userDestinationPrefix() 하나뿐이다.
+                new DirectStompSessionSender(clientOutboundChannel, messageConverter),
                 new ApiPathProperties(
                         null,
                         new ApiPathProperties.Stomp("/msg", "/user"),
@@ -56,24 +66,21 @@ class DirectStompChatMessageAckAdapterUnitTest {
         );
     }
 
-    private SimpMessageHeaderAccessor headersOf(Message<?> message) {
-        return SimpMessageHeaderAccessor.wrap(message);
-    }
-
     @Test
-    @DisplayName("세션과 구독을 알면 brokerChannel 없이 직접 보낸다")
+    @DisplayName("세션과 뱃지 구독을 알면 brokerChannel 없이 직접 보낸다")
     void sendsDirectlyWhenSessionAndSubscriptionKnown() {
         // given
         localSessionCache.register(sessionId, userId);
-        localSessionCache.registerAckSubscription(sessionId, subscriptionId);
+        localSessionCache.registerBadgeSubscription(sessionId, subscriptionId);
 
         // when
-        sut().success(userId, result);
+        boolean sent = sut().send(command, "tx-1");
 
         // then
+        assertThat(sent).isTrue();
         assertThat(captured).hasSize(1);
-        assertThat(registry.counter("chat.message.ack.direct.sent").count()).isEqualTo(1.0);
-        assertThat(registry.counter("chat.message.ack.direct.failed").count()).isZero();
+        assertThat(registry.counter("chat.badge.direct.sent").count()).isEqualTo(1.0);
+        assertThat(registry.counter("chat.badge.direct.failed").count()).isZero();
     }
 
     @Test
@@ -81,73 +88,78 @@ class DirectStompChatMessageAckAdapterUnitTest {
     void fillsSessionSubscriptionAndDestination() {
         // given
         localSessionCache.register(sessionId, userId);
-        localSessionCache.registerAckSubscription(sessionId, subscriptionId);
+        localSessionCache.registerBadgeSubscription(sessionId, subscriptionId);
 
         // when
-        sut().success(userId, result);
+        sut().send(command, "tx-1");
 
         // then
-        SimpMessageHeaderAccessor accessor = headersOf(captured.get(0));
+        SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.wrap(captured.get(0));
         assertThat(accessor.getSessionId()).isEqualTo(sessionId);
         assertThat(accessor.getSubscriptionId()).isEqualTo(subscriptionId);
-        assertThat(accessor.getDestination()).isEqualTo("/user/queue/chat/ack");
+        assertThat(accessor.getDestination()).isEqualTo("/user/queue/chat/badge");
         assertThat(captured.get(0).getPayload()).isInstanceOf(byte[].class);
     }
 
     @Test
-    @DisplayName("구독 정보가 없으면 보내지 않는다")
+    @DisplayName("뱃지 구독 정보가 없으면 보내지 않는다")
     void doesNotSendWhenSubscriptionUnknown() {
-        // given — 세션은 있지만 ACK 구독을 아직 안 했다
+        // given
         localSessionCache.register(sessionId, userId);
 
         // when
-        sut().success(userId, result);
+        boolean sent = sut().send(command, "tx-1");
 
         // then
+        assertThat(sent).isFalse();
         assertThat(captured).isEmpty();
-        assertThat(registry.counter("chat.message.ack.direct.failed").count()).isEqualTo(1.0);
+        assertThat(registry.counter("chat.badge.direct.failed").count()).isEqualTo(1.0);
     }
 
     @Test
     @DisplayName("로컬 세션이 없으면 보내지 않는다")
     void doesNotSendWhenNoLocalSession() {
         // when
-        sut().failure(userId, "client-1", "SERVER_ERROR");
+        boolean sent = sut().send(command, "tx-1");
 
         // then
+        assertThat(sent).isFalse();
         assertThat(captured).isEmpty();
-        assertThat(registry.counter("chat.message.ack.direct.failed").count()).isEqualTo(1.0);
+        assertThat(registry.counter("chat.badge.direct.failed").count()).isEqualTo(1.0);
     }
 
     @Test
-    @DisplayName("한 사용자의 세션이 여럿이면 각각 보낸다")
+    @DisplayName("한 사용자의 세션이 여럿이면 각각 직접 보낸다")
     void sendsToEverySessionOfUser() {
         // given
         localSessionCache.register(sessionId, userId);
         localSessionCache.register("session-2", userId);
-        localSessionCache.registerAckSubscription(sessionId, subscriptionId);
-        localSessionCache.registerAckSubscription("session-2", "sub-1");
+        localSessionCache.registerBadgeSubscription(sessionId, subscriptionId);
+        localSessionCache.registerBadgeSubscription("session-2", "badge-sub-2");
 
         // when
-        sut().success(userId, result);
+        sut().send(command, "tx-1");
 
         // then
         assertThat(captured).hasSize(2);
-        assertThat(registry.counter("chat.message.ack.direct.sent").count()).isEqualTo(2.0);
+        assertThat(registry.counter("chat.badge.direct.sent").count()).isEqualTo(2.0);
     }
 
     @Test
-    @DisplayName("실패 ACK 도 같은 경로로 보낸다")
-    void sendsFailureAckDirectly() {
+    @DisplayName("여러 세션 중 하나라도 구독 정보가 없으면 보내지 않는다")
+    void doesNotSendWhenAnySubscriptionUnknown() {
         // given
         localSessionCache.register(sessionId, userId);
-        localSessionCache.registerAckSubscription(sessionId, subscriptionId);
+        localSessionCache.register("session-2", userId);
+        localSessionCache.registerBadgeSubscription(sessionId, subscriptionId);
 
         // when
-        sut().failure(userId, "client-1", "RATE_LIMIT_EXCEEDED");
+        sut().send(command, "tx-1");
 
         // then
-        assertThat(captured).hasSize(1);
-        assertThat(registry.counter("chat.message.ack.direct.failed").count()).isZero();
+        assertThat(captured).isEmpty();
+        assertThat(registry.counter("chat.badge.direct.sent").count()).isZero();
+        assertThat(registry.counter("chat.badge.direct.failed").count()).isEqualTo(1.0);
     }
+
 }

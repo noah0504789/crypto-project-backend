@@ -239,6 +239,44 @@ class LocalSessionCacheUnitTest {
     }
 
     @Test
+    @DisplayName("뱃지 구독 ID를 세션별로 보관한다")
+    void badgeSubscription() {
+        // when
+        sut.registerBadgeSubscription(sessionId, "badge-sub-1");
+
+        // then
+        assertThat(sut.findBadgeSubscriptionId(sessionId)).isEqualTo("badge-sub-1");
+        assertThat(sut.findBadgeSubscriptionId(otherSessionId)).isNull();
+    }
+
+    @Test
+    @DisplayName("세션을 제거하면 뱃지 구독 ID도 함께 사라진다")
+    void removeClearsBadgeSubscription() {
+        // given
+        sut.register(sessionId, userId);
+        sut.registerBadgeSubscription(sessionId, "badge-sub-1");
+
+        // when
+        sut.remove(sessionId);
+
+        // then
+        assertThat(sut.findBadgeSubscriptionId(sessionId)).isNull();
+    }
+
+    @Test
+    @DisplayName("구독을 해제하면 뱃지 구독 ID도 함께 사라진다")
+    void unsubscribeClearsBadgeSubscription() {
+        // given
+        sut.registerBadgeSubscription(sessionId, "badge-sub-1");
+
+        // when
+        sut.removeSubscription(sessionId, "badge-sub-1");
+
+        // then
+        assertThat(sut.findBadgeSubscriptionId(sessionId)).isNull();
+    }
+
+    @Test
     @DisplayName("방을 구독하면 해당 방에 로컬 구독자가 있다고 판단한다")
     void registerRoomSubscription() {
         // given

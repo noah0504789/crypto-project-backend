@@ -437,7 +437,7 @@ graph TB
 | **outbox `FAILED`** | **전원** | **없음** | 미해결 → 4.6 |
 | Kafka 발행 재시도 중 | 지연 | outbox-poller 재시도 | — |
 | **broker 큐 거절 — 브로드캐스트** | **방 전원** | 없음 | 프레임 수 감소 (#263 #265) |
-| **broker 큐 거절 — 뱃지** | 그 사용자 | **다음 창이 최신값을 덮는다** | conflation 으로 회복 가능해짐 (#263) |
+| **뱃지 직접 전송 실패** | 그 사용자 | **다음 창이 최신값을 덮는다** | `chat.badge.direct.failed` 로 관측 |
 | **broker 큐 거절 — ACK** | **발신자가 영영 모름** | 없음 | **이 채널을 안 탄다**(#267) |
 | **outbound 큐 거절** | **수신자 1명** | 없음 | 프레임 수 감소 (#265) |
 | consumer 처리 실패 | 해당 이벤트 | `@Retryable` 소진 → `@Recover`가 DLQ 발행 | — |
@@ -474,7 +474,7 @@ outbound 1건 버림 = 1명이 못 받음
 
 300명 방이면 300배다. **부하 결과에서 `stomp.executor.rejected`를 합산하면 안 된다.** `pool` 로 나누고 `kind` 로 다시 나눠 읽는다(#266) — 같은 broker 거절이어도 브로드캐스트·뱃지·ACK 의 피해가 전부 다르다.
 
-**ACK 는 이제 이 채널을 지나지 않는다**(#267). 세션과 구독 ID 를 직접 찾아 `clientOutboundChannel` 로 보낸다.
+**ACK 와 뱃지는 이제 이 채널을 지나지 않는다**(#267, 5.9-e). 세션과 목적지별 구독 ID 를 직접 찾아 `clientOutboundChannel` 로 보내며, 둘 다 기존 broker 경로로 폴백하지 않는다.
 
 **(3) inbound 거절과 outbound 거절은 의미가 다르다.**
 
@@ -508,6 +508,7 @@ WebSocket 핸드셰이크 실패, Kafka consumer 리밸런스 중 유실, Inbox 
 | outbound 큐 적체 | 방 단위 배칭 | #265 |
 | 거절 내역을 모름 | 거절된 태스크의 목적지를 태그로 | #266 |
 | broker 큐 거절 — ACK | ACK 를 이 채널에서 뺐다 | #267 |
+| broker 큐 거절 — 뱃지 | 뱃지를 이 채널에서 뺐다 | TODO 5.9-e |
 | gRPC deadline · 저장 지연 | 멤버십 갱신을 bulkWrite 한 번으로 (왕복 302회 → 1회) | #270 |
 | 〃 | 브로드캐스트 이벤트에서 멤버 목록 제거 (outbox 행 크기를 방 크기와 분리) | #271 |
 

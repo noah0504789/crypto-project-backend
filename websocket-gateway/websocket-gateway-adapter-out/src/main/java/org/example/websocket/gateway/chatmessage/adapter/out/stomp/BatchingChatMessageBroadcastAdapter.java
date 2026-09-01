@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.websocket.gateway.chatmessage.adapter.out.stomp.payload.StompChatMessagePayload;
 import org.example.websocket.gateway.chatmessage.application.port.out.ChatMessageBroadcastPort;
 import org.example.websocket.gateway.chatmessage.application.service.command.ChatMessageBroadcastCommand;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
@@ -17,7 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -36,13 +36,8 @@ public class BatchingChatMessageBroadcastAdapter implements ChatMessageBroadcast
 
     private final Map<String, RoomBuffer> pending = new ConcurrentHashMap<>();
 
-    // 공유 금지. CallerRunsPolicy 로 한쪽이 늘어지면 서로 멈춘다.
-    private final ScheduledExecutorService scheduler =
-            Executors.newSingleThreadScheduledExecutor(runnable -> {
-                Thread thread = new Thread(runnable, "chat-batch-");
-                thread.setDaemon(true);
-                return thread;
-            });
+    // 뱃지 scheduler 와 공유하지 않는다. 한쪽 flush 가 늘어지면 다른 쪽까지 멈춘다.
+    private final ScheduledExecutorService scheduler;
 
     private final Counter buffered;
     private final Counter frames;
@@ -52,10 +47,12 @@ public class BatchingChatMessageBroadcastAdapter implements ChatMessageBroadcast
     public BatchingChatMessageBroadcastAdapter(
             StompChatMessageBroadcastAdapter delegate,
             ChatMessageBatchProperties properties,
+            @Qualifier("chatMessageBatchScheduler") ScheduledExecutorService scheduler,
             MeterRegistry registry
     ) {
         this.delegate = delegate;
         this.properties = properties;
+        this.scheduler = scheduler;
 
         this.buffered = Counter.builder("chat.message.batch.buffered")
                 .description("배칭 버퍼에 적재한 메시지 수")
@@ -78,10 +75,6 @@ public class BatchingChatMessageBroadcastAdapter implements ChatMessageBroadcast
     /** 반환값은 "접수했다"는 뜻이다. */
     @Override
     public boolean broadcast(ChatMessageBroadcastCommand command, String txId) {
-        if (!properties.enabled()) {
-            return delegate.broadcast(command, txId);
-        }
-
         if (!delegate.hasLocalSubscriber(command.roomId())) {
             return false;
         }
@@ -115,17 +108,12 @@ public class BatchingChatMessageBroadcastAdapter implements ChatMessageBroadcast
 
     @PostConstruct
     public void start() {
-        if (!properties.enabled()) {
-            log.info("[chat-batch] disabled. 메시지마다 즉시 전송으로 동작한다");
-            return;
-        }
-
         long windowMs = properties.windowMs();
 
         // fixedRate 로 바꾸지 않는다. 밀린 실행이 몰려 부하를 키운다.
         scheduler.scheduleWithFixedDelay(this::flush, windowMs, windowMs, TimeUnit.MILLISECONDS);
 
-        log.info("[chat-batch] enabled. windowMs={}, maxBatchSize={}", windowMs, properties.maxBatchSize());
+        log.info("[chat-batch] started. windowMs={}, maxBatchSize={}", windowMs, properties.maxBatchSize());
     }
 
     public void flush() {
@@ -156,8 +144,6 @@ public class BatchingChatMessageBroadcastAdapter implements ChatMessageBroadcast
 
     @PreDestroy
     public void stop() {
-        scheduler.shutdown();
-
         flush();
     }
 
