@@ -9,9 +9,11 @@ dependencies {
     implementation project(':common:common-web')
     implementation project(':common:common-redis')
     implementation project(':common:common-mongo')
+    implementation project(':common:common-tx')
     implementation project(':chat:chat-application')
     implementation(libs.spring.boot.starter.aop)
     implementation(libs.spring.integration.core)
+    implementation(libs.micrometer.core)
     implementation(libs.caffeine)
 
     testImplementation project(':common:common-test')

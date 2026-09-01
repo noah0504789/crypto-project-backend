@@ -54,13 +54,13 @@
 
 ## 5. 아키텍처 핵심 — 쓰기는 캐시-우선 + Outbox, 영속은 비동기
 
-chat의 쓰기 경로는 **동기적으로 Redis 캐시에 반영하고 영속(MongoDB)은 Kafka를 통해 비동기로 수행**하는 구조다. 이 원칙을 먼저 이해해야 나머지 절이 읽힌다.
+chat의 쓰기 경로는 **Outbox를 먼저 기록하고 Redis 캐시에 반영하며, 영속(MongoDB)은 Kafka를 통해 비동기로 수행**하는 구조다. 이 원칙을 먼저 이해해야 나머지 절이 읽힌다.
 
-1. **명령(Command)**: `ChatRoomCommandService`/`ChatMessageCommandService`가 (a) Outbox 이벤트를 발행(`OutboxEventListPublishPort.publish` → MySQL Outbox 테이블 기록)하고, (b) Redis 캐시를 동기 반영한다.
+1. **명령(Command)**: `ChatRoomCommandService`/`ChatMessageCommandService`가 Outbox 이벤트를 발행한다(`OutboxEventListPublishPort.publish` → MySQL Outbox 테이블 기록). 방 명령은 이어서 Redis 캐시를 동기 반영하고, 메시지 `save`는 MySQL 트랜잭션 커밋 뒤 `AfterCommitExecutor`로 캐시를 반영한다.
 2. **폴링/발행**: `outbox-poller`가 Outbox 레코드를 폴링해 Kafka 토픽으로 발행한다(chat 밖 공용 서비스).
 3. **비동기 영속**: chat의 Kafka consumer(`chatRoomEventConsumer`/`chatMessageEventConsumer`)가 이벤트를 받아 `ChatRoomEventService`/`ChatMessageEventService`가 **MongoDB에 실제 write**를 수행한다(`@Transactional("chatMongoTransactionManager")`).
-4. **보상**: 각 EventService는 `@Retryable`(3회, backoff 100ms×2) 후 `@Recover`로 DLQ 이벤트를 발행한다. DLQ는 `chatRoomDlqEventConsumer`/`chatMessageDlqEventConsumer`가 소비해 `*DlqService`로 처리하고 `DlqService.complete/fail`로 상태를 남긴다.
-5. **캐시 폴백**: 명령 중 캐시 동기 반영이 실패하면(§7 `cache*Safely`) 로그 후 별도 캐시-복구 Outbox 이벤트(`ChatRoomCacheSaveEvent`/`...InvalidateEvent` 등)를 발행해 비동기로 캐시를 재구성/무효화한다.
+4. **보상**: 각 EventService는 `@Retryable`(3회, backoff 100ms×2) 후 `@Recover`로 DLQ 이벤트를 발행한다. DLQ는 `chatRoomDlqEventConsumer`/`chatMessageDlqEventConsumer`가 소비해 `*DlqService`로 처리하고 `DlqService.complete/fail`로 상태를 남긴다. 현재 메시지 DLQ 처리는 메시지 insert만 재수행하며 방 `msgCnt`와 멤버십 스코어는 복구하지 않는다(§11).
+5. **캐시 폴백**: 방 명령의 캐시 동기 반영이 실패하면(§7 `cache*Safely`) 로그 후 별도 캐시-복구 Outbox 이벤트(`ChatRoomCacheSaveEvent`/`...InvalidateEvent` 등)를 발행해 비동기로 캐시를 재구성/무효화한다. 메시지 `save`의 커밋 후 캐시 반영 실패는 로그만 남기며 조회 repair가 복구한다.
 
 읽기 경로는 **캐시-우선, 미스 시 Mongo 로드 + 워밍업**이다(§8). 정상 흐름에서 REST 조회는 Redis만 조회하며, 캐시가 비었거나 인덱스가 없으면 `*QueryRepairService`가 Mongo에서 로드해 캐시를 채운 뒤 반환한다. **미스 폭주 방어 도구는 서브도메인 특성에 따라 다르다: 방 = `SingleFlight`, 메시지 = 분산락.**
 
@@ -233,12 +233,12 @@ proto: `protobuf/src/main/proto/chatmessage/v1/chatmessage-service.proto`. 서�
 | `save` | `GrpcChatMessageRequest{clientMessageId, messageId, roomId, writerId, content}` | `GrpcChatMessageResponse{success, id, ts}` | 메시지 저장(방 검증→Outbox 발행→캐시) |
 | `HardDelete` | `GrpcChatMessageHardDeleteRequest{messageId, roomId, reason}` | `GrpcChatMessageHardDeleteResponse{success, messageId, deleted, alreadyDeleted, notFound}` | 메시지 물리 삭제 + 방 카운터/스코어 보정 |
 
-- **`save`**(`ChatMessageCommandService.save`, `@Transactional("chatMongoTransactionManager")` + `@Retryable(TemporaryOutboxPersistenceException, 3회)`):
+- **`save`**(`ChatMessageCommandService.save`, MySQL `@Transactional("transactionManager")` + `@Retryable(TemporaryOutboxPersistenceException, 3회)`):
   1. Mongo에서 방 로드(`findById`) → 없으면 `ChatRoomNotFoundException`.
   2. `chatRoom.validateWritable(writerId)` — writerId가 멤버가 아니면 `ChatRoomMembershipNotFoundException`.
   3. `ChatMessage.create(messageId, roomId, writerId, content)`(messageId는 클라이언트/게이트웨이가 부여한 ObjectId).
   4. Outbox 3종 발행: `ChatMessagePersistEvent`(→`chatmessage-event`, 영속용), `ChatMessageBroadcastEvent`(→`chatmessage-broadcast-event`, websocket-gateway push용), `MyChatRoomBadgeBroadcastEvent`(→`chatroom-broadcast-event`, 뱃지용).
-  5. Redis 캐시 저장(`chatMessageCachePort.save`) — 실패 시 `ChatMessageCacheException`.
+  5. MySQL Outbox 트랜잭션 커밋 후 `AfterCommitExecutor`가 Redis 캐시를 저장한다(`chatMessageCachePort.save`). 실패는 로그만 남기고 조회 repair에 맡긴다.
   - **메시지 자체의 Mongo 저장은 여기서 하지 않는다.** `chatmessage-event`를 받은 `ChatMessageEventService.handle`이 비동기로 Mongo에 저장하고 방 `msgCnt` 증가·멤버십 스코어를 갱신한다(`DuplicateChatMessageException`은 `noRetryFor`로 멱등 처리).
 - **`HardDelete`**(`hardDelete`, `@Transactional("chatMongoTransactionManager")` + `@Retryable(TemporaryChatPersistenceException, 3회)`): Mongo `hardDeleteById` → 없으면 skip. 삭제되면 `decrementMessageCount`, `findLatestMessageExcluding`로 fallback 시각 산출, `refreshMembershipScores` 후 캐시 하드삭제(`hardDeleteCacheSafely`, 실패는 로그만).
 - 취소/데드라인: `save`/`hardDelete` 진입·완료 시 `Context.current().isCancelled()`를 검사해 `ChatMessageGrpcCancelledException`을 던진다. gRPC 예외 변환은 `GrpcChatMessageExceptionAdvice`.
@@ -261,7 +261,8 @@ proto: `protobuf/src/main/proto/chatmessage/v1/chatmessage-service.proto`. 서�
 | `ChatRoomCacheSave/UpdateEvent` | 방 캐시 저장·복구 | 동일 Redis key 덮어쓰기 |
 | `ChatRoomCacheDelete/InvalidateEvent` | 방 캐시 삭제·무효화 | 반복 삭제 허용 |
 | `ChatMessagePersistEvent` | 메시지 저장 후 방 `msgCnt` 증가·멤버 점수 갱신 | `messageId`로 Mongo `insert`; 중복 키면 `DuplicateChatMessageException`으로 성공 종료해 증분 연산을 실행하지 않음 |
-| ChatRoom/ChatMessage DLQ 이벤트 | 원본 처리 복구 후 DLQ 완료 상태 반영 | 원본 도메인 자연 키 + 안정적인 `dlq_id`/`event_id`; 중복 키는 성공 처리 |
+| ChatRoom DLQ 이벤트 | 원본 방 영속/캐시 처리를 재수행한 뒤 DLQ 완료 상태 반영 | 원본 도메인 자연 키 + 안정적인 `dlq_id`/`event_id` |
+| `ChatMessagePersistDlqEvent` | `ChatMessageDlqService`가 메시지 insert만 재수행 | 현재 방 `msgCnt` 증가와 멤버십 스코어 갱신은 재수행하지 않음 |
 
 Kafka `event_id`는 추적 계약으로 함께 전달하지만, chat은 서로 다른 이벤트 ID로 같은 도메인 대상이 들어오는 경우까지 막을 수 있도록 자연 키를 멱등 기준으로 삼는다. 특히 `ChatMessagePersistEvent`는 `MongoRepository.save`가 기존 `_id`를 replace할 수 있으므로 신규 삽입 전용 `insert`를 사용한다. 같은 `messageId`의 동시 소비에서는 Mongo unique `_id`가 하나만 성공시키고, 같은 Mongo 트랜잭션의 `msgCnt`·멤버십 점수 변경은 중복 소비에서 실행되지 않는다.
 
@@ -339,8 +340,32 @@ DB `chat`(authSource `chat`). `MongoConfig`가 커넥션 풀(min 20/max 200), `W
 
 - **스케줄러**(`ChatMessageScheduler`, `@Scheduled(cron="0 0 3 * * *")`): 매일 03:00, `CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX`를 `SCAN`하며 접근시각이 7일(`Duration.ofDays(7)`) 초과인 메시지를 방별 message zset과 access zset에서 제거한다. 실패 시 `ChatCacheException`. `@EnableScheduling`은 `ScheduleConfig`.
 - **커넥션 점유**: `DatasourceConfig` 가 `LazyConnectionDataSourceProxy` 로 write DataSource 를 감싼다. `ChatMessageCommandService.save` 는 트랜잭션 안에서 Mongo(방 조회)를 왕복하는데, 프록시가 없으면 트랜잭션 시작 시점에 MySQL 커넥션을 잡고 그 왕복 내내 붙들어 풀이 고갈된다(실측 점유 5.139초 · 타임아웃 360건 → 브로드캐스트 유실 10.06%, PR #257). **이 프록시를 걷어내지 않는다**(→ `docs/decisions/ADR-003-...md`).
-- **트랜잭션 경계**: 모든 Mongo write 경로는 named 매니저 `@Transactional("chatMongoTransactionManager")`. `ChatMessageCommandService`(save/hardDelete), `ChatMessageEventService`(persist), `ChatRoomEventService`의 leave/delete/cache-warm 핸들러가 사용. `chatroom` 명령 서비스(create/update/join/activity)는 트랜잭션 없이 Outbox+캐시로만 동작한다.
+- **트랜잭션 경계**: `ChatMessageCommandService.save`는 MySQL Outbox 원자성을 위해 `@Transactional("transactionManager")`를 사용한다. Mongo write를 묶는 `ChatMessageCommandService.hardDelete`, `ChatMessageEventService.handle`, `ChatRoomEventService`의 leave/delete 핸들러는 `@Transactional("chatMongoTransactionManager")`를 사용한다. cache-warm 핸들러는 같은 Mongo 매니저의 read-only 트랜잭션이다. `chatroom` 명령 서비스(create/update/join/activity)는 트랜잭션 없이 Outbox+캐시로만 동작한다.
 - **재시도/보상**: `@Retryable`(`TemporaryChatPersistenceException`/`TemporaryChatCacheException`/`TemporaryOutboxPersistenceException`, maxAttempts 3, backoff 100ms×2) + `@Recover`. Recover는 각 이벤트별 DLQ 이벤트를 발행하며, DLQ 발행조차 실패하면 `[RECOVER-FALLBACK]` 로그만 남긴다(`RetryConfig`).
+
+### 15.1 메시지 Mongo 영속 지표
+
+application의 outbound port `ChatMessageMetricsPort`가 계측 의도를 정의하고, adapter-out의
+`MicrometerChatMessageMetricsAdapter`가 `MeterRegistry`로 구현한다. handler 타이머는
+`KafkaChatMessageBinder` 바깥 경계에서 재시도·Mongo 트랜잭션 커밋·recover까지 포함하고, stage
+타이머는 각 Mongo 작업 시간을 분리한다. Timer는 Prometheus histogram을 발행한다. 모든 태그는 아래의
+고정된 저카디널리티 값만 사용하며 `roomId`·`messageId`·`txId`는 태그로 넣지 않는다.
+
+| 논리 지표 | Micrometer 이름 | 타입 | 태그·의미 |
+|---|---|---|---|
+| consumer handler 전체 | `chat.message.persistence.handler` | `Timer` | `result=success\|failure`; 재시도와 transaction 종료를 포함한 event 1건의 전체 처리 시간 |
+| Mongo 단계 | `chat.message.persistence.stage` | `Timer` | `stage=message_insert\|room_counter\|membership`; 메시지 insert, 방 카운터, 멤버십 fan-out 시간을 분리 |
+| 처리 단위 메시지 수 | `chat.message.persistence.batch.messages` | `DistributionSummary` | 커밋된 처리 단위의 신규 메시지 수. 현재 record consumer에서는 `1`, batch 전환 뒤 실제 batch 크기 |
+| 처리 단위 방 수 | `chat.message.persistence.batch.rooms` | `DistributionSummary` | 커밋된 처리 단위의 고유 방 수. 현재는 `1`, batch 전환 뒤 집계된 방 수 |
+| 멤버십 갱신 문서 수 | `chat.message.persistence.membership.documents` | `DistributionSummary` | 커밋된 처리에서 갱신한 membership 문서 수. 현재는 이벤트의 `memberIds.size()` |
+| 신규·중복 메시지 수 | `chat.message.persistence.messages` | `Counter` | `result=new\|duplicate`; Mongo transaction `afterCommit`에서만 증가 |
+| 재시도 가능 실패 | `chat.message.persistence.retry.failures` | `Counter` | `TemporaryChatPersistenceException`이 발생한 attempt 수. retry exhausted 직전의 마지막 실패도 포함 |
+| DLQ 전이 | `chat.message.persistence.dlq.transitions` | `Counter` | `result=published\|publish_failed`; recover의 DLQ 발행 결과 |
+| Kafka consumer lag | Kafka binder/consumer 기본 metric | 기존 Kafka metric | 앱 custom metric을 중복 추가하지 않고 `chatmessage-event` consumer lag을 함께 본다 |
+
+신규 수·batch/방/멤버십 수는 Mongo transaction의 `afterCommit`에서 기록하므로 rollback된 쓰기는 성공
+수치에 포함되지 않는다. 반면 stage Timer와 retry failure는 실패한 attempt도 의도적으로 포함한다. 이
+차이로 “어느 단계에서 시간을 썼는가”와 “실제로 커밋된 쓰기량”을 분리한다.
 
 ## 16. 확인 필요 항목
 

@@ -199,7 +199,7 @@ graph TB
   - `market`: unique `uk_markets_market_code`. (`JpaMarket`)
   - `price_alert_setting`: 복합 unique `(user_public_id, market_id)` + index `(market_id)`. (`JpaPriceAlertSetting`)
 - **MongoDB**: chat, notification.
-  - `chat_room`: CompoundIndex `{category, msgCnt, _id}` partial `{deleted:false}`, `title` unique partial. (`MongoChatRoom`)
+  - `chat_room`: CompoundIndex `{category, popularity, _id}` partial `{deleted:false}`, `title` unique partial. (`MongoChatRoom`)
   - `chat_message`, `chat_room_membership`, `notification`, `notification_recipient`.
 - **Redis Cluster**: 6노드 구성(`git-config-repo/infrastructure/redis.yml`). 키는 `common-core/RedisKey` enum으로 중앙 관리. Cluster Hash Tag로 슬롯 고정: `{chat}`, `{auth}`, `{session}`.
 - **Read Replica 라우팅**: `common-jpa`에 라우팅 DataSource가 구현되어 있고, 이를 실제로 배선한 서비스는 **market 하나**다(`market/market-adapter-out/.../infra/config/DatasourceConfig.java`: write/read Hikari + `ReplicationRoutingDataSource` + `LazyConnectionDataSourceProxy`, 상세는 `docs/modules/MARKET.md §10`). **user는 `spring.datasource.write` 단일 Hikari만 구성**하며 read pool도 라우팅 DataSource도 두지 않는다(`user/user-adapter-out/.../infra/config/DataSourceConfig.java`, 상세는 `docs/modules/USER.md §10`). 라우팅 트리거는 `@ReadReplica`+Aspect이며 `@Transactional(readOnly=true)`만으로는 read로 가지 않는다(§8.6).
@@ -253,7 +253,7 @@ proto 4개(`protobuf/src/main/proto/**`)와 서버/클라이언트 매핑:
 `*CommandService`/`*QueryService`(+ `*CommandUseCase`/`*QueryUseCase`)로 분리. user/chat/market/notification 전 서비스 적용.
 
 ### 8.3 트랜잭션 경계
-애플리케이션 서비스에 `@Transactional`. named 트랜잭션 매니저 사용 — chat은 `@Transactional("chatMongoTransactionManager")`(+`@Retryable`/`@Recover`), outbox는 `@Transactional("transactionManager")`.
+애플리케이션 서비스는 저장소 경계에 맞는 named 트랜잭션 매니저를 사용한다. chat의 Mongo write는 `@Transactional("chatMongoTransactionManager")`, `ChatMessageCommandService.save`의 MySQL Outbox 기록은 `@Transactional("transactionManager")`를 사용한다.
 
 ### 8.4 Domain Event → Outbox
 Spring `ApplicationEventPublisher`를 직접 쓰지 않고 `EventUtils.raise(list)` → `@EventListener OutboxEventListListener` → `OutboxService.saveAll`로 Outbox 테이블에 기록(`common-outbox`). 이벤트는 `AbstractOutboxEvent`/`AbstractOutboxEventList` 상속.

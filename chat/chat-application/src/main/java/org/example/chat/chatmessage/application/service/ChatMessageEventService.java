@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.chat.chatmessage.application.event.dlq.ChatMessageDlqEventList;
 import org.example.chat.chatmessage.application.event.dlq.ChatMessagePersistDlqEvent;
 import org.example.chat.chatmessage.application.mapper.ChatMessagePayloadMapper;
+import org.example.chat.chatmessage.application.port.out.ChatMessageMetricsPort;
 import org.example.chat.chatmessage.application.port.out.ChatMessagePersistencePort;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.chatmessage.application.event.ChatMessagePersistEvent;
@@ -30,6 +31,7 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
     private final ChatMessagePersistencePort chatMessagePersistencePort;
     private final ChatRoomPersistencePort chatRoomPersistencePort;
     private final DlqEventListPublishPort dlqEventListPublishPort;
+    private final ChatMessageMetricsPort metrics;
 
     @Retryable(
             retryFor = TemporaryChatPersistenceException.class,
@@ -41,14 +43,23 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
     )
     @Transactional("chatMongoTransactionManager")
     public void handle(ChatMessagePersistEvent event, String txId) {
-        ChatMessagePayload payload = event.getPayload();
-        ChatMessage domain = ChatMessagePayloadMapper.toDomain(payload);
+        try {
+            handlePersistence(event, txId);
+        } catch (TemporaryChatPersistenceException e) {
+            metrics.recordRetryableFailure();
+            throw e;
+        }
+    }
+
+    private void handlePersistence(ChatMessagePersistEvent event, String txId) {
+        ChatMessage domain = ChatMessagePayloadMapper.toDomain(event.getPayload());
         String id = domain.getId();
         String roomId = domain.getRoomId();
 
         try {
-            chatMessagePersistencePort.save(domain);
+            metrics.recordMessageInsert(() -> chatMessagePersistencePort.save(domain));
         } catch (DuplicateChatMessageException e) {
+            metrics.recordDuplicateMessage();
             log.warn(
                     "[chat message] persist event already processed. txId={}, chatMessageId={}",
                     txId,
@@ -57,8 +68,15 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
             return;
         }
 
-        chatRoomPersistencePort.incrementMessageCount(roomId);
-        chatRoomPersistencePort.updateMembershipScores(roomId, event.getMemberIds(), domain.createdAtEpochMillis());
+        metrics.recordRoomCounter(() -> chatRoomPersistencePort.incrementMessageCount(roomId));
+        metrics.recordMembership(
+                () -> chatRoomPersistencePort.updateMembershipScores(
+                        roomId,
+                        event.getMemberIds(),
+                        domain.createdAtEpochMillis()
+                )
+        );
+        metrics.recordCommittedBatch(1, 1, event.getMemberIds().size());
     }
 
     @Recover
@@ -92,7 +110,9 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
     ) {
         try {
             recoverAction.run();
+            metrics.recordDlqPublished();
         } catch (Exception recoverEx) {
+            metrics.recordDlqPublishFailed();
             log.error(
                     "[recover-fallback] {} failed. txId={}, originalError={}, recoverError={}, details={}",
                     "chatmessage persist recover",
