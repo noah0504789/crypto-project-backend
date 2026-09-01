@@ -212,18 +212,18 @@ class MongoChatRoomAdapterIntegrationTest {
         }
 
         @Test
-        @DisplayName("incrementMsgCnt는 msgCnt를 증가시킨다")
-        void incrementMsgCnt() {
+        @DisplayName("advanceMessageWatermark는 msgCnt와 latestMessageSeq를 함께 증가시킨다")
+        void advanceMessageWatermark() {
             // given
             sut.save(chatRoom(roomId1, TITLE_1));
 
             // when
-            sut.incrementMessageCount(roomId1.toHexString(), 1);
-            sut.incrementMessageCount(roomId1.toHexString(), 1);
+            sut.advanceMessageWatermark(roomId1.toHexString(), 2, 1L);
 
             // then
             ChatRoom found = sut.findById(roomId1.toHexString()).orElseThrow();
             assertThat(found.getMsgCnt()).isEqualTo(2L);
+            assertThat(found.getLatestMessageSeq()).isEqualTo(2L);
         }
 
         @Test
@@ -231,8 +231,7 @@ class MongoChatRoomAdapterIntegrationTest {
         void decrementMsgCnt() {
             // given
             sut.save(chatRoom(roomId1, TITLE_1));
-            sut.incrementMessageCount(roomId1.toHexString(), 1);
-            sut.incrementMessageCount(roomId1.toHexString(), 1);
+            sut.advanceMessageWatermark(roomId1.toHexString(), 2, 1L);
 
             // when
             sut.decrementMessageCount(roomId1.toHexString());
@@ -659,12 +658,6 @@ class MongoChatRoomAdapterIntegrationTest {
 
     private String membershipId(ObjectId roomId, String memberId) {
         return MongoChatRoomMembership.generateId(roomId.toHexString(), memberId);
-    }
-
-    private void setMsgCnt(ObjectId roomId, int count) {
-        for (int i = 0; i < count; i++) {
-            sut.incrementMessageCount(roomId.toHexString(), 1);
-        }
     }
 
     private void setPopularity(ObjectId roomId, long popularity) {

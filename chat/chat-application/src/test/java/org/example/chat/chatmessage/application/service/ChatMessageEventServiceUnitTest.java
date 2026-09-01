@@ -121,6 +121,13 @@ class ChatMessageEventServiceUnitTest {
 
             inOrder.verify(chatRoomPersistencePort)
                     .advanceMessageWatermark(roomId, 1, message.createdAtEpochMillis());
+
+            inOrder.verify(chatRoomPersistencePort)
+                    .updateMembershipScores(
+                            eq(roomId),
+                            eq(memberIds),
+                            eq(message.createdAtEpochMillis())
+                    );
         }
 
         @Test
@@ -265,6 +272,10 @@ class ChatMessageEventServiceUnitTest {
                 invocation.<Runnable>getArgument(0).run();
                 return null;
             }).when(metrics).recordRoomCounter(any(Runnable.class));
+            doAnswer(invocation -> {
+                invocation.<Runnable>getArgument(0).run();
+                return null;
+            }).when(metrics).recordMembership(any(Runnable.class));
             ChatMessage secondMessage = ChatMessage.rehydrate(
                     "100000000000000000000002",
                     roomId,
@@ -290,7 +301,11 @@ class ChatMessageEventServiceUnitTest {
                     1,
                     secondMessage.createdAtEpochMillis()
             );
-            then(chatRoomPersistencePort).should(never()).updateMembershipScores(any(), any(), anyLong());
+            then(chatRoomPersistencePort).should().updateMembershipScores(
+                    roomId,
+                    Set.of(memberId1, memberId2),
+                    secondMessage.createdAtEpochMillis()
+            );
             then(metrics).should().recordDuplicateMessage();
         }
     }

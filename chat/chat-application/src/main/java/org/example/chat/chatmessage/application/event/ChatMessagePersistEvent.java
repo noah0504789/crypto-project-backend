@@ -18,15 +18,16 @@ import java.util.Set;
 public class ChatMessagePersistEvent extends AbstractOutboxEvent implements HandleableEvent<ChatMessageEventHandler> {
 
     private final ChatMessagePayload payload;
+    private final Set<String> memberIds;
 
     @JsonCreator
-    public ChatMessagePersistEvent(@JsonProperty("payload") ChatMessagePayload payload) {
+    public ChatMessagePersistEvent(
+            @JsonProperty("payload") ChatMessagePayload payload,
+            @JsonProperty("memberIds") Set<String> memberIds
+    ) {
         super(KafkaTopic.CHAT_MESSAGE.getTopicName(), payload.id(), payload.roomId());
         this.payload = payload;
-    }
-
-    public ChatMessagePersistEvent(ChatMessagePayload payload, Set<String> ignoredMemberIds) {
-        this(payload);
+        this.memberIds = memberIds == null ? Set.of() : Set.copyOf(memberIds);
     }
 
     @Override

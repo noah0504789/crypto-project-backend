@@ -14,7 +14,7 @@ public class ChatMessageDlqService implements ChatMessageDlqHandler {
 
     public void handle(ChatMessagePersistDlqEvent event) {
         eventService.handle(
-                new ChatMessagePersistEvent(event.getPayload()),
+                new ChatMessagePersistEvent(event.getPayload(), event.getMemberIds()),
                 event.getSourceId()
         );
     }

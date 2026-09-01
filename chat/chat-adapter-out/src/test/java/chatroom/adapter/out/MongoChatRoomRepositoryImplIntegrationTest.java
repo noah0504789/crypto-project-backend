@@ -18,8 +18,6 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.index.Index;
 import org.springframework.data.mongodb.core.index.PartialIndexFilter;
 import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.test.context.ContextConfiguration;
 
 import java.time.Instant;
@@ -244,19 +242,20 @@ class MongoChatRoomRepositoryImplIntegrationTest {
         void advanceMessageWatermark() {
             // given
             saveRoom(roomId1, "워터마크방", 5);
-            mongoTemplate.updateFirst(
-                    new Query(Criteria.where("_id").is(roomId1)),
-                    new Update().set("latestMessageSeq", 5L),
-                    MongoChatRoom.class
-            );
             Instant latest = Instant.parse("2026-01-01T00:00:00Z");
 
             // when
-            MongoChatRoom updated = sut.advanceMessageWatermark(roomId1, 3, latest).orElseThrow();
+            sut.advanceMessageWatermark(roomId1, 3, latest).orElseThrow();
+            sut.incrementRoomField(roomId1, "msgCnt", -1);
+            MongoChatRoom updated = sut.advanceMessageWatermark(
+                    roomId1,
+                    2,
+                    latest.minusSeconds(1)
+            ).orElseThrow();
 
             // then
-            assertThat(updated.getMsgCnt()).isEqualTo(8L);
-            assertThat(updated.getLatestMessageSeq()).isEqualTo(8L);
+            assertThat(updated.getMsgCnt()).isEqualTo(9L);
+            assertThat(updated.getLatestMessageSeq()).isEqualTo(10L);
             assertThat(updated.getLastMsgCreatedAt()).isEqualTo(latest);
         }
 

@@ -3,7 +3,9 @@ package org.example.chat.chatroom.adapter.out.persistence;
 import org.bson.types.ObjectId;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.common.time.Clock;
+import org.springframework.data.mongodb.MongoExpression;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.mongodb.core.aggregation.AggregationUpdate;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
@@ -131,10 +133,22 @@ public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCusto
             Instant lastMessageCreatedAt
     ) {
         Query query = new Query(Criteria.where("_id").is(roomId));
-        Update update = new Update()
-                .inc("msgCnt", count)
-                .inc("latestMessageSeq", count)
-                .max("lastMsgCreatedAt", lastMessageCreatedAt);
+        AggregationUpdate update = AggregationUpdate.update()
+                .set("latestMessageSeq")
+                .toValue(MongoExpression.create(
+                        "{ $add: [ { $ifNull: [ '$latestMessageSeq', { $ifNull: [ '$msgCnt', 0 ] } ] }, ?0 ] }",
+                        count
+                ))
+                .set("msgCnt")
+                .toValue(MongoExpression.create(
+                        "{ $add: [ { $ifNull: [ '$msgCnt', 0 ] }, ?0 ] }",
+                        count
+                ))
+                .set("lastMsgCreatedAt")
+                .toValue(MongoExpression.create(
+                        "{ $max: [ '$lastMsgCreatedAt', ?0 ] }",
+                        lastMessageCreatedAt
+                ));
 
         return Optional.ofNullable(primaryMongoTemplate.findAndModify(
                 query,

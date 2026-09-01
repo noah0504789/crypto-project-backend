@@ -96,7 +96,7 @@ public class ChatRoom {
                 .category(category)
                 .memberIds(memberIds == null ? new HashSet<>() : new HashSet<>(memberIds))
                 .msgCnt(msgCnt)
-                .latestMessageSeq(latestMessageSeq == null ? 0L : latestMessageSeq)
+                .latestMessageSeq(latestMessageSeq == null ? defaultSequence(msgCnt) : latestMessageSeq)
                 .createdAt(createdAt)
                 .build();
     }
@@ -142,7 +142,7 @@ public class ChatRoom {
                 .category(category)
                 .memberIds(memberIds == null ? new HashSet<>() : new HashSet<>(memberIds))
                 .msgCnt(msgCnt)
-                .latestMessageSeq(latestMessageSeq == null ? 0L : latestMessageSeq)
+                .latestMessageSeq(latestMessageSeq == null ? defaultSequence(msgCnt) : latestMessageSeq)
                 .lastMsgId(lastMsgId == null ? "" : lastMsgId)
                 .lastMsgContent(lastMsgContent == null ? "" : lastMsgContent)
                 .lastMsgCreatedAt(lastMsgCreatedAt)
@@ -162,6 +162,23 @@ public class ChatRoom {
             LocalDateTime createdAt
     ) {
         return rehydrateWithLatest(
+                id, hostId, title, description, category, memberIds, msgCnt, msgCnt, latest, createdAt
+        );
+    }
+
+    public static ChatRoom rehydrateWithLatest(
+            String id,
+            String hostId,
+            String title,
+            String description,
+            ChatRoomCategory category,
+            Set<String> memberIds,
+            Long msgCnt,
+            Long latestMessageSeq,
+            ChatMessage latest,
+            LocalDateTime createdAt
+    ) {
+        return rehydrateWithLatest(
                 id,
                 hostId,
                 title,
@@ -169,6 +186,7 @@ public class ChatRoom {
                 category,
                 memberIds,
                 msgCnt,
+                latestMessageSeq,
                 latest == null ? "" : latest.getId(),
                 latest == null ? "" : latest.getContent(),
                 latest == null ? null : latest.createdAtInstant(),
@@ -235,6 +253,10 @@ public class ChatRoom {
         long latestSeq = latestMessageSeq == null ? (msgCnt == null ? 0L : msgCnt) : latestMessageSeq;
 
         return lastReadSeq < latestSeq;
+    }
+
+    private static long defaultSequence(Long msgCnt) {
+        return msgCnt == null ? 0L : msgCnt;
     }
 
     @Override

@@ -89,10 +89,13 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
 
         RoomBatch roomBatch = groupByRoom(insertedIds, eventsById, domainsById);
         recordRoomWatermarks(roomBatch.latestEventByRoom(), roomBatch.messageIdsByRoom(), domainsById);
+        recordMemberships(roomBatch.latestEventByRoom(), domainsById);
         metrics.recordCommittedBatch(
                 insertedIds.size(),
                 roomBatch.messageIdsByRoom().size(),
-                0
+                roomBatch.latestEventByRoom().values().stream()
+                        .mapToInt(event -> event.getMemberIds().size())
+                        .sum()
         );
     }
 
@@ -164,6 +167,22 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
         });
     }
 
+    private void recordMemberships(
+            Map<String, ChatMessagePersistEvent> latestEventByRoom,
+            Map<String, ChatMessage> domainsById
+    ) {
+        latestEventByRoom.forEach((roomId, event) -> {
+            ChatMessage domain = domainsById.get(event.getPayload().id());
+            metrics.recordMembership(
+                    () -> chatRoomPersistencePort.updateMembershipScores(
+                            roomId,
+                            event.getMemberIds(),
+                            domain.createdAtEpochMillis()
+                    )
+            );
+        });
+    }
+
     private void handlePersistence(ChatMessagePersistEvent event, String txId) {
         ChatMessage domain = ChatMessagePayloadMapper.toDomain(event.getPayload());
         String id = domain.getId();
@@ -184,7 +203,14 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
         metrics.recordRoomCounter(
                 () -> chatRoomPersistencePort.advanceMessageWatermark(roomId, 1, domain.createdAtEpochMillis())
         );
-        metrics.recordCommittedBatch(1, 1, 0);
+        metrics.recordMembership(
+                () -> chatRoomPersistencePort.updateMembershipScores(
+                        roomId,
+                        event.getMemberIds(),
+                        domain.createdAtEpochMillis()
+                )
+        );
+        metrics.recordCommittedBatch(1, 1, event.getMemberIds().size());
     }
 
     @Recover
@@ -216,7 +242,7 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
             runRecover(
                     txId,
                     e,
-                    () -> publishPersistDlqEvent(domain, e.getMessage()),
+                    () -> publishPersistDlqEvent(domain, event.getMemberIds(), e.getMessage()),
                     event.getPayload()
             );
         });
@@ -245,11 +271,11 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
         }
     }
 
-    private void publishPersistDlqEvent(ChatMessage domain, String errorMessage) {
+    private void publishPersistDlqEvent(ChatMessage domain, Set<String> memberIds, String errorMessage) {
         ChatMessagePayload chatMessagePayload = ChatMessagePayloadMapper.fromDomain(domain);
         ChatMessageDlqEventList chatMessageDlqEventList =
                 ChatMessageDlqEventList.of(
-                    new ChatMessagePersistDlqEvent(chatMessagePayload, errorMessage)
+                    new ChatMessagePersistDlqEvent(chatMessagePayload, memberIds, errorMessage)
                 );
 
         dlqEventListPublishPort.publish(chatMessageDlqEventList);

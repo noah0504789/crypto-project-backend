@@ -48,8 +48,6 @@ public interface ChatRoomPersistencePort {
 
     long advanceMessageWatermark(String id, int count, long lastMessageCreatedAtMs);
 
-    void incrementMessageCount(String id, int count);
-
     void decrementMessageCount(String id);
 
     void updateMembershipScores(
