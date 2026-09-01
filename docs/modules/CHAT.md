@@ -59,7 +59,7 @@ chat의 쓰기 경로는 **Outbox를 먼저 기록하고 Redis 캐시에 반영�
 1. **명령(Command)**: `ChatRoomCommandService`/`ChatMessageCommandService`가 Outbox 이벤트를 발행한다(`OutboxEventListPublishPort.publish` → MySQL Outbox 테이블 기록). 방 명령은 이어서 Redis 캐시를 동기 반영하고, 메시지 `save`는 MySQL 트랜잭션 커밋 뒤 `AfterCommitExecutor`로 캐시를 반영한다.
 2. **폴링/발행**: `outbox-poller`가 Outbox 레코드를 폴링해 Kafka 토픽으로 발행한다(chat 밖 공용 서비스).
 3. **비동기 영속**: chat의 Kafka consumer(`chatRoomEventConsumer`/`chatMessageEventConsumer`)가 이벤트를 받아 `ChatRoomEventService`/`ChatMessageEventService`가 **MongoDB에 실제 write**를 수행한다(`@Transactional("chatMongoTransactionManager")`).
-4. **보상**: 각 EventService는 `@Retryable`(3회, backoff 100ms×2) 후 `@Recover`로 DLQ 이벤트를 발행한다. DLQ는 `chatRoomDlqEventConsumer`/`chatMessageDlqEventConsumer`가 소비해 `*DlqService`로 처리하고 `DlqService.complete/fail`로 상태를 남긴다. 현재 메시지 DLQ 처리는 메시지 insert만 재수행하며 방 `msgCnt`와 멤버십 스코어는 복구하지 않는다(§11).
+4. **보상**: 각 EventService는 `@Retryable`(3회, backoff 100ms×2) 후 `@Recover`로 DLQ 이벤트를 발행한다. DLQ는 `chatRoomDlqEventConsumer`/`chatMessageDlqEventConsumer`가 소비해 `*DlqService`로 처리하고 `DlqService.complete/fail`로 상태를 남긴다. 메시지 DLQ는 정상 메시지 영속 처리기를 재사용해 메시지 insert와 방 `msgCnt`·멤버십 스코어 갱신을 함께 재수행한다.
 5. **캐시 폴백**: 방 명령의 캐시 동기 반영이 실패하면(§7 `cache*Safely`) 로그 후 별도 캐시-복구 Outbox 이벤트(`ChatRoomCacheSaveEvent`/`...InvalidateEvent` 등)를 발행해 비동기로 캐시를 재구성/무효화한다. 메시지 `save`의 커밋 후 캐시 반영 실패는 로그만 남기며 조회 repair가 복구한다.
 
 읽기 경로는 **캐시-우선, 미스 시 Mongo 로드 + 워밍업**이다(§8). 정상 흐름에서 REST 조회는 Redis만 조회하며, 캐시가 비었거나 인덱스가 없으면 `*QueryRepairService`가 Mongo에서 로드해 캐시를 채운 뒤 반환한다. **미스 폭주 방어 도구는 서브도메인 특성에 따라 다르다: 방 = `SingleFlight`, 메시지 = 분산락.**
@@ -273,7 +273,7 @@ Kafka `event_id`는 추적 계약으로 함께 전달하지만, chat은 서로 �
 | `chatmessage-broadcast-event` | chat 생산(Outbox) | `ChatMessageBroadcastEvent{payload, clientMessageId}` | **websocket-gateway** 소비 → STOMP push |
 | `chatroom-broadcast-event` | chat 생산(Outbox) | `MyChatRoomBadgeBroadcastEvent{payload}` | **websocket-gateway** 소비 → 뱃지 push |
 
-- consumer 함수: `chatRoomEventConsumer`, `chatMessageEventConsumer`, `chatRoomDlqEventConsumer`, `chatMessageDlqEventConsumer`(모두 group `chat`, `ack-mode: record`, `start-offset: latest`).
+- consumer 함수: `chatRoomEventConsumer`, `chatRoomDlqEventConsumer`, `chatMessageDlqEventConsumer`는 group `chat`, `ack-mode: record`, `start-offset: latest`; `chatMessageEventConsumer`는 group `chat`, `batch-mode: true`, `ack-mode: batch`, `start-offset: latest`로 batch 소비한다.
 - 이벤트 payload는 `@JsonCreator`/`@JsonProperty` record·클래스로 직렬화 계약이다. `ChatMessageBroadcastEvent`(nested `payload`)는 websocket-gateway가 프론트로 보내는 봉투 `StompChatMessageBatchPayload{ roomId, messages[] }`와 **다르다** — 변환과 배칭은 gateway 책임(→ `docs/ARCHITECTURE.md §7.4`).
 - 직접 발행이 아니라 Outbox 흐름(도메인 명령 → Outbox → outbox-poller → Kafka)을 보존한다.
 - DLQ 헤더 계약: `transaction_id`, `dlq_id`(`common-core/KafkaHeaderKey`). DLQ consumer는 `event.handle(handler)` 후 `DlqService.complete/fail`.
@@ -355,9 +355,9 @@ application의 outbound port `ChatMessageMetricsPort`가 계측 의도를 정의
 |---|---|---|---|
 | consumer handler 전체 | `chat.message.persistence.handler` | `Timer` | `result=success\|failure`; 재시도와 transaction 종료를 포함한 event 1건의 전체 처리 시간 |
 | Mongo 단계 | `chat.message.persistence.stage` | `Timer` | `stage=message_insert\|room_counter\|membership`; 메시지 insert, 방 카운터, 멤버십 fan-out 시간을 분리 |
-| 처리 단위 메시지 수 | `chat.message.persistence.batch.messages` | `DistributionSummary` | 커밋된 처리 단위의 신규 메시지 수. 현재 record consumer에서는 `1`, batch 전환 뒤 실제 batch 크기 |
-| 처리 단위 방 수 | `chat.message.persistence.batch.rooms` | `DistributionSummary` | 커밋된 처리 단위의 고유 방 수. 현재는 `1`, batch 전환 뒤 집계된 방 수 |
-| 멤버십 갱신 문서 수 | `chat.message.persistence.membership.documents` | `DistributionSummary` | 커밋된 처리에서 갱신한 membership 문서 수. 현재는 이벤트의 `memberIds.size()` |
+| 처리 단위 메시지 수 | `chat.message.persistence.batch.messages` | `DistributionSummary` | 커밋된 batch의 신규 메시지 수 |
+| 처리 단위 방 수 | `chat.message.persistence.batch.rooms` | `DistributionSummary` | 커밋된 batch의 고유 방 수 |
+| 멤버십 갱신 문서 수 | `chat.message.persistence.membership.documents` | `DistributionSummary` | batch에서 방별 마지막 신규 메시지 snapshot으로 갱신한 membership 문서 수 |
 | 신규·중복 메시지 수 | `chat.message.persistence.messages` | `Counter` | `result=new\|duplicate`; Mongo transaction `afterCommit`에서만 증가 |
 | 재시도 가능 실패 | `chat.message.persistence.retry.failures` | `Counter` | `TemporaryChatPersistenceException`이 발생한 attempt 수. retry exhausted 직전의 마지막 실패도 포함 |
 | DLQ 전이 | `chat.message.persistence.dlq.transitions` | `Counter` | `result=published\|publish_failed`; recover의 DLQ 발행 결과 |
