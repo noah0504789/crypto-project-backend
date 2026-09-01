@@ -31,7 +31,7 @@ public interface MongoChatRoomRepositoryCustom {
 
     Optional<MongoChatRoom> updateRoomAndReturn(ObjectId roomId, Map<String, Object> updates);
 
-    Optional<MongoChatRoom> advanceMessageWatermark(ObjectId roomId, int count, Instant lastMessageCreatedAt);
+    Optional<MongoChatRoom> updateMessageState(ObjectId roomId, int count, Instant lastMessageCreatedAt);
 
     void incrementRoomField(ObjectId roomId, String field, Integer delta);
 

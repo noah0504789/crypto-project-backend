@@ -238,16 +238,16 @@ class MongoChatRoomRepositoryImplIntegrationTest {
         }
 
         @Test
-        @DisplayName("advanceMessageWatermark는 msgCnt와 latestMessageSeq를 함께 증가시키고 최신 시각을 유지한다")
-        void advanceMessageWatermark() {
+        @DisplayName("updateMessageState는 msgCnt와 latestMessageSeq를 함께 증가시키고 최신 시각을 유지한다")
+        void updateMessageState() {
             // given
             saveRoom(roomId1, "워터마크방", 5);
             Instant latest = Instant.parse("2026-01-01T00:00:00Z");
 
             // when
-            sut.advanceMessageWatermark(roomId1, 3, latest).orElseThrow();
+            sut.updateMessageState(roomId1, 3, latest).orElseThrow();
             sut.incrementRoomField(roomId1, "msgCnt", -1);
-            MongoChatRoom updated = sut.advanceMessageWatermark(
+            MongoChatRoom updated = sut.updateMessageState(
                     roomId1,
                     2,
                     latest.minusSeconds(1)

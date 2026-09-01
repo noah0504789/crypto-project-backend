@@ -143,8 +143,8 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
     }
 
     @Override
-    public long advanceMessageWatermark(String id, int count, long lastMessageCreatedAtMs) {
-        return chatRoomRepository.advanceMessageWatermark(
+    public long updateMessageState(String id, int count, long lastMessageCreatedAtMs) {
+        return chatRoomRepository.updateMessageState(
                         new ObjectId(id),
                         count,
                         Instant.ofEpochMilli(lastMessageCreatedAtMs)

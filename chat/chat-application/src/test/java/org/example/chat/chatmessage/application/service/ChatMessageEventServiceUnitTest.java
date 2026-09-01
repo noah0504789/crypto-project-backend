@@ -120,7 +120,7 @@ class ChatMessageEventServiceUnitTest {
                     ));
 
             inOrder.verify(chatRoomPersistencePort)
-                    .advanceMessageWatermark(roomId, 1, message.createdAtEpochMillis());
+                    .updateMessageState(roomId, 1, message.createdAtEpochMillis());
 
             inOrder.verify(chatRoomPersistencePort)
                     .updateMembershipScores(
@@ -199,7 +199,7 @@ class ChatMessageEventServiceUnitTest {
 
             doThrow(exception)
                     .when(chatRoomPersistencePort)
-                    .advanceMessageWatermark(roomId, 1, message.createdAtEpochMillis());
+                    .updateMessageState(roomId, 1, message.createdAtEpochMillis());
 
             // when & then
             assertThatThrownBy(() -> sut.handle(event, txId))
@@ -214,7 +214,7 @@ class ChatMessageEventServiceUnitTest {
                     .save(any(ChatMessage.class));
 
             inOrder.verify(chatRoomPersistencePort)
-                    .advanceMessageWatermark(roomId, 1, message.createdAtEpochMillis());
+                    .updateMessageState(roomId, 1, message.createdAtEpochMillis());
 
             then(chatRoomPersistencePort)
                     .should(never())
@@ -296,7 +296,7 @@ class ChatMessageEventServiceUnitTest {
 
             // then
             then(chatMessagePersistencePort).should().saveAll(anySet());
-            then(chatRoomPersistencePort).should().advanceMessageWatermark(
+            then(chatRoomPersistencePort).should().updateMessageState(
                     roomId,
                     1,
                     secondMessage.createdAtEpochMillis()

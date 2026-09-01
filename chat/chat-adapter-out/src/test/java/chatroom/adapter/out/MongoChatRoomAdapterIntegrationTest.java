@@ -212,13 +212,13 @@ class MongoChatRoomAdapterIntegrationTest {
         }
 
         @Test
-        @DisplayName("advanceMessageWatermark는 msgCnt와 latestMessageSeq를 함께 증가시킨다")
-        void advanceMessageWatermark() {
+        @DisplayName("updateMessageState는 msgCnt와 latestMessageSeq를 함께 증가시킨다")
+        void updateMessageState() {
             // given
             sut.save(chatRoom(roomId1, TITLE_1));
 
             // when
-            sut.advanceMessageWatermark(roomId1.toHexString(), 2, 1L);
+            sut.updateMessageState(roomId1.toHexString(), 2, 1L);
 
             // then
             ChatRoom found = sut.findById(roomId1.toHexString()).orElseThrow();
@@ -231,7 +231,7 @@ class MongoChatRoomAdapterIntegrationTest {
         void decrementMsgCnt() {
             // given
             sut.save(chatRoom(roomId1, TITLE_1));
-            sut.advanceMessageWatermark(roomId1.toHexString(), 2, 1L);
+            sut.updateMessageState(roomId1.toHexString(), 2, 1L);
 
             // when
             sut.decrementMessageCount(roomId1.toHexString());

@@ -158,7 +158,7 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
         latestEventByRoom.forEach((roomId, event) -> {
             ChatMessage domain = domainsById.get(event.getPayload().id());
             metrics.recordRoomCounter(
-                    () -> chatRoomPersistencePort.advanceMessageWatermark(
+                    () -> chatRoomPersistencePort.updateMessageState(
                             roomId,
                             messageIdsByRoom.get(roomId).size(),
                             domain.createdAtEpochMillis()
@@ -201,7 +201,7 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
         }
 
         metrics.recordRoomCounter(
-                () -> chatRoomPersistencePort.advanceMessageWatermark(roomId, 1, domain.createdAtEpochMillis())
+                () -> chatRoomPersistencePort.updateMessageState(roomId, 1, domain.createdAtEpochMillis())
         );
         metrics.recordMembership(
                 () -> chatRoomPersistencePort.updateMembershipScores(

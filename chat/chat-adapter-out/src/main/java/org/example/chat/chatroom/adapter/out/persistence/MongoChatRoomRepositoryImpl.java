@@ -127,7 +127,7 @@ public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCusto
     }
 
     @Override
-    public Optional<MongoChatRoom> advanceMessageWatermark(
+    public Optional<MongoChatRoom> updateMessageState(
             ObjectId roomId,
             int count,
             Instant lastMessageCreatedAt
