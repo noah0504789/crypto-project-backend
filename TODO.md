@@ -328,20 +328,50 @@ notification master 캐시가 **긴 TTL(7일) + 다수 키(알림당 1키)** 전
 
 #### 5.3-b 방별 순번 — 별도 설계 필요
 
-팬아웃 처리량 개선(구 5.3)은 배칭으로 해소했다(PR #265, 프레임당 24~34건). **순번만 남았다** —
-배칭 때 같이 넣으려 했으나 **`msgCnt` 를 순번으로 쓸 수 없다.**
+**현재 상태(2026-09-02): 방 단위 읽음 watermark 기반은 PR #286에서 완료됐다.** `ChatRoom.latestMsgSeq`가 메시지 저장 시 신규 메시지 수만큼 단조 증가하고, hard delete에서는 감소하지 않는다. 이 값은 “방에 새 활동이 있었는가”를 판단하는 기준이지, 각 메시지에 붙는 개별 순번은 아니다.
+
+- 읽음 여부·watermark 거리만 필요하면 이 TODO는 해결된 것으로 본다.
+- 브로드캐스트 유실을 클라이언트가 감지하려면 별도 메시지 순번이 필요하다. `latestMsgSeq`만으로는 어떤 메시지가 빠졌는지 알 수 없으므로, ingress/outbox 단계에서 메시지별 순번을 발급하고 broadcast payload 계약을 바꾸는 별도 작업으로 분리한다(→ 5.5).
+- `latestMsgSeq`를 브로드캐스트 gap detection용 per-message sequence로 재사용하지 않는다.
+
+팬아웃 처리량 개선(구 5.3)은 배칭으로 해소했다(PR #265, 프레임당 24~34건). 방 단위 읽음 기준도
+PR #286에서 추가했지만, **메시지별 broadcast 순번은 아직 없다.**
 
 ```java
 // ChatMessageEventService — 비동기 이벤트 핸들러
-chatRoomPersistencePort.incrementMessageCount(roomId);   // $inc, 반환값 없음
+chatRoomPersistencePort.updateMessageState(roomId, newMessageCount, latestCreatedAtMs);
 ```
 
-저장 경로가 아니라 비동기 핸들러에서 증가하고 새 값을 안 돌려준다. 쓰려면 `findAndModify` 로 바꿔 **핫패스에 Mongo 왕복을 하나 더** 넣어야 하는데, 커넥션 점유시간을 줄이려고(PR #257) 걷어낸 종류의 작업이다.
+현재 `updateMessageState`는 방 단위 `latestMsgSeq`를 원자적으로 갱신하지만 메시지별 순번을 반환하거나
+메시지에 저장하지 않는다. 따라서 이 값을 broadcast gap detection용 순번으로 사용하지 않는다.
 
 게이트웨이가 매기는 것도 안 된다 — 2대면 각자 다른 수열을 내서 클라이언트가 뒤섞인 두 수열을 본다.
 
 순번이 없으면 배칭의 유실(Kafka 오프셋 선커밋)을 클라이언트가 감지하지 못한다(→ 5.5). **다음 계약 변경 때 함께 설계한다.**
 `[출처: 2026-08-28 배칭 설계 / PR #265]`
+
+---
+
+#### 5.3-c 채팅 메시지 Mongo 쓰기의 멤버십 fan-out 제거·배치화
+
+메시지 1건의 쓰기 비용이 **방 멤버 수에 비례**한다. 비동기 영속 핸들러가 메시지마다 방 멤버 전원의 정렬 점수를 갱신하기 때문이다.
+
+```java
+// ChatMessageEventService — Kafka record 1건마다 Mongo transaction 안에서
+chatMessagePersistencePort.save(domain);                            // chat_message 1건 insert
+chatRoomPersistencePort.updateMessageState(roomId, 1, createdAtMs); // room state 1회
+chatRoomPersistencePort.updateMembershipScores(                     // 방 멤버 전체 bulk upsert
+    roomId, event.getMemberIds(), domain.createdAtEpochMillis());
+```
+
+PR #270의 `UNORDERED bulkWrite`는 멤버별 네트워크 왕복을 한 번으로 줄였지만 Mongo가 적용하는 문서 갱신 수까지 없앤 것은 아니다. VU 100 · 방 멤버 302명 조건에서 `6,000 × 302 = 1,812,000`개의 membership document update가 같은 302개 hot document에 반복된다. Redis 쪽도 같다 — `storeChatMessage.lua`가 멤버마다 active-room ZSET에 ZADD한다.
+
+2026-09-01 부하에서 실시간 브로드캐스트는 전송 6,000건, 수신 600,000/600,000건·ACK 6,000/6,000건으로 끝났지만, `chatmessage-event` consumer의 Mongo 영속은 전송 종료 뒤에도 약 **4분 35초** 동안 drain됐다. lag는 최대 **5,503건**까지 올라갔다. 이 회차는 호스트 swapin 8,213MB가 있어 절대 처리량·지연 수치로 단정하지 않지만, 위의 메시지당 쓰기 구조는 코드에서 확인되는 명확한 확장성 병목이다.
+
+`membership.score`는 읽음 여부와 방 최신 활동 시각을 합친 materialized sort key이고 `my_rooms` 인덱스로 목록·커서 페이지네이션을 수행하므로, 단순히 score 쓰기만 제거할 수는 없다. 정렬을 어디서 담당할지를 함께 정해야 한다.
+
+**남은 것 — 여러 방 병렬성.** 현재 `chatmessage-event`는 1 partition이다. 여러 방이 동시에 활성화되는 처리량을 위해 `roomId`를 key로 유지한 채 partition 수와 consumer concurrency를 함께 늘린다. 같은 방의 순서는 같은 partition에서 보장된다. **한 방만 뜨거운 조건에서는 concurrency를 늘려도 해결되지 않으므로**, 이는 per-message 쓰기량 감축 이후의 후속 단계다.
+`[출처: 2026-09-01 VU 100 no-JFR 부하 측정 / ChatMessageEventService · MongoChatRoomMembershipRepositoryImpl 코드 분석 / chat/load-test-results/chatmessage/websocket-gateway/2026-09-01/raw]`
 
 ---
 
