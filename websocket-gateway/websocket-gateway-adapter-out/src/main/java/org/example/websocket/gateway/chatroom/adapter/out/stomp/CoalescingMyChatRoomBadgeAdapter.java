@@ -3,6 +3,7 @@ package org.example.websocket.gateway.chatroom.adapter.out.stomp;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +42,7 @@ public class CoalescingMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
 
     private final Counter coalesced;
     private final Counter flushed;
+    private final Timer flushDuration;
 
     public CoalescingMyChatRoomBadgeAdapter(
             StompMyChatRoomBadgeAdapter delegate,
@@ -55,6 +57,9 @@ public class CoalescingMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
                 .register(registry);
         this.flushed = Counter.builder("chat.badge.flushed")
                 .description("합치기 창이 닫혀 실제로 전송한 뱃지 건수")
+                .register(registry);
+        this.flushDuration = Timer.builder("chat.badge.flush")
+                .description("뱃지 합치기 버퍼를 한 사이클 비우는 데 걸린 시간")
                 .register(registry);
 
         Gauge.builder("chat.badge.pending", pending, Map::size)
@@ -111,6 +116,10 @@ public class CoalescingMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
 
     // 스케줄러가 주기적으로 부르고 테스트는 직접 부른다. 여러 번 불러도 안전하다.
     public void flush() {
+        flushDuration.record(this::drainPending);
+    }
+
+    private void drainPending() {
         try {
             for (String roomId : pending.keySet()) {
                 Pending target = pending.remove(roomId);

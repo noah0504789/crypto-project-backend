@@ -82,6 +82,7 @@ class CoalescingMyChatRoomBadgeAdapterUnitTest {
         verify(delegate).send(last, "tx-3");
         assertThat(registry.counter("chat.badge.coalesced").count()).isEqualTo(2.0);
         assertThat(registry.counter("chat.badge.flushed").count()).isEqualTo(1.0);
+        assertThat(registry.timer("chat.badge.flush").count()).isEqualTo(1L);
     }
 
     @Test
@@ -102,6 +103,8 @@ class CoalescingMyChatRoomBadgeAdapterUnitTest {
         verify(delegate).send(first, "tx-1");
         verify(delegate).send(second, "tx-2");
         assertThat(registry.counter("chat.badge.coalesced").count()).isZero();
+        assertThat(registry.counter("chat.badge.flushed").count()).isEqualTo(2.0);
+        assertThat(registry.timer("chat.badge.flush").count()).isEqualTo(1L);
     }
 
     @Test
@@ -163,5 +166,6 @@ class CoalescingMyChatRoomBadgeAdapterUnitTest {
 
         // then
         verify(delegate, never()).send(any(), any());
+        assertThat(registry.timer("chat.badge.flush").count()).isEqualTo(1L);
     }
 }
