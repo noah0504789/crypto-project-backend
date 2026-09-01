@@ -3,6 +3,7 @@ package org.example.chat.chatmessage.adapter.in.stream;
 import lombok.extern.slf4j.Slf4j;
 import org.example.chat.chatmessage.application.port.in.ChatMessageDlqHandler;
 import org.example.chat.chatmessage.application.port.in.ChatMessageEventHandler;
+import org.example.chat.chatmessage.application.port.out.ChatMessageMetricsPort;
 import org.example.common.event.HandleableEvent;
 import org.example.common.event.RecoverableEvent;
 import org.example.common.enums.KafkaHeaderKey;
@@ -19,8 +20,16 @@ import java.util.function.Consumer;
 public class KafkaChatMessageBinder {
 
     @Bean
-    public Consumer<Message<HandleableEvent<ChatMessageEventHandler>>> chatMessageEventConsumer(ChatMessageEventHandler handler) {
-        return message -> message.getPayload().handle(handler, message.getHeaders().get(KafkaHeaderKey.TRANSACTION_ID.value())+"");
+    public Consumer<Message<HandleableEvent<ChatMessageEventHandler>>> chatMessageEventConsumer(
+            ChatMessageEventHandler handler,
+            ChatMessageMetricsPort metrics
+    ) {
+        return message -> metrics.recordHandler(
+                () -> message.getPayload().handle(
+                        handler,
+                        message.getHeaders().get(KafkaHeaderKey.TRANSACTION_ID.value()) + ""
+                )
+        );
     }
 
     @Bean

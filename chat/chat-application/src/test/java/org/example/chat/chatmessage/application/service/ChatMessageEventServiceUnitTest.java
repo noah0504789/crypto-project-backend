@@ -1,18 +1,22 @@
 package org.example.chat.chatmessage.application.service;
 
 import org.example.chat.chatmessage.application.exception.DuplicateChatMessageException;
+import org.example.chat.chatmessage.application.event.dlq.ChatMessageDlqEventList;
 import org.example.chat.chatmessage.application.mapper.ChatMessagePayloadMapper;
 import org.example.chat.chatmessage.application.port.out.ChatMessagePersistencePort;
+import org.example.chat.chatmessage.application.port.out.ChatMessageMetricsPort;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.chatmessage.application.event.ChatMessagePersistEvent;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
+import org.example.chat.exception.TemporaryChatPersistenceException;
+import org.example.common.dlq.application.port.out.DlqEventListPublishPort;
 import org.example.contract.chatmessage.ChatMessagePayload;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -33,7 +37,12 @@ class ChatMessageEventServiceUnitTest {
     @Mock
     private ChatRoomPersistencePort chatRoomPersistencePort;
 
-    @InjectMocks
+    @Mock
+    private DlqEventListPublishPort dlqEventListPublishPort;
+
+    @Mock
+    private ChatMessageMetricsPort metrics;
+
     private ChatMessageEventService sut;
 
     private final String txId = "tx-1";
@@ -49,9 +58,35 @@ class ChatMessageEventServiceUnitTest {
 
     private final Instant createdAt = Instant.parse("2026-01-01T01:00:00Z");
 
+    @BeforeEach
+    void setUp() {
+        sut = new ChatMessageEventService(
+                chatMessagePersistencePort,
+                chatRoomPersistencePort,
+                dlqEventListPublishPort,
+                metrics
+        );
+    }
+
     @Nested
     @DisplayName("handle ChatMessagePersistEvent")
     class HandleChatMessagePersistEventTest {
+
+        @BeforeEach
+        void setUpMetrics() {
+            lenient().doAnswer(invocation -> {
+                invocation.<Runnable>getArgument(0).run();
+                return null;
+        }).when(metrics).recordMessageInsert(any(Runnable.class));
+            lenient().doAnswer(invocation -> {
+                invocation.<Runnable>getArgument(0).run();
+                return null;
+            }).when(metrics).recordRoomCounter(any(Runnable.class));
+            lenient().doAnswer(invocation -> {
+                invocation.<Runnable>getArgument(0).run();
+                return null;
+            }).when(metrics).recordMembership(any(Runnable.class));
+        }
 
         @Test
         @DisplayName("채팅 메시지 저장 이벤트를 처리하면 메시지를 저장하고 채팅방 메시지 수와 멤버십 점수를 갱신한다")
@@ -121,6 +156,28 @@ class ChatMessageEventServiceUnitTest {
 
             then(chatRoomPersistencePort)
                     .shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("재시도 가능한 저장 예외가 발생하면 실패 횟수를 기록하고 예외를 전파한다")
+        void handle_shouldRecordRetryableFailure_whenTemporaryPersistenceFails() {
+            // given
+            TemporaryChatPersistenceException exception = new TemporaryChatPersistenceException(
+                    "temporary message save failure",
+                    new RuntimeException("mongo unavailable")
+            );
+            ChatMessagePayload payload = ChatMessagePayloadMapper.fromDomain(chatMessage());
+            ChatMessagePersistEvent event = new ChatMessagePersistEvent(payload, memberIds);
+
+            doThrow(exception)
+                    .when(chatMessagePersistencePort)
+                    .save(any(ChatMessage.class));
+
+            // when & then
+            assertThatThrownBy(() -> sut.handle(event, txId))
+                    .isSameAs(exception);
+
+            then(metrics).should().recordRetryableFailure();
         }
 
         @Test
@@ -197,6 +254,48 @@ class ChatMessageEventServiceUnitTest {
         }
     }
 
+    @Nested
+    @DisplayName("recover ChatMessagePersistEvent")
+    class RecoverChatMessagePersistEventTest {
+
+        @Test
+        @DisplayName("재시도 소진 뒤 DLQ 발행에 성공하면 published 전이를 기록한다")
+        void recover_shouldRecordPublished_whenDlqPublishSucceeds() {
+            // given
+            ChatMessagePersistEvent event = persistEvent();
+            TemporaryChatPersistenceException exception = temporaryPersistenceException();
+
+            // when
+            sut.recover(exception, event, txId);
+
+            // then
+            then(dlqEventListPublishPort)
+                    .should()
+                    .publish(any(ChatMessageDlqEventList.class));
+            then(metrics).should().recordDlqPublished();
+            then(metrics).should(never()).recordDlqPublishFailed();
+        }
+
+        @Test
+        @DisplayName("DLQ 발행도 실패하면 예외를 삼키고 publish_failed 전이를 기록한다")
+        void recover_shouldRecordPublishFailed_whenDlqPublishFails() {
+            // given
+            ChatMessagePersistEvent event = persistEvent();
+            TemporaryChatPersistenceException exception = temporaryPersistenceException();
+
+            doThrow(new RuntimeException("dlq publish failed"))
+                    .when(dlqEventListPublishPort)
+                    .publish(any(ChatMessageDlqEventList.class));
+
+            // when
+            sut.recover(exception, event, txId);
+
+            // then
+            then(metrics).should().recordDlqPublishFailed();
+            then(metrics).should(never()).recordDlqPublished();
+        }
+    }
+
     private ChatMessage chatMessage() {
         return ChatMessage.rehydrate(
                 messageId,
@@ -206,4 +305,17 @@ class ChatMessageEventServiceUnitTest {
                 createdAt
         );
     }
+
+    private ChatMessagePersistEvent persistEvent() {
+        ChatMessagePayload payload = ChatMessagePayloadMapper.fromDomain(chatMessage());
+        return new ChatMessagePersistEvent(payload, memberIds);
+    }
+
+    private TemporaryChatPersistenceException temporaryPersistenceException() {
+        return new TemporaryChatPersistenceException(
+                "temporary message save failure",
+                new RuntimeException("mongo unavailable")
+        );
+    }
+
 }

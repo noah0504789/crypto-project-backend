@@ -2,11 +2,13 @@ package org.example.chat.chatmessage.adapter.in.stream;
 
 import org.example.chat.chatmessage.application.port.in.ChatMessageDlqHandler;
 import org.example.chat.chatmessage.application.port.in.ChatMessageEventHandler;
+import org.example.chat.chatmessage.application.port.out.ChatMessageMetricsPort;
 import org.example.common.enums.KafkaHeaderKey;
 import org.example.common.event.HandleableEvent;
 import org.example.common.event.RecoverableEvent;
 import org.example.common.dlq.application.service.DlqService;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,8 +33,15 @@ class KafkaChatMessageBinderUnitTest {
     @Mock
     private DlqService dlqService;
 
-    @InjectMocks
+    @Mock
+    private ChatMessageMetricsPort metrics;
+
     private KafkaChatMessageBinder sut;
+
+    @BeforeEach
+    void setUp() {
+        sut = new KafkaChatMessageBinder();
+    }
 
     private final String txId = "tx-1";
     private final String dlqId = "dlq-1";
@@ -48,8 +57,13 @@ class KafkaChatMessageBinderUnitTest {
             @SuppressWarnings("unchecked")
             HandleableEvent<ChatMessageEventHandler> event = mock(HandleableEvent.class);
 
+            doAnswer(invocation -> {
+                invocation.<Runnable>getArgument(0).run();
+                return null;
+            }).when(metrics).recordHandler(any(Runnable.class));
+
             Consumer<Message<HandleableEvent<ChatMessageEventHandler>>> consumer =
-                    sut.chatMessageEventConsumer(chatMessageEventHandler);
+                    sut.chatMessageEventConsumer(chatMessageEventHandler, metrics);
 
             Message<HandleableEvent<ChatMessageEventHandler>> message = MessageBuilder
                     .withPayload(event)
@@ -60,6 +74,7 @@ class KafkaChatMessageBinderUnitTest {
             consumer.accept(message);
 
             // then
+            verify(metrics).recordHandler(any(Runnable.class));
             verify(event).handle(chatMessageEventHandler, txId);
         }
     }
