@@ -12,7 +12,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-LINE = re.compile(r"^(\d+) (\w+) ([a-z_:]+)(\{[^}]*\})? (.+)$")
+LINE = re.compile(r"^(\d+) (\w+) ([a-zA-Z_:][a-zA-Z0-9_:]*)(\{[^}]*\})? (.+)$")
 
 # 카운터는 증가량, 게이지는 최댓값으로 본다.
 COUNTERS = (
@@ -23,7 +23,10 @@ COUNTERS = (
     "chat_message_batch_frames_total",
     "chat_message_batch_overflow_total",
     "chat_message_ack_direct_sent_total",
-    "chat_message_ack_direct_fallback_total",
+    "chat_message_ack_direct_failed_total",
+    "chat_badge_direct_sent_total",
+    "chat_badge_direct_skipped_total",
+    "chat_badge_direct_failed_total",
     "executor_completed_tasks_total",
 )
 
@@ -35,10 +38,17 @@ GAUGES = (
     "ws_active_sessions",
 )
 
+TIMER = "chat_badge_flush_seconds"
+
 
 def parse(path: Path):
     counters = defaultdict(lambda: [None, None])  # series -> [first, last]
     gauges = defaultdict(float)
+    timers = defaultdict(lambda: {
+        "count": [None, None],
+        "sum": [None, None],
+        "max": 0.0,
+    })
 
     for raw in path.read_text().splitlines():
         matched = LINE.match(raw)
@@ -54,7 +64,18 @@ def parse(path: Path):
 
         series = f"{source} {name}{labels or ''}"
 
-        if name in COUNTERS:
+        if name in (f"{TIMER}_count", f"{TIMER}_sum", f"{TIMER}_max"):
+            part = name.removeprefix(f"{TIMER}_")
+            timer = timers[f"{source} {TIMER}{labels or ''}"]
+
+            if part == "max":
+                timer[part] = max(timer[part], value)
+            else:
+                slot = timer[part]
+                if slot[0] is None:
+                    slot[0] = value
+                slot[1] = value
+        elif name in COUNTERS:
             slot = counters[series]
             if slot[0] is None:
                 slot[0] = value
@@ -62,7 +83,7 @@ def parse(path: Path):
         elif name in GAUGES:
             gauges[series] = max(gauges[series], value)
 
-    return counters, gauges
+    return counters, gauges, timers
 
 
 def main() -> None:
@@ -73,7 +94,7 @@ def main() -> None:
     if not path.exists():
         sys.exit(f"파일 없음: {path}")
 
-    counters, gauges = parse(path)
+    counters, gauges, timers = parse(path)
 
     print("=== 카운터 증가량 (회차 동안) ===")
     for series in sorted(counters):
@@ -87,6 +108,25 @@ def main() -> None:
     for series in sorted(gauges):
         if gauges[series]:
             print(f"  {gauges[series]:>12,.0f}  {series}")
+
+    print()
+    print("=== 뱃지 flush 타이머 (회차 동안) ===")
+    for series in sorted(timers):
+        timer = timers[series]
+        count_first, count_last = timer["count"]
+        sum_first, sum_last = timer["sum"]
+
+        if count_first is None or sum_first is None:
+            continue
+
+        count_delta = count_last - count_first
+        sum_delta = sum_last - sum_first
+        if count_delta:
+            average = sum_delta / count_delta
+            print(
+                f"  count={count_delta:,.0f} total={sum_delta:.6f}s "
+                f"avg={average:.6f}s sampled_max={timer['max']:.6f}s  {series}"
+            )
 
     print()
     print("증가량 0 인 계열은 생략했다 — 거절·오버플로가 안 보이면 0이라는 뜻이다.")

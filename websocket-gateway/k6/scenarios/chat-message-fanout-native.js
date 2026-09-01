@@ -11,8 +11,8 @@ const room_id = __ENV.ROOM_ID || '';
 
 // ===== tokens =====
 // 계정을 VU 마다 따로 쓴다. 계정을 공유하면 한 계정에 세션이 VU 수만큼 붙어
-// convertAndSendToUser 가 세션 수만큼 증폭되고(ACK·뱃지), 계정 단위 rate limit 도
-// 실제와 다르게 걸린다. mint-test-users.py 가 만든 파일을 VU 순서로 나눠 준다.
+// ACK·뱃지의 사용자별 발송 대상도 그 수만큼 늘고, 계정 단위 rate limit 도 실제와 다르게
+// 걸린다. mint-test-users.py 가 만든 파일을 VU 순서로 나눠 준다.
 // 파일이 없으면 예전처럼 env 의 계정 2개로 떨어진다.
 // open() 은 이 스크립트 파일 기준 상대 경로다.
 const test_users_file = __ENV.TEST_USERS_FILE || '../accounts/test-users.json';
@@ -38,9 +38,8 @@ const ws_base_path = '/ws-native';
 const send_destination = '/msg/chat.send';
 const ack_destination = '/user/queue/chat/ack';
 const broadcast_destination = `/topic/chat/${room_id}`;
-// 뱃지는 서버가 멤버마다 convertAndSendToUser 로 개별 발행한다(StompMyChatRoomBadgeAdapter).
-// 채팅 브로드캐스트와 달리 brokerChannel 태스크가 멤버 수만큼 생기므로 서버 부하에서 차지하는
-// 비중이 크다. 구독하지 않으면 그 부하가 측정에서 통째로 빠진다.
+// 뱃지는 서버가 LocalSessionCache 의 세션·구독 ID 를 찾아 clientOutboundChannel 로 직접 보낸다.
+// 구독하지 않으면 실제 소켓 발송과 chat_badge_direct_* 지표가 측정에서 빠지므로 반드시 구독한다.
 const badge_destination = '/user/queue/chat/badge';
 
 // ===== test config =====
@@ -491,7 +490,7 @@ export default function () {
         // (StompChatMessageBatchPayload: { roomId, messages: [...] }).
         // 프레임 1개가 메시지 N건이므로 펼쳐서 각각 집계한다 —
         // 봉투째로 세면 수신률이 프레임 수로 계산되어 대부분 미도달로 잡힌다.
-        // 배칭이 꺼진 회차나 옛 게이트웨이를 대비해 단건 모양도 함께 받는다.
+        // ACK 는 단건이고, 옛 게이트웨이의 비배칭 브로드캐스트도 읽을 수 있게 단건 모양을 받는다.
         const payloads = Array.isArray(body_obj?.messages) ? body_obj.messages : [body_obj];
 
         if (destination === broadcast_destination) {

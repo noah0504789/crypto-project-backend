@@ -20,6 +20,34 @@ mkdir -p results/jfr
 WS=$(docker ps --filter "name=^/crypto-websocket-gateway" --format '{{.Names}}' | head -1)
 CHAT=$(docker ps --filter "name=^/crypto-chat-service" --format '{{.Names}}' | head -1)
 
+host_port() {
+  local container=$1 container_port=$2
+  docker port "$container" "${container_port}/tcp" 2>/dev/null | awk -F: 'NR == 1 { print $NF }'
+}
+
+WS_HOST_PORT=$([ -n "$WS" ] && host_port "$WS" 8100 || true)
+CHAT_HOST_PORT=$([ -n "$CHAT" ] && host_port "$CHAT" 8080 || true)
+
+GATEWAY_METRICS_URL="${GATEWAY_METRICS_URL:-http://localhost:${WS_HOST_PORT}/actuator/prometheus}"
+CHAT_METRICS_URL="${CHAT_METRICS_URL:-http://localhost:${CHAT_HOST_PORT}/api/v1/actuator/prometheus}"
+PROMETHEUS_URL="${PROMETHEUS_URL:-http://localhost:19090}"
+METRIC_KEEP='^(executor_|stomp_|chat_|ws_|jvm_memory_used_bytes|jvm_gc_pause_seconds|hikaricp_connections)'
+PROMETHEUS_QUERY='{job=~"crypto-websocket-gateway|crypto-chat-service",__name__=~"executor_.*|stomp_.*|chat_.*|ws_.*|jvm_memory_used_bytes|jvm_gc_pause_seconds.*|hikaricp_connections.*"}'
+
+snapshot_metrics() {
+  local mode=$1 stamp=$2
+
+  {
+    curl -sf --max-time 3 "$GATEWAY_METRICS_URL" 2>/dev/null \
+      | grep -E "$METRIC_KEEP" | grep -v '^#' | sed "s|^|${stamp} gateway |" || true
+    curl -sf --max-time 3 "$CHAT_METRICS_URL" 2>/dev/null \
+      | grep -E "$METRIC_KEEP" | grep -v '^#' | sed "s|^|${stamp} chat |" || true
+  } >> "$OUT.metrics"
+
+  curl -sf --max-time 3 "$GATEWAY_METRICS_URL" > "$OUT.metrics-${mode}-gateway.prom" || true
+  curl -sf --max-time 3 "$CHAT_METRICS_URL" > "$OUT.metrics-${mode}-chat.prom" || true
+}
+
 swapins() { vm_stat | awk '/Swapins/{gsub(/\./,"",$2);print $2}'; }
 
 {
@@ -29,6 +57,8 @@ swapins() { vm_stat | awk '/Swapins/{gsub(/\./,"",$2);print $2}'; }
 } | tee "$OUT.meta"
 
 SWAP0=$(swapins)
+METRICS_START=$(date +%s)
+snapshot_metrics before "$METRICS_START"
 
 # JFR — 측정 회차에만
 if [ "$LABEL" = "run" ]; then
@@ -55,8 +85,24 @@ if [ "$LABEL" = "run" ]; then
                       docker cp "$CHAT:/tmp/chat-vu${VUS}.jfr" "results/jfr/" 2>/dev/null || true; }
 fi
 
+METRICS_END=$(date +%s)
+snapshot_metrics after "$METRICS_END"
+
+curl -sf --get --max-time 15 "$PROMETHEUS_URL/api/v1/query_range" \
+  --data-urlencode "query=$PROMETHEUS_QUERY" \
+  --data-urlencode "start=$METRICS_START" \
+  --data-urlencode "end=$METRICS_END" \
+  --data-urlencode "step=5" \
+  > "$OUT.prometheus.json" || true
+
+tools/summarize-metrics.py "$OUT.metrics" | tee "$OUT.metrics-summary.txt"
+
 SWAP1=$(swapins)
 {
   echo "종료: $(date '+%Y-%m-%d %H:%M:%S')"
   echo "측정 중 swapin: $(( (SWAP1-SWAP0)*4096/1024/1024 )) MB"
+  echo "metrics_start_epoch=${METRICS_START}"
+  echo "metrics_end_epoch=${METRICS_END}"
+  echo "gateway_image=$(docker inspect -f '{{.Image}}' "$WS" 2>/dev/null || true)"
+  echo "chat_image=$(docker inspect -f '{{.Image}}' "$CHAT" 2>/dev/null || true)"
 } | tee -a "$OUT.meta"

@@ -52,14 +52,23 @@ REMOVE=1 tools/seed-room-members.sh        # 방 멤버에서 제거
 tools/reset-chat-data.sh                   # 메시지·멤버십·Redis 캐시 초기화
 ```
 
-결과는 `results/<라벨>-vu<VUS>-msg<N>-<타임스탬프>.{txt,meta}` 로 남는다. `.meta` 에 대상 컨테이너와
-**회차 중 swapin 증가량**이 들어간다.
+결과는 `results/<라벨>-vu<VUS>-msg<N>-<타임스탬프>.*`로 남는다. `.meta`에는 대상 컨테이너·이미지
+digest와 **회차 중 swapin 증가량**이 들어간다. `run.sh`는 실행 직전·직후 두 애플리케이션의
+Prometheus 원문(`metrics-{before,after}-*.prom`)과 차이 요약(`metrics-summary.txt`)을 보존하고,
+이미 떠 있는 Prometheus에서 실행 구간을 5초 간격으로 조회해 `prometheus.json`도 남긴다.
+별도 프로세스를 반복 실행하지 않으므로 과거 `sample-outbox.sh`와 같은 계측 교란을 만들지 않는다.
 
 ## 계정을 VU 마다 따로 쓴다
 
-이전 측정은 계정 2개에 VU 100 을 붙였다. 그러면 한 계정에 세션이 50개씩 달리고
-`convertAndSendToUser` 로 나가는 것(ACK·뱃지)이 세션 수만큼 증폭된다. 실제 사용자 100명이면
-세션은 계정당 1개다. **즉 ACK 부하가 50배 부풀려진 값을 재고 있었다.**
+이전 측정은 계정 2개에 VU 100 을 붙였다. 그러면 한 계정에 세션이 50개씩 달리고 ACK·뱃지의
+사용자별 발송 대상도 세션 수만큼 늘어난다. 실제 사용자 100명이면 세션은 계정당 1개다.
+**즉 사용자 목적지 부하를 50배 부풀려 재고 있었다.**
+
+과거 `convertAndSendToUser` 경로는 논리 발송 1건마다 최초 `brokerChannel` 진입 1회에 더해,
+`UserDestinationMessageHandler` 가 로컬 세션 N개를 조회하고 세션별 destination 으로 바꿔 다시
+큐잉했다. 그 결과 broker 처리와 outbound 전달을 합쳐 **1+2N개의 채널 작업**이 필요했다.
+현재 ACK·뱃지는 세션·구독 ID 를 직접 찾아 `clientOutboundChannel` 로 보내므로 broker 항은 0이고,
+실제 세션 수만큼의 outbound 작업 N개만 남는다.
 
 계정별 rate limit(→ `../../TODO.md` 1.13)도 같은 이유로 켤 수 없었다. 계정을 나누면 켤 수 있다.
 
@@ -103,7 +112,14 @@ Vault·Mongo 컨테이너만 떠 있으면 되고 서비스 전체를 띄울 필
 
   **유실·거절·큐 깊이·프레임 수는 서버가 직접 센 값이라 스왑과 무관하다.** 지연을 못 재는 회차에서도 그 지표로는 판정할 수 있다.
 - **서버가 직접 센 값과 클라이언트 집계를 분리해 읽는다.** 프레임 수·큐 깊이·거절·유실은 호스트 스왑과 무관하지만 p90·ACK 성공률은 크게 흔들린다.
+- **뱃지 우회는 서버 지표로 판정한다.** `chat_badge_flush_seconds` 를 `chat_badge_flushed_total` 과 같이 보고, `chat_badge_direct_failed_total=0`, `stomp_executor_rejected_total{pool="broker",kind="badge"}=0` 인지 확인한다. `chat_badge_direct_skipped_total` 은 이 인스턴스에 로컬 세션이 없는 방 멤버를 정상적으로 건너뛴 수다. 단일 게이트웨이에서 VU 100명이 모두 붙고 방 멤버가 302명이면 `flushed × 202`가 기대값이며 실패에 합치지 않는다. 지연값으로 효과를 판정하지 않는다.
 - **계측 자체가 측정을 바꾼다.** 1초마다 프로세스를 띄우는 샘플러(`tools/sample-outbox.sh`)를 붙인 회차만 ACK 100% → 8% 로 무너진 적이 있다. 이미 떠 있는 Prometheus·`jcmd` 를 먼저 쓴다.
+- **JFR 회차와 최종 검증 회차를 분리한다.** JFR은 스택·락·GC 원인을 찾는 탐색 회차에만 켠다.
+  제한된 개발 호스트에서 VU 100과 함께 켜면 recorder의 메모리·파일 기록이 swap thrashing을
+  키워 서비스 자체 경합과 계측 경합을 분리할 수 없다. 수정 후 서버 카운터·정확성을 확인하는
+  회차는 no-JFR로 실행하고, raw README에 그 조건을 명시한다.
+- **이 개발계 테스트는 SLO 인증이 아니다.** 병목을 재현해 코드로 제거하는 것이 목적이다.
+  절대 지연·최대 용량·SLO는 부하 발생기와 서버를 분리한 운영 유사 장비에서 다시 측정한다.
 
 ## k6 를 서버와 분리해서 돌린다
 

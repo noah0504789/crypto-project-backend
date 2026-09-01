@@ -1,0 +1,25 @@
+=== 카운터 증가량 (회차 동안) ===
+         5,890  gateway chat_badge_coalesced_total{instanceId="13268adc6faf"}
+        22,220  gateway chat_badge_direct_failed_total{instanceId="13268adc6faf"}
+        11,000  gateway chat_badge_direct_sent_total{instanceId="13268adc6faf"}
+           110  gateway chat_badge_flushed_total{instanceId="13268adc6faf"}
+         6,000  gateway chat_message_ack_direct_sent_total{instanceId="13268adc6faf"}
+         6,000  gateway chat_message_batch_buffered_total{instanceId="13268adc6faf"}
+           190  gateway chat_message_batch_frames_total{instanceId="13268adc6faf"}
+           780  gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="brokerChannelExecutor"}
+        12,000  gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="chatMessageAckExecutor"}
+        19,500  gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="clientInboundChannelExecutor"}
+        36,200  gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="clientOutboundChannelExecutor"}
+            17  gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="messageBrokerTaskScheduler"}
+           780  gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="stompBrokerExecutor"}
+        19,500  gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="stompInboundExecutor"}
+        36,200  gateway executor_completed_tasks_total{instanceId="13268adc6faf",name="stompOutboundExecutor"}
+
+=== 게이지 최댓값 ===
+             2  chat executor_queued_tasks{name="taskScheduler"}
+             1  gateway executor_queued_tasks{instanceId="13268adc6faf",name="messageBrokerTaskScheduler"}
+
+=== 뱃지 flush 타이머 (회차 동안) ===
+  count=838 total=0.401566s avg=0.000479s sampled_max=0.035176s  gateway chat_badge_flush_seconds{instanceId="13268adc6faf"}
+
+증가량 0 인 계열은 생략했다 — 거절·오버플로가 안 보이면 0이라는 뜻이다.
