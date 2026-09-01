@@ -172,12 +172,6 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
         });
     }
 
-    private record RoomBatch(
-            Map<String, List<String>> messageIdsByRoom,
-            Map<String, ChatMessagePersistEvent> latestEventByRoom
-    ) {
-    }
-
     private void handlePersistence(ChatMessagePersistEvent event, String txId) {
         ChatMessage domain = ChatMessagePayloadMapper.toDomain(event.getPayload());
         String id = domain.getId();
@@ -271,5 +265,11 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
                 );
 
         dlqEventListPublishPort.publish(chatMessageDlqEventList);
+    }
+
+    private record RoomBatch(
+            Map<String, List<String>> messageIdsByRoom,
+            Map<String, ChatMessagePersistEvent> latestEventByRoom
+    ) {
     }
 }
