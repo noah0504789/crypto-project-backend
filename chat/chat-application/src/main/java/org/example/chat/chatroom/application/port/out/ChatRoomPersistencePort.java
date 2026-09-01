@@ -48,6 +48,8 @@ public interface ChatRoomPersistencePort {
 
     void incrementMessageCount(String id);
 
+    void incrementMessageCount(String id, int count);
+
     void decrementMessageCount(String id);
 
     void updateMembershipScores(

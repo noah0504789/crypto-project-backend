@@ -21,11 +21,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -251,6 +253,57 @@ class ChatMessageEventServiceUnitTest {
 
             then(chatRoomPersistencePort)
                     .shouldHaveNoInteractions();
+        }
+    }
+
+    @Nested
+    @DisplayName("handleBatch ChatMessagePersistEvent")
+    class HandleBatchChatMessagePersistEventTest {
+
+        @Test
+        @DisplayName("신규 메시지만 방 카운터와 멤버십 갱신에 반영한다")
+        void handleBatch_shouldApplyRoomUpdatesOnlyToInsertedMessages() {
+            // given
+            doAnswer(invocation -> {
+                invocation.<Runnable>getArgument(0).run();
+                return null;
+            }).when(metrics).recordMessageInsert(any(Runnable.class));
+            doAnswer(invocation -> {
+                invocation.<Runnable>getArgument(0).run();
+                return null;
+            }).when(metrics).recordRoomCounter(any(Runnable.class));
+            doAnswer(invocation -> {
+                invocation.<Runnable>getArgument(0).run();
+                return null;
+            }).when(metrics).recordMembership(any(Runnable.class));
+
+            ChatMessage secondMessage = ChatMessage.rehydrate(
+                    "100000000000000000000002",
+                    roomId,
+                    writerId,
+                    "second",
+                    createdAt.plusSeconds(1)
+            );
+            ChatMessagePersistEvent firstEvent = persistEvent();
+            ChatMessagePersistEvent secondEvent = new ChatMessagePersistEvent(
+                    ChatMessagePayloadMapper.fromDomain(secondMessage),
+                    Set.of(memberId1, memberId2)
+            );
+            given(chatMessagePersistencePort.saveAll(anyList()))
+                    .willReturn(Set.of(secondMessage.getId()));
+
+            // when
+            sut.handleBatch(List.of(firstEvent, secondEvent), txId);
+
+            // then
+            then(chatMessagePersistencePort).should().saveAll(anyList());
+            then(chatRoomPersistencePort).should().incrementMessageCount(roomId, 1);
+            then(chatRoomPersistencePort).should().updateMembershipScores(
+                    roomId,
+                    Set.of(memberId1, memberId2),
+                    secondMessage.createdAtEpochMillis()
+            );
+            then(metrics).should().recordDuplicateMessage();
         }
     }
 

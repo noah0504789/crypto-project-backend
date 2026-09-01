@@ -5,6 +5,7 @@ import org.bson.types.ObjectId;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface MongoChatMessageRepositoryCustom {
 
@@ -22,6 +23,8 @@ public interface MongoChatMessageRepositoryCustom {
     List<MongoChatMessage> listLatestMessagesByRoomIds(List<ObjectId> roomIds);
 
     List<MongoChatMessage> listLatestMessagesByRoomIdsFromSecondary(List<ObjectId> roomIds);
+
+    Set<ObjectId> findExistingIds(List<ObjectId> ids);
 
     void softDeleteByRoomId(ObjectId roomId);
 

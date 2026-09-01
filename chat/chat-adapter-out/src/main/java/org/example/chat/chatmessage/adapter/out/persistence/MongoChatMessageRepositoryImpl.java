@@ -14,6 +14,8 @@ import org.springframework.stereotype.Repository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Repository
 public class MongoChatMessageRepositoryImpl implements MongoChatMessageRepositoryCustom {
@@ -81,6 +83,18 @@ public class MongoChatMessageRepositoryImpl implements MongoChatMessageRepositor
     @Override
     public List<MongoChatMessage> listLatestMessagesByRoomIdsFromSecondary(List<ObjectId> roomIds) {
         return listLatestMessagesByRoomIds(roomIds, secondaryMongoTemplate);
+    }
+
+    @Override
+    public Set<ObjectId> findExistingIds(List<ObjectId> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Set.of();
+        }
+
+        Query query = new Query(Criteria.where("_id").in(ids));
+        return primaryMongoTemplate.findDistinct(query, "_id", MongoChatMessage.class, ObjectId.class)
+                .stream()
+                .collect(Collectors.toSet());
     }
 
     @Override
