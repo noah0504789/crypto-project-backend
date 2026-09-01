@@ -151,7 +151,7 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
             return;
         }
 
-        metrics.recordRoomCounter(() -> chatRoomPersistencePort.incrementMessageCount(roomId));
+        metrics.recordRoomCounter(() -> chatRoomPersistencePort.incrementMessageCount(roomId, 1));
         metrics.recordMembership(
                 () -> chatRoomPersistencePort.updateMembershipScores(
                         roomId,

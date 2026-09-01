@@ -120,7 +120,7 @@ class ChatMessageEventServiceUnitTest {
                     ));
 
             inOrder.verify(chatRoomPersistencePort)
-                    .incrementMessageCount(roomId);
+                    .incrementMessageCount(roomId, 1);
 
             inOrder.verify(chatRoomPersistencePort)
                     .updateMembershipScores(
@@ -199,7 +199,7 @@ class ChatMessageEventServiceUnitTest {
 
             doThrow(exception)
                     .when(chatRoomPersistencePort)
-                    .incrementMessageCount(roomId);
+                    .incrementMessageCount(roomId, 1);
 
             // when & then
             assertThatThrownBy(() -> sut.handle(event, txId))
@@ -214,7 +214,7 @@ class ChatMessageEventServiceUnitTest {
                     .save(any(ChatMessage.class));
 
             inOrder.verify(chatRoomPersistencePort)
-                    .incrementMessageCount(roomId);
+                    .incrementMessageCount(roomId, 1);
 
             then(chatRoomPersistencePort)
                     .should(never())
