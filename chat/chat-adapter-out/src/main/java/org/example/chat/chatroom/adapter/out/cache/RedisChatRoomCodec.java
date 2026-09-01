@@ -31,6 +31,10 @@ public class RedisChatRoomCodec implements RedisHashCodec<RedisChatRoom> {
                 .memberIds(RedisCodecSupport.fromJson(
                         objectMapper, source.get("member_ids"), new TypeReference<LinkedHashSet<String>>() {}, new LinkedHashSet<>()))
                 .msgCnt(RedisCodecSupport.parseLongOrDefault(source.get("msg_cnt"), 0L))
+                .latestMsgSeq(RedisCodecSupport.parseLongOrDefault(
+                        source.get("latest_msg_seq"),
+                        RedisCodecSupport.parseLongOrDefault(source.get("msg_cnt"), 0L)
+                ))
                 .createdAt(RedisCodecSupport.parseInstant(source.get("created_at")))
                 .build();
     }
@@ -45,6 +49,7 @@ public class RedisChatRoomCodec implements RedisHashCodec<RedisChatRoom> {
         map.put("category", room.getCategory() == null ? "" : room.getCategory().name());
         map.put("member_ids", RedisCodecSupport.toJson(objectMapper, room.getMemberIds()));
         map.put("msg_cnt", room.getMsgCnt() == null ? "0" : room.getMsgCnt() + "");
+        map.put("latest_msg_seq", room.getLatestMsgSeq() == null ? "0" : room.getLatestMsgSeq() + "");
         map.put("created_at", RedisCodecSupport.str(room.getCreatedAt()));
         return map;
     }
@@ -62,6 +67,8 @@ public class RedisChatRoomCodec implements RedisHashCodec<RedisChatRoom> {
                 case "category" -> map.put("category", v == null ? "" : (v instanceof ChatRoomCategory category ? category.name() : String.valueOf(v)));
                 case "memberIds", "member_ids" -> map.put("member_ids", RedisCodecSupport.toJson(objectMapper, v));
                 case "msgCnt", "msg_cnt" -> map.put("msg_cnt", RedisCodecSupport.str(v));
+                case "latestMsgSeq", "latest_msg_seq" ->
+                        map.put("latest_msg_seq", RedisCodecSupport.str(v));
                 case "createdAt", "created_at" -> map.put("created_at", RedisCodecSupport.str(v));
                 default -> map.put(k, RedisCodecSupport.str(v));
             }

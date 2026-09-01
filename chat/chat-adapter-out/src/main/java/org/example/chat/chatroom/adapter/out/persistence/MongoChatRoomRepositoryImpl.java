@@ -3,7 +3,12 @@ package org.example.chat.chatroom.adapter.out.persistence;
 import org.bson.types.ObjectId;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.common.time.Clock;
+import org.springframework.data.mongodb.MongoExpression;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.mongodb.core.aggregation.AggregationExpression;
+import org.springframework.data.mongodb.core.aggregation.AggregationUpdate;
+import org.springframework.data.mongodb.core.aggregation.ArithmeticOperators;
+import org.springframework.data.mongodb.core.aggregation.ConditionalOperators;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
@@ -16,6 +21,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.time.Instant;
 
 @Repository
 public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCustom {
@@ -121,6 +127,42 @@ public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCusto
                 update,
                 MongoChatRoom.class
         );
+    }
+
+    @Override
+    public Optional<MongoChatRoom> updateMessageState(
+            ObjectId roomId,
+            int count,
+            Instant lastMessageCreatedAt
+    ) {
+        Query query = new Query(Criteria.where("_id").is(roomId));
+        AggregationExpression currentMessageSequence = ConditionalOperators
+                .ifNull("latestMsgSeq")
+                .thenValueOf(ConditionalOperators.ifNull("msgCnt").then(0));
+        AggregationExpression nextMessageSequence = ArithmeticOperators
+                .valueOf(currentMessageSequence)
+                .add(count);
+        AggregationExpression nextMessageCount = ArithmeticOperators
+                .valueOf(ConditionalOperators.ifNull("msgCnt").then(0))
+                .add(count);
+
+        AggregationUpdate update = AggregationUpdate.update()
+                .set("latestMsgSeq")
+                .toValue(nextMessageSequence)
+                .set("msgCnt")
+                .toValue(nextMessageCount)
+                .set("lastMsgCreatedAt")
+                .toValue(MongoExpression.create(
+                        "{ $max: [ '$lastMsgCreatedAt', ?0 ] }",
+                        lastMessageCreatedAt
+                ));
+
+        return Optional.ofNullable(primaryMongoTemplate.findAndModify(
+                query,
+                update,
+                FindAndModifyOptions.options().returnNew(true),
+                MongoChatRoom.class
+        ));
     }
 
     @Override

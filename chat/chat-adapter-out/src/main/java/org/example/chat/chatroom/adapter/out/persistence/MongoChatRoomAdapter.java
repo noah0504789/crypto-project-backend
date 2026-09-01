@@ -13,6 +13,7 @@ import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException
 import org.example.chat.chatroom.domain.service.MyChatRoomScoreCalculator;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -142,8 +143,14 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
     }
 
     @Override
-    public void incrementMessageCount(String id, int count) {
-        chatRoomRepository.incrementRoomField(new ObjectId(id), "msgCnt", count);
+    public long updateMessageState(String id, int count, long lastMessageCreatedAtMs) {
+        return chatRoomRepository.updateMessageState(
+                        new ObjectId(id),
+                        count,
+                        Instant.ofEpochMilli(lastMessageCreatedAtMs)
+                )
+                .map(MongoChatRoom::getLatestMsgSeq)
+                .orElseThrow(() -> new ChatRoomNotFoundException(id));
     }
 
     @Override

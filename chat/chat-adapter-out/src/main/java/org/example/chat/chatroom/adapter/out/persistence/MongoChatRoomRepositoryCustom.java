@@ -6,6 +6,7 @@ import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.time.Instant;
 
 public interface MongoChatRoomRepositoryCustom {
 
@@ -30,11 +31,9 @@ public interface MongoChatRoomRepositoryCustom {
 
     Optional<MongoChatRoom> updateRoomAndReturn(ObjectId roomId, Map<String, Object> updates);
 
-    void incrementRoomField(
-            ObjectId roomId,
-            String field,
-            Integer delta
-    );
+    Optional<MongoChatRoom> updateMessageState(ObjectId roomId, int count, Instant lastMessageCreatedAt);
+
+    void incrementRoomField(ObjectId roomId, String field, Integer delta);
 
     void addMember(ObjectId roomId, String userId);
 

@@ -20,6 +20,7 @@ import org.springframework.data.mongodb.core.index.PartialIndexFilter;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.test.context.ContextConfiguration;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -234,6 +235,28 @@ class MongoChatRoomRepositoryImplIntegrationTest {
             // then
             MongoChatRoom found = sut.findById(roomId1).orElseThrow();
             assertThat(found.getMsgCnt()).isEqualTo(2L);
+        }
+
+        @Test
+        @DisplayName("updateMessageState는 msgCnt와 latestMsgSeq를 함께 증가시키고 최신 시각을 유지한다")
+        void updateMessageState() {
+            // given
+            saveRoom(roomId1, "워터마크방", 5);
+            Instant latest = Instant.parse("2026-01-01T00:00:00Z");
+
+            // when
+            sut.updateMessageState(roomId1, 3, latest).orElseThrow();
+            sut.incrementRoomField(roomId1, "msgCnt", -1);
+            MongoChatRoom updated = sut.updateMessageState(
+                    roomId1,
+                    2,
+                    latest.minusSeconds(1)
+            ).orElseThrow();
+
+            // then
+            assertThat(updated.getMsgCnt()).isEqualTo(9L);
+            assertThat(updated.getLatestMsgSeq()).isEqualTo(10L);
+            assertThat(updated.getLastMsgCreatedAt()).isEqualTo(latest);
         }
 
         @Test

@@ -27,7 +27,7 @@ public class ChatMessagePersistEvent extends AbstractOutboxEvent implements Hand
     ) {
         super(KafkaTopic.CHAT_MESSAGE.getTopicName(), payload.id(), payload.roomId());
         this.payload = payload;
-        this.memberIds = memberIds;
+        this.memberIds = memberIds == null ? Set.of() : Set.copyOf(memberIds);
     }
 
     @Override

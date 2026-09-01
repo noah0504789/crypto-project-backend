@@ -14,6 +14,7 @@ public record ChatRoomResponse(
         String description,
         ChatRoomCategory category,
         Long msgCnt,
+        Long latestMsgSeq,
         Integer memberCnt,
         Double popularity,
         Instant createdAt
@@ -27,6 +28,7 @@ public record ChatRoomResponse(
                 .category(entity.getCategory())
                 .memberCnt(entity.getMemberIds().size())
                 .msgCnt(entity.getMsgCnt())
+                .latestMsgSeq(entity.getLatestMsgSeq())
                 .popularity(entity.popularity())
                 .createdAt(entity.createdAtInstant())
                 .build();

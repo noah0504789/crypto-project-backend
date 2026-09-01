@@ -88,7 +88,7 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
         recordDuplicates(events.size() - insertedIds.size());
 
         RoomBatch roomBatch = groupByRoom(insertedIds, eventsById, domainsById);
-        recordRoomCounters(roomBatch.messageIdsByRoom());
+        recordRoomWatermarks(roomBatch.latestEventByRoom(), roomBatch.messageIdsByRoom(), domainsById);
         recordMemberships(roomBatch.latestEventByRoom(), domainsById);
         metrics.recordCommittedBatch(
                 insertedIds.size(),
@@ -150,10 +150,21 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
                 .compare(left, right) >= 0 ? left : right;
     }
 
-    private void recordRoomCounters(Map<String, List<String>> messageIdsByRoom) {
-        messageIdsByRoom.forEach((roomId, messageIds) -> metrics.recordRoomCounter(
-                () -> chatRoomPersistencePort.incrementMessageCount(roomId, messageIds.size())
-        ));
+    private void recordRoomWatermarks(
+            Map<String, ChatMessagePersistEvent> latestEventByRoom,
+            Map<String, List<String>> messageIdsByRoom,
+            Map<String, ChatMessage> domainsById
+    ) {
+        latestEventByRoom.forEach((roomId, event) -> {
+            ChatMessage domain = domainsById.get(event.getPayload().id());
+            metrics.recordRoomCounter(
+                    () -> chatRoomPersistencePort.updateMessageState(
+                            roomId,
+                            messageIdsByRoom.get(roomId).size(),
+                            domain.createdAtEpochMillis()
+                    )
+            );
+        });
     }
 
     private void recordMemberships(
@@ -189,7 +200,9 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
             return;
         }
 
-        metrics.recordRoomCounter(() -> chatRoomPersistencePort.incrementMessageCount(roomId, 1));
+        metrics.recordRoomCounter(
+                () -> chatRoomPersistencePort.updateMessageState(roomId, 1, domain.createdAtEpochMillis())
+        );
         metrics.recordMembership(
                 () -> chatRoomPersistencePort.updateMembershipScores(
                         roomId,

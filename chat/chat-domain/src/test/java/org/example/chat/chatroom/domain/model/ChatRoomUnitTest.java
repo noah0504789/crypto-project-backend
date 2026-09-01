@@ -929,6 +929,50 @@ class ChatRoomUnitTest {
         }
 
         @Test
+        @DisplayName("보관 메시지 수와 무관하게 latestMsgSeq를 기준으로 읽지 않음을 판단한다")
+        void hasUnread_shouldUseLatestMsgSeq() {
+            // given
+            ChatRoom chatRoom = ChatRoom.rehydrate(
+                    ROOM_ID,
+                    HOST_ID,
+                    "title",
+                    "description",
+                    category,
+                    Set.of(HOST_ID),
+                    5L,
+                    20L,
+                    LocalDateTime.now()
+            );
+
+            // when
+            boolean result = chatRoom.hasUnread(10L);
+
+            // then
+            assertThat(result).isTrue();
+        }
+
+        @Test
+        @DisplayName("기존 문서에 latestMsgSeq가 없으면 msgCnt를 초기 watermark로 사용한다")
+        void hasUnread_shouldFallbackToMsgCnt_whenLatestMsgSeqIsMissing() {
+            // given
+            ChatRoom chatRoom = ChatRoom.rehydrate(
+                    ROOM_ID,
+                    HOST_ID,
+                    "title",
+                    "description",
+                    category,
+                    Set.of(HOST_ID),
+                    10L,
+                    null,
+                    LocalDateTime.now()
+            );
+
+            // when & then
+            assertThat(chatRoom.getLatestMsgSeq()).isEqualTo(10L);
+            assertThat(chatRoom.hasUnread(9L)).isTrue();
+        }
+
+        @Test
         @DisplayName("lastReadSeq가 null이면 0으로 보고 읽지 않은 메시지 여부를 판단한다")
         void hasUnread_shouldTreatNullLastReadSeqAsZero() {
             // given

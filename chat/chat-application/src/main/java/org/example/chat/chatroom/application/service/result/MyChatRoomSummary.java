@@ -20,7 +20,9 @@ public record MyChatRoomSummary(
 ) {
     public static MyChatRoomSummary fromRoom(ChatRoom chatRoom, Long lastMsgSeq) {
         long safeLastMsgSeq = lastMsgSeq == null ? 0L : lastMsgSeq;
-        long msgCnt = chatRoom.getMsgCnt() == null ? 0L : chatRoom.getMsgCnt();
+        long latestSeq = chatRoom.getLatestMsgSeq() == null
+                ? (chatRoom.getMsgCnt() == null ? 0L : chatRoom.getMsgCnt())
+                : chatRoom.getLatestMsgSeq();
 
         return MyChatRoomSummary.builder()
                 .id(chatRoom.getId())
@@ -31,7 +33,7 @@ public record MyChatRoomSummary(
                 .memberCnt(chatRoom.getMemberIds() == null ? 0 : chatRoom.getMemberIds().size())
                 .lastMsgContent(chatRoom.getLastMsgContent())
                 .lastMsgCreatedAt(chatRoom.getLastMsgCreatedAt())
-                .unreadMsgCnt(Math.max(0, msgCnt - safeLastMsgSeq))
+                .unreadMsgCnt(Math.max(0, latestSeq - safeLastMsgSeq))
                 .build();
     }
 }
