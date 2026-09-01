@@ -2,19 +2,13 @@ package org.example.websocket.gateway.chatroom.adapter.out.stomp;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
-import lombok.extern.slf4j.Slf4j;
 import org.example.common.enums.StompDestination;
 import org.example.common.properties.ApiPathProperties;
 import org.example.websocket.gateway.chatroom.adapter.out.stomp.payload.StompMyChatRoomBadgePayload;
 import org.example.websocket.gateway.chatroom.application.port.out.MyChatRoomBadgePort;
 import org.example.websocket.gateway.chatroom.application.service.command.MyChatRoomBadgeCommand;
 import org.example.websocket.gateway.session.application.cache.LocalSessionCache;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageChannel;
-import org.springframework.messaging.converter.MessageConverter;
-import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
-import org.springframework.messaging.simp.SimpMessageType;
+import org.example.websocket.gateway.websocket.adapter.out.stomp.DirectStompSessionSender;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -22,13 +16,11 @@ import java.util.List;
 import java.util.Set;
 
 /** 뱃지를 brokerChannel 없이 로컬 세션의 clientOutboundChannel 로 직접 보낸다. */
-@Slf4j
 @Component
 public class DirectStompMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
 
     private final LocalSessionCache localSessionCache;
-    private final MessageChannel clientOutboundChannel;
-    private final MessageConverter messageConverter;
+    private final DirectStompSessionSender sessionSender;
     private final String badgeDestination;
 
     private final Counter sent;
@@ -36,14 +28,12 @@ public class DirectStompMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
 
     public DirectStompMyChatRoomBadgeAdapter(
             LocalSessionCache localSessionCache,
-            @Qualifier("clientOutboundChannel") MessageChannel clientOutboundChannel,
-            @Qualifier("brokerMessageConverter") MessageConverter messageConverter,
+            DirectStompSessionSender sessionSender,
             ApiPathProperties apiPathProperties,
             MeterRegistry registry
     ) {
         this.localSessionCache = localSessionCache;
-        this.clientOutboundChannel = clientOutboundChannel;
-        this.messageConverter = messageConverter;
+        this.sessionSender = sessionSender;
         this.badgeDestination = apiPathProperties.stomp().userDestinationPrefix()
                 + StompDestination.CHAT_ROOM_BADGE_QUEUE.destination();
 
@@ -91,43 +81,14 @@ public class DirectStompMyChatRoomBadgeAdapter implements MyChatRoomBadgePort {
         }
 
         for (SessionTarget target : targets) {
-            if (!sendToSession(target.sessionId(), target.subscriptionId(), payload)) {
+            if (!sessionSender.send(badgeDestination, target.sessionId(), target.subscriptionId(), payload)) {
                 return false;
             }
+
+            sent.increment();
         }
 
         return true;
-    }
-
-    private boolean sendToSession(
-            String sessionId,
-            String subscriptionId,
-            StompMyChatRoomBadgePayload payload
-    ) {
-        SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE);
-        accessor.setSessionId(sessionId);
-        accessor.setSubscriptionId(subscriptionId);
-        accessor.setDestination(badgeDestination);
-
-        try {
-            Message<?> message = messageConverter.toMessage(payload, accessor.getMessageHeaders());
-
-            if (message == null) {
-                return false;
-            }
-
-            boolean delivered = clientOutboundChannel.send(message);
-
-            if (delivered) {
-                sent.increment();
-            }
-
-            return delivered;
-        } catch (Exception e) {
-            log.error("[stomp] direct badge send failed. sessionId={}", sessionId, e);
-
-            return false;
-        }
     }
 
     private record SessionTarget(String sessionId, String subscriptionId) {

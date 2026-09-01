@@ -5,6 +5,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.example.common.properties.ApiPathProperties;
 import org.example.websocket.gateway.chatmessage.application.service.result.ChatMessageAckResult;
 import org.example.websocket.gateway.session.application.cache.LocalSessionCache;
+import org.example.websocket.gateway.websocket.adapter.out.stomp.DirectStompSessionSender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -44,8 +45,7 @@ class DirectStompChatMessageAckAdapterUnitTest {
     private DirectStompChatMessageAckAdapter sut() {
         return new DirectStompChatMessageAckAdapter(
                 localSessionCache,
-                clientOutboundChannel,
-                new MappingJackson2MessageConverter(),
+                new DirectStompSessionSender(clientOutboundChannel, new MappingJackson2MessageConverter()),
                 // 이 어댑터가 쓰는 것은 stomp().userDestinationPrefix() 하나뿐이다.
                 new ApiPathProperties(
                         null,

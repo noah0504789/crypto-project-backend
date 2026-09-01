@@ -6,6 +6,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.example.common.properties.ApiPathProperties;
 import org.example.websocket.gateway.chatroom.application.service.command.MyChatRoomBadgeCommand;
 import org.example.websocket.gateway.session.application.cache.LocalSessionCache;
+import org.example.websocket.gateway.websocket.adapter.out.stomp.DirectStompSessionSender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -55,8 +56,7 @@ class DirectStompMyChatRoomBadgeAdapterUnitTest {
 
         return new DirectStompMyChatRoomBadgeAdapter(
                 localSessionCache,
-                clientOutboundChannel,
-                messageConverter,
+                new DirectStompSessionSender(clientOutboundChannel, messageConverter),
                 new ApiPathProperties(
                         null,
                         new ApiPathProperties.Stomp("/msg", "/user"),
