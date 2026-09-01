@@ -35,17 +35,17 @@ public class RedisChatRoom {
     @JsonProperty("msg_cnt")
     private Long msgCnt;
 
-    @JsonProperty("latest_message_seq")
-    private Long latestMessageSeq;
+    @JsonProperty("latest_msg_seq")
+    private Long latestMsgSeq;
 
     @JsonProperty("created_at")
     private Instant createdAt;
 
     public static RedisChatRoom fromDomain(ChatRoom domain) {
         long messageCount = domain.getMsgCnt() == null ? 0L : domain.getMsgCnt();
-        long latestMessageSeq = domain.getLatestMessageSeq() == null
+        long latestMsgSeq = domain.getLatestMsgSeq() == null
                 ? messageCount
-                : domain.getLatestMessageSeq();
+                : domain.getLatestMsgSeq();
 
         return RedisChatRoom.builder()
                 .id(domain.getId())
@@ -55,7 +55,7 @@ public class RedisChatRoom {
                 .category(domain.getCategory())
                 .memberIds(domain.getMemberIds())
                 .msgCnt(messageCount)
-                .latestMessageSeq(latestMessageSeq)
+                .latestMsgSeq(latestMsgSeq)
                 .createdAt(domain.createdAtInstant())
                 .build();
     }

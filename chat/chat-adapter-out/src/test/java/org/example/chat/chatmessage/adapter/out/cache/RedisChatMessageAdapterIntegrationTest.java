@@ -117,11 +117,11 @@ class RedisChatMessageAdapterIntegrationTest {
             String roomInfoKey = CHAT_ROOM_INFO.keyFor(ROOM_ID);
             Object msgCnt = masterHashRedisTemplate.opsForHash()
                     .get(roomInfoKey, "msg_cnt");
-            Object latestMessageSeq = masterHashRedisTemplate.opsForHash()
-                    .get(roomInfoKey, "latest_message_seq");
+            Object latestMsgSeq = masterHashRedisTemplate.opsForHash()
+                    .get(roomInfoKey, "latest_msg_seq");
 
             assertThat(msgCnt).isEqualTo("1");
-            assertThat(latestMessageSeq).isEqualTo("1");
+            assertThat(latestMsgSeq).isEqualTo("1");
 
             String writerRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(WRITER_ID);
             Double writerRecentScore = masterHashRedisTemplate.opsForZSet()
@@ -166,16 +166,16 @@ class RedisChatMessageAdapterIntegrationTest {
             String roomInfoKey = CHAT_ROOM_INFO.keyFor(ROOM_ID);
             Object msgCnt = masterHashRedisTemplate.opsForHash()
                     .get(roomInfoKey, "msg_cnt");
-            Object latestMessageSeq = masterHashRedisTemplate.opsForHash()
-                    .get(roomInfoKey, "latest_message_seq");
+            Object latestMsgSeq = masterHashRedisTemplate.opsForHash()
+                    .get(roomInfoKey, "latest_msg_seq");
 
             assertThat(msgCnt).isEqualTo("1");
-            assertThat(latestMessageSeq).isEqualTo("1");
+            assertThat(latestMsgSeq).isEqualTo("1");
         }
 
         @Test
         @DisplayName("기존 room hash에 watermark가 없으면 msgCnt 다음 값부터 시작한다")
-        void saveShouldSeedLatestMessageSeqFromLegacyMessageCount() {
+        void saveShouldSeedLatestMsgSeqFromLegacyMessageCount() {
             // given
             String roomInfoKey = CHAT_ROOM_INFO.keyFor(ROOM_ID);
             masterHashRedisTemplate.opsForHash().put(roomInfoKey, "msg_cnt", "5");
@@ -187,7 +187,7 @@ class RedisChatMessageAdapterIntegrationTest {
             // then
             assertThat(masterHashRedisTemplate.opsForHash().get(roomInfoKey, "msg_cnt"))
                     .isEqualTo("6");
-            assertThat(masterHashRedisTemplate.opsForHash().get(roomInfoKey, "latest_message_seq"))
+            assertThat(masterHashRedisTemplate.opsForHash().get(roomInfoKey, "latest_msg_seq"))
                     .isEqualTo("6");
         }
 
@@ -347,7 +347,7 @@ class RedisChatMessageAdapterIntegrationTest {
 
             String roomInfoKey = CHAT_ROOM_INFO.keyFor(ROOM_ID);
             masterHashRedisTemplate.opsForHash().put(roomInfoKey, "msg_cnt", "2");
-            masterHashRedisTemplate.opsForHash().put(roomInfoKey, "latest_message_seq", "2");
+            masterHashRedisTemplate.opsForHash().put(roomInfoKey, "latest_msg_seq", "2");
 
             String memberRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(MEMBER_ID);
             String otherMemberRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(OTHER_MEMBER_ID);
@@ -372,11 +372,11 @@ class RedisChatMessageAdapterIntegrationTest {
 
             Object msgCnt = masterHashRedisTemplate.opsForHash()
                     .get(roomInfoKey, "msg_cnt");
-            Object latestMessageSeq = masterHashRedisTemplate.opsForHash()
-                    .get(roomInfoKey, "latest_message_seq");
+            Object latestMsgSeq = masterHashRedisTemplate.opsForHash()
+                    .get(roomInfoKey, "latest_msg_seq");
 
             assertThat(msgCnt).isEqualTo("1");
-            assertThat(latestMessageSeq).isEqualTo("2");
+            assertThat(latestMsgSeq).isEqualTo("2");
 
             assertThat(masterHashRedisTemplate.opsForZSet().score(memberRecentKey, ROOM_ID))
                     .isNull();

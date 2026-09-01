@@ -149,7 +149,7 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
                         count,
                         Instant.ofEpochMilli(lastMessageCreatedAtMs)
                 )
-                .map(MongoChatRoom::getLatestMessageSeq)
+                .map(MongoChatRoom::getLatestMsgSeq)
                 .orElseThrow(() -> new ChatRoomNotFoundException(id));
     }
 

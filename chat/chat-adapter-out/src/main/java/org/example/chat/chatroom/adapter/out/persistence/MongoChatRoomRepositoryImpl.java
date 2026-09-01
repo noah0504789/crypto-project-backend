@@ -137,7 +137,7 @@ public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCusto
     ) {
         Query query = new Query(Criteria.where("_id").is(roomId));
         AggregationExpression currentMessageSequence = ConditionalOperators
-                .ifNull("latestMessageSeq")
+                .ifNull("latestMsgSeq")
                 .thenValueOf(ConditionalOperators.ifNull("msgCnt").then(0));
         AggregationExpression nextMessageSequence = ArithmeticOperators
                 .valueOf(currentMessageSequence)
@@ -147,7 +147,7 @@ public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCusto
                 .add(count);
 
         AggregationUpdate update = AggregationUpdate.update()
-                .set("latestMessageSeq")
+                .set("latestMsgSeq")
                 .toValue(nextMessageSequence)
                 .set("msgCnt")
                 .toValue(nextMessageCount)

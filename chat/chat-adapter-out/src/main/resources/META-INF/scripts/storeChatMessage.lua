@@ -20,12 +20,12 @@ redis.call("ZADD", messageKey, createdAtMs, messageJson)
 redis.call("ZADD", messageAccessKey, createdAtMs, messageId)
 
 local currentMsgCnt = tonumber(redis.call("HGET", roomInfoKey, "msg_cnt") or "0")
-if not redis.call("HGET", roomInfoKey, "latest_message_seq") then
-    redis.call("HSET", roomInfoKey, "latest_message_seq", currentMsgCnt)
+if not redis.call("HGET", roomInfoKey, "latest_msg_seq") then
+    redis.call("HSET", roomInfoKey, "latest_msg_seq", currentMsgCnt)
 end
 
 redis.call("HINCRBY", roomInfoKey, "msg_cnt", 1)
-redis.call("HINCRBY", roomInfoKey, "latest_message_seq", 1)
+redis.call("HINCRBY", roomInfoKey, "latest_msg_seq", 1)
 
 redis.call("ZADD", writerRecentKey, createdAtMs, roomId)
 

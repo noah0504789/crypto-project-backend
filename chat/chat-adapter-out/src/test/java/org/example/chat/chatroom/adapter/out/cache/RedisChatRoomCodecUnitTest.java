@@ -14,7 +14,7 @@ class RedisChatRoomCodecUnitTest {
 
     @Test
     @DisplayName("기존 room hash에 watermark가 없으면 msgCnt를 초기값으로 읽는다")
-    void readShouldFallbackToMessageCountWhenLatestMessageSeqIsMissing() {
+    void readShouldFallbackToMessageCountWhenLatestMsgSeqIsMissing() {
         // when
         RedisChatRoom room = sut.read(Map.of(
                 "id", "room-id",
@@ -23,6 +23,6 @@ class RedisChatRoomCodecUnitTest {
 
         // then
         assertThat(room.getMsgCnt()).isEqualTo(7L);
-        assertThat(room.getLatestMessageSeq()).isEqualTo(7L);
+        assertThat(room.getLatestMsgSeq()).isEqualTo(7L);
     }
 }
