@@ -69,6 +69,10 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
     )
     @Transactional("chatMongoTransactionManager")
     public void handleBatch(List<ChatMessagePersistEvent> events, String txId) {
+        if (events == null || events.isEmpty()) {
+            return;
+        }
+
         try {
             handlePersistenceBatch(events);
         } catch (TemporaryChatPersistenceException e) {
@@ -78,49 +82,86 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
     }
 
     private void handlePersistenceBatch(List<ChatMessagePersistEvent> events) {
-        if (events == null || events.isEmpty()) {
-            return;
-        }
+        Map<String, ChatMessagePersistEvent> eventsById = deduplicate(events);
+        Map<String, ChatMessage> domainsById = toDomains(eventsById);
+        Set<String> insertedIds = persistNewMessages(domainsById);
+        recordDuplicates(events.size() - insertedIds.size());
 
-        Map<String, ChatMessagePersistEvent> eventByMessageId = new LinkedHashMap<>();
-        for (ChatMessagePersistEvent event : events) {
-            eventByMessageId.putIfAbsent(event.getPayload().id(), event);
-        }
+        RoomBatch roomBatch = groupByRoom(insertedIds, eventsById, domainsById);
+        recordRoomCounters(roomBatch.messageIdsByRoom());
+        recordMemberships(roomBatch.latestEventByRoom(), domainsById);
+        metrics.recordCommittedBatch(
+                insertedIds.size(),
+                roomBatch.messageIdsByRoom().size(),
+                roomBatch.latestEventByRoom().values().stream()
+                        .mapToInt(event -> event.getMemberIds().size())
+                        .sum()
+        );
+    }
 
-        Map<String, ChatMessage> domainByMessageId = eventByMessageId.values().stream()
+    private Map<String, ChatMessagePersistEvent> deduplicate(List<ChatMessagePersistEvent> events) {
+        Map<String, ChatMessagePersistEvent> eventsById = new LinkedHashMap<>();
+        events.forEach(event -> eventsById.putIfAbsent(event.getPayload().id(), event));
+        return eventsById;
+    }
+
+    private Map<String, ChatMessage> toDomains(Map<String, ChatMessagePersistEvent> eventsById) {
+        return eventsById.values().stream()
                 .map(event -> ChatMessagePayloadMapper.toDomain(event.getPayload()))
                 .collect(Collectors.toMap(ChatMessage::getId, domain -> domain));
+    }
+
+    private Set<String> persistNewMessages(Map<String, ChatMessage> domainsById) {
         Set<String> insertedIds = new HashSet<>();
         metrics.recordMessageInsert(() -> insertedIds.addAll(
-                chatMessagePersistencePort.saveAll(Set.copyOf(domainByMessageId.values()))
+                chatMessagePersistencePort.saveAll(Set.copyOf(domainsById.values()))
         ));
+        return insertedIds;
+    }
 
-        long duplicateCount = events.size() - insertedIds.size();
-        for (long i = 0; i < duplicateCount; i++) {
+    private void recordDuplicates(long count) {
+        for (long i = 0; i < count; i++) {
             metrics.recordDuplicateMessage();
         }
+    }
 
-        Map<String, List<String>> insertedIdsByRoom = new LinkedHashMap<>();
+    private RoomBatch groupByRoom(
+            Set<String> insertedIds,
+            Map<String, ChatMessagePersistEvent> eventsById,
+            Map<String, ChatMessage> domainsById
+    ) {
+        Map<String, List<String>> messageIdsByRoom = new LinkedHashMap<>();
         Map<String, ChatMessagePersistEvent> latestEventByRoom = new LinkedHashMap<>();
-        for (String insertedId : insertedIds) {
-            ChatMessagePersistEvent event = eventByMessageId.get(insertedId);
-            ChatMessage domain = domainByMessageId.get(insertedId);
-            insertedIdsByRoom.computeIfAbsent(domain.getRoomId(), ignored -> new ArrayList<>())
-                    .add(insertedId);
-            latestEventByRoom.merge(
-                    domain.getRoomId(),
-                    event,
-                    (left, right) -> Comparator.comparing((ChatMessagePersistEvent value) -> value.getPayload().createdAt())
-                            .thenComparing(value -> value.getPayload().id())
-                            .compare(left, right) >= 0 ? left : right
-            );
-        }
+        insertedIds.forEach(id -> {
+            ChatMessagePersistEvent event = eventsById.get(id);
+            ChatMessage domain = domainsById.get(id);
+            messageIdsByRoom.computeIfAbsent(domain.getRoomId(), ignored -> new ArrayList<>()).add(id);
+            latestEventByRoom.merge(domain.getRoomId(), event, this::latestEvent);
+        });
+        return new RoomBatch(messageIdsByRoom, latestEventByRoom);
+    }
 
-        insertedIdsByRoom.forEach((roomId, messageIds) -> metrics.recordRoomCounter(
+    private ChatMessagePersistEvent latestEvent(
+            ChatMessagePersistEvent left,
+            ChatMessagePersistEvent right
+    ) {
+        return Comparator.comparing((ChatMessagePersistEvent event) -> event.getPayload().createdAt())
+                .thenComparing(event -> event.getPayload().id())
+                .compare(left, right) >= 0 ? left : right;
+    }
+
+    private void recordRoomCounters(Map<String, List<String>> messageIdsByRoom) {
+        messageIdsByRoom.forEach((roomId, messageIds) -> metrics.recordRoomCounter(
                 () -> chatRoomPersistencePort.incrementMessageCount(roomId, messageIds.size())
         ));
+    }
+
+    private void recordMemberships(
+            Map<String, ChatMessagePersistEvent> latestEventByRoom,
+            Map<String, ChatMessage> domainsById
+    ) {
         latestEventByRoom.forEach((roomId, event) -> {
-            ChatMessage domain = domainByMessageId.get(event.getPayload().id());
+            ChatMessage domain = domainsById.get(event.getPayload().id());
             metrics.recordMembership(
                     () -> chatRoomPersistencePort.updateMembershipScores(
                             roomId,
@@ -129,9 +170,12 @@ public class ChatMessageEventService implements ChatMessageEventHandler {
                     )
             );
         });
-        metrics.recordCommittedBatch(insertedIds.size(), insertedIdsByRoom.size(), latestEventByRoom.values().stream()
-                .mapToInt(event -> event.getMemberIds().size())
-                .sum());
+    }
+
+    private record RoomBatch(
+            Map<String, List<String>> messageIdsByRoom,
+            Map<String, ChatMessagePersistEvent> latestEventByRoom
+    ) {
     }
 
     private void handlePersistence(ChatMessagePersistEvent event, String txId) {
