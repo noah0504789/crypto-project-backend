@@ -64,6 +64,22 @@ public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCusto
     }
 
     @Override
+    public List<MongoChatRoom> listByIdsAndDeletedFalse(List<ObjectId> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+
+        Query query = new Query(
+                Criteria.where("_id")
+                        .in(ids)
+                        .and("deleted")
+                        .is(false)
+        );
+
+        return primaryMongoTemplate.find(query, MongoChatRoom.class);
+    }
+
+    @Override
     public List<MongoChatRoom> listPopularRooms(
             ChatRoomCategory category,
             int offset,

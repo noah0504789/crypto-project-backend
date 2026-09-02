@@ -25,11 +25,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.*;
@@ -216,12 +213,7 @@ class ChatRoomEventServiceUnitTest {
             // then
             then(persistence)
                     .should()
-                    .activateMembership(
-                            ROOM_ID,
-                            MEMBER_ID,
-                            lastMsgSeq,
-                            lastMsgMs
-                    );
+                    .activateMembership(ROOM_ID, MEMBER_ID, lastMsgSeq);
 
             then(cache)
                     .shouldHaveNoInteractions();

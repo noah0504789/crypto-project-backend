@@ -56,7 +56,6 @@ class ChatMessageEventServiceUnitTest {
 
     private final String memberId1 = "member-1";
     private final String memberId2 = "member-2";
-    private final Set<String> memberIds = Set.of(memberId1, memberId2);
 
     private final Instant createdAt = Instant.parse("2026-01-01T01:00:00Z");
 
@@ -84,10 +83,6 @@ class ChatMessageEventServiceUnitTest {
                 invocation.<Runnable>getArgument(0).run();
                 return null;
             }).when(metrics).recordRoomCounter(any(Runnable.class));
-            lenient().doAnswer(invocation -> {
-                invocation.<Runnable>getArgument(0).run();
-                return null;
-            }).when(metrics).recordMembership(any(Runnable.class));
         }
 
         @Test
@@ -97,10 +92,7 @@ class ChatMessageEventServiceUnitTest {
             ChatMessage message = chatMessage();
             ChatMessagePayload payload = ChatMessagePayloadMapper.fromDomain(message);
 
-            ChatMessagePersistEvent event = new ChatMessagePersistEvent(
-                    payload,
-                    memberIds
-            );
+            ChatMessagePersistEvent event = new ChatMessagePersistEvent(payload);
 
             // when
             sut.handle(event, txId);
@@ -121,13 +113,6 @@ class ChatMessageEventServiceUnitTest {
 
             inOrder.verify(chatRoomPersistencePort)
                     .updateMessageState(roomId, 1, message.createdAtEpochMillis());
-
-            inOrder.verify(chatRoomPersistencePort)
-                    .updateMembershipScores(
-                            eq(roomId),
-                            eq(memberIds),
-                            eq(message.createdAtEpochMillis())
-                    );
         }
 
         @Test
@@ -139,10 +124,7 @@ class ChatMessageEventServiceUnitTest {
             ChatMessage message = chatMessage();
             ChatMessagePayload payload = ChatMessagePayloadMapper.fromDomain(message);
 
-            ChatMessagePersistEvent event = new ChatMessagePersistEvent(
-                    payload,
-                    memberIds
-            );
+            ChatMessagePersistEvent event = new ChatMessagePersistEvent(payload);
 
             doThrow(exception)
                     .when(chatMessagePersistencePort)
@@ -169,7 +151,7 @@ class ChatMessageEventServiceUnitTest {
                     new RuntimeException("mongo unavailable")
             );
             ChatMessagePayload payload = ChatMessagePayloadMapper.fromDomain(chatMessage());
-            ChatMessagePersistEvent event = new ChatMessagePersistEvent(payload, memberIds);
+            ChatMessagePersistEvent event = new ChatMessagePersistEvent(payload);
 
             doThrow(exception)
                     .when(chatMessagePersistencePort)
@@ -192,10 +174,7 @@ class ChatMessageEventServiceUnitTest {
             ChatMessage message = chatMessage();
             ChatMessagePayload payload = ChatMessagePayloadMapper.fromDomain(message);
 
-            ChatMessagePersistEvent event = new ChatMessagePersistEvent(
-                    payload,
-                    memberIds
-            );
+            ChatMessagePersistEvent event = new ChatMessagePersistEvent(payload);
 
             doThrow(exception)
                     .when(chatRoomPersistencePort)
@@ -215,10 +194,6 @@ class ChatMessageEventServiceUnitTest {
 
             inOrder.verify(chatRoomPersistencePort)
                     .updateMessageState(roomId, 1, message.createdAtEpochMillis());
-
-            then(chatRoomPersistencePort)
-                    .should(never())
-                    .updateMembershipScores(any(), any(), anyLong());
         }
 
         @Test
@@ -228,10 +203,7 @@ class ChatMessageEventServiceUnitTest {
             ChatMessage message = chatMessage();
             ChatMessagePayload payload = ChatMessagePayloadMapper.fromDomain(message);
 
-            ChatMessagePersistEvent event = new ChatMessagePersistEvent(
-                    payload,
-                    memberIds
-            );
+            ChatMessagePersistEvent event = new ChatMessagePersistEvent(payload);
 
             DuplicateChatMessageException exception =
                     new DuplicateChatMessageException(
@@ -272,10 +244,6 @@ class ChatMessageEventServiceUnitTest {
                 invocation.<Runnable>getArgument(0).run();
                 return null;
             }).when(metrics).recordRoomCounter(any(Runnable.class));
-            doAnswer(invocation -> {
-                invocation.<Runnable>getArgument(0).run();
-                return null;
-            }).when(metrics).recordMembership(any(Runnable.class));
             ChatMessage secondMessage = ChatMessage.rehydrate(
                     "100000000000000000000002",
                     roomId,
@@ -284,10 +252,8 @@ class ChatMessageEventServiceUnitTest {
                     createdAt.plusSeconds(1)
             );
             ChatMessagePersistEvent firstEvent = persistEvent();
-            ChatMessagePersistEvent secondEvent = new ChatMessagePersistEvent(
-                    ChatMessagePayloadMapper.fromDomain(secondMessage),
-                    Set.of(memberId1, memberId2)
-            );
+            ChatMessagePersistEvent secondEvent =
+                    new ChatMessagePersistEvent(ChatMessagePayloadMapper.fromDomain(secondMessage));
             given(chatMessagePersistencePort.saveAll(anySet()))
                     .willReturn(Set.of(secondMessage.getId()));
 
@@ -299,11 +265,6 @@ class ChatMessageEventServiceUnitTest {
             then(chatRoomPersistencePort).should().updateMessageState(
                     roomId,
                     1,
-                    secondMessage.createdAtEpochMillis()
-            );
-            then(chatRoomPersistencePort).should().updateMembershipScores(
-                    roomId,
-                    Set.of(memberId1, memberId2),
                     secondMessage.createdAtEpochMillis()
             );
             then(metrics).should().recordDuplicateMessage();
@@ -364,7 +325,7 @@ class ChatMessageEventServiceUnitTest {
 
     private ChatMessagePersistEvent persistEvent() {
         ChatMessagePayload payload = ChatMessagePayloadMapper.fromDomain(chatMessage());
-        return new ChatMessagePersistEvent(payload, memberIds);
+        return new ChatMessagePersistEvent(payload);
     }
 
     private TemporaryChatPersistenceException temporaryPersistenceException() {

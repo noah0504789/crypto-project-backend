@@ -44,7 +44,7 @@ public class ChatRoomDlqService implements ChatRoomDlqHandler {
     }
 
     public void handle(ChatRoomActiveDlqEvent event) {
-        persistence.activateMembership(event.getId(), event.getMemberId(), event.getLastMsgSeq(), event.getLastMsgMs());
+        persistence.activateMembership(event.getId(), event.getMemberId(), event.getLastMsgSeq());
     }
 
     public void handle(ChatRoomCacheSaveDlqEvent event) {

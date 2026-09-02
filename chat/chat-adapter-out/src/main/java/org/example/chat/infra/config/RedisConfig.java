@@ -145,6 +145,11 @@ public class RedisConfig {
         return RedisScript.of(new ClassPathResource("META-INF/scripts/updateChatRoomLastReadSeq.lua"), Boolean.class);
     }
 
+    @Bean("rebuildMyActiveRoomIndex_lua")
+    public RedisScript<Boolean> rebuildMyActiveRoomIndex() {
+        return RedisScript.of(new ClassPathResource("META-INF/scripts/rebuildMyActiveRoomIndex.lua"), Boolean.class);
+    }
+
     @Bean("claimDirtyChatRooms_lua")
     public RedisScript<List> claimDirtyChatRooms() {
         return RedisScript.of(new ClassPathResource("META-INF/scripts/claimDirtyChatRooms.lua"), List.class);

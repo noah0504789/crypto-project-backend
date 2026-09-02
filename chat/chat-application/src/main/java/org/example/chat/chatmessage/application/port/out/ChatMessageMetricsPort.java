@@ -8,9 +8,7 @@ public interface ChatMessageMetricsPort {
 
     void recordRoomCounter(Runnable action);
 
-    void recordMembership(Runnable action);
-
-    void recordCommittedBatch(int messageCount, int roomCount, int membershipDocumentCount);
+    void recordCommittedBatch(int messageCount, int roomCount);
 
     void recordDuplicateMessage();
 

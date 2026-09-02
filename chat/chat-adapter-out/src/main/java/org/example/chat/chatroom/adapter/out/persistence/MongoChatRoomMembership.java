@@ -15,7 +15,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Document("chat_room_membership")
 @CompoundIndexes({
         @CompoundIndex(name = "unique_keys", def = "{\"room_id\": 1, \"member_id\": 1}", unique = true),
-        @CompoundIndex(name = "my_rooms", def = "{\"member_id\": 1, \"score\": -1, \"_id\": -1}")
+        @CompoundIndex(name = "my_rooms", def = "{\"member_id\": 1, \"_id\": -1}")
 })
 @NoArgsConstructor
 @AllArgsConstructor
@@ -29,15 +29,13 @@ public class MongoChatRoomMembership {
     private ObjectId roomId;
     private String memberId;
     private Long lastMsgReadSeq;
-    private Long score;
 
-    public static MongoChatRoomMembership ofReadActivity(String roomId, String memberId, Long lastMsgReadSeq, Long score) {
+    public static MongoChatRoomMembership ofReadActivity(String roomId, String memberId, Long lastMsgReadSeq) {
         return MongoChatRoomMembership.builder()
                 .id(generateId(roomId, memberId))
                 .roomId(new ObjectId(roomId))
                 .memberId(memberId)
                 .lastMsgReadSeq(lastMsgReadSeq)
-                .score(score)
                 .build();
     }
 

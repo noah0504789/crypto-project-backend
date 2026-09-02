@@ -1,5 +1,6 @@
 package org.example.chat.chatmessage.application.event.dlq;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.ToString;
@@ -10,25 +11,15 @@ import org.example.common.dlq.domain.event.AbstractDlqEvent;
 import org.example.common.outbox.domain.OutboxDomainType;
 import org.example.contract.chatmessage.ChatMessagePayload;
 
-import java.util.Set;
-
 @Getter
 @ToString
 public class ChatMessagePersistDlqEvent extends AbstractDlqEvent implements RecoverableEvent<ChatMessageDlqHandler> {
 
     private final ChatMessagePayload payload;
-    private final Set<String> memberIds;
 
+    @JsonCreator
     public ChatMessagePersistDlqEvent(
             @JsonProperty("payload") ChatMessagePayload payload,
-            @JsonProperty("errorMessage") String errorMessage
-    ) {
-        this(payload, Set.of(), errorMessage);
-    }
-
-    public ChatMessagePersistDlqEvent(
-            @JsonProperty("payload") ChatMessagePayload payload,
-            @JsonProperty("memberIds") Set<String> memberIds,
             @JsonProperty("errorMessage") String errorMessage
     ) {
         super(
@@ -39,7 +30,6 @@ public class ChatMessagePersistDlqEvent extends AbstractDlqEvent implements Reco
                 errorMessage
         );
         this.payload = payload;
-        this.memberIds = memberIds == null ? Set.of() : memberIds;
     }
 
     @Override

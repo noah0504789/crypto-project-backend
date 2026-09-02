@@ -226,6 +226,11 @@ public class TestRedisConfig {
         return RedisScript.of(new ClassPathResource("META-INF/scripts/updateChatRoomLastReadSeq.lua"), Boolean.class);
     }
 
+    @Bean("rebuildMyActiveRoomIndex_lua")
+    public RedisScript<Boolean> rebuildMyActiveRoomIndex() {
+        return RedisScript.of(new ClassPathResource("META-INF/scripts/rebuildMyActiveRoomIndex.lua"), Boolean.class);
+    }
+
     @Bean("claimDirtyChatRooms_lua")
     public RedisScript<List> claimDirtyChatRooms() {
         return RedisScript.of(new ClassPathResource("META-INF/scripts/claimDirtyChatRooms.lua"), List.class);
@@ -292,7 +297,8 @@ public class TestRedisConfig {
             @Qualifier("invalidateChatRoomActivity_lua") RedisScript<Boolean> invalidateChatRoomActivity_lua,
             @Qualifier("invalidateChatRoomInfo_lua") RedisScript<Boolean> invalidateChatRoomInfo_lua,
             @Qualifier("rebuildPopularRoomIndex_lua") RedisScript<Boolean> rebuildPopularRoomIndex_lua,
-            @Qualifier("updateChatRoomLastReadSeq_lua") RedisScript<Boolean> updateChatRoomLastReadSeq_lua
+            @Qualifier("updateChatRoomLastReadSeq_lua") RedisScript<Boolean> updateChatRoomLastReadSeq_lua,
+            @Qualifier("rebuildMyActiveRoomIndex_lua") RedisScript<Boolean> rebuildMyActiveRoomIndex_lua
     ) {
         return new RedisChatRoomAdapter(
                 masterHashRedisTemplate,
@@ -313,6 +319,7 @@ public class TestRedisConfig {
                 invalidateChatRoomInfo_lua,
                 rebuildPopularRoomIndex_lua,
                 updateChatRoomLastReadSeq_lua,
+                rebuildMyActiveRoomIndex_lua,
                 new ChatCacheProperties(Duration.ofDays(7), Duration.ofDays(7))
         );
     }

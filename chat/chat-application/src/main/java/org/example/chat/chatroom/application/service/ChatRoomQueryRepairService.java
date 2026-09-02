@@ -7,6 +7,9 @@ import org.example.chat.chatroom.application.service.query.ListPopularChatRoomsQ
 import org.example.chat.chatroom.application.service.result.ChatRoomCacheLookupResult;
 import org.example.chat.chatroom.application.port.out.ChatRoomCachePort;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
+import org.example.chat.chatroom.application.properties.MyChatRoomProperties;
+import org.example.chat.chatroom.application.service.result.MyChatRoomState;
+import org.example.chat.chatroom.domain.service.MyChatRoomScoreCalculator;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.example.chat.chatroom.application.exception.ChatRoomNotFoundException;
@@ -26,6 +29,7 @@ public class ChatRoomQueryRepairService {
 
     private final ChatRoomCachePort cache;
     private final ChatRoomPersistencePort persistence;
+    private final MyChatRoomProperties myChatRoomProperties;
     private final SingleFlight singleFlight;
 
     public ChatRoom repairRoom(String roomId) {
@@ -74,7 +78,7 @@ public class ChatRoomQueryRepairService {
                 "chatroom:listLatestActive:" + memberId + ":" + limit,
                 () -> repairCachedRooms(
                         cache.listLatestActiveRooms(memberId, limit),
-                        () -> loadMyRoomsAndWarmUp(memberId, limit),
+                        () -> rebuildMyRoomIndexAndPage(memberId, null, null, limit),
                         limit
                 )
         );
@@ -85,7 +89,7 @@ public class ChatRoomQueryRepairService {
                 "chatroom:listActiveBefore:" + query.memberId() + ":" + query.lastMsgId() + ":" + score + ":" + query.limit(),
                 () -> repairCachedRooms(
                         cache.listActiveRoomsBefore(query.memberId(), query.lastMsgId(), score, query.limit()),
-                        () -> loadMyRoomsBeforeAndWarmUp(query.memberId(), query.lastMsgId(), score, query.limit()),
+                        () -> rebuildMyRoomIndexAndPage(query.memberId(), query.lastMsgId(), score, query.limit()),
                         query.limit()
                 )
         );
@@ -138,19 +142,57 @@ public class ChatRoomQueryRepairService {
         );
     }
 
-    private List<ChatRoom> loadMyRoomsAndWarmUp(String memberId, int limit) {
-        return warmUpAndReturn(persistence.listLatestActiveRooms(memberId, limit));
-    }
-
-    private List<ChatRoom> loadMyRoomsBeforeAndWarmUp(
+    /**
+     * 내 방 정렬 인덱스가 통째로 비었을 때 Mongo(durable source)로 다시 만든다.
+     *
+     * <p>정렬 키 {@code (unread, lastMsgCreatedAt, roomId)} 는 방 쪽 사실과 사용자 읽음 위치가
+     * 섞여 있어 Mongo 인덱스 하나로는 정렬할 수 없다. 그래서 사용자의 membership 전체와 방을
+     * batch로 읽어 여기서 계산·정렬하고, 상위 {@code chat.my-room.rebuild-limit}개를 Redis
+     * 인덱스에 통째로 심은 뒤 요청한 페이지만 잘라 돌려준다.
+     */
+    private List<ChatRoom> rebuildMyRoomIndexAndPage(
             String memberId,
-            String lastId,
-            Long score,
+            String cursorRoomId,
+            Long cursorScore,
             int limit
     ) {
-        return warmUpAndReturn(
-                persistence.listActiveRoomsBefore(memberId, lastId, score, limit)
-        );
+        List<ScoredChatRoom> scoredRooms = scoreMyRooms(memberId);
+
+        if (scoredRooms.isEmpty()) {
+            return List.of();
+        }
+
+        warmUpListSafely(scoredRooms.stream().map(ScoredChatRoom::room).toList());
+        rebuildActiveIndexSafely(memberId, scoredRooms);
+
+        return scoredRooms.stream()
+                .filter(scored -> scored.isBefore(cursorScore, cursorRoomId))
+                .limit(limit)
+                .map(ScoredChatRoom::room)
+                .toList();
+    }
+
+    private List<ScoredChatRoom> scoreMyRooms(String memberId) {
+        return persistence.listMyRoomStates(memberId)
+                .stream()
+                .map(ScoredChatRoom::from)
+                .sorted(
+                        Comparator.comparingLong(ScoredChatRoom::score).reversed()
+                                .thenComparing(Comparator.comparing((ScoredChatRoom scored) -> scored.room().getId()).reversed())
+                )
+                .limit(myChatRoomProperties.rebuildLimit())
+                .toList();
+    }
+
+    private void rebuildActiveIndexSafely(String memberId, List<ScoredChatRoom> scoredRooms) {
+        try {
+            Map<String, Long> roomIdToScore = new LinkedHashMap<>();
+            scoredRooms.forEach(scored -> roomIdToScore.put(scored.room().getId(), scored.score()));
+
+            cache.rebuildActiveIndex(memberId, roomIdToScore);
+        } catch (RuntimeException e) {
+            log.warn("[projection] my chatroom index rebuild failed. memberId={}, size={}", memberId, scoredRooms.size(), e);
+        }
     }
 
     private List<ChatRoom> warmUpAndReturn(List<ChatRoom> rooms) {
@@ -214,5 +256,34 @@ public class ChatRoomQueryRepairService {
                 .filter(Objects::nonNull)
                 .limit(limit)
                 .toList();
+    }
+
+    /**
+     * 방과 그 사용자의 정렬 점수. 점수 규칙은 {@link MyChatRoomScoreCalculator} 한 곳에서만 온다.
+     */
+    private record ScoredChatRoom(ChatRoom room, long score) {
+
+        private static ScoredChatRoom from(MyChatRoomState state) {
+            ChatRoom room = state.room();
+            long lastMsgCreatedAtMs = room.lastMsgCreatedAtMs();
+
+            long score = room.hasUnread(state.lastMsgReadSeq())
+                    ? MyChatRoomScoreCalculator.unread(lastMsgCreatedAtMs)
+                    : MyChatRoomScoreCalculator.read(lastMsgCreatedAtMs);
+
+            return new ScoredChatRoom(room, score);
+        }
+
+        private boolean isBefore(Long cursorScore, String cursorRoomId) {
+            if (cursorScore == null) {
+                return true;
+            }
+
+            if (score != cursorScore) {
+                return score < cursorScore;
+            }
+
+            return cursorRoomId != null && room.getId().compareTo(cursorRoomId) < 0;
+        }
     }
 }

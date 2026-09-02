@@ -88,12 +88,7 @@ public class ChatRoomEventService implements ChatRoomEventHandler {
     }
 
     public void handle(ChatRoomActiveEvent event, String txId) {
-        persistence.activateMembership(
-                event.getId(),
-                event.getMemberId(),
-                event.getLastMsgSeq(),
-                event.getLastMsgMs()
-        );
+        persistence.activateMembership(event.getId(), event.getMemberId(), event.getLastMsgSeq());
     }
 
     @Transactional(

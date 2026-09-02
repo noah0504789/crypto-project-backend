@@ -1,14 +1,13 @@
 package org.example.chat.chatroom.application.port.out;
 
 import org.example.chat.chatroom.application.service.result.ChatRoomMemberReadState;
-import org.example.chat.chatroom.application.service.result.ChatRoomMembershipScore;
+import org.example.chat.chatroom.application.service.result.MyChatRoomState;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 public interface ChatRoomPersistencePort {
 
@@ -29,14 +28,12 @@ public interface ChatRoomPersistencePort {
 
     void updatePopularities(Map<String, Long> roomIdToPopularity);
 
-    List<ChatRoom> listLatestActiveRooms(String memberId, int limit);
-
-    List<ChatRoom> listActiveRoomsBefore(
-            String memberId,
-            String lastRoomId,
-            Long score,
-            int limit
-    );
+    /**
+     * 내 방 목록 projection 을 다시 만들 때 쓰는 durable source. 사용자의 membership 전체와 방을
+     * 함께 읽어 오며 정렬은 하지 않는다 — 정렬 점수 계산과 복구 상한 적용은 application 이
+     * 담당한다(→ {@code MyChatRoomScoreCalculator}).
+     */
+    List<MyChatRoomState> listMyRoomStates(String memberId);
 
     Long getLastReadSeq(String id, String memberId);
 
@@ -53,20 +50,7 @@ public interface ChatRoomPersistencePort {
 
     void decrementMessageCount(String id);
 
-    void updateMembershipScores(
-            String id,
-            Set<String> memberIds,
-            long lastMsgCreatedAtMs
-    );
-
-    List<ChatRoomMembershipScore> refreshMembershipScores(String id, long fallbackMsgCreatedAtMs);
-
-    void activateMembership(
-            String id,
-            String memberId,
-            Long lastMsgReadSeq,
-            Long lastMsgCreatedAtMs
-    );
+    void activateMembership(String id, String memberId, Long lastMsgReadSeq);
 
     void joinMembership(String id, String memberId);
 

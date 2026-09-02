@@ -3,6 +3,7 @@ package org.example.chat.chatroom.adapter.out.persistence;
 import org.bson.types.ObjectId;
 import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessage;
 import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessageRepository;
+import org.example.chat.chatroom.application.service.result.MyChatRoomState;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
 import org.junit.jupiter.api.DisplayName;
@@ -20,6 +21,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -278,146 +280,71 @@ class MongoChatRoomAdapterUnitTest {
     }
 
     @Nested
-    @DisplayName("listLatestActiveRooms")
-    class ListLatestActiveRoomsTest {
+    @DisplayName("listMyRoomStates")
+    class ListMyRoomStatesTest {
 
         @Test
-        @DisplayName("내 방 첫 페이지는 membership primary, room primary, latest message primary를 사용한다")
-        void listLatestActiveRooms_shouldUsePrimaryMembershipRoomAndMessage() {
-            MongoChatRoomMembership membership1 = membership(roomId1, memberId, 300L);
-            MongoChatRoomMembership membership2 = membership(roomId2, memberId, 200L);
+        @DisplayName("사용자 membership 전체를 읽고 방과 최신 메시지를 primary batch 조회로 붙인다")
+        void listMyRoomStates_shouldUsePrimaryBatchQueries() {
+            MongoChatRoomMembership membership1 = membership(roomId1, memberId, 30L);
+            MongoChatRoomMembership membership2 = membership(roomId2, memberId, 0L);
 
             MongoChatRoom room1 = room(roomId1, 30L);
             MongoChatRoom room2 = room(roomId2, 20L);
 
-            MongoChatMessage message1 = message(
-                    messageId1,
-                    roomId1,
-                    "room1-latest",
-                    messageCreatedAt1
-            );
-            MongoChatMessage message2 = message(
-                    messageId2,
-                    roomId2,
-                    "room2-latest",
-                    messageCreatedAt2
-            );
+            MongoChatMessage message1 = message(messageId1, roomId1, "room1-latest", messageCreatedAt1);
+            MongoChatMessage message2 = message(messageId2, roomId2, "room2-latest", messageCreatedAt2);
 
-            given(membershipRepository.listLatestActiveMemberships(memberId, 10))
+            given(membershipRepository.listMemberships(memberId))
                     .willReturn(List.of(membership1, membership2));
-            given(chatRoomRepository.findByIdAndDeletedFalse(roomId1))
-                    .willReturn(Optional.of(room1));
-            given(chatRoomRepository.findByIdAndDeletedFalse(roomId2))
-                    .willReturn(Optional.of(room2));
-            given(chatMessageRepository.findTopByRoomIdAndDeletedFalseOrderByCreatedAtDescIdDesc(roomId1))
-                    .willReturn(Optional.of(message1));
-            given(chatMessageRepository.findTopByRoomIdAndDeletedFalseOrderByCreatedAtDescIdDesc(roomId2))
-                    .willReturn(Optional.of(message2));
+            given(chatRoomRepository.listByIdsAndDeletedFalse(List.of(roomId1, roomId2)))
+                    .willReturn(List.of(room1, room2));
+            given(chatMessageRepository.listLatestMessagesByRoomIds(List.of(roomId1, roomId2)))
+                    .willReturn(List.of(message1, message2));
 
-            List<ChatRoom> actual = sut.listLatestActiveRooms(memberId, 10);
+            List<MyChatRoomState> actual = sut.listMyRoomStates(memberId);
 
-            assertThat(actual).hasSize(2);
             assertThat(actual)
-                    .extracting(ChatRoom::getId)
+                    .extracting(state -> state.room().getId(), MyChatRoomState::lastMsgReadSeq)
                     .containsExactly(
-                            roomId1.toHexString(),
-                            roomId2.toHexString()
+                            tuple(roomId1.toHexString(), 30L),
+                            tuple(roomId2.toHexString(), 0L)
                     );
 
-            then(membershipRepository).should()
-                    .listLatestActiveMemberships(memberId, 10);
-            then(chatRoomRepository).should()
-                    .findByIdAndDeletedFalse(roomId1);
-            then(chatRoomRepository).should()
-                    .findByIdAndDeletedFalse(roomId2);
-            then(chatMessageRepository).should()
-                    .findTopByRoomIdAndDeletedFalseOrderByCreatedAtDescIdDesc(roomId1);
-            then(chatMessageRepository).should()
-                    .findTopByRoomIdAndDeletedFalseOrderByCreatedAtDescIdDesc(roomId2);
-
-            then(chatRoomRepository).should(never())
-                    .findByIdAndDeletedFalseFromSecondary(any());
+            then(membershipRepository).should().listMemberships(memberId);
+            then(chatRoomRepository).should().listByIdsAndDeletedFalse(List.of(roomId1, roomId2));
+            then(chatMessageRepository).should().listLatestMessagesByRoomIds(List.of(roomId1, roomId2));
+            then(chatRoomRepository).should(never()).findByIdAndDeletedFalseFromSecondary(any());
             then(chatMessageRepository).should(never())
-                    .findLatestByRoomIdFromSecondary(any());
+                    .listLatestMessagesByRoomIdsFromSecondary(any());
         }
-    }
-
-    @Nested
-    @DisplayName("listActiveRoomsBefore")
-    class ListActiveRoomsBeforeTest {
 
         @Test
-        @DisplayName("내 방 과거 페이지는 membership secondary, room secondary, latest message secondary를 사용한다")
-        void listActiveRoomsBefore_shouldUseSecondaryMembershipRoomAndMessage() {
-            MongoChatRoomMembership membership1 = membership(roomId1, memberId, 300L);
-            MongoChatRoomMembership membership2 = membership(roomId2, memberId, 200L);
+        @DisplayName("읽음 위치가 비어 있으면 0으로 본다")
+        void listMyRoomStates_shouldDefaultMissingReadSeqToZero() {
+            given(membershipRepository.listMemberships(memberId))
+                    .willReturn(List.of(membership(roomId1, memberId, null)));
+            given(chatRoomRepository.listByIdsAndDeletedFalse(List.of(roomId1)))
+                    .willReturn(List.of(room(roomId1, 30L)));
+            given(chatMessageRepository.listLatestMessagesByRoomIds(List.of(roomId1)))
+                    .willReturn(List.of());
 
-            MongoChatRoom room1 = room(roomId1, 30L);
-            MongoChatRoom room2 = room(roomId2, 20L);
+            List<MyChatRoomState> actual = sut.listMyRoomStates(memberId);
 
-            MongoChatMessage message1 = message(
-                    messageId1,
-                    roomId1,
-                    "room1-latest",
-                    messageCreatedAt1
-            );
-            MongoChatMessage message2 = message(
-                    messageId2,
-                    roomId2,
-                    "room2-latest",
-                    messageCreatedAt2
-            );
+            assertThat(actual).singleElement()
+                    .extracting(MyChatRoomState::lastMsgReadSeq)
+                    .isEqualTo(0L);
+        }
 
-            given(membershipRepository.listActiveMembershipsBefore(
-                    memberId,
-                    roomId1.toHexString(),
-                    300L,
-                    10
-            )).willReturn(List.of(membership1, membership2));
-            given(chatRoomRepository.findByIdAndDeletedFalseFromSecondary(roomId1))
-                    .willReturn(Optional.of(room1));
-            given(chatRoomRepository.findByIdAndDeletedFalseFromSecondary(roomId2))
-                    .willReturn(Optional.of(room2));
-            given(chatMessageRepository.findLatestByRoomIdFromSecondary(roomId1))
-                    .willReturn(Optional.of(message1));
-            given(chatMessageRepository.findLatestByRoomIdFromSecondary(roomId2))
-                    .willReturn(Optional.of(message2));
+        @Test
+        @DisplayName("membership 이 없으면 방과 메시지를 조회하지 않는다")
+        void listMyRoomStates_shouldSkipBatchQueriesWhenMembershipsEmpty() {
+            given(membershipRepository.listMemberships(memberId)).willReturn(List.of());
 
-            List<ChatRoom> actual = sut.listActiveRoomsBefore(
-                    memberId,
-                    roomId1.toHexString(),
-                    300L,
-                    10
-            );
+            assertThat(sut.listMyRoomStates(memberId)).isEmpty();
 
-            assertThat(actual).hasSize(2);
-            assertThat(actual)
-                    .extracting(ChatRoom::getId)
-                    .containsExactly(
-                            roomId1.toHexString(),
-                            roomId2.toHexString()
-                    );
-
-            then(membershipRepository).should()
-                    .listActiveMembershipsBefore(
-                            memberId,
-                            roomId1.toHexString(),
-                            300L,
-                            10
-                    );
-            then(chatRoomRepository).should()
-                    .findByIdAndDeletedFalseFromSecondary(roomId1);
-            then(chatRoomRepository).should()
-                    .findByIdAndDeletedFalseFromSecondary(roomId2);
-            then(chatMessageRepository).should()
-                    .findLatestByRoomIdFromSecondary(roomId1);
-            then(chatMessageRepository).should()
-                    .findLatestByRoomIdFromSecondary(roomId2);
-
-            then(chatRoomRepository).should(never())
-                    .findByIdAndDeletedFalse(any());
-            then(chatMessageRepository).should(never())
-                    .findTopByRoomIdAndDeletedFalseOrderByCreatedAtDescIdDesc(any());
+            then(chatRoomRepository).should(never()).listByIdsAndDeletedFalse(any());
+            then(chatMessageRepository).should(never()).listLatestMessagesByRoomIds(any());
         }
     }
 
@@ -455,13 +382,13 @@ class MongoChatRoomAdapterUnitTest {
     private MongoChatRoomMembership membership(
             ObjectId roomId,
             String memberId,
-            Long score
+            Long lastMsgReadSeq
     ) {
         return MongoChatRoomMembership.builder()
                 .id(MongoChatRoomMembership.generateId(roomId.toHexString(), memberId))
                 .roomId(roomId)
                 .memberId(memberId)
-                .score(score)
+                .lastMsgReadSeq(lastMsgReadSeq)
                 .build();
     }
 }
