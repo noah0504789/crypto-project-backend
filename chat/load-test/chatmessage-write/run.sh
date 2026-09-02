@@ -205,6 +205,10 @@ echo
 
 METRICS_END=$(date +%s)
 SWAP_AFTER=$(swapins)
+STATE_AFTER=$(room_state)
+FINAL_ROOM_MESSAGES=$(jq -r '.messages' <<<"$STATE_AFTER")
+FINAL_ROOM_MESSAGE_COUNT=$(jq -r '.msgCnt' <<<"$STATE_AFTER")
+FINAL_ROOM_LATEST_SEQUENCE=$(jq -r '.latestMsgSeq' <<<"$STATE_AFTER")
 mongo_server_snapshot > "$OUT.mongo-after.json"
 curl -sf --max-time 5 "$CHAT_METRICS_URL" > "$OUT.metrics-after-chat.prom"
 
@@ -223,6 +227,9 @@ SWAP_MEGABYTES=$(( (SWAP_AFTER - SWAP_BEFORE) * 4096 / 1024 / 1024 ))
   echo "finished_at=$(date '+%Y-%m-%d %H:%M:%S')"
   echo "persisted=$PERSISTED"
   echo "final_lag=$LAG"
+  echo "room_messages=$FINAL_ROOM_MESSAGES"
+  echo "room_msg_count=$FINAL_ROOM_MESSAGE_COUNT"
+  echo "room_latest_message_sequence=$FINAL_ROOM_LATEST_SEQUENCE"
   echo "publish_seconds=$PUBLISH_SECONDS"
   echo "drain_seconds=$DRAIN_SECONDS"
   echo "swapin_megabytes=$SWAP_MEGABYTES"
@@ -237,6 +244,9 @@ python3 tools/summarize.py \
   --after-metrics "$OUT.metrics-after-chat.prom" \
   --expected "$MESSAGE_COUNT" \
   --persisted "$PERSISTED" \
+  --room-messages "$FINAL_ROOM_MESSAGES" \
+  --room-message-count "$FINAL_ROOM_MESSAGE_COUNT" \
+  --room-latest-sequence "$FINAL_ROOM_LATEST_SEQUENCE" \
   --members "$MEMBER_COUNT" \
   --publish-seconds "$PUBLISH_SECONDS" \
   --drain-seconds "$DRAIN_SECONDS" \
@@ -244,5 +254,12 @@ python3 tools/summarize.py \
 
 if [ "$PERSISTED" -ne "$MESSAGE_COUNT" ] || [ "$LAG" -ne 0 ]; then
   echo "drain timeout: persisted=$PERSISTED/$MESSAGE_COUNT lag=$LAG" >&2
+  exit 1
+fi
+
+if [ "$FINAL_ROOM_MESSAGES" -ne "$MESSAGE_COUNT" ] \
+    || [ "$FINAL_ROOM_MESSAGE_COUNT" -ne "$MESSAGE_COUNT" ] \
+    || [ "$FINAL_ROOM_LATEST_SEQUENCE" -ne "$MESSAGE_COUNT" ]; then
+  echo "room state mismatch: messages=$FINAL_ROOM_MESSAGES msgCnt=$FINAL_ROOM_MESSAGE_COUNT latestMsgSeq=$FINAL_ROOM_LATEST_SEQUENCE expected=$MESSAGE_COUNT" >&2
   exit 1
 fi

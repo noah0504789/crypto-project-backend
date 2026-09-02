@@ -7,7 +7,8 @@
 
 ```text
 produce-events.py → Kafka chatmessage-event → chat-service consumer → MongoDB
-                              └─ 저장 완료: run 메시지 수 + consumer lag 0
+                              └─ 완료: run 메시지 수 + consumer lag 0
+                                       + room msgCnt/latestMsgSeq 일치
 ```
 
 ## 디렉터리
@@ -78,7 +79,8 @@ YES=1 tools/reset-data.sh
 ```
 
 after 이미지를 배포한 뒤 같은 방·멤버 수에서 초기화부터 반복한다. `run.sh`는 시작 시 테스트 방
-메시지·room membership·watermark가 남아 있거나 consumer lag이 0이 아니면 실행을 거부한다.
+메시지·room membership·watermark가 남아 있거나 consumer lag이 0이 아니면 실행을 거부한다. 종료
+시에는 저장 메시지 수뿐 아니라 방의 `msgCnt`와 `latestMsgSeq`까지 발행 수와 일치해야 성공으로 판정한다.
 
 ## 결과와 판정
 
@@ -95,10 +97,12 @@ after 이미지를 배포한 뒤 같은 방·멤버 수에서 초기화부터 �
 핵심 판정값은 다음 순서로 본다.
 
 1. 발행 수와 Mongo에 저장된 run 메시지 수가 같고 consumer lag이 0이어야 한다.
-2. `opcounters.insert + update` 차이를 저장 메시지 수로 나눠 메시지당 persistence write operation을 비교한다.
+2. 방의 전체 메시지 수, `msgCnt`, `latestMsgSeq`도 발행 수와 같아야 한다. 메시지만 저장되고 방
+   watermark가 누락되거나 덮어써진 회차는 성능 수치와 무관하게 실패다.
+3. `opcounters.insert + update` 차이를 저장 메시지 수로 나눠 메시지당 persistence write operation을 비교한다.
    이 저장 경로에서 발생하지 않는 `delete`는 primary의 다른 작업이 섞였는지 확인하는 참고값으로만 본다.
-3. after에서는 `chat_message_persistence_batch_*`로 batch 수와 평균 크기, retry를 확인한다.
-4. `opcounters.update`는 bulkWrite 안의 update model도 각각 센다. `serverStatus`는 primary 전역
+4. after에서는 `chat_message_persistence_batch_*`로 batch 수와 평균 크기, retry를 확인한다.
+5. `opcounters.update`는 bulkWrite 안의 update model도 각각 센다. `serverStatus`는 primary 전역
    누적값이므로 같은 MongoDB를 쓰는 다른 부하가 없어야 차이를 chat 비용으로 해석할 수 있다.
 
 #283에는 #284의 custom metric이 없으므로 before 요약의 앱 계측 항목은 `미노출`이 정상이다. 전후 공통

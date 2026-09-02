@@ -17,6 +17,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--after-metrics", type=Path, required=True)
     parser.add_argument("--expected", type=int, required=True)
     parser.add_argument("--persisted", type=int, required=True)
+    parser.add_argument("--room-messages", type=int, required=True)
+    parser.add_argument("--room-message-count", type=int, required=True)
+    parser.add_argument("--room-latest-sequence", type=int, required=True)
     parser.add_argument("--members", type=int, required=True)
     parser.add_argument("--publish-seconds", type=float, required=True)
     parser.add_argument("--drain-seconds", type=float, required=True)
@@ -88,6 +91,8 @@ def main() -> None:
     print("| 항목 | 값 |")
     print("|---|---:|")
     print(f"| 기대 / 저장 메시지 | {args.expected:,} / {args.persisted:,} |")
+    print(f"| 방 메시지 / msgCnt / latestMsgSeq | {args.room_messages:,} / "
+          f"{args.room_message_count:,} / {args.room_latest_sequence:,} |")
     print(f"| 방 멤버 | {args.members:,} |")
     print(f"| 발행 / 전체 drain 시간 | {args.publish_seconds:.3f}s / {args.drain_seconds:.3f}s |")
     print(f"| Mongo insert op | {inserted:,} |")
