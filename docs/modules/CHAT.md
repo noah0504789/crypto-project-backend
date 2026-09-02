@@ -492,9 +492,10 @@ application의 outbound port `ChatMessageMetricsPort`가 계측 의도를 정의
 
 ChatMessage 쓰기 개선 전후를 비교할 때는
 [`chat/load-test/chatmessage-write`](../../chat/load-test/chatmessage-write/README.md)의
-전용 하네스를 사용한다. `chatmessage-event`를 같은 속도로 직접 발행하고 Mongo primary의 write operation
-수와 consumer drain을 측정하므로 WebSocket ACK·브로드캐스트 부하를 결과에서 분리한다. 이 하네스는
-영속 경로만 검증하며 gRPC·Outbox·Redis projector를 포함한 종단 성능의 근거로 사용하지 않는다.
+전용 측정 도구를 사용한다. `chatmessage-event`를 같은 속도로 직접 발행하고 발행 수와 Mongo 저장 수,
+consumer lag 0을 함께 확인하므로 영속 경계 앞의 입력 손실을 배제한다. Mongo primary의 write operation을
+측정해 WebSocket 연결·ACK·브로드캐스트의 자원 비용도 결과에서 분리한다. 이 도구는 영속 경로만 검증하며
+gRPC·Outbox·Redis projector를 포함한 종단 성능의 근거로 사용하지 않는다.
 
 ### 15.2 방 activity projection 지표
 

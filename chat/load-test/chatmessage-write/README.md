@@ -2,7 +2,8 @@
 
 `chatmessage-event`를 Kafka에 직접 발행해 `ChatMessageEventService` 이후의 Mongo 영속 경로만
 측정한다. WebSocket 연결·ACK·브로드캐스트·gateway gRPC·MySQL Outbox를 통과하지 않으므로
-메시지 저장과 방 상태 갱신, 기존 membership fan-out의 비용을 분리해 비교할 수 있다.
+저장 경계 앞의 입력 손실 없이 메시지 저장과 방 상태 갱신, 기존 membership fan-out의 비용을
+분리해 비교할 수 있다.
 
 ```text
 produce-events.py → Kafka chatmessage-event → chat-service consumer → MongoDB
@@ -22,18 +23,40 @@ chat/load-test/chatmessage-write/
 └── results/                  로컬 실행 산출물(gitignore)
 ```
 
-보존할 before/after 원본과 결과 문서는 `chat/load-test-results/chatmessage/write/`로 옮긴다.
+보존할 before/after 원본과 결과 문서는 `chat/load-test-results/chatmessage/write/`로 옮긴다. 워밍업
+산출물은 로컬 `results/`에서만 사용하고 저장소에는 보존하지 않는다.
 
 ## 왜 Kafka에 직접 넣는가
 
 측정 대상 #284~#288은 Micrometer 계측, Kafka batch 소비, Mongo batch insert·방 watermark,
 membership Mongo fan-out 제거다. gRPC `storeChatMessage`만 직접 호출하면 Outbox와 Kafka batch
-consumer를 우회하고, 기존 WebSocket k6 하네스를 쓰면 ACK·브로드캐스트와 gateway 자원 경합이
-결과에 섞인다. Kafka 입력은 개선 전후가 공유하는 가장 가까운 안정 경계다.
+consumer를 우회하고, 기존 WebSocket k6 도구를 쓰면 연결 실패에 따른 입력 손실과 ACK·브로드캐스트,
+gateway 자원 경합이 결과에 섞인다. Kafka 입력은 개선 전후가 공유하는 가장 가까운 안정 경계다.
 
-이 하네스는 #283 호환을 위해 테스트 방의 `memberIds` 스냅샷을 이벤트에 포함한다. #283은 이를
+이 측정 도구는 #283 호환을 위해 테스트 방의 `memberIds` 스냅샷을 이벤트에 포함한다. #283은 이를
 membership 갱신에 사용하고 #288은 제거된 필드를 무시한다. 따라서 두 이미지에 동일한 wire 입력을
 주면서 방 멤버 수에 비례하던 Mongo 문서 쓰기가 사라졌는지 비교할 수 있다.
+
+### 입력 손실과 호스트 비용을 분리한 효과
+
+같은 #283 이미지, 방 멤버 302명, 목표 6,000건으로 실행한 기존 WebSocket 회차와 Kafka 직접 발행
+회차를 비교했다. 이 값은 제품 성능 전후가 아니라 **측정 경계를 바꾼 효과**다.
+
+| 항목 | 기존 WebSocket 회차 | 쓰기 비용 측정 도구 | 효과 |
+|---|---:|---:|---|
+| 목표 입력 → 영속 경계 도달 | 6,000 → 5,880 | 6,000 → 6,000 | 입력 손실 120건(2%) → 0 |
+| WebSocket 세션 | 100 | 0 | 연결·세션 유지 비용 제외 |
+| ACK 처리 | 성공 430, 실패·timeout 5,450 | 0 | ACK 경합과 timeout 제외 |
+| 브로드캐스트 기대량 | 600,000 | 0 | fan-out 생성·수신 비용 제외 |
+| 클라이언트 WebSocket 수신량 | 96MB | 0 | 측정 대상 밖 네트워크 수신 제거 |
+| 측정 구간 swap-in | 33,150MB | 46,946MB | 총량 개선 아님; Mongo drain 압력은 남음 |
+
+WebSocket 비용을 걷어냈는데도 swap-in 총량은 줄지 않았다. 직접 발행 회차는 입력 6,000건을 모두
+저장하고 consumer lag 0까지 389초 기다렸기 때문에, 남은 #283 Mongo membership fan-out이 호스트
+메모리 압력을 계속 만들었다. 측정 구간 길이로 단순 정규화하면 swap-in은 약 196MB/s에서 120MB/s로
+39% 낮지만, 두 회차의 종료 조건이 달라 이를 제품 메모리 개선 수치로 사용하지 않는다. 핵심 효과는
+호스트 메모리 압력을 없앤 것이 아니라, WebSocket 쪽 할당·I/O 경쟁과 입력 손실을 제거해 #283과
+#288의 Mongo write operation 차이를 같은 6,000건 기준으로 해석할 수 있게 만든 것이다.
 
 ## 실행
 
@@ -91,5 +114,5 @@ drain 시간과 swapin은 회차 유효성·이상 징후를 판단하는 보조
 - Redis 메시지 캐시와 activity projector 비용
 - API 전체의 종단 지연
 
-위 항목은 `websocket-gateway/k6` 하네스의 책임이다. 이 테스트 결과로 WebSocket 정확성이나 전체
+위 항목은 `websocket-gateway/k6` 측정 도구의 책임이다. 이 테스트 결과로 WebSocket 정확성이나 전체
 사용자 경로 성능을 주장하지 않는다.
