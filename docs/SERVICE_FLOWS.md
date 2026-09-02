@@ -351,47 +351,34 @@ WebSocket 핸드셰이크 실패, Kafka consumer 리밸런스 중 유실, Inbox 
 ---
 ## 10. 채팅 메시지 비동기 영속과 캐시 조회
 
+### 10.1 메시지 저장과 방 활동 projection
+
 ```mermaid
 graph TB
-  subgraph W["저장"]
-    CMD["ChatMessageCommandService.save"]
-    OB[("MySQL event.outbox<br/>Outbox 기록")]
-    POLL["outbox-poller"]
-    K[["Kafka<br/>chatmessage-event"]]
-    EVT["chat ChatMessageEventService.handle"]
-    MADP["MongoChatMessageAdapter.save<br/>메시지 · 방 watermark<br/>membership score dual-write"]
-  end
-
-  subgraph P["내 방 정렬 projection — 전환기 dual-write"]
-    CACHE["RedisChatMessageAdapter.save<br/>메시지 + dirty 표시<br/>기존 멤버 fan-out"]
-    RECENT[("Redis recent / inflight<br/>dirty 방 · lease")]
-    SCH["ChatRoomActivityProjectionScheduler<br/>flush · reclaimStalled"]
-    PROJ["ChatRoomActivityProjectionService<br/>현재 상태로 score 재계산"]
-    ACTIVE[("Redis active-room ZSET<br/>멤버별 조회 projection")]
-  end
-
-  subgraph R["조회"]
-    REQ["GET /chat/room/:roomId/messages<br/>ChatMessageController"]
-    Q["ChatMessageQueryService"]
-    RADP["RedisChatMessageAdapter<br/>캐시"]
-    MADP2["MongoChatMessageAdapter"]
-  end
-
+  CMD["ChatMessageCommandService.save"]
+  OB[("MySQL event.outbox")]
+  POLL["outbox-poller"]
+  K[["Kafka<br/>chatmessage-event"]]
+  EVT["ChatMessageEventService<br/>batch 처리"]
+  MTX["Mongo transaction<br/>신규 메시지 insert<br/>방 watermark 갱신"]
   MONGO[("MongoDB")]
-  REDIS[("Redis 메시지 · 방 · last_read 캐시")]
 
-  CMD --> OB --> POLL --> K --> EVT --> MADP --> MONGO
-  CMD -.->|"MySQL commit 후"| CACHE
-  CACHE --> REDIS
-  CACHE --> RECENT
-  SCH --> PROJ
-  PROJ -->|"claim · project · requeue"| RECENT
-  PROJ -->|"현재 room · last_read · 최신 메시지"| REDIS
+  LUA["storeChatMessage.lua<br/>메시지 캐시 + 작성자 읽음·정렬<br/>방 dirty 표시"]
+  STATE[("Redis 방 · 메시지 · last_read")]
+  WORK[("Redis recent / inflight<br/>dirty 방 · lease")]
+  SCH["ChatRoomActivityProjectionScheduler<br/>flush · reclaimStalled"]
+  PROJ["ChatRoomActivityProjectionService<br/>현재 상태로 score 재계산"]
+  ACTIVE[("Redis active-room ZSET<br/>내 방 정렬 projection")]
+
+  CMD --> OB --> POLL --> K --> EVT --> MTX --> MONGO
+  CMD -.->|"MySQL commit 후"| LUA
+  LUA --> STATE
+  LUA --> WORK
+  SCH -->|"주기 실행"| PROJ
+  PROJ -->|"claim · requeue · complete"| WORK
+  PROJ -->|"room · last_read · 최신 메시지"| STATE
   PROJ --> ACTIVE
-  PROJ -.->|"cache miss · stalled claim rebuild"| MONGO
-  REQ --> Q
-  Q --> RADP --> REDIS
-  Q --> MADP2 --> MONGO
+  PROJ -.->|"cache miss · stalled claim 복구"| MONGO
 ```
 
 메시지 저장은 기존 Outbox→Kafka→Mongo 비동기 영속 흐름을 유지한다. MySQL Outbox 커밋 뒤
@@ -407,14 +394,54 @@ projector는 다음 패턴을 연결한다.
 4. **Visibility Timeout + Repair**: claim한 인스턴스가 죽으면 다른 인스턴스의 reclaim 작업이
    timeout 방의 lease를 갱신해 회수하고 Mongo 기준으로 projection을 재생성한다.
 
-내 방 목록은 Redis active-room projection을 기준으로 조회한다. 인덱스가 통째로 비면 사용자의 Mongo
-membership 전체와 해당 방·최신 메시지를 batch 조회하고, application에서 실제 점수를 계산한 뒤 상위
-`chat.my-room.rebuild-limit`개를 Redis에 재생성한다. 상한을 점수 계산 전에 적용하면 최근 활동방을
-누락할 수 있으므로 정렬 뒤에 적용한다.
-
 기존 Redis 멤버 fan-out과 Mongo membership score 갱신은 제거했다. 메시지 저장은 작성자의 읽음 위치와
-방 dirty 표시만 남기고, 나머지 멤버의 active-room score는 projector가 flush 때 반영한다. 상세
-상태·설정·지표는 `docs/modules/CHAT.md` §5·§14·§15를 따른다.
+방 dirty 표시만 남기고, 나머지 멤버의 active-room score는 projector가 flush 때 반영한다.
+
+### 10.2 캐시 우선 조회와 projection 복구
+
+```mermaid
+graph TB
+  subgraph MSG["메시지 목록 조회"]
+    MREQ["메시지 목록 요청"]
+    MQ["ChatMessageQueryService"]
+    MCACHE[("Redis 메시지 ZSET")]
+    MREPAIR["ChatMessageQueryRepairService<br/>분산락 · double-check"]
+    MMONGO[("Mongo 메시지 range 조회")]
+    MRES["요청 페이지 반환"]
+
+    MREQ --> MQ --> MCACHE
+    MCACHE -->|"hit"| MRES
+    MCACHE -->|"miss"| MREPAIR --> MMONGO
+    MMONGO -->|"캐시 warm-up"| MCACHE
+  end
+
+  subgraph ROOMS["내 방 목록 조회"]
+    RREQ["내 방 목록 요청<br/>첫 페이지 · 커서 페이지"]
+    RQ["ChatRoomQueryService"]
+    ACTIVE[("Redis active-room ZSET")]
+    RREPAIR["ChatRoomQueryRepairService<br/>SingleFlight"]
+    RMONGO["primary Mongo batch 조회<br/>membership 전체<br/>방 · 최신 메시지"]
+    SCORE["전체 후보 점수 계산 · 정렬<br/>상위 rebuild-limit 적용"]
+    REBUILD["active-room ZSET<br/>전체 재생성"]
+    RRES["요청 페이지 절단 · 반환"]
+
+    RREQ --> RQ --> ACTIVE
+    ACTIVE -->|"hit"| RRES
+    ACTIVE -->|"인덱스 없음"| RREPAIR --> RMONGO --> SCORE
+    SCORE --> REBUILD --> ACTIVE
+    SCORE --> RRES
+  end
+```
+
+내 방 목록은 Redis active-room projection을 기준으로 조회한다. 인덱스가 통째로 비면 사용자의 Mongo
+membership 전체와 해당 방·최신 메시지를 primary에서 batch 조회한다. application에서 실제 점수를
+계산한 뒤 상위 `chat.my-room.rebuild-limit`개를 Redis에 재생성한다. 상한을 점수 계산 전에 적용하면
+최근 활동방을 누락할 수 있으므로 정렬 뒤에 적용한다.
+
+메시지 목록도 Redis 캐시를 먼저 읽고, miss일 때만 Mongo range 조회로 캐시를 복구한다. 내 방 커서
+페이지에서 인덱스가 없더라도 해당 페이지만 임시로 만들지 않고 전체 상위 인덱스를 재생성한 뒤 페이지를
+자른다. 그래야 다음 페이지가 다시 Mongo 복구를 반복하지 않는다. 상세 상태·설정·지표는
+`docs/modules/CHAT.md` §5·§14·§15를 따른다.
 
 관련 문서: `docs/modules/CHAT.md`(방/메시지 명령·조회·캐시·Kafka·DLQ·확인 필요).
 
