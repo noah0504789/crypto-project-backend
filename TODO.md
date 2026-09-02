@@ -352,43 +352,6 @@ chatRoomPersistencePort.updateMessageState(roomId, newMessageCount, latestCreate
 
 ---
 
-#### 5.3-c 채팅 메시지 Mongo 쓰기의 멤버십 fan-out 제거·배치화
-
-메시지 1건의 쓰기 비용이 **방 멤버 수에 비례**한다. 비동기 영속 핸들러가 메시지마다 방 멤버 전원의 정렬 점수를 갱신하기 때문이다.
-
-**현재 상태 — projection 전환 PR:** 내 방 목록을 Redis active-room projection 기준으로 전환하고,
-기존 Redis·Mongo membership fan-out을 제거했다. 메시지 영속 transaction에는 message insert와 room
-watermark 갱신만 남고, Redis 저장은 작성자 한 명과 방 dirty 표시만 즉시 반영한다. hard delete도
-멤버별 점수를 직접 고치지 않고 projector가 다시 계산한다.
-
-Redis 인덱스가 통째로 비면 Mongo membership 전체와 해당 방·최신 메시지를 primary에서 batch
-조회한다. application이 실제 점수를 계산·정렬한 뒤 상위 `chat.my-room.rebuild-limit`개만 재생성한다.
-가입 시점 기준으로 후보를 먼저 자르면 최근 활동방이 빠질 수 있으므로 상한은 정렬 뒤에 적용한다.
-
-구조 전환은 끝났고 다음 검증·운영 작업이 남았다.
-
-- VU 100 · 방 멤버 302명 부하테스트로 membership write와 Kafka persistence drain을 전환 전후 비교한다.
-- 배포 전에 기존 Mongo `my_rooms` 인덱스를 제거하고 새 `{member_id:1, _id:-1}` 정의를 생성한다.
-
-```java
-// ChatMessageEventService — Kafka record 1건마다 Mongo transaction 안에서
-chatMessagePersistencePort.save(domain);                            // chat_message 1건 insert
-chatRoomPersistencePort.updateMessageState(roomId, 1, createdAtMs); // room state 1회
-chatRoomPersistencePort.updateMembershipScores(                     // 방 멤버 전체 bulk upsert
-    roomId, event.getMemberIds(), domain.createdAtEpochMillis());
-```
-
-PR #270의 `UNORDERED bulkWrite`는 멤버별 네트워크 왕복을 한 번으로 줄였지만 Mongo가 적용하는 문서 갱신 수까지 없앤 것은 아니다. VU 100 · 방 멤버 302명 조건에서 `6,000 × 302 = 1,812,000`개의 membership document update가 같은 302개 hot document에 반복된다. Redis 쪽도 같다 — `storeChatMessage.lua`가 멤버마다 active-room ZSET에 ZADD한다.
-
-2026-09-01 부하에서 실시간 브로드캐스트는 전송 6,000건, 수신 600,000/600,000건·ACK 6,000/6,000건으로 끝났지만, `chatmessage-event` consumer의 Mongo 영속은 전송 종료 뒤에도 약 **4분 35초** 동안 drain됐다. lag는 최대 **5,503건**까지 올라갔다. 이 회차는 호스트 swapin 8,213MB가 있어 절대 처리량·지연 수치로 단정하지 않지만, 위의 메시지당 쓰기 구조는 코드에서 확인되는 명확한 확장성 병목이다.
-
-`membership.score`는 읽음 여부와 방 최신 활동 시각을 합친 materialized sort key이고 `my_rooms` 인덱스로 목록·커서 페이지네이션을 수행하므로, 단순히 score 쓰기만 제거할 수는 없다. 정렬을 어디서 담당할지를 함께 정해야 한다.
-
-**남은 것 — 여러 방 병렬성.** 현재 `chatmessage-event`는 1 partition이다. 여러 방이 동시에 활성화되는 처리량을 위해 `roomId`를 key로 유지한 채 partition 수와 consumer concurrency를 함께 늘린다. 같은 방의 순서는 같은 partition에서 보장된다. **한 방만 뜨거운 조건에서는 concurrency를 늘려도 해결되지 않으므로**, 이는 per-message 쓰기량 감축 이후의 후속 단계다.
-`[출처: 2026-09-01 VU 100 no-JFR 부하 측정 / ChatMessageEventService · MongoChatRoomMembershipRepositoryImpl 코드 분석 / chat/load-test-results/chatmessage/websocket-gateway/2026-09-01/raw]`
-
----
-
 #### 5.4-c STOMP CONNECT 가 산발적으로 도달하지 않는다
 
 WebSocket 업그레이드(HTTP 101)는 100% 성공하는데 그 위로 보낸 STOMP CONNECT 에
