@@ -90,7 +90,7 @@ graph TB
 
 - **ACK 와 뱃지는 `brokerChannel` 을 건너뛴다.** 로컬 세션·구독 ID 를 찾아 `clientOutboundChannel` 로 직접 보낸다(→ §8).
 - **메시지 배칭은 `brokerChannel` 진입 직전에서 태스크 수를 줄이고, 뱃지 conflation 은 직접 전송 전에 발송 수를 줄인다.**
-- **`brokerChannel` 에서 1건이 버려지면 방 전원이 못 받는다.** 확장 이전 단계이기 때문이다. `clientOutboundChannel` 은 확장 이후라 1명이다(→ [`SERVICE_FLOWS.md` §15](../SERVICE_FLOWS.md)).
+- **`brokerChannel` 에서 1건이 버려지면 방 전원이 못 받는다.** 확장 이전 단계이기 때문이다. `clientOutboundChannel` 은 확장 이후라 1명이다(→ [`SERVICE_FLOWS.md` §9](../SERVICE_FLOWS.md)).
 
 ## 5. 인바운드 — 메시지 송신 (STOMP → gRPC → ACK)
 

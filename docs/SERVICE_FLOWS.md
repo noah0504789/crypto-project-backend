@@ -228,181 +228,7 @@ graph TB
 
 ---
 
-## 9. 채팅 메시지 비동기 영속과 캐시 조회
-
-```mermaid
-graph TB
-  subgraph W["저장"]
-    CMD["ChatMessageCommandService.save"]
-    OB[("MySQL event.outbox<br/>Outbox 기록")]
-    POLL["outbox-poller"]
-    K[["Kafka<br/>chatmessage-event"]]
-    EVT["chat ChatMessageEventService.handle"]
-    MADP["MongoChatMessageAdapter.save<br/>방 카운터 · 스코어 갱신"]
-  end
-
-  subgraph R["조회"]
-    REQ["GET /chat/room/:roomId/messages<br/>ChatMessageController"]
-    Q["ChatMessageQueryService"]
-    RADP["RedisChatMessageAdapter<br/>캐시"]
-    MADP2["MongoChatMessageAdapter"]
-  end
-
-  MONGO[("MongoDB")]
-  REDIS[("Redis")]
-
-  CMD --> OB --> POLL --> K --> EVT --> MADP --> MONGO
-  REQ --> Q
-  Q --> RADP --> REDIS
-  Q --> MADP2 --> MONGO
-```
-
-관련 문서: `docs/modules/CHAT.md`(방/메시지 명령·조회·캐시·Kafka·DLQ·확인 필요).
-
----
-
-## 10. Outbox / DLQ 폴링을 통한 Kafka 발행
-
-```mermaid
-graph TB
-  EV["각 서비스 도메인 이벤트"]
-  RAISE["EventUtils.raise"]
-  LIS["OutboxEventListListener"]
-  TBL[("MySQL<br/>Outbox / DLQ 테이블")]
-
-  subgraph OP["outbox-poller"]
-    SCH1["OutboxEventScheduler<br/>@Scheduled general · broadcast"]
-    SCH2["DlqEventScheduler<br/>@Scheduled dlq"]
-    PUB["OutboxService / DlqService.publishPending"]
-    KP["KafkaEventPublisher<br/>StreamBridge.send(destination, message)"]
-    CTL["DlqPollerController<br/>POST /dlq-poller/start · /stop"]
-  end
-
-  K[["Kafka<br/>헤더: transaction_id · dlq_id<br/>__TypeId__ · KafkaHeaders.KEY"]]
-  RES{"발행 결과"}
-  OKN["markPublished"]
-  RETRY["increaseRetryCnt"]
-  EXH{"isRetryExhausted"}
-  FAILED["markFailed"]
-
-  EV --> RAISE --> LIS --> TBL
-  TBL --> SCH1 --> PUB
-  TBL --> SCH2 --> PUB
-  CTL -.->|"DLQ 폴러 on/off"| SCH2
-  PUB --> KP --> K
-  KP --> RES
-  RES -->|"성공"| OKN
-  RES -->|"실패"| RETRY --> EXH
-  EXH -->|"소진"| FAILED
-  EXH -->|"남음"| PUB
-```
-
-관련 문서: `docs/modules/OUTBOX_POLLER.md`, `docs/modules/COMMON.md`.
-
----
-
-## 11. Upbit WebSocket 시세 수집과 Kafka 발행
-
-```mermaid
-graph LR
-  UP(("Upbit WebSocket"))
-
-  subgraph UC["upbit-connector"]
-    STREAM["UpbitWebsocketTickerStreamAdapter<br/>ticker 구독 · 역직렬화 · 재연결<br/>Reactor Netty"]
-    COL["UpbitTickerCollectService<br/>groupBy(code) → sample(publish-interval)<br/>→ onBackpressureLatest"]
-    PUB["KafkaUpbitTickerPublishAdapter<br/>StreamBridge · boundedElastic"]
-  end
-
-  K[["Kafka<br/>upbit-ticker-event"]]
-
-  UP --> STREAM --> COL --> PUB --> K
-```
-
-수집 주체는 **upbit-connector**다(market-detection에서 이관). 값 타입은 `upbit-connector-contract`의 `UpbitTickerEvent`이며, 이 바인딩에서는 `__TypeId__` 헤더가 전달되지 않아 소비자가 선언된 타입으로 역직렬화한다(→ `docs/modules/UPBIT_CONNECTOR.md` §6.1).
-
-종목별 첫 ticker로 Flux 그룹이 만들어진 시점부터 7초 구간을 세며, 각 구간의 최신값 최대 1개만 발행한다. Kafka가 느리면 같은 종목의 대기값은 최신 하나로 교체되지만, 실제 Kafka 발행 완료 시점 기준의 정확한 7초 간격을 보장하는 정책은 아니다(→ `docs/modules/UPBIT_CONNECTOR.md` §4.1).
-
-관련 문서: `docs/modules/UPBIT_CONNECTOR.md`.
-
----
-
-## 12. Kafka Streams를 통한 가격 변동률 계산
-
-```mermaid
-graph LR
-  K[["Kafka<br/>upbit-ticker-event"]]
-  BIND["KafkaMarketDetectionBinder<br/>priceAlertDetectionProcessor · KStream"]
-  PROC["PriceAlertDetectionProcessor.process<br/>이동평균 · 변동률 계산"]
-  STORE[("WindowStore<br/>upbit-ticker-store<br/>window · retention 3m")]
-
-  K --> BIND --> PROC
-  PROC <--> STORE
-```
-
-관련 문서: `docs/modules/MARKET_DETECTION.md`.
-
----
-
-## 13. 임계치 매칭과 가격 알림 이벤트 발행
-
-```mermaid
-graph LR
-  PROC["PriceAlertDetectionProcessor"]
-  TH{"PriceAlertChangeRateThreshold.matchedBy<br/>임계치 매칭"}
-  EVT["PriceAlertDetectedEvent 발행<br/>KStream output"]
-  K[["Kafka<br/>price-alert-detected-event"]]
-  DROP["발행 없음"]
-
-  PROC --> TH
-  TH -->|"매칭"| EVT --> K
-  TH -->|"미매칭"| DROP
-```
-
-관련 문서: `docs/modules/MARKET_DETECTION.md`.
-
-> 참고: 기존 문서는 이 출력 이벤트를 `UpbitTickerAlertEvent`/`WebNotificationBroadcastEvent`로 기술했으나, 실제 발행 계약은 `PriceAlertDetectedEvent`이며 notification 서비스가 이를 소비해 후속 이벤트를 만든다(§14).
-
----
-
-## 14. 가격 알림 생성·저장과 STOMP 전달
-
-```mermaid
-graph TB
-  KIN[["Kafka<br/>price-alert-detected-event"]]
-
-  subgraph NOTI["notification-service"]
-    CONS["KafkaNotificationBinder<br/>priceAlertDetectedEventConsumer"]
-    CMD["PriceAlertNotificationCommandService.create"]
-    PORT["PriceAlertRecipientQueryPort"]
-    RADP["PriceAlertRecipientQueryAdapter"]
-    OB[("Outbox 기록<br/>NotificationSaveEvent<br/>+ WebNotificationBroadcastEvent")]
-    NCONS["notificationEventConsumer"]
-    NSVC["NotificationEventService"]
-    MADP["MongoNotificationAdapter"]
-  end
-
-  MKT["PriceAlertSettingClient.findReceiverIds<br/>marketCode, changeRate · gRPC market.v1"]
-  MARKET["market-service"]
-  MONGO[("MongoDB")]
-  POLL["outbox-poller"]
-  KSAVE[["Kafka<br/>notification-event"]]
-  KWEB[["Kafka<br/>web-notification-broadcast-event"]]
-  WGC["websocket-gateway<br/>KafkaWebsocketGatewayBinder<br/>webNotificationBroadcastEventConsumer"]
-  PUSH["STOMP push<br/>/topic/notification/…"]
-
-  KIN --> CONS --> CMD
-  CMD -->|"수신자 조회"| PORT --> RADP --> MKT --> MARKET
-  MARKET -.-> CMD
-  CMD --> OB --> POLL
-  POLL --> KSAVE --> NCONS --> NSVC --> MADP --> MONGO
-  POLL --> KWEB --> WGC --> PUSH
-```
-
-관련 문서: `docs/modules/NOTIFICATION.md`, `docs/modules/MARKET.md`, `docs/modules/WEBSOCKET_GATEWAY.md`.
-
----
-
-## 15. 채팅 메시지 실패 경로
+## 9. 채팅 메시지 실패 경로
 
 > **원칙: 발신자가 결과를 모르는 실패를 만들지 않는다.**
 >
@@ -412,7 +238,7 @@ graph TB
 
 경계는 **chat gRPC `save` 성공 지점**이고, 그 전후로 성질이 완전히 다르다.
 
-### 15.1 저장 전 실패 — 데이터가 남지 않는다(재전송으로 해결)
+### 9.1 저장 전 실패 — 데이터가 남지 않는다(재전송으로 해결)
 
 | 실패 | 발신자 통보 | 재시도·보상 | 지금까지 한 것 |
 |---|---|---|---|
@@ -427,9 +253,9 @@ graph TB
 - `@ControllerAdvice StompChatMessageExceptionHandler`의 `@MessageExceptionHandler(Exception.class)`가 컨트롤러 진입 이후의 예외를 모두 잡아 `/queue/chat/ack`로 알린다. **inbound 큐 거절만 이 그물에 안 걸린다** — 핸들러 진입 전에 executor가 버리기 때문이다(`stomp.executor.rejected{pool="inbound"}`로만 관측된다).
 - **모든 실패 ACK가 `clientMessageId`를 담는다.** 검증·서버 오류는 예외 핸들러가 실패한 원본 메시지에서 읽는다 — 변환 전 원문(`byte[]`)일 수 있어 느슨하게 파싱하고, 못 읽으면 `null`로 둔다. 발신자가 어느 메시지를 재전송할지 고를 수 있어야 하기 때문이다.
 - `ChatMessageCommandService.save`에는 `@Recover`가 **없다**(이 클래스의 `@Recover`는 `hardDelete`용 `TemporaryChatPersistenceException` 시그니처다). 재시도가 소진되면 예외가 `@GrpcAdvice`를 거쳐 gRPC 오류가 되고, 게이트웨이 `ChatMessageSendService.handleSaveError`가 거절 ACK를 보낸다.
-- `save`는 Mongo에 쓰지 않는다. outbox 기록 + Redis 캐시 반영만 하고 Mongo 영속은 consumer 몫이다(§9) — Mongo 저장 실패는 15.2에 속한다.
+- `save`는 Mongo에 쓰지 않는다. outbox 기록 + Redis 캐시 반영만 하고 Mongo 영속은 consumer 몫이다(§10) — Mongo 저장 실패는 9.2에 속한다.
 
-### 15.2 저장 후 실패 — 데이터는 있고 발신자는 성공 ACK를 받았다
+### 9.2 저장 후 실패 — 데이터는 있고 발신자는 성공 ACK를 받았다
 
 | 실패 | 영향 범위 | 복구 | 지금까지 한 것 |
 |---|---|---|---|
@@ -445,7 +271,7 @@ graph TB
 
 거절이 무엇이었는지는 `stomp.executor.rejected{pool, kind}` 로 갈라 본다(#266). `kind` 는 `broadcast`·`ack`·`badge`·`notification` 이다.
 
-### 15.3 표에서 읽어야 할 것
+### 9.3 표에서 읽어야 할 것
 
 **(1) `outbox FAILED`는 종착역이다.** `OutboxStatus.FAILED`를 쓰는 곳은 `JpaOutbox.markFailed()` 하나뿐이고, poller는 `PENDING`만 조회한다(`OutboxService.publishPending`). **쓰기만 하고 아무도 다시 읽지 않는다.** DLQ로도 넘어가지 않는다 — DLQ(`JpaDlq`)는 consumer 실패용이라 별개 경로다.
 
@@ -487,13 +313,13 @@ k6의 ACK 타임아웃 건수가 부풀면 원인이 둘(inbound에서 잘림 / 
 
 **침묵은 아직 남아 있다.** inbound 거절은 핸들러 진입 전이라 `@MessageExceptionHandler` 그물에 안 걸린다. 입구에서 미리 거절하고 이유를 알리는 것(→ `TODO.md` 5.14)이 남은 마지막 조각이며, **임계값이 실측에서 나와야 하므로 운영계 이전 후에 한다.**
 
-### 15.4 이 표가 다루지 않는 것
+### 9.4 이 표가 다루지 않는 것
 
 WebSocket 핸드셰이크 실패, Kafka consumer 리밸런스 중 유실, Inbox 멱등 경로, DLQ consumer 자체 실패는 범위 밖이다.
 
 관련 문서: `docs/modules/WEBSOCKET_GATEWAY.md`, `docs/modules/CHAT.md`. 용량·큐 산정은 [`decisions/ADR-003-chat-capacity-target-and-connection-budget.md`](decisions/ADR-003-chat-capacity-target-and-connection-budget.md).
 
-### 15.5 이 표에서 출발해 고친 것들
+### 9.5 이 표에서 출발해 고친 것들
 
 실패 경로를 먼저 적어두고, 부하테스트로 **어느 경로가 실제로 터지는지** 확인한 뒤 하나씩 걷어냈다.
 발견 과정·수치·판단 근거는 [`chat/load-test-results/chatmessage/websocket-gateway/README.md`](../chat/load-test-results/chatmessage/websocket-gateway/README.md).
@@ -521,5 +347,211 @@ WebSocket 핸드셰이크 실패, Kafka consumer 리밸런스 중 유실, Inbox 
 
 지연을 마지막까지 붙들고 있던 것은 코드가 아니라 **GC 설정**이었다 — 컨테이너 메모리가
 1,792MB 미만이면 JVM 이 조용히 SerialGC 를 고르고, full GC 가 초 단위로 멈춘다.
+
+---
+## 10. 채팅 메시지 비동기 영속과 캐시 조회
+
+```mermaid
+graph TB
+  subgraph W["저장"]
+    CMD["ChatMessageCommandService.save"]
+    OB[("MySQL event.outbox<br/>Outbox 기록")]
+    POLL["outbox-poller"]
+    K[["Kafka<br/>chatmessage-event"]]
+    EVT["chat ChatMessageEventService.handle"]
+    MADP["MongoChatMessageAdapter.save<br/>메시지 · 방 watermark<br/>membership score dual-write"]
+  end
+
+  subgraph P["내 방 정렬 projection — 전환기 dual-write"]
+    CACHE["RedisChatMessageAdapter.save<br/>메시지 + dirty 표시<br/>기존 멤버 fan-out"]
+    RECENT[("Redis recent / inflight<br/>dirty 방 · lease")]
+    SCH["ChatRoomActivityProjectionScheduler<br/>flush · reclaimStalled"]
+    PROJ["ChatRoomActivityProjectionService<br/>현재 상태로 score 재계산"]
+    ACTIVE[("Redis active-room ZSET<br/>멤버별 조회 projection")]
+  end
+
+  subgraph R["조회"]
+    REQ["GET /chat/room/:roomId/messages<br/>ChatMessageController"]
+    Q["ChatMessageQueryService"]
+    RADP["RedisChatMessageAdapter<br/>캐시"]
+    MADP2["MongoChatMessageAdapter"]
+  end
+
+  MONGO[("MongoDB")]
+  REDIS[("Redis 메시지 · 방 · last_read 캐시")]
+
+  CMD --> OB --> POLL --> K --> EVT --> MADP --> MONGO
+  CMD -.->|"MySQL commit 후"| CACHE
+  CACHE --> REDIS
+  CACHE --> RECENT
+  SCH --> PROJ
+  PROJ -->|"claim · project · requeue"| RECENT
+  PROJ -->|"현재 room · last_read · 최신 메시지"| REDIS
+  PROJ --> ACTIVE
+  PROJ -.->|"cache miss · stalled claim rebuild"| MONGO
+  REQ --> Q
+  Q --> RADP --> REDIS
+  Q --> MADP2 --> MONGO
+```
+
+메시지 저장은 기존 Outbox→Kafka→Mongo 비동기 영속 흐름을 유지한다. MySQL Outbox 커밋 뒤
+`storeChatMessage.lua`가 Redis 메시지 상태와 dirty 방 표시를 한 원자 단위로 반영한다.
+
+projector는 다음 패턴을 연결한다.
+
+1. **Dirty Set + Conflation**: 같은 방의 연속 메시지를 recent ZSET의 `roomId` 하나로 합친다.
+2. **Competing Consumers + Lease**: 각 chat 인스턴스의 flush가 `recent → inflight`를 원자적으로
+   claim하므로 한 인스턴스만 해당 방을 처리한다.
+3. **Idempotent Projection**: 변화량을 누적하지 않고 반영 시점의 Redis 최신 상태로 멤버별
+   active-room score를 다시 계산한다.
+4. **Visibility Timeout + Repair**: claim한 인스턴스가 죽으면 다른 인스턴스의 reclaim 작업이
+   timeout 방의 lease를 갱신해 회수하고 Mongo 기준으로 projection을 재생성한다.
+
+**이 PR은 전환기 dual-write 단계다.** Redis의 기존 멤버 fan-out과 Mongo membership score 갱신을
+유지한 채 projector 결과를 비교하므로 아직 쓰기량은 줄지 않는다. 조회 전환과 기존 fan-out 제거는
+다음 PR에서 수행한다. 상세 상태·설정·지표는 `docs/modules/CHAT.md` §5·§14·§15를 따른다.
+
+관련 문서: `docs/modules/CHAT.md`(방/메시지 명령·조회·캐시·Kafka·DLQ·확인 필요).
+
+---
+
+## 11. Outbox / DLQ 폴링을 통한 Kafka 발행
+
+```mermaid
+graph TB
+  EV["각 서비스 도메인 이벤트"]
+  RAISE["EventUtils.raise"]
+  LIS["OutboxEventListListener"]
+  TBL[("MySQL<br/>Outbox / DLQ 테이블")]
+
+  subgraph OP["outbox-poller"]
+    SCH1["OutboxEventScheduler<br/>@Scheduled general · broadcast"]
+    SCH2["DlqEventScheduler<br/>@Scheduled dlq"]
+    PUB["OutboxService / DlqService.publishPending"]
+    KP["KafkaEventPublisher<br/>StreamBridge.send(destination, message)"]
+    CTL["DlqPollerController<br/>POST /dlq-poller/start · /stop"]
+  end
+
+  K[["Kafka<br/>헤더: transaction_id · dlq_id<br/>__TypeId__ · KafkaHeaders.KEY"]]
+  RES{"발행 결과"}
+  OKN["markPublished"]
+  RETRY["increaseRetryCnt"]
+  EXH{"isRetryExhausted"}
+  FAILED["markFailed"]
+
+  EV --> RAISE --> LIS --> TBL
+  TBL --> SCH1 --> PUB
+  TBL --> SCH2 --> PUB
+  CTL -.->|"DLQ 폴러 on/off"| SCH2
+  PUB --> KP --> K
+  KP --> RES
+  RES -->|"성공"| OKN
+  RES -->|"실패"| RETRY --> EXH
+  EXH -->|"소진"| FAILED
+  EXH -->|"남음"| PUB
+```
+
+관련 문서: `docs/modules/OUTBOX_POLLER.md`, `docs/modules/COMMON.md`.
+
+---
+
+## 12. Upbit WebSocket 시세 수집과 Kafka 발행
+
+```mermaid
+graph LR
+  UP(("Upbit WebSocket"))
+
+  subgraph UC["upbit-connector"]
+    STREAM["UpbitWebsocketTickerStreamAdapter<br/>ticker 구독 · 역직렬화 · 재연결<br/>Reactor Netty"]
+    COL["UpbitTickerCollectService<br/>groupBy(code) → sample(publish-interval)<br/>→ onBackpressureLatest"]
+    PUB["KafkaUpbitTickerPublishAdapter<br/>StreamBridge · boundedElastic"]
+  end
+
+  K[["Kafka<br/>upbit-ticker-event"]]
+
+  UP --> STREAM --> COL --> PUB --> K
+```
+
+수집 주체는 **upbit-connector**다(market-detection에서 이관). 값 타입은 `upbit-connector-contract`의 `UpbitTickerEvent`이며, 이 바인딩에서는 `__TypeId__` 헤더가 전달되지 않아 소비자가 선언된 타입으로 역직렬화한다(→ `docs/modules/UPBIT_CONNECTOR.md` §6.1).
+
+종목별 첫 ticker로 Flux 그룹이 만들어진 시점부터 7초 구간을 세며, 각 구간의 최신값 최대 1개만 발행한다. Kafka가 느리면 같은 종목의 대기값은 최신 하나로 교체되지만, 실제 Kafka 발행 완료 시점 기준의 정확한 7초 간격을 보장하는 정책은 아니다(→ `docs/modules/UPBIT_CONNECTOR.md` §4.1).
+
+관련 문서: `docs/modules/UPBIT_CONNECTOR.md`.
+
+---
+
+## 13. Kafka Streams를 통한 가격 변동률 계산
+
+```mermaid
+graph LR
+  K[["Kafka<br/>upbit-ticker-event"]]
+  BIND["KafkaMarketDetectionBinder<br/>priceAlertDetectionProcessor · KStream"]
+  PROC["PriceAlertDetectionProcessor.process<br/>이동평균 · 변동률 계산"]
+  STORE[("WindowStore<br/>upbit-ticker-store<br/>window · retention 3m")]
+
+  K --> BIND --> PROC
+  PROC <--> STORE
+```
+
+관련 문서: `docs/modules/MARKET_DETECTION.md`.
+
+---
+
+## 14. 임계치 매칭과 가격 알림 이벤트 발행
+
+```mermaid
+graph LR
+  PROC["PriceAlertDetectionProcessor"]
+  TH{"PriceAlertChangeRateThreshold.matchedBy<br/>임계치 매칭"}
+  EVT["PriceAlertDetectedEvent 발행<br/>KStream output"]
+  K[["Kafka<br/>price-alert-detected-event"]]
+  DROP["발행 없음"]
+
+  PROC --> TH
+  TH -->|"매칭"| EVT --> K
+  TH -->|"미매칭"| DROP
+```
+
+관련 문서: `docs/modules/MARKET_DETECTION.md`.
+
+> 참고: 기존 문서는 이 출력 이벤트를 `UpbitTickerAlertEvent`/`WebNotificationBroadcastEvent`로 기술했으나, 실제 발행 계약은 `PriceAlertDetectedEvent`이며 notification 서비스가 이를 소비해 후속 이벤트를 만든다(§14).
+
+---
+
+## 15. 가격 알림 생성·저장과 STOMP 전달
+
+```mermaid
+graph TB
+  KIN[["Kafka<br/>price-alert-detected-event"]]
+
+  subgraph NOTI["notification-service"]
+    CONS["KafkaNotificationBinder<br/>priceAlertDetectedEventConsumer"]
+    CMD["PriceAlertNotificationCommandService.create"]
+    PORT["PriceAlertRecipientQueryPort"]
+    RADP["PriceAlertRecipientQueryAdapter"]
+    OB[("Outbox 기록<br/>NotificationSaveEvent<br/>+ WebNotificationBroadcastEvent")]
+    NCONS["notificationEventConsumer"]
+    NSVC["NotificationEventService"]
+    MADP["MongoNotificationAdapter"]
+  end
+
+  MKT["PriceAlertSettingClient.findReceiverIds<br/>marketCode, changeRate · gRPC market.v1"]
+  MARKET["market-service"]
+  MONGO[("MongoDB")]
+  POLL["outbox-poller"]
+  KSAVE[["Kafka<br/>notification-event"]]
+  KWEB[["Kafka<br/>web-notification-broadcast-event"]]
+  WGC["websocket-gateway<br/>KafkaWebsocketGatewayBinder<br/>webNotificationBroadcastEventConsumer"]
+  PUSH["STOMP push<br/>/topic/notification/…"]
+
+  KIN --> CONS --> CMD
+  CMD -->|"수신자 조회"| PORT --> RADP --> MKT --> MARKET
+  MARKET -.-> CMD
+  CMD --> OB --> POLL
+  POLL --> KSAVE --> NCONS --> NSVC --> MADP --> MONGO
+  POLL --> KWEB --> WGC --> PUSH
+```
+
+관련 문서: `docs/modules/NOTIFICATION.md`, `docs/modules/MARKET.md`, `docs/modules/WEBSOCKET_GATEWAY.md`.
 
 ---

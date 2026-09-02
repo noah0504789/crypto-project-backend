@@ -356,6 +356,19 @@ chatRoomPersistencePort.updateMessageState(roomId, newMessageCount, latestCreate
 
 메시지 1건의 쓰기 비용이 **방 멤버 수에 비례**한다. 비동기 영속 핸들러가 메시지마다 방 멤버 전원의 정렬 점수를 갱신하기 때문이다.
 
+**현재 상태 — projector 도입 PR:** Redis dirty/inflight ZSET과 방 단위 projector를 추가했다.
+메시지 저장과 같은 Lua에서 방을 dirty로 표시하고, 여러 chat 인스턴스가 lease 기반으로 방을
+claim·회수한다. projector는 Redis 최신 상태를 멤버별 active-room ZSET에 절대값으로 반영하며,
+캐시 미스나 stalled claim은 Mongo의 room watermark와 membership 읽음 위치로 재생성한다.
+
+검증 전환기이므로 기존 Redis·Mongo membership fan-out은 유지한다. 남은 다음 PR 범위는 다음과 같다.
+
+- 내 방 목록 조회를 Redis projection 기준으로 전환하고, Redis miss 시 Mongo에서 재구축한다.
+- `ChatMessageEventService.recordMemberships`와 Mongo membership score dual-write를 제거한다.
+- 메시지 이벤트·DLQ의 `memberIds`를 제거하고 persistence transaction에는 message insert와 room state 갱신만 남긴다.
+- Redis 메시지 저장과 hard delete를 dirty 표시 기반으로 전환해 멤버별 score fan-out을 제거한다.
+- 부하테스트로 membership write 수와 Kafka persistence drain 시간을 전환 전후 비교한다.
+
 ```java
 // ChatMessageEventService — Kafka record 1건마다 Mongo transaction 안에서
 chatMessagePersistencePort.save(domain);                            // chat_message 1건 insert
@@ -509,7 +522,7 @@ group: chatmessage-broadcast-${app.instance-id}
 
 #### 5.14 inbound 큐 거절만 발신자에게 통보되지 않는다
 
-원칙(발신자가 결과를 모르는 실패를 만들지 않는다)과 경로별 현황은 `docs/SERVICE_FLOWS.md` §15.
+원칙(발신자가 결과를 모르는 실패를 만들지 않는다)과 경로별 현황은 `docs/SERVICE_FLOWS.md` §9.
 **남은 경로는 하나뿐이다.**
 
 | 실패 경로 | 발신자가 아는가 | 상태 |
@@ -549,7 +562,7 @@ if (willExceedLatencyBudget()) {
 개발계 수치로 임계값을 박으면 운영계에서 다시 재야 한다(→ 5.12).
 
 남은 절차는 둘이다. ①같은 피크테스트로 진짜 한계를 잰다 ②그 이상은 입구에서 막는다.
-`[출처: 2026-08-28 VU 100 측정 / docs/SERVICE_FLOWS.md §15]`
+`[출처: 2026-08-28 VU 100 측정 / docs/SERVICE_FLOWS.md §9]`
 
 ---
 
