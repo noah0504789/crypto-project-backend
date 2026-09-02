@@ -27,6 +27,11 @@ COUNTERS = (
     "chat_badge_direct_sent_total",
     "chat_badge_direct_skipped_total",
     "chat_badge_direct_failed_total",
+    "chat_message_persistence_messages_total",
+    "chat_message_persistence_retry_failures_total",
+    "chat_message_persistence_dlq_transitions_total",
+    "chat_room_activity_projection_rooms_total",
+    "chat_room_activity_projection_score_mismatches_total",
     "executor_completed_tasks_total",
 )
 
@@ -35,10 +40,19 @@ GAUGES = (
     "executor_active_threads",
     "chat_badge_pending",
     "chat_message_batch_pending_rooms",
+    "chat_room_activity_projection_dirty_backlog",
     "ws_active_sessions",
 )
 
-TIMER = "chat_badge_flush_seconds"
+SUMMARIES = (
+    "chat_badge_flush_seconds",
+    "chat_message_persistence_handler_seconds",
+    "chat_message_persistence_stage_seconds",
+    "chat_message_persistence_batch_messages",
+    "chat_message_persistence_batch_rooms",
+    "chat_room_activity_projection_flush_seconds",
+    "chat_room_activity_projection_members",
+)
 
 
 def parse(path: Path):
@@ -64,9 +78,15 @@ def parse(path: Path):
 
         series = f"{source} {name}{labels or ''}"
 
-        if name in (f"{TIMER}_count", f"{TIMER}_sum", f"{TIMER}_max"):
-            part = name.removeprefix(f"{TIMER}_")
-            timer = timers[f"{source} {TIMER}{labels or ''}"]
+        summary_name = next((candidate for candidate in SUMMARIES if name.startswith(f"{candidate}_")), None)
+
+        if summary_name and name in (
+            f"{summary_name}_count",
+            f"{summary_name}_sum",
+            f"{summary_name}_max",
+        ):
+            part = name.removeprefix(f"{summary_name}_")
+            timer = timers[f"{source} {summary_name}{labels or ''}"]
 
             if part == "max":
                 timer[part] = max(timer[part], value)
@@ -110,7 +130,7 @@ def main() -> None:
             print(f"  {gauges[series]:>12,.0f}  {series}")
 
     print()
-    print("=== 뱃지 flush 타이머 (회차 동안) ===")
+    print("=== 타이머·분포 요약 (회차 동안) ===")
     for series in sorted(timers):
         timer = timers[series]
         count_first, count_last = timer["count"]

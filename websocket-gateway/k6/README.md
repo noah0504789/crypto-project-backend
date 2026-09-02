@@ -3,6 +3,10 @@
 현재 Gateway 계약(`/ws`, `/ws-native`, `/msg/chat.send`, `/topic/chat/{roomId}`)에 맞춘 STOMP 부하테스트다.
 **측정 결과와 판정은 [`chat/load-test-results/.../README.md`](../../chat/load-test-results/chatmessage/websocket-gateway/README.md)에 있고, 여기는 그 결과를 만든 도구다.**
 
+ChatMessage의 비동기 쓰기 비용만 비교할 때는 이 하네스가 아니라
+[`chat/load-test/chatmessage-write`](../../chat/load-test/chatmessage-write/README.md)를 사용한다.
+그 하네스는 Kafka 영속 이벤트를 직접 발행해 WebSocket·ACK·브로드캐스트 비용을 제외한다.
+
 ```
 k6/
 ├── run.sh                                측정 진입점(JFR 녹화 · swapin 기록 포함)
@@ -81,8 +85,9 @@ Prometheus 원문(`metrics-{before,after}-*.prom`)과 차이 요약(`metrics-sum
 writerId 가 있는지다. 게이트웨이는 JWT 의 `id` 클레임만 본다(`RequiredUserIdClaimValidator`). 둘 다 user
 테이블을 거치지 않는다. 그래서 필요한 것은 **UUID 와 그 UUID 를 담은 서명된 토큰**뿐이다.
 
-`chat_room_membership` 행은 첫 메시지에서 upsert 되므로 미리 만들지 않는다. 닉네임은 조회 경로에서만
-붙으므로 전송·브로드캐스트 측정에는 영향이 없다.
+#288 이후 메시지 저장은 `chat_room_membership`을 만들지 않는다. 이 하네스는 송신 권한에 필요한
+`chat_room.member_ids`만 직접 준비하며, Mongo 기반 projection 복구는 검증 범위에 포함하지 않는다.
+닉네임은 조회 경로에서만 붙으므로 전송·브로드캐스트 측정에는 영향이 없다.
 
 > **`tools/mint-test-users.py` 는 운영과 같은 Vault transit 키로 토큰을 서명한다.** config-server 의 `/sign`
 > 과 같은 절차이며, config-server 를 띄우지 않으려고 Vault 를 직접 부를 뿐이다. **이 도구를 쓸 수 있다는 것은

@@ -358,8 +358,8 @@ proto: `protobuf/src/main/proto/chatmessage/v1/chatmessage-service.proto`. 서�
   3. `ChatMessage.create(messageId, roomId, writerId, content)`(messageId는 클라이언트/게이트웨이가 부여한 ObjectId).
   4. Outbox 3종 발행: `ChatMessagePersistEvent`(→`chatmessage-event`, 영속용), `ChatMessageBroadcastEvent`(→`chatmessage-broadcast-event`, websocket-gateway push용), `MyChatRoomBadgeBroadcastEvent`(→`chatroom-broadcast-event`, 뱃지용).
   5. MySQL Outbox 트랜잭션 커밋 후 `AfterCommitExecutor`가 Redis 캐시를 저장한다(`chatMessageCachePort.save`). 실패는 로그만 남기고 조회 repair에 맡긴다.
-  - **메시지 자체의 Mongo 저장은 여기서 하지 않는다.** `chatmessage-event`를 받은 `ChatMessageEventService.handle`이 비동기로 Mongo에 저장하고 방 `msgCnt` 증가·멤버십 스코어를 갱신한다(`DuplicateChatMessageException`은 `noRetryFor`로 멱등 처리).
-- **`HardDelete`**(`hardDelete`, `@Transactional("chatMongoTransactionManager")` + `@Retryable(TemporaryChatPersistenceException, 3회)`): Mongo `hardDeleteById` → 없으면 skip. 삭제되면 `decrementMessageCount`, `findLatestMessageExcluding`로 fallback 시각 산출, `refreshMembershipScores` 후 캐시 하드삭제(`hardDeleteCacheSafely`, 실패는 로그만).
+  - **메시지 자체의 Mongo 저장은 여기서 하지 않는다.** `chatmessage-event`를 받은 `ChatMessageEventService.handleBatch`가 신규 메시지를 묶어 저장하고 방별 `msgCnt`·`latestMsgSeq`·`lastMsgCreatedAt`을 갱신한다. 중복 `messageId`는 신규 집계에서 제외한다.
+- **`HardDelete`**(`hardDelete`, `@Transactional("chatMongoTransactionManager")` + `@Retryable(TemporaryChatPersistenceException, 3회)`): Mongo `hardDeleteById` → 없으면 skip. 삭제되면 `decrementMessageCount`, `findLatestMessageExcluding`로 fallback 시각을 구한다. 커밋 뒤 캐시 메시지를 제거하고 방을 dirty로 표시해 projector가 내 방 정렬을 다시 반영한다(`hardDeleteCacheSafely`, 실패는 로그만).
 - 취소/데드라인: `save`/`hardDelete` 진입·완료 시 `Context.current().isCancelled()`를 검사해 `ChatMessageGrpcCancelledException`을 던진다. gRPC 예외 변환은 `GrpcChatMessageExceptionAdvice`.
 - **계약 주의**: 이 proto는 외부 계약이다(→ `websocket-gateway`). field number 재사용 금지, 변경 시 server(chat)·client(websocket-gateway) 재빌드. 상세 절차는 `../../.claude/rules/external-contracts.md`.
 
@@ -376,10 +376,10 @@ proto: `protobuf/src/main/proto/chatmessage/v1/chatmessage-service.proto`. 서�
 | `ChatRoomJoinedEvent` | 멤버십 추가 | `(roomId, memberId)` unique와 중복 추가 무시 |
 | `ChatRoomLeavedEvent` | 멤버십 제거 | 동일 대상 반복 제거를 성공으로 취급 |
 | `ChatRoomDeletedEvent` | 방·멤버십 삭제 | ID 기준 반복 삭제 허용 |
-| `ChatRoomActiveEvent` | 마지막 메시지·활동 점수 갱신 | 동일 멤버십 키에 최신 활동 값을 반영 |
+| `ChatRoomActiveEvent` | 멤버의 `lastMsgReadSeq` 갱신 | 동일 멤버십 키에 최신 읽음 위치를 반영 |
 | `ChatRoomCacheSave/UpdateEvent` | 방 캐시 저장·복구 | 동일 Redis key 덮어쓰기 |
 | `ChatRoomCacheDelete/InvalidateEvent` | 방 캐시 삭제·무효화 | 반복 삭제 허용 |
-| `ChatMessagePersistEvent` | 메시지 저장 후 방 `msgCnt`·`latestMsgSeq` 증가와 기존 멤버 점수 projection 갱신 | `messageId`로 Mongo `insert`; 중복 키면 `DuplicateChatMessageException`으로 성공 종료해 후속 연산을 실행하지 않음 |
+| `ChatMessagePersistEvent` | 신규 메시지 batch 저장 후 방별 `msgCnt`·`latestMsgSeq`·`lastMsgCreatedAt` 갱신 | batch 안을 `messageId`로 중복 제거하고 이미 저장된 ID를 제외한 신규 메시지만 방 상태에 반영 |
 | ChatRoom DLQ 이벤트 | 원본 방 영속/캐시 처리를 재수행한 뒤 DLQ 완료 상태 반영 | 원본 도메인 자연 키 + 안정적인 `dlq_id`/`event_id` |
 | `ChatMessagePersistDlqEvent` | `ChatMessageDlqService`가 정상 메시지 영속 흐름을 재수행 | 메시지 insert·신규 메시지 기준 방 watermark 증가를 동일하게 재수행 |
 
@@ -388,7 +388,7 @@ Kafka `event_id`는 추적 계약으로 함께 전달하지만, chat은 서로 �
 | 토픽 | 방향 | 이벤트 | 처리 |
 |---|---|---|---|
 | `chatroom-event` (`.dlq`) | chat 소비(group `chat`) | `ChatRoom*Event`(persist/update/join/leave/deleted/active) + 캐시-복구 이벤트 | `ChatRoomEventService` → Mongo/캐시. 실패→DLQ |
-| `chatmessage-event` (`.dlq`) | chat 소비(group `chat`) | `ChatMessagePersistEvent` | `ChatMessageEventService` → Mongo 저장 + 방 watermark + 기존 membership score projection. 실패→DLQ |
+| `chatmessage-event` (`.dlq`) | chat 소비(group `chat`) | `ChatMessagePersistEvent` | `ChatMessageEventService` → 메시지 batch 저장 + 방 watermark. 실패→DLQ |
 | `chatmessage-broadcast-event` | chat 생산(Outbox) | `ChatMessageBroadcastEvent{payload, clientMessageId}` | **websocket-gateway** 소비 → STOMP push |
 | `chatroom-broadcast-event` | chat 생산(Outbox) | `MyChatRoomBadgeBroadcastEvent{payload}` | **websocket-gateway** 소비 → 뱃지 push |
 
@@ -486,9 +486,15 @@ application의 outbound port `ChatMessageMetricsPort`가 계측 의도를 정의
 | DLQ 전이 | `chat.message.persistence.dlq.transitions` | `Counter` | `result=published\|publish_failed`; recover의 DLQ 발행 결과 |
 | Kafka consumer lag | Kafka binder/consumer 기본 metric | 기존 Kafka metric | 앱 custom metric을 중복 추가하지 않고 `chatmessage-event` consumer lag을 함께 본다 |
 
-신규 수·batch/방/멤버십 수는 Mongo transaction의 `afterCommit`에서 기록하므로 rollback된 쓰기는 성공
+신규 수·batch/방 수는 Mongo transaction의 `afterCommit`에서 기록하므로 rollback된 쓰기는 성공
 수치에 포함되지 않는다. 반면 stage Timer와 retry failure는 실패한 attempt도 의도적으로 포함한다. 이
 차이로 “어느 단계에서 시간을 썼는가”와 “실제로 커밋된 쓰기량”을 분리한다.
+
+ChatMessage 쓰기 개선 전후를 비교할 때는
+[`chat/load-test/chatmessage-write`](../../chat/load-test/chatmessage-write/README.md)의
+전용 하네스를 사용한다. `chatmessage-event`를 같은 속도로 직접 발행하고 Mongo primary의 write operation
+수와 consumer drain을 측정하므로 WebSocket ACK·브로드캐스트 부하를 결과에서 분리한다. 이 하네스는
+영속 경로만 검증하며 gRPC·Outbox·Redis projector를 포함한 종단 성능의 근거로 사용하지 않는다.
 
 ### 15.2 방 activity projection 지표
 

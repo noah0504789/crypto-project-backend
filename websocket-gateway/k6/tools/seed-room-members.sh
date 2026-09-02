@@ -3,7 +3,8 @@
 #
 # 쓰기 권한 검사는 ChatRoom.validateWritable 하나뿐이고 그것이 보는 것은
 # chat_room.member_ids 다. user DB 와 무관하므로 여기만 채우면 된다.
-# chat_room_membership 행은 첫 메시지에서 upsert 되므로 미리 만들지 않는다.
+# #288 이후 메시지 저장은 chat_room_membership 을 만들지 않는다. 이 팬아웃 테스트는
+# 송신 권한에 필요한 chat_room.member_ids 만 준비하며 Mongo projection 복구는 검증하지 않는다.
 #
 # 사용법: tools/seed-room-members.sh [ids파일]        방 ID 는 k6.env 의 ROOM_ID
 #         REMOVE=1 tools/seed-room-members.sh        등록 해제(측정 뒤 되돌리기)
@@ -11,7 +12,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 IDS_FILE="${1:-accounts/test-users-ids.txt}"
-INFRA_ENV="${INFRA_ENV_FILE:-$HOME/crypto-project/crypto-project-infra/infra/.env}"
+REPO_ROOT=$(git rev-parse --show-toplevel)
+INFRA_ENV="${INFRA_ENV_FILE:-$(dirname "$REPO_ROOT")/crypto-project-infra/infra/.env}"
 MONGO_CONTAINER="${MONGO_CONTAINER:-mongo-primary}"
 
 [ -f "$IDS_FILE" ]  || { echo "ID 파일 없음: $IDS_FILE — 먼저 tools/mint-test-users.py 실행"; exit 1; }
