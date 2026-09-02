@@ -1,0 +1,1 @@
+{"opcounters":{"insert":29299,"query":26957,"update":6679425,"delete":10055,"getmore":136033,"command":591287},"document":{"inserted":29299,"updated":6681295,"deleted":35124,"returned":149030},"transactions":{"committed":31741,"aborted":76}}
