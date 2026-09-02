@@ -12,6 +12,7 @@
 >   - 도메인 모델(`ChatRoom`, `ChatMessage`, `ChatRoomCategory`, `MyChatRoomScoreCalculator`) 변경
 >   - Mongo 문서/인덱스(`MongoChatRoom`, `MongoChatMessage`, `MongoChatRoomMembership`) 변경
 >   - 비동기/보상 흐름(`ChatRoomEventService`, `ChatMessageEventService`, `*DlqService`, `ChatMessageScheduler`) 변경
+>   - 방 activity projection(`ChatRoomActivityProjectionService`, `chat.room-activity-projection.*`) 변경
 
 ## 1. 문서 목적과 기준 시점
 
@@ -25,7 +26,7 @@
 - **REST**(게이트웨이 경유): 방 목록·상세·멤버십·활동 및 메시지 목록 조회. `ChatRoomController`/`ChatMessageController`.
 - **gRPC**(`chatmessage.v1`, 내부 서비스용): 메시지 저장/하드삭제. `websocket-gateway`가 STOMP로 받은 메시지를 이 gRPC로 전달한다.
 
-실시간 브로드캐스트(프론트로 STOMP push)는 chat이 아니라 `websocket-gateway`의 책임이다 — chat은 저장/카운팅/캐시 후 Outbox로 `chatmessage-broadcast-event`/`chatroom-broadcast-event`를 발행하고, websocket-gateway가 이를 소비해 push한다. 실시간 송신 흐름 전체는 [`../SERVICE_FLOWS.md` §8–9](../SERVICE_FLOWS.md)를 참조한다.
+실시간 브로드캐스트(프론트로 STOMP push)는 chat이 아니라 `websocket-gateway`의 책임이다 — chat은 저장/카운팅/캐시 후 Outbox로 `chatmessage-broadcast-event`/`chatroom-broadcast-event`를 발행하고, websocket-gateway가 이를 소비해 push한다. 실시간 송신·실패·저장 흐름 전체는 [`../SERVICE_FLOWS.md` §8–10](../SERVICE_FLOWS.md)를 참조한다.
 
 ## 3. 실행 구조와 주요 의존성
 
@@ -62,6 +63,94 @@ chat의 쓰기 경로는 **Outbox를 먼저 기록하고 Redis 캐시에 반영�
 4. **보상**: 각 EventService는 `@Retryable`(3회, backoff 100ms×2) 후 `@Recover`로 DLQ 이벤트를 발행한다. DLQ는 `chatRoomDlqEventConsumer`/`chatMessageDlqEventConsumer`가 소비해 `*DlqService`로 처리하고 `DlqService.complete/fail`로 상태를 남긴다. 메시지 DLQ는 정상 메시지 영속 처리기를 재사용해 메시지 insert와 방 `msgCnt`·멤버십 스코어 갱신을 함께 재수행한다.
 5. **캐시 폴백**: 방 명령의 캐시 동기 반영이 실패하면(§7 `cache*Safely`) 로그 후 별도 캐시-복구 Outbox 이벤트(`ChatRoomCacheSaveEvent`/`...InvalidateEvent` 등)를 발행해 비동기로 캐시를 재구성/무효화한다. 메시지 `save`의 커밋 후 캐시 반영 실패는 로그만 남기며 조회 repair가 복구한다.
 
+### 내 방 정렬 projection — 방 단위 conflation
+
+내 방 목록 정렬(`{chat}:active-room:{memberId}` ZSET)을 방 단위로 합쳐 반영하는 projector를
+도입했다(PR #287). 활동이 있었던 방을 dirty로 표시하고, 같은 방의 연속 메시지를 한 flush에서
+한 번만 계산하는 경로다.
+
+**이번 PR은 dual-write 검증 단계다.** 기존 Redis·Mongo membership fan-out을 그대로 두고
+projector를 함께 실행해 결과를 비교한다. 따라서 이 단계에서는 쓰기량이 줄지 않고 projector
+비용이 추가된다. 조회 전환과 기존 fan-out 제거는 다음 PR에서 수행한다.
+
+fan-out 제거 뒤에도 flush 한 번의 Redis 비용은 `O(members)`다. 줄어드는 것은 fan-out 한 번의
+비용이 아니라 **실행 횟수**다. 같은 방의 메시지 수를 `M`, 멤버 수를 `N`, 실제로 처리된 flush
+횟수를 `F`라 하면 active-room score 쓰기는 `M×N → F×N`으로 바뀐다.
+
+```
+PR1 전환기       기존 M×N + projector F×N
+fan-out 제거 뒤  projector F×N
+같은 창에 100건 · 멤버 302명 · flush 1회라면  30,200 → 302 ZADD
+```
+
+따라서 이득은 **한 flush 창에 같은 방 메시지가 몇 건 몰리느냐**에 비례한다. 창당 1건뿐인 한산한 방은 이득이 없고 dirty 표시 몫만큼 오히려 조금 늘어난다. 병목은 뜨거운 방에서 나므로 방향은 맞지만, 이 구조가 모든 방에 이득을 준다고 읽지 않는다.
+
+계층을 셋으로 나눠 읽는다.
+
+| 계층 | 무엇 | 유실되면 |
+|---|---|---|
+| durable source of truth | Mongo `chat_room.latestMsgSeq` + `chat_room_membership.lastMsgReadSeq` | 복구 불가 — 사실 기준 |
+| 실시간 projector 입력 | Redis `{chat}:room:{roomId}:last_read` hash | Mongo membership 에서 재생성 |
+| 조회용 결과 | Redis `{chat}:active-room:{memberId}` ZSET | 위 둘로 재생성 |
+
+**`last_read` hash 는 사실 원본이 아니다.** projector 가 멤버별 unread 를 빠르게 판정하려고 읽는 입력일 뿐이고, 비면 Mongo membership 의 `lastMsgReadSeq` 로 다시 만든다.
+
+패턴별 흐름:
+
+1. **Dirty Set + Conflation**: `storeChatMessage.lua`가 메시지 상태를 갱신하는 **같은 원자 단위**에서 `{chat}:room:activity:recent` ZSET에 `roomId`를 올린다. 같은 방이 여러 번 들어와도 원소는 하나이고 score만 최신 활동 시각으로 올라간다.
+2. **Competing Consumers + Lease**: `claimDirtyChatRooms.lua`가 방을 recent에서 **빼내고** `{chat}:room:activity:inflight`에 **claim 시각과 함께 넣는** 것을 한 원자 단위로 한다. 여러 chat 인스턴스 중 먼저 claim한 하나만 처리하며, claim 시각은 임시 소유권인 lease가 된다.
+3. **Idempotent Projection**: `projectChatRoomActivity.lua`는 변화량을 누적하지 않고 반영 시점의 방 hash·`last_read` hash·최신 메시지 캐시를 다시 읽어 멤버별 score를 절대값으로 덮어쓴다. claim 뒤 새 메시지가 들어와도 현재 상태를 반영하며, 메시지 캐시가 예외적으로 비었을 때만 dirty 표시에 기록했던 시각을 쓴다. `lastReadSeq`는 MAX 조건으로만 갱신해 과거로 돌아가지 않으며, active-room score의 일시적인 경합 차이는 후속 flush가 다시 계산한다.
+4. **Visibility Timeout + Repair**: 방 캐시가 비어 계산 근거가 없으면(`cacheMiss`) Mongo 기준으로 재생성한다. claim한 인스턴스가 죽어 `claim-timeout-ms`를 넘긴 방은 `reclaimStalled`가 lease를 원자적으로 갱신해 회수하고, Mongo room watermark와 membership 읽음 위치로 projection을 재생성한다.
+
+#### 방 하나가 지나는 상태
+
+두 ZSET 이 **대기**와 **처리중**을 나눠 든다. 어느 쪽에도 없으면 반영이 끝난 것이다.
+
+```
+저장     ZADD recent <활동시각> room        recent=[room]   inflight=[]
+claim    recent 에서 빼고 inflight 로       recent=[]       inflight=[room@claim시각]
+project  멤버별 score 계산 → active ZSET
+성공     ZREM inflight room                 recent=[]       inflight=[]        ← 완료
+```
+
+`recent` 는 claim 시점에 이미 비워진다 — 완료 시 지우는 것은 `inflight` 하나다(`projectChatRoomActivity.lua` 마지막 줄).
+
+score 의 의미도 둘이 다르다.
+
+| ZSET | score | 쓰임 |
+|---|---|---|
+| `{chat}:room:activity:recent` | 활동 시각 | 오래된 활동부터 처리(`ZRANGE` 오름차순) |
+| `{chat}:room:activity:inflight` | claim 시각 | lease — 타임아웃 판정 |
+
+**lease는 시한부 소유권이다.** 여기서는 `inflight`의 score가 claim 시각이고 기한은
+`claim-timeout-ms`(기본 30초)다. 기한이 지나도 Redis 항목이 자동으로 사라지지는 않으며,
+다른 인스턴스의 `reclaimStalled`가 회수할 수 있는 상태가 된다. 회수한 인스턴스는 score를 현재
+시각으로 갱신해 새 lease를 잡고, 다른 인스턴스가 같은 방을 겹쳐 회수하지 못하게 한다.
+
+기한이 짧으면 아직 일하는 중인데 남이 뺏어가고(중복 처리), 길면 죽었는데 회수가 늦다. **이쪽은 짧은 편이 덜 위험하다** — projector 는 현재 Redis 상태로 매번 새로 계산하는 멱등 연산이라 중복 실행돼도 결과가 같고 쓰기만 낭비된다. 같은 개념의 대가를 반대편에서 무는 사례가 §8 의 `CACHE_WARM_UP`(`leaseTimeMs` 3초)이다 — 거기서는 lease 가 먼저 풀리면 전역 1회 보장이 깨진다.
+
+**`recent` 는 큐가 아니라 합쳐지는 집합이다.** 원소 key 가 `roomId` 라 같은 방이 몇 번 들어와도 원소는 하나고 score 만 최신으로 덮인다.
+
+```
+진짜 큐        메시지 100건 → 항목 100개 → 100번 처리
+recent(ZSET)   메시지 100건 → 원소 1개   → flush 1번 처리
+```
+
+멤버 302명 방에 메시지 100건이 몰려도 멤버 갱신이 100번이 아니라 한 번인 이유가 이것이다.
+
+실패는 둘로 갈린다.
+
+| 상황 | 처리 |
+|---|---|
+| projection 중 예외 | `requeueDirty` 가 `recent` 로 되돌리고 `inflight` 에서 뺀다(원래 활동 시각 유지) → 다음 주기 재시도 |
+| 인스턴스 종료 | 아무도 지우지 않아 `inflight` 에 남는다 → `claim-timeout-ms` 초과 시 `reclaimStalled` 가 회수 |
+
+**`inflight` 에 남아 있다는 것 자체가 실패 신호다.** 별도 상태 필드 없이 시각만으로 판별한다.
+
+**두 ZSET 은 내구성 큐가 아니라 "처리할 방을 모아 두는 coalescing 작업 목록"이다.** 유실될 수 있고, 그래서 Mongo 기준 재생성 경로가 항상 함께 있다.
+
+**전환 상태(이 PR)**: 기존 멤버별 fan-out(`storeChatMessage.lua` 의 멤버 ZADD, `ChatMessageEventService.recordMemberships`)을 **그대로 두고** projector 를 함께 돌린다. 두 경로의 결과 차이는 `chat.room.activity.projection.score.mismatches` 로 본다. 따라서 이 단계에서는 쓰기량이 줄지 않는다 — 감소는 fan-out 을 제거하는 다음 단계에서 측정된다.
+
 읽기 경로는 **캐시-우선, 미스 시 Mongo 로드 + 워밍업**이다(§8). 정상 흐름에서 REST 조회는 Redis만 조회하며, 캐시가 비었거나 인덱스가 없으면 `*QueryRepairService`가 Mongo에서 로드해 캐시를 채운 뒤 반환한다. **미스 폭주 방어 도구는 서브도메인 특성에 따라 다르다: 방 = `SingleFlight`, 메시지 = 분산락.**
 
 ### 미스 폭주 방어 — 방은 `SingleFlight`, 메시지는 분산락
@@ -96,6 +185,9 @@ chat의 쓰기 경로는 **Outbox를 먼저 기록하고 Redis 캐시에 반영�
 | `ChatRoomCommandService` | 방 create/update/join/leave/activity/delete — Outbox 발행 + 캐시 동기 반영(§7) |
 | `ChatRoomQueryService` | 인기방/내 방/방 상세 조회(캐시-우선), lastRead·unread 계산 |
 | `ChatRoomQueryRepairService` | 캐시 미스 복구(`SingleFlight` 하에 Mongo 로드 + 워밍업) |
+| `ChatRoomActivityProjectionService` | dirty 방을 claim 해 내 방 정렬 projection 반영, 실패·유실 시 Mongo 기준 재생성(§5) |
+| `RedisChatRoomActivityProjectionAdapter` | `ChatRoomActivityProjectionPort` 구현(dirty/inflight ZSET + projection Lua) |
+| `ChatRoomActivityProjectionScheduler` | projector flush·reclaim 트리거(§15) |
 | `ChatRoomEventService` | 방 이벤트 비동기 영속 + 캐시 복구, `@Retryable`/`@Recover`→DLQ |
 | `ChatRoomDlqService` | 방 DLQ 이벤트 재처리 |
 | `ChatMessageCommandService` | 메시지 save/hardDelete(§10), Outbox 3종 발행 + 캐시 |
@@ -333,6 +425,8 @@ DB `chat`(authSource `chat`). `MongoConfig`가 커넥션 풀(min 20/max 200), `W
 | `CHAT_ROOM_TITLE_UNIQUE_INDEX` | `{chat}:room:title:idx` | set | 제목 유니크 인덱스(`existsByTitle`) |
 | `CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX` | `{chat}:popular-room:%s` | zset | 카테고리별 인기방(score=popularity) |
 | `CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX` | `{chat}:active-room:%s` | zset | 멤버별 내 방(score=활동 스코어, unread 가중치) |
+| `CHAT_ROOM_ACTIVITY_RECENT_INDEX` | `{chat}:room:activity:recent` | zset | projector 가 처리할 방(score=활동 시각). 내구성 큐가 아닌 작업 목록 |
+| `CHAT_ROOM_ACTIVITY_INFLIGHT_INDEX` | `{chat}:room:activity:inflight` | zset | claim 한 방(score=claim 시각). timeout 초과분은 Mongo 기준 재생성으로 회수 |
 | `CHAT_MESSAGE_INFO` | `{chat}:message:%s` | zset | 방별 메시지(값=직렬화 메시지) |
 | `CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX` | `{chat}:room:%s:message-access` | zset | 방별 메시지 접근시각 인덱스(TTL 제거용) |
 
@@ -342,6 +436,7 @@ DB `chat`(authSource `chat`). `MongoConfig`가 커넥션 풀(min 20/max 200), `W
 ## 15. 스케줄러 · 트랜잭션 · 재시도
 
 - **스케줄러**(`ChatMessageScheduler`, `@Scheduled(cron="0 0 3 * * *")`): 매일 03:00, `CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX`를 `SCAN`하며 접근시각이 7일(`Duration.ofDays(7)`) 초과인 메시지를 방별 message zset과 access zset에서 제거한다. 실패 시 `ChatCacheException`. `@EnableScheduling`은 `ScheduleConfig`.
+- **projector**(`ChatRoomActivityProjectionScheduler`, `@Scheduled(fixedDelay)`): 각 chat 인스턴스가 `flush`와 `reclaimStalled`를 함께 실행한다. `flush-delay-ms`(기본 500ms)마다 dirty 방을 claim해 정렬 projection을 반영하고, `reclaim-delay-ms`(기본 10초)마다 `claim-timeout-ms`(기본 30초)를 넘긴 방을 최대 `reclaim-batch-size`(기본 200개)까지 Mongo 기준으로 회수한다(§5). 여러 인스턴스의 경쟁은 Redis Lua의 원자 claim·lease 갱신으로 조정한다. 장애 난 방의 실제 회수 시점은 약 30~40초이며, flush 간격은 정상 상태에서 **내 방 목록이 최신으로 올라오기까지 허용하는 지연**이다.
 - **커넥션 점유**: `DatasourceConfig` 가 `LazyConnectionDataSourceProxy` 로 write DataSource 를 감싼다. `ChatMessageCommandService.save` 는 트랜잭션 안에서 Mongo(방 조회)를 왕복하는데, 프록시가 없으면 트랜잭션 시작 시점에 MySQL 커넥션을 잡고 그 왕복 내내 붙들어 풀이 고갈된다(실측 점유 5.139초 · 타임아웃 360건 → 브로드캐스트 유실 10.06%, PR #257). **이 프록시를 걷어내지 않는다**(→ `docs/decisions/ADR-003-...md`).
 - **트랜잭션 경계**: `ChatMessageCommandService.save`는 MySQL Outbox 원자성을 위해 `@Transactional("transactionManager")`를 사용한다. Mongo write를 묶는 `ChatMessageCommandService.hardDelete`, `ChatMessageEventService.handle`, `ChatRoomEventService`의 leave/delete 핸들러는 `@Transactional("chatMongoTransactionManager")`를 사용한다. cache-warm 핸들러는 같은 Mongo 매니저의 read-only 트랜잭션이다. `chatroom` 명령 서비스(create/update/join/activity)는 트랜잭션 없이 Outbox+캐시로만 동작한다.
 - **재시도/보상**: `@Retryable`(`TemporaryChatPersistenceException`/`TemporaryChatCacheException`/`TemporaryOutboxPersistenceException`, maxAttempts 3, backoff 100ms×2) + `@Recover`. Recover는 각 이벤트별 DLQ 이벤트를 발행하며, DLQ 발행조차 실패하면 `[RECOVER-FALLBACK]` 로그만 남긴다(`RetryConfig`).
@@ -369,6 +464,24 @@ application의 outbound port `ChatMessageMetricsPort`가 계측 의도를 정의
 신규 수·batch/방/멤버십 수는 Mongo transaction의 `afterCommit`에서 기록하므로 rollback된 쓰기는 성공
 수치에 포함되지 않는다. 반면 stage Timer와 retry failure는 실패한 attempt도 의도적으로 포함한다. 이
 차이로 “어느 단계에서 시간을 썼는가”와 “실제로 커밋된 쓰기량”을 분리한다.
+
+### 15.2 방 activity projection 지표
+
+application 의 `ChatRoomActivityProjectionMetricsPort` 가 계측 의도를 정의하고 adapter-out 의
+`MicrometerChatRoomActivityProjectionMetricsAdapter` 가 구현한다. 태그는 고정된 저카디널리티 값만
+쓰며 `roomId`·`memberId` 는 태그로 넣지 않는다.
+
+| 논리 지표 | Micrometer 이름 | 타입 | 태그·의미 |
+|---|---|---|---|
+| flush 사이클 | `chat.room.activity.projection.flush` | `Timer` | claim 부터 방별 반영까지 한 주기 전체 |
+| 방 처리 결과 | `chat.room.activity.projection.rooms` | `Counter` | `result=claimed\|projected\|rebuilt\|reclaimed\|discarded\|failed` |
+| 방당 멤버 수 | `chat.room.activity.projection.members` | `DistributionSummary` | `source=projection\|rebuild`; 한 방을 반영할 때 갱신한 멤버 수 |
+| 기존 fan-out 과의 차이 | `chat.room.activity.projection.score.mismatches` | `Counter` | projector 계산이 기존 fan-out 이 써 둔 score 와 다른 멤버 수 |
+| dirty 적체 | `chat.room.activity.projection.dirty.backlog` | `Gauge` | flush 시점에 남아 있는 dirty 방 수 |
+
+`score.mismatches` 는 두 경로를 함께 돌리는 동안의 **대조용**이다. 읽은 멤버를 read score 로
+되돌리는 정상 차이도 포함하므로 0 이 목표값이 아니다. `dirty.backlog` 가 계속 늘면 flush 주기나
+`claim-batch-size` 가 활동량을 못 따라가는 것이다.
 
 ## 16. 확인 필요 항목
 
@@ -407,6 +520,6 @@ application의 outbound port `ChatMessageMetricsPort`가 계측 의도를 정의
 
 ## 20. 관련 문서와 rules
 
-- 루트 구조/흐름: [`../ARCHITECTURE.md`](../ARCHITECTURE.md), [`../SERVICE_FLOWS.md`](../SERVICE_FLOWS.md)(§8–9 채팅 흐름), 코드 스타일 [`../CODE_STYLE.md`](../CODE_STYLE.md)
+- 루트 구조/흐름: [`../ARCHITECTURE.md`](../ARCHITECTURE.md), [`../SERVICE_FLOWS.md`](../SERVICE_FLOWS.md)(§8–10 채팅 흐름), 코드 스타일 [`../CODE_STYLE.md`](../CODE_STYLE.md)
 - 실시간 push 상대편: [`API_GATEWAY.md`](API_GATEWAY.md)(경로·헤더 전파), websocket-gateway는 별도 모듈 문서 미작성(코드: `websocket-gateway/.../adapter/in/websocket/`, `.../adapter/out/.../stomp/`)
 - 계약/보안/아키텍처/테스트 rules: `../../.claude/rules/{external-contracts,security,architecture,testing}.md`

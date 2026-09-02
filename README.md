@@ -33,7 +33,7 @@
 ### 업비트(Upbit) API
 - **웹소켓 연결**을 통해 등록된 market에 대해 **실시간 시세(ticker)를 수집**한다.
 - 수집 흐름: `market-detection` 서비스가 Upbit WebSocket으로 시세를 받아 Kafka(`upbit-ticker-event`)로 흘리고, **Kafka Streams**로 단기 이동평균 대비 변화율을 계산해 임계값을 넘으면 가격 알림 탐지 이벤트를 발행한다 → `notification` 서비스가 소비해 사용자 알림으로 만든다.
-- 근거: `market-detection/.../upbit/*`, 상세 흐름 [`docs/SERVICE_FLOWS.md`](docs/SERVICE_FLOWS.md) §11~14, 모듈 [`docs/modules/MARKET_DETECTION.md`](docs/modules/MARKET_DETECTION.md).
+- 근거: `market-detection/.../upbit/*`, 상세 흐름 [`docs/SERVICE_FLOWS.md`](docs/SERVICE_FLOWS.md) §12~15, 모듈 [`docs/modules/MARKET_DETECTION.md`](docs/modules/MARKET_DETECTION.md).
 
 ---
 

@@ -107,9 +107,10 @@ public class RedisChatMessageAdapter implements ChatMessageCachePort {
         String messageKey = CHAT_MESSAGE_INFO.keyFor(roomId);
         String messageAccessKey = CHAT_MESSAGE_ACCESS_BY_ROOM_INDEX.keyFor(roomId);
         String roomInfoKey = CHAT_ROOM_INFO.keyFor(roomId);
+        String activityDirtyKey = CHAT_ROOM_ACTIVITY_RECENT_INDEX.keyFor();
         String writerRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(writerId);
 
-        Collections.addAll(keys, messageKey, messageAccessKey, roomInfoKey, writerRecentKey);
+        Collections.addAll(keys, messageKey, messageAccessKey, roomInfoKey, activityDirtyKey, writerRecentKey);
 
         Set<String> memberIds = new HashSet<>(memberIds_);
         memberIds.remove(writerId);

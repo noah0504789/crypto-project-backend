@@ -1,5 +1,6 @@
 package org.example.chat.chatroom.application.port.out;
 
+import org.example.chat.chatroom.application.service.result.ChatRoomMemberReadState;
 import org.example.chat.chatroom.application.service.result.ChatRoomMembershipScore;
 import org.example.chat.chatroom.domain.model.ChatRoom;
 import org.example.chat.chatroom.domain.model.ChatRoomCategory;
@@ -38,6 +39,8 @@ public interface ChatRoomPersistencePort {
     );
 
     Long getLastReadSeq(String id, String memberId);
+
+    List<ChatRoomMemberReadState> listMemberReadStates(String id);
 
     boolean existsByTitle(String title);
 

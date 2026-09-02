@@ -12,6 +12,7 @@ import org.example.chat.chatmessage.adapter.out.cache.RedisChatMessageAdapter;
 import org.example.chat.chatmessage.adapter.out.cache.RedisChatMessageCodec;
 import org.example.chat.chatmessage.domain.model.ChatMessage;
 import org.example.chat.chatroom.adapter.out.cache.RedisChatRoom;
+import org.example.chat.chatroom.adapter.out.cache.RedisChatRoomActivityProjectionAdapter;
 import org.example.chat.chatroom.adapter.out.cache.RedisChatRoomAdapter;
 import org.example.chat.infra.properties.ChatCacheProperties;
 import org.example.chat.chatroom.adapter.out.cache.RedisChatRoomCodec;
@@ -37,6 +38,7 @@ import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 import org.springframework.context.annotation.Primary;
 
@@ -219,6 +221,58 @@ public class TestRedisConfig {
         return RedisScript.of(new ClassPathResource("META-INF/scripts/deleteChatMessage.lua"), Long.class);
     }
 
+    @Bean("updateChatRoomLastReadSeq_lua")
+    public RedisScript<Boolean> updateChatRoomLastReadSeq() {
+        return RedisScript.of(new ClassPathResource("META-INF/scripts/updateChatRoomLastReadSeq.lua"), Boolean.class);
+    }
+
+    @Bean("claimDirtyChatRooms_lua")
+    public RedisScript<List> claimDirtyChatRooms() {
+        return RedisScript.of(new ClassPathResource("META-INF/scripts/claimDirtyChatRooms.lua"), List.class);
+    }
+
+    @Bean("projectChatRoomActivity_lua")
+    public RedisScript<List> projectChatRoomActivity() {
+        return RedisScript.of(new ClassPathResource("META-INF/scripts/projectChatRoomActivity.lua"), List.class);
+    }
+
+    @Bean("reclaimStalledChatRooms_lua")
+    public RedisScript<List> reclaimStalledChatRooms() {
+        return RedisScript.of(new ClassPathResource("META-INF/scripts/reclaimStalledChatRooms.lua"), List.class);
+    }
+
+    @Bean("rebuildChatRoomActivity_lua")
+    public RedisScript<Long> rebuildChatRoomActivity() {
+        return RedisScript.of(new ClassPathResource("META-INF/scripts/rebuildChatRoomActivity.lua"), Long.class);
+    }
+
+    @Bean("requeueDirtyChatRoom_lua")
+    public RedisScript<Boolean> requeueDirtyChatRoom() {
+        return RedisScript.of(new ClassPathResource("META-INF/scripts/requeueDirtyChatRoom.lua"), Boolean.class);
+    }
+
+    @Bean
+    public RedisChatRoomActivityProjectionAdapter redisChatRoomActivityProjectionAdapter(
+            @Qualifier("masterHashRedisTemplate") RedisTemplate<String, String> masterHashRedisTemplate,
+            RedisCollectionRegistry registry,
+            @Qualifier("claimDirtyChatRooms_lua") RedisScript<List> claimDirtyChatRooms_lua,
+            @Qualifier("projectChatRoomActivity_lua") RedisScript<List> projectChatRoomActivity_lua,
+            @Qualifier("reclaimStalledChatRooms_lua") RedisScript<List> reclaimStalledChatRooms_lua,
+            @Qualifier("rebuildChatRoomActivity_lua") RedisScript<Long> rebuildChatRoomActivity_lua,
+            @Qualifier("requeueDirtyChatRoom_lua") RedisScript<Boolean> requeueDirtyChatRoom_lua
+    ) {
+        return new RedisChatRoomActivityProjectionAdapter(
+                masterHashRedisTemplate,
+                registry,
+                new ChatCacheProperties(Duration.ofDays(7), Duration.ofDays(7)),
+                claimDirtyChatRooms_lua,
+                projectChatRoomActivity_lua,
+                reclaimStalledChatRooms_lua,
+                rebuildChatRoomActivity_lua,
+                requeueDirtyChatRoom_lua
+        );
+    }
+
     @Bean
     public RedisChatRoomAdapter redisChatRoomAdapter(
             @Qualifier("masterHashRedisTemplate") RedisTemplate<String, String> masterHashRedisTemplate,
@@ -237,7 +291,8 @@ public class TestRedisConfig {
             @Qualifier("recoverUpdateChatRoom_lua") RedisScript<Boolean> recoverUpdateChatRoom_lua,
             @Qualifier("invalidateChatRoomActivity_lua") RedisScript<Boolean> invalidateChatRoomActivity_lua,
             @Qualifier("invalidateChatRoomInfo_lua") RedisScript<Boolean> invalidateChatRoomInfo_lua,
-            @Qualifier("rebuildPopularRoomIndex_lua") RedisScript<Boolean> rebuildPopularRoomIndex_lua
+            @Qualifier("rebuildPopularRoomIndex_lua") RedisScript<Boolean> rebuildPopularRoomIndex_lua,
+            @Qualifier("updateChatRoomLastReadSeq_lua") RedisScript<Boolean> updateChatRoomLastReadSeq_lua
     ) {
         return new RedisChatRoomAdapter(
                 masterHashRedisTemplate,
@@ -257,6 +312,7 @@ public class TestRedisConfig {
                 invalidateChatRoomActivity_lua,
                 invalidateChatRoomInfo_lua,
                 rebuildPopularRoomIndex_lua,
+                updateChatRoomLastReadSeq_lua,
                 new ChatCacheProperties(Duration.ofDays(7), Duration.ofDays(7))
         );
     }

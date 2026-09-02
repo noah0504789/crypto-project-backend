@@ -2,7 +2,8 @@ package org.example.chat.chatroom.domain.service;
 
 public final class MyChatRoomScoreCalculator {
 
-    private static final long UNREAD_PRIORITY_WEIGHT = 100_000_000_000_000L;
+    /** 안읽은 방을 항상 상단으로 올리는 가중치. Redis active zset score 를 만드는 Lua 도 같은 값을 쓴다. */
+    public static final long UNREAD_PRIORITY_WEIGHT = 100_000_000_000_000L;
 
     private MyChatRoomScoreCalculator() {
     }

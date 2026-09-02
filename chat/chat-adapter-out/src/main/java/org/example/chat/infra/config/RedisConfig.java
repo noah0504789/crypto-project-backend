@@ -19,6 +19,7 @@ import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.data.redis.support.collections.RedisCollection;
 
 import java.time.Duration;
+import java.util.List;
 
 @Configuration
 public class RedisConfig {
@@ -137,6 +138,36 @@ public class RedisConfig {
     @Bean("invalidateChatRoomInfo_lua")
     public RedisScript<Boolean> invalidateChatRoomInfo() {
         return RedisScript.of(new ClassPathResource("META-INF/scripts/invalidateChatRoomInfo.lua"), Boolean.class);
+    }
+
+    @Bean("updateChatRoomLastReadSeq_lua")
+    public RedisScript<Boolean> updateChatRoomLastReadSeq() {
+        return RedisScript.of(new ClassPathResource("META-INF/scripts/updateChatRoomLastReadSeq.lua"), Boolean.class);
+    }
+
+    @Bean("claimDirtyChatRooms_lua")
+    public RedisScript<List> claimDirtyChatRooms() {
+        return RedisScript.of(new ClassPathResource("META-INF/scripts/claimDirtyChatRooms.lua"), List.class);
+    }
+
+    @Bean("projectChatRoomActivity_lua")
+    public RedisScript<List> projectChatRoomActivity() {
+        return RedisScript.of(new ClassPathResource("META-INF/scripts/projectChatRoomActivity.lua"), List.class);
+    }
+
+    @Bean("reclaimStalledChatRooms_lua")
+    public RedisScript<List> reclaimStalledChatRooms() {
+        return RedisScript.of(new ClassPathResource("META-INF/scripts/reclaimStalledChatRooms.lua"), List.class);
+    }
+
+    @Bean("rebuildChatRoomActivity_lua")
+    public RedisScript<Long> rebuildChatRoomActivity() {
+        return RedisScript.of(new ClassPathResource("META-INF/scripts/rebuildChatRoomActivity.lua"), Long.class);
+    }
+
+    @Bean("requeueDirtyChatRoom_lua")
+    public RedisScript<Boolean> requeueDirtyChatRoom() {
+        return RedisScript.of(new ClassPathResource("META-INF/scripts/requeueDirtyChatRoom.lua"), Boolean.class);
     }
 
 }

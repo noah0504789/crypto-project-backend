@@ -577,6 +577,7 @@ assertThat(result.<String>getAttribute("id")).isEqualTo(userId);
 | `[lock]` | 분산락 획득/해제 |
 | `[single-flight]` | in-process 중복 로드 dedup |
 | `[popularity]` | 인기방 인덱스 재구축 |
+| `[projection]` | 내 방 정렬 projection 반영·재생성 |
 | `[notification]` | 알림 생성/저장 |
 | `[upbit]` | Upbit 외부 WebSocket |
 

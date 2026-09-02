@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessage;
 import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessageRepository;
+import org.example.chat.chatroom.application.service.result.ChatRoomMemberReadState;
 import org.example.chat.chatroom.application.service.result.ChatRoomMembershipScore;
 import org.example.chat.chatroom.application.port.out.ChatRoomPersistencePort;
 import org.example.chat.chatroom.domain.model.ChatRoom;
@@ -105,6 +106,17 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
         return membershipRepository.findById(MongoChatRoomMembership.generateId(id, memberId))
                 .orElseThrow(()-> new ChatRoomMembershipNotFoundException(id, memberId))
                 .getLastMsgReadSeq();
+    }
+
+    @Override
+    public List<ChatRoomMemberReadState> listMemberReadStates(String id) {
+        return membershipRepository.findAllByRoomId(new ObjectId(id))
+                .stream()
+                .map(membership -> new ChatRoomMemberReadState(
+                        membership.getMemberId(),
+                        membership.getLastMsgReadSeq() == null ? 0L : membership.getLastMsgReadSeq()
+                ))
+                .toList();
     }
 
     @Override

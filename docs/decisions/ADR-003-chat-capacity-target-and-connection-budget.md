@@ -218,7 +218,7 @@ chat 목표를 초당 300건으로 **가정**하면(실제로 도달한 값이 �
 ## 관련 문서
 
 - 측정 원본: [`chat/load-test-results/chatmessage/websocket-gateway/README.md`](../../chat/load-test-results/chatmessage/websocket-gateway/README.md) — 결과는 §2, 고친 내용은 §3
-- 어디서 무엇이 사라지는지 전체 표: [`../SERVICE_FLOWS.md` §15](../SERVICE_FLOWS.md)
+- 어디서 무엇이 사라지는지 전체 표: [`../SERVICE_FLOWS.md` §9](../SERVICE_FLOWS.md)
 - 설정: `git-config-repo/dynamic/{websocket-gateway,chat-service}.yml`, `git-config-repo/infrastructure/mysql.yml`
 - 구현: `websocket-gateway-adapter-in/.../websocket/config/{ExecutorConfig,StompExecutorProperties}.java`
 - 관련 규칙: `docs/CODE_STYLE.md` §16

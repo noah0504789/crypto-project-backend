@@ -178,6 +178,6 @@ market-detection은 stateful Kafka 처리 결과가 곧 Kafka 출력이고 외�
 
 ## 10. 관련 문서와 rules
 
-- 루트 흐름: [`../SERVICE_FLOWS.md`](../SERVICE_FLOWS.md)(§11–13 수집·처리·탐지), 구조 [`../ARCHITECTURE.md`](../ARCHITECTURE.md)
+- 루트 흐름: [`../SERVICE_FLOWS.md`](../SERVICE_FLOWS.md)(§12–14 수집·처리·탐지), 구조 [`../ARCHITECTURE.md`](../ARCHITECTURE.md)
 - 상·하류: 수집·발행 [`UPBIT_CONNECTOR.md`](UPBIT_CONNECTOR.md), 탐지 결과 소비자 [`NOTIFICATION.md`](NOTIFICATION.md)
 - 계약/아키텍처/테스트 rules: `../../.claude/rules/{external-contracts,architecture,testing}.md`
