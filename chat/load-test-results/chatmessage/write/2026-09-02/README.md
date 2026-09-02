@@ -10,3 +10,6 @@
 
 after의 방 상태 표기는 `messages / msgCnt / latestMsgSeq` 순서다. 상세 요약과 Prometheus·Mongo
 원본은 `raw/`를 확인한다.
+
+after-01은 #291 이전 이미지의 watermark 네이밍 버그로 방 상태가 누적되지 않아 폐기했다. after-02는
+같은 조건에서 #291 수정 이미지를 배포한 뒤 재측정한 정상 결과다.

@@ -9,6 +9,10 @@ WebSocket 경로를 제외하고 Kafka에 `chatmessage-event`를 직접 발행�
 #283 이미지, after는 #291까지 반영된 이미지다. 두 회차 모두 6,000건 저장과 Kafka lag 0을 확인했고,
 after는 `chat_room`의 메시지 수·`msgCnt`·`latestMsgSeq`도 모두 6,000으로 검증했다.
 
+처음 실행한 after-01은 #291 이전 이미지에서 방 watermark 네이밍 버그가 드러나 비교에 사용할 수
+없었다. 따라서 동일한 조건으로 #291 수정 이미지를 배포한 뒤 다시 실행한 after-02를 정상 after
+결과로 채택했다.
+
 | 지표 | before (#283) | after (#291) | 변화 |
 |---|---:|---:|---:|
 | Mongo 메시지 persistence write op | 1,824,039 | 6,000 | 99.67% 감소, 약 304배 감소 |
