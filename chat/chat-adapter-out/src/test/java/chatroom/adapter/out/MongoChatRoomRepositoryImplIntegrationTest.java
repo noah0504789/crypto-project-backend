@@ -2,6 +2,7 @@ package chatroom.adapter.out;
 
 import org.example.common.test.config.TestBootApplication;
 import config.TestMongoConfig;
+import org.bson.Document;
 import org.example.common.test.testcontainer.MongoDBTestContainerInitializer;
 import org.bson.types.ObjectId;
 import org.example.chat.chatroom.adapter.out.persistence.MongoChatRoom;
@@ -257,6 +258,13 @@ class MongoChatRoomRepositoryImplIntegrationTest {
             assertThat(updated.getMsgCnt()).isEqualTo(9L);
             assertThat(updated.getLatestMsgSeq()).isEqualTo(10L);
             assertThat(updated.getLastMsgCreatedAt()).isEqualTo(latest);
+
+            Document persisted = mongoTemplate.getCollection("chat_room")
+                    .find(new Document("_id", roomId1))
+                    .first();
+            assertThat(persisted)
+                    .containsKeys("msg_cnt", "latest_msg_seq", "last_msg_created_at")
+                    .doesNotContainKeys("msgCnt", "latestMsgSeq", "lastMsgCreatedAt");
         }
 
         @Test

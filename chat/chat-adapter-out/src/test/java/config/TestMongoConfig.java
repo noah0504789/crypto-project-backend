@@ -7,6 +7,7 @@ import org.example.chat.chatmessage.adapter.out.persistence.MongoChatMessageRepo
 import org.example.chat.chatroom.adapter.out.persistence.MongoChatRoomAdapter;
 import org.example.chat.chatroom.adapter.out.persistence.MongoChatRoomMembershipRepository;
 import org.example.chat.chatroom.adapter.out.persistence.MongoChatRoomRepository;
+import org.example.common.mongo.SnakeCaseFieldNamingStrategy;
 import org.example.common.time.Clock;
 import org.example.common.time.ServiceTimeConverter;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -15,6 +16,8 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.data.mongodb.MongoDatabaseFactory;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
+import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
+import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 
 @TestConfiguration
@@ -28,6 +31,15 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 public class TestMongoConfig {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 20, 52);
+
+    @Bean
+    public MongoMappingContext mongoMappingContext(MongoCustomConversions conversions) {
+        MongoMappingContext context = new MongoMappingContext();
+        context.setSimpleTypeHolder(conversions.getSimpleTypeHolder());
+        context.setFieldNamingStrategy(new SnakeCaseFieldNamingStrategy());
+        context.setAutoIndexCreation(true);
+        return context;
+    }
 
     @Bean
     public Clock clock() {

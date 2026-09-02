@@ -26,6 +26,10 @@ import java.time.Instant;
 @Repository
 public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCustom {
 
+    private static final String MSG_COUNT_FIELD = "msg_cnt";
+    private static final String LATEST_MESSAGE_SEQUENCE_FIELD = "latest_msg_seq";
+    private static final String LAST_MESSAGE_CREATED_AT_FIELD = "last_msg_created_at";
+
     private final MongoTemplate primaryMongoTemplate;
     private final MongoTemplate secondaryMongoTemplate;
     private final Clock clock;
@@ -153,23 +157,23 @@ public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCusto
     ) {
         Query query = new Query(Criteria.where("_id").is(roomId));
         AggregationExpression currentMessageSequence = ConditionalOperators
-                .ifNull("latestMsgSeq")
-                .thenValueOf(ConditionalOperators.ifNull("msgCnt").then(0));
+                .ifNull(LATEST_MESSAGE_SEQUENCE_FIELD)
+                .thenValueOf(ConditionalOperators.ifNull(MSG_COUNT_FIELD).then(0));
         AggregationExpression nextMessageSequence = ArithmeticOperators
                 .valueOf(currentMessageSequence)
                 .add(count);
         AggregationExpression nextMessageCount = ArithmeticOperators
-                .valueOf(ConditionalOperators.ifNull("msgCnt").then(0))
+                .valueOf(ConditionalOperators.ifNull(MSG_COUNT_FIELD).then(0))
                 .add(count);
 
         AggregationUpdate update = AggregationUpdate.update()
-                .set("latestMsgSeq")
+                .set(LATEST_MESSAGE_SEQUENCE_FIELD)
                 .toValue(nextMessageSequence)
-                .set("msgCnt")
+                .set(MSG_COUNT_FIELD)
                 .toValue(nextMessageCount)
-                .set("lastMsgCreatedAt")
+                .set(LAST_MESSAGE_CREATED_AT_FIELD)
                 .toValue(MongoExpression.create(
-                        "{ $max: [ '$lastMsgCreatedAt', ?0 ] }",
+                        "{ $max: [ '$last_msg_created_at', ?0 ] }",
                         lastMessageCreatedAt
                 ));
 

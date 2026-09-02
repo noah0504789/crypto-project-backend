@@ -167,6 +167,10 @@ public class MongoChatMessageRepositoryImpl implements MongoChatMessageRepositor
                 Aggregation.replaceRoot("doc")
         );
 
-        return mongoTemplate.aggregate(aggregation, "chat_message", MongoChatMessage.class).getMappedResults();
+        return mongoTemplate.aggregate(
+                aggregation,
+                MongoChatMessage.class,
+                MongoChatMessage.class
+        ).getMappedResults();
     }
 }
