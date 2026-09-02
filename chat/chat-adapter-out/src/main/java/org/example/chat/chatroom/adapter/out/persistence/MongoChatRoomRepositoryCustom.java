@@ -12,6 +12,8 @@ public interface MongoChatRoomRepositoryCustom {
 
     Optional<MongoChatRoom> findByIdAndDeletedFalseFromSecondary(ObjectId id);
 
+    List<MongoChatRoom> listByIdsAndDeletedFalse(List<ObjectId> ids);
+
     List<MongoChatRoom> listPopularRooms(
             ChatRoomCategory category,
             int offset,

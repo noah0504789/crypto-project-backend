@@ -1,7 +1,6 @@
 package org.example.chat.chatroom.adapter.out.persistence;
 
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -21,14 +20,12 @@ public class MongoChatRoomMembershipRepositoryImpl implements MongoChatRoomMembe
     }
 
     /**
-     * 사용자의 membership 을 정렬 없이 상한까지 읽는다. 정렬 키(unread·최신 활동)는 방 쪽 사실이라
-     * 이 컬렉션 인덱스만으로는 정렬할 수 없다 — 정렬은 방을 함께 읽은 뒤 application 이 한다.
+     * projection 재생성 후보를 빠뜨리지 않도록 사용자의 membership 전체를 읽는다.
+     * unread·최신 활동 점수는 방 상태를 함께 읽은 뒤 application 이 계산하고 상한을 적용한다.
      */
     @Override
-    public List<MongoChatRoomMembership> listMemberships(String memberId, int limit) {
+    public List<MongoChatRoomMembership> listMemberships(String memberId) {
         Query query = new Query(Criteria.where("memberId").is(memberId))
-                .with(Sort.by(Sort.Direction.DESC, "_id"))
-                .limit(limit)
                 .withHint("my_rooms");
 
         return primaryMongoTemplate.find(query, MongoChatRoomMembership.class);

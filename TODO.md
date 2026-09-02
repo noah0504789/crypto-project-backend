@@ -356,18 +356,19 @@ chatRoomPersistencePort.updateMessageState(roomId, newMessageCount, latestCreate
 
 메시지 1건의 쓰기 비용이 **방 멤버 수에 비례**한다. 비동기 영속 핸들러가 메시지마다 방 멤버 전원의 정렬 점수를 갱신하기 때문이다.
 
-**현재 상태 — projector 도입 PR:** Redis dirty/inflight ZSET과 방 단위 projector를 추가했다.
-메시지 저장과 같은 Lua에서 방을 dirty로 표시하고, 여러 chat 인스턴스가 lease 기반으로 방을
-claim·회수한다. projector는 Redis 최신 상태를 멤버별 active-room ZSET에 절대값으로 반영하며,
-캐시 미스나 stalled claim은 Mongo의 room watermark와 membership 읽음 위치로 재생성한다.
+**현재 상태 — projection 전환 PR:** 내 방 목록을 Redis active-room projection 기준으로 전환하고,
+기존 Redis·Mongo membership fan-out을 제거했다. 메시지 영속 transaction에는 message insert와 room
+watermark 갱신만 남고, Redis 저장은 작성자 한 명과 방 dirty 표시만 즉시 반영한다. hard delete도
+멤버별 점수를 직접 고치지 않고 projector가 다시 계산한다.
 
-검증 전환기이므로 기존 Redis·Mongo membership fan-out은 유지한다. 남은 다음 PR 범위는 다음과 같다.
+Redis 인덱스가 통째로 비면 Mongo membership 전체와 해당 방·최신 메시지를 primary에서 batch
+조회한다. application이 실제 점수를 계산·정렬한 뒤 상위 `chat.my-room.rebuild-limit`개만 재생성한다.
+가입 시점 기준으로 후보를 먼저 자르면 최근 활동방이 빠질 수 있으므로 상한은 정렬 뒤에 적용한다.
 
-- 내 방 목록 조회를 Redis projection 기준으로 전환하고, Redis miss 시 Mongo에서 재구축한다.
-- `ChatMessageEventService.recordMemberships`와 Mongo membership score dual-write를 제거한다.
-- 메시지 이벤트·DLQ의 `memberIds`를 제거하고 persistence transaction에는 message insert와 room state 갱신만 남긴다.
-- Redis 메시지 저장과 hard delete를 dirty 표시 기반으로 전환해 멤버별 score fan-out을 제거한다.
-- 부하테스트로 membership write 수와 Kafka persistence drain 시간을 전환 전후 비교한다.
+구조 전환은 끝났고 다음 검증·운영 작업이 남았다.
+
+- VU 100 · 방 멤버 302명 부하테스트로 membership write와 Kafka persistence drain을 전환 전후 비교한다.
+- 배포 전에 기존 Mongo `my_rooms` 인덱스를 제거하고 새 `{member_id:1, _id:-1}` 정의를 생성한다.
 
 ```java
 // ChatMessageEventService — Kafka record 1건마다 Mongo transaction 안에서

@@ -146,9 +146,9 @@ public class ChatRoomQueryRepairService {
      * 내 방 정렬 인덱스가 통째로 비었을 때 Mongo(durable source)로 다시 만든다.
      *
      * <p>정렬 키 {@code (unread, lastMsgCreatedAt, roomId)} 는 방 쪽 사실과 사용자 읽음 위치가
-     * 섞여 있어 Mongo 인덱스 하나로는 정렬할 수 없다. 그래서 사용자의 방을
-     * {@code chat.my-room.rebuild-limit} 까지 읽어 여기서 계산·정렬하고, 그 결과를 Redis 인덱스에
-     * 통째로 심은 뒤 요청한 페이지만 잘라 돌려준다.
+     * 섞여 있어 Mongo 인덱스 하나로는 정렬할 수 없다. 그래서 사용자의 membership 전체와 방을
+     * batch로 읽어 여기서 계산·정렬하고, 상위 {@code chat.my-room.rebuild-limit}개를 Redis
+     * 인덱스에 통째로 심은 뒤 요청한 페이지만 잘라 돌려준다.
      */
     private List<ChatRoom> rebuildMyRoomIndexAndPage(
             String memberId,
@@ -173,13 +173,14 @@ public class ChatRoomQueryRepairService {
     }
 
     private List<ScoredChatRoom> scoreMyRooms(String memberId) {
-        return persistence.listMyRoomStates(memberId, myChatRoomProperties.rebuildLimit())
+        return persistence.listMyRoomStates(memberId)
                 .stream()
                 .map(ScoredChatRoom::from)
                 .sorted(
                         Comparator.comparingLong(ScoredChatRoom::score).reversed()
                                 .thenComparing(Comparator.comparing((ScoredChatRoom scored) -> scored.room().getId()).reversed())
                 )
+                .limit(myChatRoomProperties.rebuildLimit())
                 .toList();
     }
 

@@ -71,7 +71,7 @@ class MongoChatRoomMembershipRepositoryImplIntegrationTest {
             saveMembership(roomId2, memberId1, 10L);
             saveMembership(roomId3, memberId2, 20L);
 
-            List<MongoChatRoomMembership> actual = sut.listMemberships(memberId1, 10);
+            List<MongoChatRoomMembership> actual = sut.listMemberships(memberId1);
 
             assertThat(actual)
                     .extracting(MongoChatRoomMembership::getRoomId)
@@ -83,7 +83,7 @@ class MongoChatRoomMembershipRepositoryImplIntegrationTest {
         void listMemberships_shouldReturnLastMsgReadSeq() {
             saveMembership(roomId1, memberId1, 7L);
 
-            List<MongoChatRoomMembership> actual = sut.listMemberships(memberId1, 10);
+            List<MongoChatRoomMembership> actual = sut.listMemberships(memberId1);
 
             assertThat(actual).singleElement()
                     .extracting(MongoChatRoomMembership::getLastMsgReadSeq)
@@ -91,16 +91,16 @@ class MongoChatRoomMembershipRepositoryImplIntegrationTest {
         }
 
         @Test
-        @DisplayName("limit 개수만큼 조회한다")
-        void listMemberships_shouldApplyLimit() {
+        @DisplayName("사용자의 membership 전체를 조회한다")
+        void listMemberships_shouldReturnAllMemberships() {
             saveMembership(roomId1, memberId1, 0L);
             saveMembership(roomId2, memberId1, 0L);
             saveMembership(roomId3, memberId1, 0L);
             saveMembership(roomId4, memberId1, 0L);
 
-            List<MongoChatRoomMembership> actual = sut.listMemberships(memberId1, 2);
+            List<MongoChatRoomMembership> actual = sut.listMemberships(memberId1);
 
-            assertThat(actual).hasSize(2);
+            assertThat(actual).hasSize(4);
         }
     }
 

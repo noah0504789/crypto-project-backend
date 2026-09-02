@@ -4,5 +4,5 @@ import java.util.List;
 
 public interface MongoChatRoomMembershipRepositoryCustom {
 
-    List<MongoChatRoomMembership> listMemberships(String memberId, int limit);
+    List<MongoChatRoomMembership> listMemberships(String memberId);
 }

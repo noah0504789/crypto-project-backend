@@ -132,8 +132,8 @@ chat:
     # Redis 인기방 zset 에 담는 상위 방 개수
     index-size: 100
   my-room:
-    # Redis 내 방 정렬 인덱스가 비었을 때 Mongo 로 재생성하며 읽는 사용자당 방 수 상한.
-    # 정렬 키가 방 쪽 사실이라 Mongo 인덱스로 정렬할 수 없어 이 상한까지 읽어 앱에서 계산한다.
+    # Redis 내 방 정렬 인덱스가 비었을 때 Mongo 기준으로 재생성하는 상위 방 수.
+    # membership 전체와 방을 batch 조회해 점수를 계산한 뒤 이 상한을 적용한다.
     rebuild-limit: 300
   room-activity-projection:
     # flush 한 번에 가져오는 dirty 방 수 상한

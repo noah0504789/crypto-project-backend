@@ -407,9 +407,14 @@ projector는 다음 패턴을 연결한다.
 4. **Visibility Timeout + Repair**: claim한 인스턴스가 죽으면 다른 인스턴스의 reclaim 작업이
    timeout 방의 lease를 갱신해 회수하고 Mongo 기준으로 projection을 재생성한다.
 
-**이 PR은 전환기 dual-write 단계다.** Redis의 기존 멤버 fan-out과 Mongo membership score 갱신을
-유지한 채 projector 결과를 비교하므로 아직 쓰기량은 줄지 않는다. 조회 전환과 기존 fan-out 제거는
-다음 PR에서 수행한다. 상세 상태·설정·지표는 `docs/modules/CHAT.md` §5·§14·§15를 따른다.
+내 방 목록은 Redis active-room projection을 기준으로 조회한다. 인덱스가 통째로 비면 사용자의 Mongo
+membership 전체와 해당 방·최신 메시지를 batch 조회하고, application에서 실제 점수를 계산한 뒤 상위
+`chat.my-room.rebuild-limit`개를 Redis에 재생성한다. 상한을 점수 계산 전에 적용하면 최근 활동방을
+누락할 수 있으므로 정렬 뒤에 적용한다.
+
+기존 Redis 멤버 fan-out과 Mongo membership score 갱신은 제거했다. 메시지 저장은 작성자의 읽음 위치와
+방 dirty 표시만 남기고, 나머지 멤버의 active-room score는 projector가 flush 때 반영한다. 상세
+상태·설정·지표는 `docs/modules/CHAT.md` §5·§14·§15를 따른다.
 
 관련 문서: `docs/modules/CHAT.md`(방/메시지 명령·조회·캐시·Kafka·DLQ·확인 필요).
 

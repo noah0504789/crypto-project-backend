@@ -70,15 +70,28 @@ public class MongoChatRoomAdapter implements ChatRoomPersistencePort {
     }
 
     @Override
-    public List<MyChatRoomState> listMyRoomStates(String memberId, int limit) {
-        return membershipRepository.listMemberships(memberId, limit)
-                .stream()
-                .map(membership -> findByIdWithLatestMessageFromSecondary(membership.getRoomId().toHexString())
-                        .map(room -> new MyChatRoomState(
-                                room,
-                                membership.getLastMsgReadSeq() == null ? 0L : membership.getLastMsgReadSeq()
-                        )))
-                .flatMap(Optional::stream)
+    public List<MyChatRoomState> listMyRoomStates(String memberId) {
+        List<MongoChatRoomMembership> memberships = membershipRepository.listMemberships(memberId);
+        if (memberships.isEmpty()) {
+            return List.of();
+        }
+
+        Map<ObjectId, MongoChatRoomMembership> membershipByRoomId = memberships.stream()
+                .collect(Collectors.toMap(MongoChatRoomMembership::getRoomId, Function.identity()));
+
+        List<MongoChatRoom> rooms = chatRoomRepository.listByIdsAndDeletedFalse(
+                memberships.stream().map(MongoChatRoomMembership::getRoomId).toList()
+        );
+
+        return attachLatestMessagesFromPrimary(rooms).stream()
+                .map(room -> {
+                    MongoChatRoomMembership membership = membershipByRoomId.get(new ObjectId(room.getId()));
+                    long lastMsgReadSeq = membership.getLastMsgReadSeq() == null
+                            ? 0L
+                            : membership.getLastMsgReadSeq();
+
+                    return new MyChatRoomState(room, lastMsgReadSeq);
+                })
                 .toList();
     }
 

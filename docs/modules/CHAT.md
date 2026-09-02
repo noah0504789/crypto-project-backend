@@ -171,6 +171,13 @@ recent(ZSET)   메시지 100건 → 원소 1개   → flush 1번 처리
 
 읽기 경로는 **캐시-우선, 미스 시 Mongo 로드 + 워밍업**이다(§8). 정상 흐름에서 REST 조회는 Redis만 조회하며, 캐시가 비었거나 인덱스가 없으면 `*QueryRepairService`가 Mongo에서 로드해 캐시를 채운 뒤 반환한다. **미스 폭주 방어 도구는 서브도메인 특성에 따라 다르다: 방 = `SingleFlight`, 메시지 = 분산락.**
 
+내 방 정렬 인덱스가 통째로 비면 membership 전체를 읽고, 해당 방과 최신 메시지는 primary Mongo에서
+각각 batch 조회한다. application이 `(unread, lastMsgCreatedAt, roomId)` 점수를 계산·정렬한 뒤 상위
+`chat.my-room.rebuild-limit`개(기본 300)를 Redis에 다시 넣는다. **상한은 membership 조회 전이 아니라
+점수 정렬 뒤에 적용한다.** 먼저 자르면 예전에 가입했지만 방금 활동한 방을 복구 대상에서 빠뜨릴 수
+있다. 상한 밖의 낮은 점수 방은 cold miss 복구 인덱스에 포함하지 않는 대신, Mongo 조회·Redis 인덱스
+크기를 제한한다.
+
 ### 미스 폭주 방어 — 방은 `SingleFlight`, 메시지는 분산락
 
 | | 방 (`SingleFlight`) | 메시지 (분산락) |
@@ -253,7 +260,7 @@ recent(ZSET)   메시지 100건 → 원소 1개   → flush 1번 처리
 | 메시지 목록 `listMessages` | 방별 메시지 zset(커서 유무로 latest/prev) | `repairLatest`/`repairPrev` — 분산락 → 캐시 재확인 → Mongo range + 워밍업 (아래 절) |
 | 제목 중복 `existsByTitle` | `cache.existsByTitle` | `persistence.existsByTitle` 로 폴백 |
 
-**내 방 정렬 인덱스가 통째로 비면 Mongo 로 다시 만든다.** 정렬 키 `(unread, lastMsgCreatedAt, roomId)` 는 방 쪽 사실과 사용자 읽음 위치가 섞여 있어 Mongo 인덱스 하나로 정렬할 수 없다. 그래서 `ChatRoomQueryRepairService` 가 사용자의 membership 과 방을 `chat.my-room.rebuild-limit`(기본 300)까지 읽어 `MyChatRoomScoreCalculator` 로 계산·정렬하고, 그 결과로 ZSET 을 통째로 심은 뒤 요청한 페이지만 잘라 돌려준다. **이 상한을 넘는 방을 가진 사용자는 오래된 방이 목록에서 빠질 수 있다.**
+**내 방 정렬 인덱스가 통째로 비면 Mongo 로 다시 만든다.** 정렬 키 `(unread, lastMsgCreatedAt, roomId)` 는 방 쪽 사실과 사용자 읽음 위치가 섞여 있어 Mongo 인덱스 하나로 정렬할 수 없다. 그래서 `ChatRoomQueryRepairService` 가 사용자의 membership 전체와 해당 방·최신 메시지를 primary에서 batch 조회하고, `MyChatRoomScoreCalculator` 로 계산·정렬한 **뒤** `chat.my-room.rebuild-limit`(기본 300)을 적용한다. 그 결과로 ZSET 을 통째로 심은 뒤 요청한 페이지만 잘라 돌려준다. 상한 밖의 낮은 점수 방은 cold miss 복구 인덱스에서 제외한다.
 
 - 목록 계열의 캐시 결과는 `ChatRoomCacheLookupResult` 가 세 갈래로 구분한다: `hasNoIndex()`(인덱스 자체 없음 → 전체 repair) / `isAllHit()` / 부분 히트(miss id 만 개별 repair 후 원래 순서로 merge).
 - 조회는 커서 페이지네이션이며, 컨트롤러가 `limit+1`로 조회한 뒤 `CursorPages.from(result, limit, mapper)`로 다음 커서 유무를 판정한다.

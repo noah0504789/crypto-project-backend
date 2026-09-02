@@ -29,11 +29,11 @@ public interface ChatRoomPersistencePort {
     void updatePopularities(Map<String, Long> roomIdToPopularity);
 
     /**
-     * 내 방 목록 projection 을 다시 만들 때 쓰는 durable source. 사용자의 membership 과 방을
-     * 함께 읽어 오며 정렬은 하지 않는다 — 정렬 점수는 방 watermark 와 읽음 위치로
-     * application 이 계산한다(→ {@code MyChatRoomScoreCalculator}).
+     * 내 방 목록 projection 을 다시 만들 때 쓰는 durable source. 사용자의 membership 전체와 방을
+     * 함께 읽어 오며 정렬은 하지 않는다 — 정렬 점수 계산과 복구 상한 적용은 application 이
+     * 담당한다(→ {@code MyChatRoomScoreCalculator}).
      */
-    List<MyChatRoomState> listMyRoomStates(String memberId, int limit);
+    List<MyChatRoomState> listMyRoomStates(String memberId);
 
     Long getLastReadSeq(String id, String memberId);
 

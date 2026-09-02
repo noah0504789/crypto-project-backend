@@ -103,7 +103,6 @@ class MongoChatRoomAdapterIntegrationTest {
         mongoTemplate.indexOps(MongoChatRoomMembership.class)
                 .ensureIndex(new Index()
                         .on("memberId", Sort.Direction.ASC)
-                        .on("score", Sort.Direction.DESC)
                         .on("_id", Sort.Direction.DESC)
                         .named("my_rooms"));
 
@@ -453,7 +452,7 @@ class MongoChatRoomAdapterIntegrationTest {
             saveMessage(messageId1, roomId2, "room2-latest", latestTime, false);
 
             // when
-            List<MyChatRoomState> result = sut.listMyRoomStates(MEMBER_ID, 10);
+            List<MyChatRoomState> result = sut.listMyRoomStates(MEMBER_ID);
 
             // then
             assertThat(result)
@@ -470,8 +469,8 @@ class MongoChatRoomAdapterIntegrationTest {
         }
 
         @Test
-        @DisplayName("listMyRoomStates는 상한까지만 읽는다")
-        void listMyRoomStatesLimit() {
+        @DisplayName("listMyRoomStates는 사용자의 membership 전체를 읽는다")
+        void listMyRoomStatesReadsAllMemberships() {
             // given
             sut.save(chatRoom(roomId1, TITLE_1));
             sut.save(chatRoom(roomId2, TITLE_2));
@@ -482,10 +481,10 @@ class MongoChatRoomAdapterIntegrationTest {
             saveMembership(readMembership(roomId3, MEMBER_ID, READ_SEQ_0));
 
             // when
-            List<MyChatRoomState> result = sut.listMyRoomStates(MEMBER_ID, 2);
+            List<MyChatRoomState> result = sut.listMyRoomStates(MEMBER_ID);
 
             // then
-            assertThat(result).hasSize(2);
+            assertThat(result).hasSize(3);
         }
 
         @Test

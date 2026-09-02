@@ -445,7 +445,7 @@ class ChatRoomQueryRepairServiceUnitTest {
             // then
             assertThat(result).containsExactly(room);
 
-            verify(persistence, never()).listMyRoomStates(anyString(), anyInt());
+            verify(persistence, never()).listMyRoomStates(anyString());
             verify(cache, never()).warmUpList(anyList());
         }
 
@@ -459,7 +459,7 @@ class ChatRoomQueryRepairServiceUnitTest {
 
             when(cache.listLatestActiveRooms("member-1", 10))
                     .thenReturn(noIndex());
-            when(persistence.listMyRoomStates("member-1", 300))
+            when(persistence.listMyRoomStates("member-1"))
                     .thenReturn(List.of(new MyChatRoomState(room2, 5L), new MyChatRoomState(room, 0L)));
 
             // when
@@ -475,6 +475,38 @@ class ChatRoomQueryRepairServiceUnitTest {
                             "room-1", MyChatRoomScoreCalculator.unread(200L),
                             "room-2", MyChatRoomScoreCalculator.read(100L)
                     )
+            );
+        }
+
+        @Test
+        @DisplayName("복구 상한은 전체 방의 점수를 계산한 뒤 적용한다")
+        void should_apply_rebuild_limit_after_scoring_all_rooms() {
+            // given
+            sut = new ChatRoomQueryRepairService(
+                    cache,
+                    persistence,
+                    new MyChatRoomProperties(1),
+                    singleFlight
+            );
+            givenLockExecutorRunsSupplier();
+            when(room2.lastMsgCreatedAtMs()).thenReturn(2_000L);
+            when(room2.hasUnread(anyLong())).thenReturn(false);
+            givenUnreadRoom(room, "room-1", 1_000L);
+
+            when(cache.listLatestActiveRooms("member-1", 10))
+                    .thenReturn(noIndex());
+            when(persistence.listMyRoomStates("member-1"))
+                    .thenReturn(List.of(new MyChatRoomState(room2, 9L), new MyChatRoomState(room, 0L)));
+
+            // when
+            List<ChatRoom> result = sut.repairMyRooms("member-1", 10);
+
+            // then: 가입 순서와 무관하게 실제 점수가 높은 방을 남긴다
+            assertThat(result).containsExactly(room);
+            verify(cache).warmUpList(List.of(room));
+            verify(cache).rebuildActiveIndex(
+                    "member-1",
+                    Map.of("room-1", MyChatRoomScoreCalculator.unread(1_000L))
             );
         }
 
@@ -506,7 +538,7 @@ class ChatRoomQueryRepairServiceUnitTest {
             // then
             assertThat(result).containsExactly(room, room2);
 
-            verify(persistence, never()).listMyRoomStates(anyString(), anyInt());
+            verify(persistence, never()).listMyRoomStates(anyString());
             verify(persistence).findByIdWithLatestMessage("room-2");
             verify(cache).warmUp(room2);
         }
@@ -529,7 +561,7 @@ class ChatRoomQueryRepairServiceUnitTest {
 
             when(cache.listActiveRoomsBefore("member-1", "last-room", cursorScore, 10))
                     .thenReturn(noIndex());
-            when(persistence.listMyRoomStates("member-1", 300))
+            when(persistence.listMyRoomStates("member-1"))
                     .thenReturn(List.of(new MyChatRoomState(room, 9L), new MyChatRoomState(room2, 9L)));
 
             // when
@@ -578,7 +610,7 @@ class ChatRoomQueryRepairServiceUnitTest {
             // then
             assertThat(result).containsExactly(room, room2);
 
-            verify(persistence, never()).listMyRoomStates(anyString(), anyInt());
+            verify(persistence, never()).listMyRoomStates(anyString());
             verify(persistence).findByIdWithLatestMessage("room-2");
             verify(cache).warmUp(room2);
         }

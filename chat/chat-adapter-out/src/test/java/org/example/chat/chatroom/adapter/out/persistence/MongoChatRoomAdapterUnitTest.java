@@ -284,8 +284,8 @@ class MongoChatRoomAdapterUnitTest {
     class ListMyRoomStatesTest {
 
         @Test
-        @DisplayName("사용자 membership 을 읽고 방과 최신 메시지를 secondary 에서 붙여 반환한다")
-        void listMyRoomStates_shouldUseSecondaryRoomAndMessage() {
+        @DisplayName("사용자 membership 전체를 읽고 방과 최신 메시지를 primary batch 조회로 붙인다")
+        void listMyRoomStates_shouldUsePrimaryBatchQueries() {
             MongoChatRoomMembership membership1 = membership(roomId1, memberId, 30L);
             MongoChatRoomMembership membership2 = membership(roomId2, memberId, 0L);
 
@@ -295,18 +295,14 @@ class MongoChatRoomAdapterUnitTest {
             MongoChatMessage message1 = message(messageId1, roomId1, "room1-latest", messageCreatedAt1);
             MongoChatMessage message2 = message(messageId2, roomId2, "room2-latest", messageCreatedAt2);
 
-            given(membershipRepository.listMemberships(memberId, 10))
+            given(membershipRepository.listMemberships(memberId))
                     .willReturn(List.of(membership1, membership2));
-            given(chatRoomRepository.findByIdAndDeletedFalseFromSecondary(roomId1))
-                    .willReturn(Optional.of(room1));
-            given(chatRoomRepository.findByIdAndDeletedFalseFromSecondary(roomId2))
-                    .willReturn(Optional.of(room2));
-            given(chatMessageRepository.findLatestByRoomIdFromSecondary(roomId1))
-                    .willReturn(Optional.of(message1));
-            given(chatMessageRepository.findLatestByRoomIdFromSecondary(roomId2))
-                    .willReturn(Optional.of(message2));
+            given(chatRoomRepository.listByIdsAndDeletedFalse(List.of(roomId1, roomId2)))
+                    .willReturn(List.of(room1, room2));
+            given(chatMessageRepository.listLatestMessagesByRoomIds(List.of(roomId1, roomId2)))
+                    .willReturn(List.of(message1, message2));
 
-            List<MyChatRoomState> actual = sut.listMyRoomStates(memberId, 10);
+            List<MyChatRoomState> actual = sut.listMyRoomStates(memberId);
 
             assertThat(actual)
                     .extracting(state -> state.room().getId(), MyChatRoomState::lastMsgReadSeq)
@@ -315,27 +311,40 @@ class MongoChatRoomAdapterUnitTest {
                             tuple(roomId2.toHexString(), 0L)
                     );
 
-            then(membershipRepository).should().listMemberships(memberId, 10);
-            then(chatRoomRepository).should(never()).findByIdAndDeletedFalse(any());
+            then(membershipRepository).should().listMemberships(memberId);
+            then(chatRoomRepository).should().listByIdsAndDeletedFalse(List.of(roomId1, roomId2));
+            then(chatMessageRepository).should().listLatestMessagesByRoomIds(List.of(roomId1, roomId2));
+            then(chatRoomRepository).should(never()).findByIdAndDeletedFalseFromSecondary(any());
             then(chatMessageRepository).should(never())
-                    .findTopByRoomIdAndDeletedFalseOrderByCreatedAtDescIdDesc(any());
+                    .listLatestMessagesByRoomIdsFromSecondary(any());
         }
 
         @Test
         @DisplayName("읽음 위치가 비어 있으면 0으로 본다")
         void listMyRoomStates_shouldDefaultMissingReadSeqToZero() {
-            given(membershipRepository.listMemberships(memberId, 10))
+            given(membershipRepository.listMemberships(memberId))
                     .willReturn(List.of(membership(roomId1, memberId, null)));
-            given(chatRoomRepository.findByIdAndDeletedFalseFromSecondary(roomId1))
-                    .willReturn(Optional.of(room(roomId1, 30L)));
-            given(chatMessageRepository.findLatestByRoomIdFromSecondary(roomId1))
-                    .willReturn(Optional.empty());
+            given(chatRoomRepository.listByIdsAndDeletedFalse(List.of(roomId1)))
+                    .willReturn(List.of(room(roomId1, 30L)));
+            given(chatMessageRepository.listLatestMessagesByRoomIds(List.of(roomId1)))
+                    .willReturn(List.of());
 
-            List<MyChatRoomState> actual = sut.listMyRoomStates(memberId, 10);
+            List<MyChatRoomState> actual = sut.listMyRoomStates(memberId);
 
             assertThat(actual).singleElement()
                     .extracting(MyChatRoomState::lastMsgReadSeq)
                     .isEqualTo(0L);
+        }
+
+        @Test
+        @DisplayName("membership 이 없으면 방과 메시지를 조회하지 않는다")
+        void listMyRoomStates_shouldSkipBatchQueriesWhenMembershipsEmpty() {
+            given(membershipRepository.listMemberships(memberId)).willReturn(List.of());
+
+            assertThat(sut.listMyRoomStates(memberId)).isEmpty();
+
+            then(chatRoomRepository).should(never()).listByIdsAndDeletedFalse(any());
+            then(chatMessageRepository).should(never()).listLatestMessagesByRoomIds(any());
         }
     }
 
