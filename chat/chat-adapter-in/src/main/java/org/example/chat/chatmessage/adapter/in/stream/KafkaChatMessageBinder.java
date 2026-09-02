@@ -22,18 +22,17 @@ import java.util.List;
 public class KafkaChatMessageBinder {
 
     @Bean
-    public Consumer<List<Message<HandleableEvent<ChatMessageEventHandler>>>> chatMessageEventConsumer(
+    public Consumer<Message<List<HandleableEvent<ChatMessageEventHandler>>>> chatMessageEventConsumer(
             ChatMessageEventHandler handler,
             ChatMessageMetricsPort metrics
     ) {
-        return messages -> metrics.recordHandler(() -> {
-            if (messages == null || messages.isEmpty()) {
+        return message -> metrics.recordHandler(() -> {
+            if (message == null || message.getPayload() == null || message.getPayload().isEmpty()) {
                 return;
             }
 
-            String txId = messages.get(0).getHeaders().get(KafkaHeaderKey.TRANSACTION_ID.value()) + "";
-            List<ChatMessagePersistEvent> events = messages.stream()
-                    .map(Message::getPayload)
+            String txId = message.getHeaders().get(KafkaHeaderKey.TRANSACTION_ID.value()) + "";
+            List<ChatMessagePersistEvent> events = message.getPayload().stream()
                     .map(ChatMessagePersistEvent.class::cast)
                     .toList();
             handler.handleBatch(events, txId);
