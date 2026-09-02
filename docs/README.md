@@ -22,6 +22,7 @@
 | [../chat/load-test-results/.../README.md](../chat/load-test-results/chatmessage/websocket-gateway/README.md) | 채팅 팬아웃 부하테스트 — 측정 조건·결과·고친 것·한계 |
 | [../websocket-gateway/k6/README.md](../websocket-gateway/k6/README.md) | WebSocket 부하테스트 도구(k6 스크립트·실행 방법·측정 시 지킬 것) |
 | [../chat/load-test/chatmessage-write/README.md](../chat/load-test/chatmessage-write/README.md) | ChatMessage 쓰기 비용 측정 도구(Kafka 직접 발행·입력 손실 검증·write operation 계측) |
+| [../chat/load-test-results/chatmessage/write/README.md](../chat/load-test-results/chatmessage/write/README.md) | ChatMessage 쓰기 비용 before/after 결과(#283~#291, Mongo write operation·정합성) |
 | [decisions/README.md](decisions/README.md) | 시스템 전반 기술 선택의 이유와 결과(ADR) |
 | [../README.md](../README.md) | 프로젝트 소개(기획·외부 API·화면 시연·문서 지도) |
 | [../TODO.md](../TODO.md) | 미해결 확인/결정 항목 단일 관리처 |
