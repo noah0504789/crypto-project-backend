@@ -65,16 +65,16 @@ class KafkaChatMessageBinderUnitTest {
                 return null;
             }).when(metrics).recordHandler(any(Runnable.class));
 
-            Consumer<List<Message<HandleableEvent<ChatMessageEventHandler>>>> consumer =
+            Consumer<Message<List<HandleableEvent<ChatMessageEventHandler>>>> consumer =
                     sut.chatMessageEventConsumer(chatMessageEventHandler, metrics);
 
-            Message<HandleableEvent<ChatMessageEventHandler>> message = MessageBuilder
-                    .withPayload(eventPayload)
+            Message<List<HandleableEvent<ChatMessageEventHandler>>> message = MessageBuilder
+                    .withPayload(List.of(eventPayload))
                     .setHeader(KafkaHeaderKey.TRANSACTION_ID.value(), txId)
                     .build();
 
             // when
-            consumer.accept(List.of(message));
+            consumer.accept(message);
 
             // then
             verify(metrics).recordHandler(any(Runnable.class));
