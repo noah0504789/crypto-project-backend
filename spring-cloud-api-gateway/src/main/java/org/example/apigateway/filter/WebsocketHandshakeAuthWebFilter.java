@@ -52,7 +52,12 @@ public class WebsocketHandshakeAuthWebFilter implements WebFilter {
     }
 
     private boolean isWebSocketPath(String path) {
-        return path.startsWith(apiPathProperties.websocket().prefix());
+        return isEndpointPath(path, apiPathProperties.websocket().sockJsEndpoint())
+                || isEndpointPath(path, apiPathProperties.websocket().nativeEndpoint());
+    }
+
+    private boolean isEndpointPath(String path, String endpoint) {
+        return path.equals(endpoint) || path.startsWith(endpoint + "/");
     }
 
     private Mono<Void> authenticate(ServerWebExchange exchange, WebFilterChain chain, Jwt jwt) {

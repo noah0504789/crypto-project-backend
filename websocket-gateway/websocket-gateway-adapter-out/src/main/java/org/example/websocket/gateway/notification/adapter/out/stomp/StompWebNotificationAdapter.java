@@ -36,7 +36,12 @@ public class StompWebNotificationAdapter implements WebNotificationPort {
             return false;
         }
 
-        return sendToUser(receiverId, StompDestination.NOTIFICATION_PREFIX.destination(), StompWebNotificationPayload.from(command), txId);
+        return sendToUser(
+                receiverId,
+                StompDestination.NOTIFICATION_QUEUE.destination(),
+                StompWebNotificationPayload.from(command),
+                txId
+        );
     }
 
     private boolean sendToUser(

@@ -69,7 +69,8 @@ api-contract:
     login-callback-pattern: ${api-contract.oauth2.login-callback-base}/**
     login-callback-base-uri: ${api-contract.oauth2.login-callback-base}/*
   websocket:
-    sock-js-endpoint: /ws
+    # 기본 클라이언트 transport는 native다. SockJS는 fallback 선택지로만 등록한다.
+    sock-js-endpoint: /ws-sockjs
     pattern: ${api-contract.websocket.sock-js-endpoint}/**
     info-pattern: ${api-contract.websocket.sock-js-endpoint}/info/**
     native-endpoint: /ws-native

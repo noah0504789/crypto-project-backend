@@ -11,7 +11,7 @@ public enum StompDestination {
     CHAT_ROOM_BADGE_QUEUE("/queue/chat/badge"),
     CHAT_ACK_QUEUE("/queue/chat/ack"),
 
-    NOTIFICATION_PREFIX("/topic/notification/");
+    NOTIFICATION_QUEUE("/queue/notification");
 
     private final String prefix;
 

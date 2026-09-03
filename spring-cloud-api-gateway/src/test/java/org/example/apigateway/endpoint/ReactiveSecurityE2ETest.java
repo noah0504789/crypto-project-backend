@@ -192,7 +192,7 @@ class ReactiveSecurityE2ETest {
                 Arguments.of(HttpMethod.GET, "/user/me/profile"),
                 Arguments.of(HttpMethod.GET, "/user/user-1/profile"),
                 Arguments.of(HttpMethod.PATCH, "/user/me/profile"),
-                Arguments.of(HttpMethod.GET, "/ws/websocket"),
+                Arguments.of(HttpMethod.GET, "/ws-sockjs/websocket"),
                 Arguments.of(HttpMethod.GET, "/ws-native"),
                 Arguments.of(HttpMethod.GET, "/chat/rooms/me"),
                 Arguments.of(HttpMethod.GET, "/chat/room/room-1/me"),
@@ -220,7 +220,7 @@ class ReactiveSecurityE2ETest {
                 Arguments.of(HttpMethod.POST, "/user/sign-up"),
                 Arguments.of(HttpMethod.GET, "/chat/rooms/popular"),
                 Arguments.of(HttpMethod.GET, "/markets"),
-                Arguments.of(HttpMethod.GET, "/ws/info"),
+                Arguments.of(HttpMethod.GET, "/ws-sockjs/info"),
                 Arguments.of(HttpMethod.POST, "/msg/chat.send")
         );
     }

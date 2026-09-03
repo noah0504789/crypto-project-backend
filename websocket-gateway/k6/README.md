@@ -1,6 +1,6 @@
 # WebSocket Gateway k6 — 채팅 팬아웃 부하테스트 도구
 
-현재 Gateway 계약(`/ws`, `/ws-native`, `/msg/chat.send`, `/topic/chat/{roomId}`)에 맞춘 STOMP 부하테스트다.
+기본 transport인 native WebSocket(`/ws-native`)으로 채팅 팬아웃을 측정하는 STOMP 부하테스트다. SockJS(`/ws-sockjs`) 시나리오는 선택 옵션의 과거 측정 도구로 `legacy/`에만 보존한다.
 **측정 결과와 판정은 [`chat/load-test-results/.../README.md`](../../chat/load-test-results/chatmessage/websocket-gateway/README.md)에 있고, 여기는 그 결과를 만든 도구다.**
 
 ChatMessage의 비동기 쓰기 비용만 비교할 때는 이 도구가 아니라

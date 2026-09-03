@@ -82,14 +82,14 @@ api-path:
     login-failure-redirect-uri: /login?error
     pattern: /oauth2/**
   websocket:
-    sock-js-endpoint: /ws
+    sock-js-endpoint: /ws-sockjs
     native-endpoint: /ws-native
-    prefix: /ws
+    prefix: /ws-sockjs
     native-path: /ws-native
     native-pattern: /ws-native/**
-    pattern: /ws/**
+    pattern: /ws-sockjs/**
     msg-pattern: /msg/**
-    info-pattern: /ws/info/**
+    info-pattern: /ws-sockjs/info/**
   stomp:
     application-destination-prefix: /msg
     user-destination-prefix: /user

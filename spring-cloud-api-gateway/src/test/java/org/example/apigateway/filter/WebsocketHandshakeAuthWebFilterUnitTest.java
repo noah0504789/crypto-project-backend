@@ -55,7 +55,7 @@ class WebsocketHandshakeAuthWebFilterUnitTest {
 
     private ApiPathProperties apiPathProperties() {
         return new ApiPathProperties(
-                new ApiPathProperties.Websocket("/ws", "/ws-native", "/ws", "/ws-native", "/ws-native/**", "/ws/**", "/msg/**", "/ws/info/**"),
+                new ApiPathProperties.Websocket("/ws-sockjs", "/ws-native", "/ws-sockjs", "/ws-native", "/ws-native/**", "/ws-sockjs/**", "/msg/**", "/ws-sockjs/info/**"),
                 new ApiPathProperties.Stomp("/msg", "/user"),
                 new ApiPathProperties.Auth("/auth/**", "/auth/logout", "/auth/refresh"),
                 new ApiPathProperties.OAuth2("/oauth2/authorization", "/oauth2/**", "/login/oauth2/code/**", "/login/oauth2/code", "/login?error", "/oauth2/**"),
@@ -105,8 +105,8 @@ class WebsocketHandshakeAuthWebFilterUnitTest {
     }
 
     @Test
-    @DisplayName("/ws로 시작하는 경로는 access_token 인증 대상이다")
-    void filter_shouldAuthenticate_whenPathStartsWithWs() {
+    @DisplayName("SockJS 경로는 access_token 인증 대상이다")
+    void filter_shouldAuthenticate_whenPathIsSockJsEndpoint() {
         // given
         Jwt jwt = Jwt.withTokenValue("valid-token")
                 .header("alg", "none")
@@ -124,7 +124,7 @@ class WebsocketHandshakeAuthWebFilterUnitTest {
         };
 
         ServerWebExchange exchange = MockServerWebExchange.from(
-                MockServerHttpRequest.get("/ws/test-path?access_token=valid-token").build()
+                MockServerHttpRequest.get("/ws-sockjs/test-path?access_token=valid-token").build()
         );
 
         // when & then
@@ -135,11 +135,36 @@ class WebsocketHandshakeAuthWebFilterUnitTest {
     }
 
     @Test
+    @DisplayName("native WebSocket 경로도 access_token 인증 대상이다")
+    void filter_shouldAuthenticate_whenPathIsNativeEndpoint() {
+        Jwt jwt = Jwt.withTokenValue("valid-token")
+                .header("alg", "none")
+                .claim("id", "user-1")
+                .claim("roles", List.of("ROLE_USER"))
+                .build();
+
+        given(jwtDecoder.decode("valid-token"))
+                .willReturn(Mono.just(jwt));
+        given(chain.filter(any(ServerWebExchange.class)))
+                .willReturn(Mono.empty());
+
+        ServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/ws-native?access_token=valid-token").build()
+        );
+
+        StepVerifier.create(sut.filter(exchange, chain))
+                .verifyComplete();
+
+        then(jwtDecoder).should().decode("valid-token");
+        then(chain).should().filter(any(ServerWebExchange.class));
+    }
+
+    @Test
     @DisplayName("OPTIONS 요청은 토큰 검증 없이 통과한다")
     void filter_shouldPassThrough_whenMethodIsOptions() {
         // given
         MockServerWebExchange exchange = MockServerWebExchange.from(
-                MockServerHttpRequest.options("/ws")
+                MockServerHttpRequest.options("/ws-sockjs")
         );
 
         given(chain.filter(any(ServerWebExchange.class)))
@@ -158,7 +183,7 @@ class WebsocketHandshakeAuthWebFilterUnitTest {
     void filter_shouldReturnUnauthorized_whenAccessTokenMissing() {
         // given
         MockServerWebExchange exchange = MockServerWebExchange.from(
-                MockServerHttpRequest.get("/ws")
+                MockServerHttpRequest.get("/ws-sockjs")
         );
 
         // when & then
@@ -177,7 +202,7 @@ class WebsocketHandshakeAuthWebFilterUnitTest {
     void filter_shouldReturnUnauthorized_whenAccessTokenBlank() {
         // given
         MockServerWebExchange exchange = MockServerWebExchange.from(
-                MockServerHttpRequest.get("/ws?access_token=")
+                MockServerHttpRequest.get("/ws-sockjs?access_token=")
         );
 
         // when & then
@@ -196,7 +221,7 @@ class WebsocketHandshakeAuthWebFilterUnitTest {
     void filter_shouldReturnUnauthorized_whenJwtDecodeFails() {
         // given
         MockServerWebExchange exchange = MockServerWebExchange.from(
-                MockServerHttpRequest.get("/ws?access_token=" + INVALID_TOKEN)
+                MockServerHttpRequest.get("/ws-sockjs?access_token=" + INVALID_TOKEN)
         );
 
         given(jwtDecoder.decode(INVALID_TOKEN))
@@ -218,7 +243,7 @@ class WebsocketHandshakeAuthWebFilterUnitTest {
     void filter_shouldReturnUnauthorized_whenJwtIdClaimMissing() {
         // given
         MockServerWebExchange exchange = MockServerWebExchange.from(
-                MockServerHttpRequest.get("/ws?access_token=" + VALID_TOKEN)
+                MockServerHttpRequest.get("/ws-sockjs?access_token=" + VALID_TOKEN)
         );
 
         Jwt jwt = jwtWithoutUserId();
@@ -242,7 +267,7 @@ class WebsocketHandshakeAuthWebFilterUnitTest {
     void filter_shouldSetUserIdHeaderAndAuthentication_whenJwtValid() {
         // given
         MockServerWebExchange exchange = MockServerWebExchange.from(
-                MockServerHttpRequest.get("/ws?access_token=" + VALID_TOKEN)
+                MockServerHttpRequest.get("/ws-sockjs?access_token=" + VALID_TOKEN)
         );
 
         Jwt jwt = jwtWithUserIdAndRoles();
@@ -294,7 +319,7 @@ class WebsocketHandshakeAuthWebFilterUnitTest {
     void filter_shouldAuthenticateWithoutNpe_whenRolesClaimMissing() {
         // given
         MockServerWebExchange exchange = MockServerWebExchange.from(
-                MockServerHttpRequest.get("/ws?access_token=" + VALID_TOKEN)
+                MockServerHttpRequest.get("/ws-sockjs?access_token=" + VALID_TOKEN)
         );
 
         given(chain.filter(any(ServerWebExchange.class)))

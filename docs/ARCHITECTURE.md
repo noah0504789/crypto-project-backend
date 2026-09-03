@@ -235,12 +235,12 @@ proto 4개(`protobuf/src/main/proto/**`)와 서버/클라이언트 매핑:
 ### 7.4 WebSocket / STOMP
 
 `StompConfig`:
-- 엔드포인트 `/ws`(SockJS), `/ws-native`. 브로커 `/topic`·`/queue`, appPrefix `/msg`, userPrefix `/user`.
+- 기본 엔드포인트는 native WebSocket `/ws-native`다. 프론트와 현행 부하테스트가 이 경로를 사용하며, SockJS `/ws-sockjs`는 선택 옵션으로 등록만 유지한다. 브로커 `/topic`·`/queue`, appPrefix `/msg`, userPrefix `/user`.
 - 핸드셰이크에서 `X-User-Id`(게이트웨이 주입)로 STOMP Principal 결정.
-- Destination 계약(`common-core/StompDestination`): `/topic/chat/`(prefix), `/queue/chat/badge`, `/queue/chat/ack`, `/topic/notification/`(prefix). 인바운드 `@MessageMapping("/chat.send")`.
+- Destination 계약(`common-core/StompDestination`): `/topic/chat/`(prefix), `/queue/chat/badge`, `/queue/chat/ack`, `/queue/notification`. 인바운드 `@MessageMapping("/chat.send")`.
 - 아웃바운드 wire payload(클라이언트가 실제 수신하는 형태, 계약):
   - `/topic/chat/{roomId}` 방 브로드캐스트 → **봉투** `StompChatMessageBatchPayload` `{ roomId, messages[] }`, 각 원소는 `StompChatMessagePayload` `{ messageId, roomId, writerId, content, timestamp(epoch millis, long), clientMessageId }`. 방 단위 100ms 시간창으로 묶어 보내며 **배칭이 꺼져 있어도 1건짜리 봉투로 나간다**(wire 형식 불변). 근거 `BatchingChatMessageBroadcastAdapter`/`StompChatMessageBroadcastAdapter` + `StompChatMessageBatchPayload`. 주의: 내부 Kafka 이벤트 `contract/chatmessage/ChatMessageBroadcastEvent{ payload, clientMessageId }`와 **다르다** — gateway가 `ChatMessageBroadcastEventMapper`로 flat 변환 후 전송한다. 로컬 전달 여부는 gateway가 자기 구독 레지스트리(`LocalSessionCache.hasLocalSubscriber(roomId)`)로 판정하므로 이벤트가 멤버 목록을 싣지 않는다. `createdAt(Instant)`는 `timestamp(epochMilli)`로 변환(null이면 `0`).
-  - 알림 → `convertAndSendToUser(receiverId, "/topic/notification/", payload)`로 **사용자별** 전송, 클라이언트 구독 destination은 **`/user/topic/notification/`**(user-destination). payload `StompWebNotificationPayload` `{ notificationId, type, title, body, createdAtMs(epoch millis, long), link, data(Map<String,Object>) }`. `notificationId`는 REST 읽음 처리와 STOMP 중복 제거에 쓴다. 근거 `StompWebNotificationAdapter` + `StompWebNotificationPayload`. 흐름: Kafka `web-notification-broadcast-event` consume(`WebNotificationBroadcastEventMapper`) → command → 위 전송. 로컬 세션 있는 대상에게만 push.
+  - 알림 → `convertAndSendToUser(receiverId, "/queue/notification", payload)`로 **사용자별** 전송, 클라이언트 구독 destination은 **`/user/queue/notification`**(user-destination). payload `StompWebNotificationPayload` `{ notificationId, type, title, body, createdAtMs(epoch millis, long), link, data(Map<String,Object>) }`. `notificationId`는 REST 읽음 처리와 STOMP 중복 제거에 쓴다. 근거 `StompWebNotificationAdapter` + `StompWebNotificationPayload`. 흐름: Kafka `web-notification-broadcast-event` consume(`WebNotificationBroadcastEventMapper`) → command → 위 전송. 로컬 세션 있는 대상에게만 push.
 
 ---
 

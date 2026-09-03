@@ -90,9 +90,9 @@ graph TB
 ```mermaid
 graph TB
   C(("클라이언트"))
-  P["/ws · /ws-native 경로 요청<br/>쿼리 ?access_token=JWT"]
+  P["/ws-native 기본 · /ws-sockjs 선택 경로 요청<br/>쿼리 ?access_token=JWT"]
   F["WebsocketHandshakeAuthWebFilter<br/>@Order(-1000) — 다른 필터보다 먼저 실행"]
-  SKIP{"경로가 /ws 로 시작하지 않거나 OPTIONS"}
+  SKIP{"경로가 /ws-sockjs·/ws-native가 아니거나 OPTIONS"}
   PASS["통과 — 이 필터가 처리하지 않음"]
   T{"access_token 쿼리 파라미터"}
   D{"jwtDecoder.decode(accessToken)"}
@@ -161,10 +161,10 @@ graph TB
 | 1 | `OPTIONS /**` | permitAll |
 | 2 | `POST /internal/deployment/**` | permitAll(JWT 우회, 별도 보호는 §13 참고) |
 | 3 | `/oauth2/**`, `/login/oauth2/code/**` | permitAll |
-| 4 | `GET /ws/info/**` | permitAll |
+| 4 | `GET /ws-sockjs/info/**` | permitAll |
 | 5 | `/msg/**` | permitAll |
 | 6 | `GET /user/me/profile`, `GET /user/*/profile` | `hasRole(USER)` |
-| 7 | `GET /ws/**`, `/ws-native`, `/ws-native/**` | `hasRole(USER)` |
+| 7 | `GET /ws-sockjs/**`, `/ws-native`, `/ws-native/**` | `hasRole(USER)` |
 | 8 | `GET /chat/rooms/me`, `GET /chat/room/me/*` | `hasRole(USER)` |
 | 9 | `/chat/room/*/members`, `/chat/room/*/activity` | `hasRole(USER)` |
 | 10 | `GET /chat/room/*/messages` | `hasRole(USER)` |
@@ -190,8 +190,8 @@ graph TB
 | `/markets`,`/markets/**`,`/price-alerts`,`/price-alerts/**` | market-service | `lb://market-service` | `X-From` 추가, `rewritePath(/(?<seg>.*) → /api/v1/${seg})`, `X-Gateway` 응답 | `GET /markets`는 permitAll, `/price-alerts/**`는 `hasRole(USER)` | `ReactiveRouteConfig.marketRoutes` |
 | `/notifications`,`/notifications/**` | notification-service | `lb://notification-service` | `X-From` 추가, `rewritePath(/(?<seg>.*) → /api/v1/${seg})`, `X-Gateway` 응답 | `hasRole(USER)` | `ReactiveRouteConfig.notificationRoutes` |
 | `/ws-native`, `/ws-native/**`(upgrade) | websocket-gateway | `lb:ws://websocket-gateway` | `RequestRateLimiter` | `GET`만 `hasRole(USER)` + 핸드셰이크 인증 | `websocketGatewayRoutes("ws-native-upgrade")` |
-| `/ws/**` + `Upgrade: websocket` 헤더 | websocket-gateway | `lb:ws://websocket-gateway` | `RequestRateLimiter` | 동일 | `websocketGatewayRoutes("ws-upgrade")` |
-| `/ws/**`,`/ws-native`,`/ws-native/**`(HTTP) | websocket-gateway | `lb://websocket-gateway` | `dedupeResponseHeader`(CORS 3종) | `GET /ws/info/**`는 permitAll, 나머지 `GET`은 `hasRole(USER)` | `websocketGatewayRoutes("ws-http")` |
+| `/ws-sockjs/**` + `Upgrade: websocket` 헤더 | websocket-gateway | `lb:ws://websocket-gateway` | `RequestRateLimiter` | 동일 | `websocketGatewayRoutes("ws-upgrade")` |
+| `/ws-sockjs/**`,`/ws-native`,`/ws-native/**`(HTTP) | websocket-gateway | `lb://websocket-gateway` | `dedupeResponseHeader`(CORS 3종) | `GET /ws-sockjs/info/**`는 permitAll, 나머지 `GET`은 `hasRole(USER)` | `websocketGatewayRoutes("ws-http")` |
 | `/msg/**` | websocket-gateway | `lb://websocket-gateway` | 없음 | 아니오 | `websocketGatewayRoutes("sockjs-route")` |
 | `/chat/**` | chat-service | `lb://chat-service` | `X-From` 추가, `rewritePath(/chat(?<seg>/.*)?$ → /api/v1/chat${seg})`, `X-Gateway` 응답 | 일부 `GET`만 `hasRole(USER)`(§8 참고), 나머지 permitAll | `ReactiveRouteConfig.chatRoutes` |
 | `POST /internal/deployment/**` | Gateway 자신 | N/A(Route 아님, 로컬 컨트롤러) | `DeploymentControlAuthWebFilter`(`X-Deploy-Token`) | JWT는 permitAll, Deploy Token 별도 필요 | `ReactiveSecurityConfig.java:56`, `DeploymentControlAuthWebFilter` |
@@ -208,7 +208,7 @@ graph TB
 | 1 | `GET /login/oauth2/code/*` | `oauth2-callback-route` | 직접 연결 IP | 20회/분, 순간 5회 | 적용. Provider callback 재시도를 고려해 진입보다 느슨함 |
 | 1 | `POST /auth/refresh` | `token-refresh-route` | 직접 연결 IP | 10회/분, 순간 3회 | 적용. Refresh Token 원문은 Key로 저장하지 않음 |
 | 1 | `POST /auth/logout` | `logout-route` | JWT `id`, 없으면 IP | 1회/초, 순간 5회 | 적용 |
-| 1 | `/ws-native`, `/ws/** + Upgrade:websocket` | `ws-native-upgrade`, `ws-upgrade` | JWT `id` | 2회/초, 순간 5회 | handshake에 적용. SockJS HTTP transport는 제외 |
+| 1 | `/ws-native`, `/ws-sockjs/** + Upgrade:websocket` | `ws-native-upgrade`, `ws-upgrade` | JWT `id` | 2회/초, 순간 5회 | handshake에 적용. SockJS HTTP transport는 제외 |
 | 1 | 채팅방 생성·수정·삭제·멤버·활동 Command REST | `chat-command-route` | JWT `id` | 2회/초, 순간 5회 | 적용 |
 | 1 | STOMP `/msg/chat.send` | 연결 수립 후 websocket-gateway 내부 처리 | JWT `id` 후보 | 미설정 | HTTP Gateway 필터 대상이 아님. STOMP ChannelInterceptor/애플리케이션 limiter 별도 설계 필요 |
 | 2 | `GET /chat/rooms/me`, 방/메시지 조회 | `chat-query-route` | JWT `id` | 10회/초, 순간 20회 | 적용 |
@@ -264,7 +264,7 @@ Gateway가 생성·추가하는 헤더는 다음과 같다. Route·인증·Rate 
 | user-service | `/user/**` → `lb://user-service`, rewrite `→ /api/v1/user${seg}` | `X-User-Id`(인증된 경우만), `X-From: gateway` | `X-User-Id` 헤더, path rewrite 버전(`v1`), `GET /user/me/profile`·`/user/*/profile`의 gateway 레벨 `hasRole(USER)` 강제 |
 | oauth2-client | `/oauth2/**`, `/login/oauth2/code/*`, `/auth/**` → `lb://oauth2-client`(인가 permitAll, Bearer JWT가 제공된 요청은 Resource Server 인증 필터가 처리 가능) | 로그인·callback·refresh는 없음. 로그아웃은 유효한 Bearer JWT가 있으면 Rate Limit user key에 `id`를 쓰고 없으면 IP fallback | 로그인/콜백/로그아웃 경로 이름 |
 | oauth2-authorization-server | 없음(HTTP 미연결) | 없음. 비동기 gRPC로 blacklist 존재 여부만 조회(`GrpcBlacklistTokenClientAdapter`) | JWKS(issuer가 발급한 키), issuer 문자열, gRPC blacklist 조회 메서드 |
-| websocket-gateway | `/ws-native`, `/ws-native/**`, `/ws/**`, `/msg/**` — `websocketGatewayRoutes` Bean 그룹의 개별 Route 4건(§9) | `X-User-Id`(핸드셰이크 시 `WebsocketHandshakeAuthWebFilter`가 주입) | `access_token` 쿼리 파라미터, `X-User-Id` 헤더, `/ws`·`/ws-native`·`/msg` prefix |
+| websocket-gateway | `/ws-native`, `/ws-native/**`, `/ws-sockjs/**`, `/msg/**` — `websocketGatewayRoutes` Bean 그룹의 개별 Route 4건(§9) | `X-User-Id`(핸드셰이크 시 `WebsocketHandshakeAuthWebFilter`가 주입) | `access_token` 쿼리 파라미터, `X-User-Id` 헤더, `/ws-sockjs`·`/ws-native`·`/msg` prefix |
 | chat-service | `/chat/**` → `lb://chat-service`, rewrite `→ /api/v1/chat${seg}` | `X-User-Id`(인증된 경우만), `X-From: gateway` | `X-User-Id` 헤더, path rewrite 버전(`v1`), 채팅방 관련 GET 경로들의 gateway 레벨 `hasRole(USER)` 강제(§8) |
 | market-service | `/markets`,`/markets/**`,`/price-alerts`,`/price-alerts/**` → `lb://market-service`, rewrite `/(?<seg>.*) → /api/v1/${seg}` | `X-User-Id`(`/price-alerts/**` 인증 경로), `X-From: gateway` | `GET /markets`는 permitAll(카탈로그), `/price-alerts/**`는 `hasRole(USER)` → `PriceAlertSettingController`가 `X-User-Id`(publicId)로 본인 스코프 |
 | notification-service | `/notifications`,`/notifications/**` → `lb://notification-service`, rewrite `/(?<seg>.*) → /api/v1/${seg}` | `X-User-Id`(인증 경로), `X-From: gateway` | `/notifications/**` `hasRole(USER)` → `NotificationController`가 `X-User-Id`(receiverId)로 본인 스코프. 실시간 push는 별도(websocket-gateway STOMP) |

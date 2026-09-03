@@ -15,7 +15,7 @@ const writer_id_1 = __ENV.WRITER_ID_1 || '';
 const writer_id_2 = __ENV.WRITER_ID_2 || '';
 
 // ===== stomp destinations =====
-const ws_base_path = '/ws';
+const ws_base_path = '/ws-sockjs';
 const send_destination = '/msg/chat.send';
 const ack_destination = '/user/queue/chat/ack';
 const broadcast_destination = `/topic/chat/${room_id}`;

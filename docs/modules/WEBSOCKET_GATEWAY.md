@@ -130,59 +130,205 @@ graph TB
 
 ## 6. 아웃바운드 — 브로드캐스트 push (Kafka → STOMP)
 
-`KafkaWebsocketGatewayBinder`가 3개 Kafka consumer를 등록한다. 모두 **인스턴스별 고유 group**(`...-${app.instance-id}`)·`concurrency: 2`·`ack-mode: record`라, 전 인스턴스가 같은 이벤트를 받아 **자기 로컬 세션 보유자에게만** 전달한다.
+`KafkaWebsocketGatewayBinder`는 채팅 메시지·방 배지·웹 알림을 각각 Kafka consumer로 등록한다. 세 consumer 모두 **인스턴스별 고유 group**(`...-${app.instance-id}`)·`concurrency: 2`·`ack-mode: record`를 사용한다. 따라서 모든 gateway 인스턴스가 같은 이벤트를 받아 자신의 로컬 세션에만 전달한다.
 
-### 컨슈머 멱등 전략
+### 6.1 소비 모델과 전달 대상
 
-| 컨슈머 이벤트 | 하는 일 | 사용한 전략 |
-|---|---|---|
-| `ChatMessageBroadcastEvent` | 로컬 세션의 채팅방 구독자에게 STOMP 메시지 push | 각 클라이언트가 안정적인 `messageId`로 중복 제거; 서버 push는 best-effort |
-| `MyChatRoomBadgeBroadcastEvent` | 로컬 사용자 세션에 방 배지 상태 push | 최신 상태를 다시 적용할 수 있는 payload와 클라이언트 상태 갱신으로 수렴 |
-| `WebNotificationBroadcastEvent` | 로컬 사용자 세션에 알림 push | 안정적인 `notificationId`로 클라이언트 중복 제거; 영속 알림함 REST 조회로 reconciliation |
-
-세 consumer는 인스턴스별 group으로 모든 gateway 인스턴스가 처리해야 한다. 공유 `(consumer_name,event_id)` Inbox를 적용하면 한 인스턴스의 선점이 다른 인스턴스의 로컬 세션 전송을 차단하므로 사용하지 않는다. Kafka `event_id`는 로그·추적에 사용하며, 서버 측 중복 억제가 필요해지면 공유 키가 아니라 `(instanceId,eventId)` 범위의 짧은 best-effort 기록만 고려한다. STOMP 전송은 DB 트랜잭션으로 원자화할 수 없으므로 exactly-once로 간주하지 않는다.
-
-| consumer | 소비 토픽 | 이벤트 | push 대상(로컬 세션 보유 시) |
+| consumer | 소비 토픽 | 이벤트 | 로컬 전달 대상 |
 |---|---|---|---|
-| `chatMessageBroadcastEventConsumer` | `chatmessage-broadcast-event` | `ChatMessageBroadcastEvent{payload, clientMessageId}` | `/topic/chat/{roomId}`(방 공유 토픽), 그 방을 구독한 로컬 세션이 있으면 전송 |
-| `myChatRoomBadgeBroadcastEventConsumer` | `chatroom-broadcast-event` | `MyChatRoomBadgeBroadcastEvent` | 멤버별 `/user/queue/chat/badge` 직접 전송 |
-| `webNotificationBroadcastEventConsumer` | `web-notification-broadcast-event` | `WebNotificationBroadcastEvent` | 수신자 `/user/topic/notification/` |
+| `chatMessageBroadcastEventConsumer` | `chatmessage-broadcast-event` | `ChatMessageBroadcastEvent{payload, clientMessageId}` | 해당 방을 구독한 로컬 세션의 `/topic/chat/{roomId}` |
+| `myChatRoomBadgeBroadcastEventConsumer` | `chatroom-broadcast-event` | `MyChatRoomBadgeBroadcastEvent` | 로컬 사용자 세션의 `/user/queue/chat/badge` |
+| `webNotificationBroadcastEventConsumer` | `web-notification-broadcast-event` | `WebNotificationBroadcastEvent` | 로컬 수신자 세션의 `/user/queue/notification` |
 
-- **로컬 세션 필터링**: 뱃지·알림 push 어댑터가 `LocalSessionCache.hasUser(...)`로 이 인스턴스에 연결된 사용자에게만 전송한다. 없으면 skip(로그). 사용자가 붙어 있는 인스턴스가 실제 전달을 담당한다. **방 브로드캐스트만 판정 기준이 다르다**(아래).
-- **로컬 전달 판정은 구독 레지스트리로 한다**: SUBSCRIBE/UNSUBSCRIBE 시점에 `LocalSessionCache` 가 방별 세션을 들고 있어 `hasLocalSubscriber(roomId)` 하나로 정해진다. 이벤트가 멤버 목록을 싣던 방식은 outbox 행 크기가 방 크기에 비례해 버려서 걷어냈다. `/topic/chat/{roomId}`로 나가는 wire 는 봉투 `StompChatMessageBatchPayload{ roomId, messages[] }`다(§8). 변환은 `ChatMessageBroadcastEventMapper` → `StompChatMessagePayload.from` → 배칭 버퍼.
-- **브로드캐스트는 방 단위 시간창(100ms)으로 묶어 보낸다**(`BatchingChatMessageBroadcastAdapter`). **전달 메시지 수는 그대로이고 프레임 수만 준다** — 구독자 확장(×N)은 변하지 않지만 확장 대상이 봉투 하나로 줄어 `clientOutboundChannel` 로 나가는 프레임도 같은 비율로 감소한다. 한 건만 담겨도 같은 봉투 형식을 사용한다. 근거·수치는 [부하테스트 문서 §3-0](../../chat/load-test-results/chatmessage/websocket-gateway/README.md).
-- **뱃지는 방 단위로 합친 뒤 직접 전송한다**(`CoalescingMyChatRoomBadgeAdapter` → `DirectStompMyChatRoomBadgeAdapter`, 200ms). 뱃지는 내용이 아니라 **상태**라 구간의 마지막 1건만 보내고 나머지는 버린다(배칭은 내용이라 한 건도 못 버린다). 합치기가 성립하는 근거는 payload(`StompMyChatRoomBadgePayload{roomId, lastMsgContent, lastMsgCreatedAt}`)에 **개인별 값이 없다는 것**이다 — 개인별 필드가 생기면 이 최적화는 깨진다. 도입 시점 측정에서 뱃지가 broker 태스크의 98.8%(6,400/초)를 차지했고 broker 거절 75,694건의 주원인이었다(PR #263). 이 인스턴스에 로컬 세션이 없는 멤버는 정상 skip(`chat.badge.direct.skipped`)이고, 로컬 세션은 있지만 뱃지 구독 ID가 없거나 outbound 전송이 실패한 경우만 `chat.badge.direct.failed` 로 센다.
-- **둘 다 맵 + 전용 스케줄러로 직접 구현했다.** 같은 패턴이 `upbit-connector` 에 이미 있지만(`groupBy(code).sample(7s).onBackpressureLatest()`) 거기는 WebFlux 라 `Flux.sample` 이 바로 붙는다. 게이트웨이는 서블릿이고 유입이 Kafka 컨슈머 콜백(블로킹)이라 `Flux` 가 없어, 리액티브 파이프라인을 새로 세워 얻는 것이 `sample` 하나뿐이다. 대가로 방별 타이머가 아니라 **전역 타이머 하나가 단일 스레드로 전 방을 순회**한다 — 방 수가 늘면 `chat.badge.flush` 와 드레인 건수를 함께 보고 타이머 분산·병렬화를 검토한다(PR #281).
-- **버퍼링의 공통 대가**: 배칭·conflation 모두 **Kafka 오프셋이 실제 전송보다 먼저 커밋된다.** 인스턴스가 죽으면 버퍼에 있던 것은 전달되지 않는다. 뱃지는 방 목록 재조회로, 메시지는 방 재진입 시 Mongo 조회로 회복되므로 허용한다. **회복 경로가 없는 ACK 에는 같은 기법을 쓰지 않는다.**
-- **best-effort**: 이 소비자들은 DLQ 소비/재시도가 없고(`ack-mode: record`), STOMP executor 큐가 포화하면 push 태스크가 버려진다(`stomp.executor.rejected{pool,kind}` — `kind` 로 브로드캐스트·ACK·뱃지를 갈라 읽는다). durable 영속(chat/notification)과 구분된다. 단 **유실을 클라이언트가 감지해 재조회하는 경로는 없다** — 프론트는 재연결 시 재구독만 하고, wire payload에 방별 순번이 없어 갭 감지가 불가능하다. 방 재진입·새로고침 전까지 그 메시지는 보이지 않는다(→ **TODO 5.5**).
+세 consumer는 모든 인스턴스가 처리해야 하므로 인스턴스별 group을 사용한다. 공유 `(consumer_name,event_id)` Inbox는 사용하지 않는다. 한 인스턴스가 이벤트를 선점하면 다른 인스턴스의 로컬 세션 전송이 차단되기 때문이다.
+
+Kafka `event_id`는 로그와 추적에 사용한다. STOMP 전송은 DB 트랜잭션으로 원자화할 수 없으므로 서버 측 exactly-once를 보장하지 않는다. 중복은 이벤트 성격에 따라 클라이언트가 안정적인 `messageId` 또는 `notificationId`로 제거하고, 알림은 영속 알림함 REST 조회로 상태를 보정한다.
+
+### 6.2 채팅 메시지 브로드캐스트
+
+```text
+Kafka 이벤트
+  → ChatMessageBroadcastEventMapper
+  → LocalSessionCache.hasLocalSubscriber(roomId)
+  → 방별 100ms 배칭
+  → brokerChannel
+  → /topic/chat/{roomId} 구독 세션으로 확장
+```
+
+- 이벤트에는 멤버 목록을 넣지 않는다. `SUBSCRIBE`·`UNSUBSCRIBE` 때 `LocalSessionCache`가 관리하는 방별 구독 레지스트리로 `hasLocalSubscriber(roomId)`를 판정한다. 멤버 목록을 이벤트에 넣으면 outbox 행 크기가 방 크기에 비례하기 때문이다.
+- `/topic/chat/{roomId}`로 나가는 wire는 `StompChatMessageBatchPayload{roomId, messages[]}` 봉투다(§8). 한 건만 담겨도 같은 봉투 형식을 사용한다.
+- 방별 100ms 시간창으로 묶는 것은 **메시지를 버리는 것이 아니라 프레임 수를 줄이는 것**이다. 전달 메시지 수와 구독자 확장(×N)은 변하지 않지만, `brokerChannel`에 제출하는 태스크와 `clientOutboundChannel` 프레임 수가 줄어든다.
+- 근거와 수치는 [부하테스트 문서 §3-0](../../chat/load-test-results/chatmessage/websocket-gateway/README.md)에 정리돼 있다.
+
+### 6.3 방 배지
+
+```text
+Kafka 이벤트
+  → LocalSessionCache.hasUser(userId)
+  → 방별 200ms conflation
+  → 최신 상태 1건만 유지
+  → 로컬 세션별 /user/queue/chat/badge 직접 전송
+```
+
+- 배지는 메시지 내용이 아니라 상태 알림이다. 따라서 200ms 구간의 마지막 1건만 남기고 이전 상태는 버린다(`CoalescingMyChatRoomBadgeAdapter` → `DirectStompMyChatRoomBadgeAdapter`). 메시지 브로드캐스트와 달리 전달 메시지 수를 보존해야 하는 경로가 아니다.
+- 이 최적화가 가능한 이유는 payload(`StompMyChatRoomBadgePayload{roomId, lastMsgContent, lastMsgCreatedAt}`)에 개인별 값이 없기 때문이다. 개인별 필드가 추가되면 방 단위 conflation을 재검토해야 한다.
+- 로컬 세션이 없는 멤버는 정상 skip(`chat.badge.direct.skipped`)이다. 세션은 있지만 뱃지 구독 ID가 없거나 전송에 실패한 경우만 `chat.badge.direct.failed`로 센다.
+- 도입 당시 뱃지는 broker 태스크의 98.8%(6,400/초)를 차지했고 broker 거절 75,694건의 주원인이었다(PR #263).
+
+배칭과 conflation은 맵과 전용 스케줄러로 구현했다. Kafka consumer 콜백이 블로킹이라 WebFlux의 `Flux.sample`을 그대로 사용할 수 없기 때문이다. 현재는 전역 타이머 하나가 단일 스레드로 전 방을 순회한다. 방 수가 늘어나면 `chat.badge.flush`와 드레인 건수를 기준으로 타이머 분산·병렬화를 검토한다(PR #281).
+
+### 6.4 웹 알림
+
+웹 알림은 `LocalSessionCache.hasUser(receiverId)`로 대상 사용자가 이 인스턴스에 연결돼 있는지 확인한 뒤 `/user/queue/notification`으로 전송한다. 연결된 인스턴스가 없으면 skip한다.
+
+알림은 `notificationId`를 기준으로 클라이언트에서 중복 제거하고, 누락이나 재연결 이후 상태는 영속 알림함 REST 조회로 보정한다.
+
+### 6.5 전달 보장과 한계
+
+- 세 consumer는 DLQ 소비·재시도가 없고 `ack-mode: record`다. STOMP executor 큐가 포화하면 push 태스크가 거절될 수 있으며, `stomp.executor.rejected{pool,kind}`의 `kind`로 브로드캐스트·ACK·뱃지를 구분한다.
+- 배칭·conflation은 Kafka offset이 실제 STOMP 전송보다 먼저 commit될 수 있다. 인스턴스가 중간에 종료되면 버퍼의 이벤트는 전달되지 않는다. 뱃지는 방 목록 재조회로, 메시지는 방 재진입 시 Mongo 조회로 회복할 수 있어 이 비용을 허용한다.
+- 회복 경로가 없는 ACK에는 배칭·conflation을 적용하지 않는다.
+- 이 경로는 durable 영속 경로와 구분되는 best-effort push다. 현재 wire payload에 방별 순번이 없어 클라이언트가 유실을 감지해 즉시 재조회할 수 없다. 재연결은 재구독만 수행하므로, 유실된 메시지는 방 재진입이나 새로고침 전까지 보이지 않는다(→ **TODO 5.5**).
 
 ## 7. 세션 위치 관리
 
-연결된 사용자의 위치를 **로컬(Caffeine) + 전역(Redis)** 이중으로 관리한다(`WebSocketSessionEventHandler`, `@EventListener`).
+세션 위치는 **이 인스턴스의 실제 연결 상태**와 **클러스터 전체에서의 위치 정보**를 나눠 관리한다. 두 저장소 모두 `WebSocketSessionEventHandler`가 STOMP 세션 이벤트에 맞춰 갱신한다.
 
-- **`LocalSessionCache`**: `sessionId→userId`·`userId→Set<sessionId>`·`sessionId→구독(ACK·뱃지 구독 ID + 방 구독)`·`roomId→Set<sessionId>` 네 가지를 **전부 `ConcurrentHashMap`**으로 들고 있다. 항목의 수명은 STOMP 이벤트(connect·subscribe·unsubscribe·disconnect)가 정하므로 상한 축출은 그 수명과 무관하게 불변식을 깬다 — 방에서 지워지면 구독자가 있는데 없다고 답하고, 세션 구독이 지워지면 방을 되찾지 못해 죽은 세션이 방에 남는다(둘 다 로그를 남기지 않는다). 마지막 구독자가 빠질 때 방 키를 지우고 마지막 세션이 빠질 때 사용자 키를 지운다. 크기는 `ws_local_sessions`·`ws_local_subscribed_rooms` 게이지로 노출하며 `ws_active_sessions` 와 벌어지면 세션 정리가 안 되고 있다는 신호다. **이 인스턴스에 연결된 세션만** 들고 있으며 push 대상 판정(`hasUser`/`hasLocalSubscriber`)과 ACK·뱃지 직접 전송(구독 ID)의 근거다.
-- **`RedisSessionLocationAdapter`**(`SessionLocationPort`, Redis hash `{session}:user:{userId}` field=sessionId value=serverId): 어느 사용자가 어느 인스턴스(serverId)에 붙었는지. TTL 3분.
-- 이벤트: **connect** → 로컬 register + Redis save(+TTL); **subscribe** → Redis `refreshTtl`; **disconnect** → `deleteIfServerMatches`(serverId 일치할 때만 삭제, 재접속 레이스 방지) + 로컬 remove. `ws_active_sessions` gauge 갱신.
-- **핸드셰이크 인증**: `StompConfig`의 `determineUser`가 `X-User-Id` 헤더로 `Principal`을 만든다(없으면 연결 거부). 이 헤더는 업스트림(게이트웨이/oauth2-client 핸드셰이크 필터)이 주입한다(웹소켓 토큰 전달 방식은 TODO 1.5와 연결).
+| 범위 | 저장소 | 관리 기준 | 용도 |
+|---|---|---|---|
+| 로컬 | `LocalSessionCache` (`ConcurrentHashMap`) | 이 인스턴스에 연결된 세션·구독 | 로컬 push 대상 판정, 방 구독자 조회, ACK·뱃지 직접 전송 |
+| 전역 | `RedisSessionLocationAdapter` (`SessionLocationPort`) | `userId`·`sessionId`와 `serverId`의 매핑 | 사용자가 연결된 인스턴스 위치 기록 및 만료 관리 |
+
+### 7.1 로컬 세션·구독 레지스트리
+
+`LocalSessionCache`는 캐시 축출을 전제로 한 Caffeine 캐시가 아니라, STOMP 세션 생명주기를 그대로 반영하는 네 개의 `ConcurrentHashMap`으로 구성된 인메모리 레지스트리다.
+
+- `sessionId → userId`: 세션의 사용자 식별
+- `userId → Set<sessionId>`: 한 사용자의 다중 세션 추적
+- `sessionId → 구독 정보`: 방 구독과 ACK·뱃지 구독 ID 보관
+- `roomId → Set<sessionId>`: 방별 로컬 구독 세션 조회
+
+수명은 connect·subscribe·unsubscribe·disconnect 이벤트가 결정한다. 따라서 임의의 상한 축출을 적용하면 실제 연결은 살아 있는데 로컬 레지스트리만 사라지는 불변식 위반이 발생한다. 예를 들어 방 구독 정보가 축출되면 구독자가 있는데도 없다고 판단하고, 세션의 구독 정보가 축출되면 방 인덱스와의 대응이 깨져 종료된 세션이 방에 남을 수 있다. 마지막 구독자가 빠지면 방 키를, 마지막 세션이 빠지면 사용자 키를 정리한다.
+
+이 레지스트리는 **현재 인스턴스에 연결된 세션만** 가진다.
+
+- `hasUser`: 해당 사용자의 로컬 세션 존재 여부를 확인해 뱃지·알림 push 대상을 판단한다.
+- `hasLocalSubscriber`: 해당 방에 로컬 구독 세션이 있는지 확인해 브로드캐스트 대상을 판단한다.
+- 구독 ID 조회: ACK·뱃지를 `clientOutboundChannel`로 직접 전송할 때 세션별 목적지 구독 ID를 헤더에 넣는 근거가 된다.
+
+`ws_local_sessions`·`ws_local_subscribed_rooms` 게이지로 레지스트리 크기를 노출한다. `ws_active_sessions`와 차이가 커지면 세션 정리 누락을 의심할 수 있다.
+
+### 7.2 전역 세션 위치
+
+`RedisSessionLocationAdapter`는 Redis hash에 세션 위치를 기록한다.
+
+- 키: `{session}:user:{userId}`
+- 필드: `sessionId`
+- 값: `serverId`
+- 기본 TTL: 3분
+
+이 정보는 세션이 어느 gateway 인스턴스에 연결됐는지 나타내는 전역 위치 정보다. 실제 STOMP push 대상과 구독 ID 조회는 각 인스턴스의 `LocalSessionCache`를 기준으로 수행한다.
+
+- **save**: connect 시 `sessionId → serverId`를 기록하고 hash TTL을 갱신한다.
+- **refreshTtl**: subscribe 시 해당 사용자 세션 위치의 TTL을 갱신한다. 모든 메시지마다 갱신하지는 않는다.
+- **deleteIfServerMatches**: disconnect 시 현재 값이 자신의 `serverId`일 때만 삭제한다. 같은 세션 ID가 재접속으로 갱신된 뒤 이전 연결의 disconnect 이벤트가 새 연결 정보를 지우는 레이스를 막는다. hash가 비면 키도 삭제한다.
+
+### 7.3 세션 이벤트 흐름
+
+```text
+CONNECT
+  → 세션·사용자 식별 검증
+  → LocalSessionCache.register
+  → RedisSessionLocationAdapter.save(+TTL)
+
+SUBSCRIBE
+  → 로컬 구독·구독 ID 등록
+  → RedisSessionLocationAdapter.refreshTtl
+
+UNSUBSCRIBE
+  → subscriptionId 기준 로컬 구독 제거
+  → 방의 마지막 세션이면 방 인덱스 정리
+
+DISCONNECT
+  → RedisSessionLocationAdapter.deleteIfServerMatches
+  → LocalSessionCache.remove(구독 정보 포함)
+  → ws_active_sessions 갱신
+```
+
+### 7.4 핸드셰이크 인증과 관측
+
+`StompConfig`의 `determineUser`는 `X-User-Id` 헤더로 `Principal`을 만든다. 헤더가 없으면 연결을 거부한다. 이 헤더는 업스트림의 게이트웨이·oauth2-client 핸드셰이크 필터가 주입하며, 웹소켓 토큰 전달 방식은 TODO 1.5와 연결된다.
 
 ## 8. STOMP 계약 (프론트·부하테스트 의존)
 
-- **엔드포인트**(`websocket.yml`): SockJS `/ws`, native `/ws-native`. `setAllowedOriginPatterns("*")`.
-- **prefix**: application `/msg`(@MessageMapping), user `/user`(`convertAndSendToUser`), broker simple `/topic`,`/queue`.
-- **destination**(`common-core/StompDestination`):
+이 절의 endpoint·prefix·destination·payload는 프론트와 `websocket-gateway/k6`가 함께 사용하는 외부 계약이다. destination이나 payload를 바꾸면 서버만 수정할 수 없으므로, 변경 전에 [`external-contracts.md`](../../.claude/rules/external-contracts.md)와 모든 소비처를 확인한다.
 
-| 방향 | destination | 전송 방식 | payload |
+### 8.1 연결 엔드포인트
+
+| 구분 | 경로 | 용도 | 현재 사용처 |
 |---|---|---|---|
-| inbound | `/msg/chat.send` | `@MessageMapping("/chat.send")` | `StompChatMessageSendRequest{clientMessageId, roomId, writerId, content}` |
-| outbound | `/topic/chat/{roomId}` | `convertAndSend`(방 공유) | **봉투** `StompChatMessageBatchPayload{roomId, messages[]}`. 각 원소는 `StompChatMessagePayload{messageId, roomId, writerId, content, timestamp(long), clientMessageId}` |
-| outbound | `/user/queue/chat/ack` | **`clientOutboundChannel` 직접**(brokerChannel 우회) | `StompChatMessageAckPayload`(성공/실패, errorCode) |
-| outbound | `/user/queue/chat/badge` | **`clientOutboundChannel` 직접** | `StompMyChatRoomBadgePayload` |
-| outbound | `/user/topic/notification/` | `convertAndSendToUser` | `StompWebNotificationPayload` |
+| 기본 | `/ws-native` | native WebSocket transport | 프론트, 현행 k6 시나리오 |
+| 선택 | `/ws-sockjs` | SockJS fallback | fallback 클라이언트, `k6/legacy` 시나리오 |
 
-- 이들은 프론트와 `websocket-gateway/k6` 부하 테스트가 의존하는 **외부 계약**이다. 변경 전 의존성 확인(→ `../../.claude/rules/external-contracts.md`). 특히 `/topic/chat/{roomId}` wire는 내부 Kafka `ChatMessageBroadcastEvent`와 구조가 다르다.
-- **ACK 는 brokerChannel 을 지나지 않는다.** `LocalSessionCache` 에서 세션과 구독 ID 를 찾아 `clientOutboundChannel` 로 직접 보낸다(`DirectStompChatMessageAckAdapter`). 세션이나 구독을 못 찾거나 전송에 실패하면 보내지 않고 `chat.message.ack.direct.failed` 로 센다. 구독 ID 는 `SessionSubscribeEvent` 에서 잡아 `LocalSessionCache` 에 함께 둔다 — 없으면 클라이언트가 MESSAGE 프레임을 매칭하지 못한다.
-- **뱃지도 brokerChannel 을 지나지 않는다.** `DirectStompMyChatRoomBadgeAdapter` 가 같은 방식으로 세션·뱃지 구독 ID 를 헤더에 넣어 직접 보낸다. 로컬 세션이 없으면 `chat.badge.direct.skipped`, 로컬 세션은 있지만 구독 ID를 찾지 못하거나 전송에 실패하면 `chat.badge.direct.failed` 로 센다.
-- 메시지 변환: `MappingJackson2MessageConverter`(JSON), 커스텀 executor(broker/inbound/outbound `ThreadPoolTaskExecutor`), broker cacheLimit 8192.
+두 endpoint 모두 `websocket.yml`에 등록되어 있고 `setAllowedOriginPatterns("*")`를 적용한다. native endpoint를 기본으로 사용하며, SockJS endpoint는 호환성이 필요한 클라이언트를 위해 유지한다.
+
+### 8.2 STOMP prefix
+
+| prefix | 역할 | 서버 설정·사용 방식 |
+|---|---|---|
+| `/msg` | 클라이언트 → 서버 application destination | `@MessageMapping` 진입점 |
+| `/user` | 사용자별 destination | `convertAndSendToUser` 또는 사용자 destination 직접 구성 |
+| `/topic` | 방 등 다수 구독자 대상 | simple broker destination |
+| `/queue` | 사용자별 단일 논리 목적지 | simple broker destination 또는 직접 전송 destination |
+
+실제 클라이언트 구독 경로는 사용자 prefix를 포함한다. 예를 들어 ACK 구독은 `/user/queue/chat/ack`이고, 서버 내부의 공통 destination 상수는 `/queue/chat/ack`만 표현한다.
+
+### 8.3 메시지 destination과 payload
+
+destination 상수는 `common-core/StompDestination`에서 관리한다.
+
+| 방향 | destination | payload 및 필드 |
+|---|---|---|
+| inbound | `/msg/chat.send` | `StompChatMessageSendRequest`: `clientMessageId`, `roomId`, `writerId`, `content` |
+| outbound | `/topic/chat/{roomId}` | `StompChatMessageBatchPayload`: `roomId`, `messages[]`<br>각 메시지: `messageId`, `roomId`, `writerId`, `content`, `timestamp`, `clientMessageId` |
+| outbound | `/user/queue/chat/ack` | `StompChatMessageAckPayload`: `id`, `clientMessageId`, `success`, `ts`, `errors`, `errorCode` |
+| outbound | `/user/queue/chat/badge` | `StompMyChatRoomBadgePayload`: `roomId`, `lastMsgContent`, `lastMsgCreatedAt` |
+| outbound | `/user/queue/notification` | `StompWebNotificationPayload`: `notificationId`, `type`, `title`, `body`, `createdAtMs`, `link`, `messageParts`, `data` |
+
+채팅 브로드캐스트는 단건 payload가 아니라 `messages[]`를 가진 봉투로 전송한다. 배열 순서는 서버가 받은 순서이며, 이 STOMP wire payload는 내부 Kafka `ChatMessageBroadcastEvent`와 다른 외부 표현이다.
+
+### 8.4 destination별 전달 경로
+
+```text
+채팅 송신
+  client → /msg/chat.send
+         → @MessageMapping
+         → chat gRPC 저장
+         → /topic/chat/{roomId} 브로드캐스트
+
+ACK·뱃지
+  서버 → LocalSessionCache에서 로컬 세션·목적지 구독 ID 조회
+       → clientOutboundChannel 직접 제출
+       → WebSocket 전송
+
+웹 알림
+  Kafka 이벤트 → convertAndSendToUser
+               → /user/queue/notification
+               → WebSocket 전송
+```
+
+ACK와 뱃지는 `brokerChannel`을 거치지 않는다. `DirectStompChatMessageAckAdapter`와 `DirectStompMyChatRoomBadgeAdapter`가 `LocalSessionCache`에서 세션별 구독 ID를 찾아 헤더에 넣고 `clientOutboundChannel`에 직접 제출한다. 이는 TCP 소켓에 직접 쓰는 것이 아니라 Spring의 outbound 전송 계층을 호출하는 방식이다.
+
+- ACK: 세션 또는 ACK 구독을 찾지 못하거나 전송에 실패하면 `chat.message.ack.direct.failed`로 센다. ACK는 발신자에게 처리 결과를 알려야 하므로 폴백 없이 실패를 관측한다.
+- 뱃지: 로컬 세션이 없으면 정상적인 대상 부재로 `chat.badge.direct.skipped`에 기록한다. 로컬 세션은 있지만 뱃지 구독 ID가 없거나 전송에 실패하면 `chat.badge.direct.failed`로 센다.
+- 알림: `convertAndSendToUser` 경로를 사용하므로 ACK·뱃지의 직접 전송 경로와 다르다.
+
+### 8.5 공통 전송 설정
+
+- payload 변환은 `MappingJackson2MessageConverter`를 사용한다.
+- broker·inbound·outbound는 각각 커스텀 `ThreadPoolTaskExecutor`를 사용한다.
+- simple broker의 `broker cacheLimit`은 8192다.
+- 세션별 직접 전송에 필요한 구독 ID는 `SessionSubscribeEvent`에서 등록하고 `UNSUBSCRIBE`·`DISCONNECT`에서 함께 제거한다. 구독 ID가 누락되면 클라이언트가 MESSAGE 프레임을 매칭하지 못해 조용히 전달되지 않는다.
 
 ## 9. 확인 필요 항목
 

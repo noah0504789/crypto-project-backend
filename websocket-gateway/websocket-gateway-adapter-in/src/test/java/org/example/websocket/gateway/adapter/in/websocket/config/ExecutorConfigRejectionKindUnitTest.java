@@ -77,6 +77,14 @@ class ExecutorConfigRejectionKindUnitTest {
     }
 
     @Test
+    @DisplayName("알림은 세션 접미사가 붙어도 notification 으로 센다")
+    void classifiesNotificationWithSessionSuffix() {
+        reject("/queue/notification-usersession123");
+
+        assertThat(rejected("notification")).isEqualTo(1.0);
+    }
+
+    @Test
     @DisplayName("목적지 헤더가 없으면 none 으로 센다")
     void classifiesMissingDestination() {
         handler.rejectedExecution(
