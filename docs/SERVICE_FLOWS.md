@@ -402,6 +402,7 @@ projector는 다음 패턴을 연결한다.
 ```mermaid
 graph TB
   subgraph MSG["메시지 목록 조회"]
+    direction TB
     MREQ["메시지 목록 요청"]
     MQ["ChatMessageQueryService"]
     MCACHE[("Redis 메시지 ZSET")]
@@ -416,6 +417,7 @@ graph TB
   end
 
   subgraph ROOMS["내 방 목록 조회"]
+    direction TB
     RREQ["내 방 목록 요청<br/>첫 페이지 · 커서 페이지"]
     RQ["ChatRoomQueryService"]
     ACTIVE[("Redis active-room ZSET")]

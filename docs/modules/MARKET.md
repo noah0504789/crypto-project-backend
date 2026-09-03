@@ -26,13 +26,15 @@
 
 ## 3. 실행 구조와 주요 의존성
 
-- Gradle 경로: `:market:*` (헥사고날 멀티모듈). 실행 모듈은 `:market:market-bootstrap`(`ext.dockerImageName = "crypto-market-service"`).
-- 실행 클래스: `org.example.market.Main`(`@SpringBootApplication(scanBasePackages="org.example")`, `@ConfigurationPropertiesScan`).
-- app name: `market-service`. 포트: REST `8200`, gRPC `18200`. 컨텍스트 경로 `/api/v1`.
-- 저장소: **MySQL**(`market` DB). 스키마는 `spring.sql.init`(`schema-locations: classpath:sql/schema.sql`, `mode: always`)로 초기화하고 마켓 5종을 시드한다.
-- 조회 캐시: **Caffeine**(로컬 인메모리, `spring-boot-starter-cache`). Redis/Mongo는 쓰지 않는다.
-- Config Server 연동: `spring.cloud.config.name: market-service,eureka-client,mysql,kafka,monitoring`. 공유 `api-contract.*`는 Config Repository 루트 `application.yml`에서 자동 병합된다.
-- 부트스트랩 의존성: `common-actuator-webmvc`, Config Client, Eureka Client, `spring-cloud-starter-bus-kafka`, Micrometer/Prometheus.
+| 구분 | 내용 |
+|---|---|
+| Gradle·실행 | `:market:*` 헥사고날 멀티모듈, `:market:market-bootstrap`(`crypto-market-service`) |
+| 진입점·네트워크 | `org.example.market.Main`, REST `8200`, gRPC `18200`, 컨텍스트 `/api/v1` |
+| 저장소·캐시 | MySQL(`market` DB, `schema.sql` 시드), Caffeine 로컬 캐시; Redis/Mongo 미사용 |
+| 공통·플랫폼 | `common-actuator-webmvc`, Config Client, Eureka Client, `spring-cloud-starter-bus-kafka`, Micrometer/Prometheus |
+| 원격 설정 | `market-service,eureka-client,mysql,kafka,monitoring`; 공유 `api-contract.*`는 Config Repository 루트에서 병합 |
+
+의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
 
 ## 4. 모듈 구조 (헥사고날)
 

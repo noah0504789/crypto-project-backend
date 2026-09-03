@@ -34,10 +34,6 @@
 `CustomLogoutSuccessHandler.resolveSubject`는 JWT 검증 실패(`JwtValidationException`) 시 서명 미검증으로 subject를 파싱(`parseSubjectWithoutValidation`)해 블랙리스트/토큰 삭제에 사용한다. 만료 토큰으로도 로그아웃을 허용하려는 의도로 보이나, 서명 미검증 파싱을 어디까지 허용할지 확인 필요.
 `[출처: docs/modules/OAUTH2_CLIENT.md §12]`
 
-#### 1.7 redirect-uri localhost 하드코딩
-`oauth2-client.yml`의 google/kakao `redirect-uri`가 `https://localhost:8000/...`로 하드코딩(kakao에 `# TODO: 주입하기` 주석). 운영 값 주입 방식 확인 필요.
-`[출처: docs/modules/OAUTH2_CLIENT.md §12]`
-
 ### user
 
 ### spring-cloud-config

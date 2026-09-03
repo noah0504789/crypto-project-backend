@@ -23,12 +23,15 @@ Transactional Outbox 패턴의 **공용 릴레이**. 모든 서비스가 자기 
 
 ## 3. 실행 구조와 주요 의존성
 
-- Gradle 경로: `:outbox-poller`. **단일 모듈**(`crypto-bootstrap`, 서브모듈 없음). `ext.dockerImageName = "crypto-outbox-poller"`.
-- 실행 클래스: `org.example.outboxpoller.Main`(`@SpringBootApplication(scanBasePackages="org.example")`, `@ConfigurationPropertiesScan`, **`@EnableScheduling`**).
-- app name: `outbox-poller`. 포트 `9200`.
-- 의존: `common-core`, `common-outbox`(도메인·서비스·포트), `spring-boot-starter-web`, `data-jpa`, `stream-kafka`, `ulid-creator`(DLQ id), config/bus/prometheus.
-- Config Server 연동: `spring.cloud.config.name: outbox-poller,mysql,kafka,monitoring`. 스키마는 `spring.sql.init`(`classpath:sql/schema.sql`, `mode: always`)로 `outbox`/`dlq` 생성.
-- Kafka: `default-binder: kafka`. **Kafka 트랜잭션은 비활성**(설정에 `transaction-id-prefix`가 주석 처리) — 브로커 공통 idempotence/acks=all(`infrastructure/kafka.yml`)에 의존하는 at-least-once 릴레이(§6).
+| 구분 | 내용 |
+|---|---|
+| Gradle·실행 | `:outbox-poller` 단일 모듈(`crypto-bootstrap`), Docker 이미지 `crypto-outbox-poller` |
+| 진입점·네트워크 | `org.example.outboxpoller.Main`, `@EnableScheduling`, 포트 `9200` |
+| 공통·저장소 | `common-core`, `common-outbox`, `spring-boot-starter-web`, `data-jpa`, `ulid-creator`; `schema.sql`로 `outbox`/`dlq` 생성 |
+| Kafka | `stream-kafka`, `default-binder: kafka`, 트랜잭션 비활성, at-least-once 릴레이 |
+| 원격 설정 | `outbox-poller,mysql,kafka,monitoring`; 브로커 공통 설정은 `infrastructure/kafka.yml` |
+
+의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
 
 ## 4. 폴링 동작
 

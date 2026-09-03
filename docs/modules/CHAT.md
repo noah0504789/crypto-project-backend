@@ -30,12 +30,15 @@
 
 ## 3. 실행 구조와 주요 의존성
 
-- Gradle 경로: `:chat:*` (헥사고날 멀티모듈). 실행 모듈은 `:chat:chat-bootstrap`(`ext.dockerImageName = "crypto-chat-service"`).
-- 실행 클래스: `org.example.chat.Main`(`@SpringBootApplication(scanBasePackages="org.example")`, `@ConfigurationPropertiesScan`).
-- app name: `chat-service`. 포트: REST `8080`, gRPC `18080`. 컨텍스트 경로 `/api/v1`(`server.servlet.context-path: /api/${server.version}`).
-- 저장소: **MongoDB**(주 저장소, 방·메시지·멤버십), **Redis Cluster**(조회 캐시/인덱스, `{chat}` hash tag), **MySQL**(Outbox/DLQ 이벤트 저장 — `common-outbox` 경유, `mysql.event.*` DB).
-- Config Server 연동: `application.yml`의 `spring.config.import: configserver:...`, `spring.cloud.config.name: chat-service,eureka-client,mysql,mongo,redis,kafka,monitoring`. 공유 `api-contract.*`는 Config Repository 루트 `application.yml`에서 자동 병합된다.
-- 부트스트랩 의존성: `common-actuator-webmvc`, Config Client, Eureka Client, `spring-cloud-starter-bus-kafka`, Micrometer/Prometheus.
+| 구분 | 내용 |
+|---|---|
+| Gradle·실행 | `:chat:*` 헥사고날 멀티모듈, `:chat:chat-bootstrap`(`crypto-chat-service`) |
+| 진입점·네트워크 | `org.example.chat.Main`, REST `8080`, gRPC `18080`, 컨텍스트 `/api/v1` |
+| 저장소·인프라 | MongoDB(방·메시지·멤버십), Redis Cluster(조회 캐시·인덱스, `{chat}`), MySQL(Outbox/DLQ, `mysql.event.*`) |
+| 공통·플랫폼 | `common-actuator-webmvc`, Config Client, Eureka Client, `spring-cloud-starter-bus-kafka`, Micrometer/Prometheus |
+| 원격 설정 | `chat-service,eureka-client,mysql,mongo,redis,kafka,monitoring`; 공유 `api-contract.*`는 Config Repository 루트에서 병합 |
+
+의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
 
 ## 4. 모듈 구조 (헥사고날)
 

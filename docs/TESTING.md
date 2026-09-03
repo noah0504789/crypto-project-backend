@@ -1,7 +1,7 @@
 # TESTING — 테스트 구조 기준 문서
 
 > - **문서 상태**: 검증 완료
-> - **기준 일자**: 2026-08-01 (§7 커버리지·§8 개수는 2026-08-30 재확인)
+> - **기준 일자**: 2026-08-01 (§7 커버리지는 2026-08-30 재확인)
 > - **검증 기준**: 실제 테스트 코드(`**/src/test`), `common-test`, `build-logic`, Config Repository(`git-config-repo/`)
 
 이 문서는 이 저장소의 테스트를 **어떤 층으로 나누고, 각 층을 어떤 스타일로 작성하며, 인프라(Testcontainers)와 부팅 검증을 어떤 공통 장치로 반복 없이 구성하는지**를 정리한다. 짧은 실행/작성 규칙은 [`../.claude/rules/testing.md`](../.claude/rules/testing.md)에 있고, 여기서는 구조와 근거를 다룬다. 문서와 코드가 어긋나면 코드가 기준이다.
@@ -159,11 +159,7 @@
 - ✓ 있음 / ✗ 없음 / △ 부분(slice) / — 해당 없음.
 - "통합 ✗"는 그 모듈의 어댑터가 mock 단위로만 검증되고 실제 인프라 통합은 부팅 스모크가 커버한다는 뜻이다(부팅까지만, 동작 세부는 아님).
 
-## 8. 네이밍 정합화 (완료)
-
-전 테스트 클래스명을 §2.1 컨벤션에 맞춰 정리했다(정리 시점 112개: Unit 91 / Integration 12 / E2E 9. 2026-08-30 기준 159개: Unit 122 / Integration 20 / E2E 17). 층은 실제 구현(Mockito·Testcontainers·MockMvc/WebTestClient·@SpringBootTest)으로 판별했다. `BootSmokeTest`·헬퍼(`Test*Config`)·ArchUnit(`*ArchitectureTest`)은 대상에서 제외했다. 동작 변경 없는 이름 정리다.
-
-## 9. 관련 문서·규칙
+## 8. 관련 문서·규칙
 
 - 실행/작성 짧은 규칙: [`../.claude/rules/testing.md`](../.claude/rules/testing.md)
 - CI/CD(affected 빌드): [`CI_CD.md`](CI_CD.md)
