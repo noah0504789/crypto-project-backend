@@ -288,6 +288,7 @@ Gateway가 생성·추가하는 헤더는 다음과 같다. Route·인증·Rate 
 | 상황 | 처리 | 근거 |
 |---|---|---|
 | 일반 HTTP 인증 실패(401) | Spring Security `oauth2ResourceServer` 기본 처리(커스텀 `AuthenticationEntryPoint` 미설정) | `ReactiveSecurityConfig.java` 전체(커스텀 코드 없음) |
+| blacklist gRPC 조회 실패(500) | 원격 오류를 그대로 전파해 요청을 차단하고 downstream을 호출하지 않음(fail-closed) | `GrpcBlacklistDeadlineE2ETest` |
 | 일반 HTTP 인가 실패(403) | 커스텀 `accessDeniedHandler` — CORS 헤더 재설정 + JSON body(`timestamp`,`status`,`error:"FORBIDDEN"`,`message`,`path`) | `ReactiveSecurityConfig.java:91-92,108-148` |
 | WebSocket 핸드셰이크 인증 실패(401) | `WebsocketHandshakeAuthWebFilter.unauthorized` — 상태코드만 설정, JSON body 없음 | `WebsocketHandshakeAuthWebFilter.java:97-100` |
 | Rate Limit 초과(429) | `RequestRateLimiterGatewayFilterFactory` — 상태코드와 Rate Limit 헤더 설정, body 없음 | `ReactiveRouteConfig`, `RateLimitConfig` |
@@ -304,6 +305,7 @@ Gateway가 생성·추가하는 헤더는 다음과 같다. Route·인증·Rate 
 | `endpoint/ProductionRateLimitE2ETest` | production Route + 실제 Redis에서 허용 응답의 Rate Limit 헤더와 burst 초과 429 |
 | `endpoint/RateLimitFailOpenE2ETest` | Redis 연결 예외 시 fail-open 응답 헤더와 user-service downstream 전달 |
 | `endpoint/IdentityPropagationE2ETest` | id claim 있음/없음 전파, permitAll 경로 클라이언트 `X-User-Id` strip, 인증 요청 위조 `X-User-Id` override |
+| `endpoint/GrpcBlacklistDeadlineE2ETest` | 실제 지연 gRPC 서버의 deadline 경과 시 보호 경로 500과 downstream 미호출(fail-closed) |
 | `endpoint/GatewayCorsConfigTest` | CORS Origin 허용(테스트 전용 wildcard `TestGatewayCorsConfig`로 실제 `CorsConfig` 대체) |
 | `filter/IdentityPropagationGlobalFilterTest` | 필터 단위 동작 |
 | `filter/WebsocketHandshakeAuthWebFilterTest` | non-ws 경로 통과, OPTIONS 통과, 토큰 없음/빈값 401, JWT 디코드 실패 401, id claim 없음 401, 정상 시 헤더+SecurityContext 설정, roles claim 없어도 정상 처리 |
@@ -318,7 +320,7 @@ Gateway가 생성·추가하는 헤더는 다음과 같다. Route·인증·Rate 
 | `config/ReactiveJwtDecoderConfigUnitTest` | 설정된 issuer와 다른 JWT를 `invalid_token`으로 거부 |
 | `config/ProductionApiPathConfigBindingUnitTest` | 운영 API path 및 `gateway.rate-limit.*` 설정 바인딩 |
 
-**테스트 공백** — 항목은 [`../../TODO.md`](../../TODO.md) 6.2~6.4에서 관리한다(`/internal/deployment/**` gateway 레벨 통합, gRPC `DEADLINE_EXCEEDED` 실경과 검증, §9 Route 계약 표 전체를 덮는 계약 테스트).
+**테스트 공백** — 항목은 [`../../TODO.md`](../../TODO.md) 6.2와 6.4에서 관리한다(`/internal/deployment/**` gateway 레벨 통합, §9 Route 계약 표 전체를 덮는 계약 테스트).
 
 ## 15. 컴파일·테스트·CI 명령
 

@@ -554,10 +554,6 @@ if (willExceedLatencyBudget()) {
 `DeploymentControlAuthWebFilter`는 gateway에서 JWT `permitAll`인 경로를 `X-Deploy-Token`으로 별도 보호한다. 필터 자체 테스트는 `common-actuator-webflux` 쪽에만 있고, gateway 라우팅·security 체인과 결합된 상태의 통합 테스트가 없다.
 `[출처: docs/modules/API_GATEWAY.md §14]`
 
-#### 6.3 gRPC `DEADLINE_EXCEEDED` 실제 시간 경과 검증 없음
-공용 `GrpcOauth2AuthorizationServerClient` 테스트는 deadline이 적용된다는 사실은 검증하지만, 실제 시간 경과로 `DEADLINE_EXCEEDED`가 발생했을 때 gateway 인증 경로가 어떻게 동작하는지는 검증하지 않는다. blacklist 조회는 fail-closed 경로라 이 동작이 인증 전체 차단으로 이어진다.
-`[출처: docs/modules/API_GATEWAY.md §14]`
-
 #### 6.4 Route 계약 표 전체를 덮는 계약 테스트 없음
 `ReactiveRouteConfig`의 외부 Path·대상 Service ID·RewritePath·인증 요구사항이 `docs/modules/API_GATEWAY.md` §9 Route 계약 표와 일치하는지 자동 검증하는 파라미터화/계약 테스트가 없다. 현재 `ReactiveRouteE2ETest`는 `/user/me`·`/chat/rooms/me`·`/auth/logout` 등 대표 경로 일부만 덮는다. Route는 프론트·하위 서비스에 동시에 닿는 외부 계약이라 표와 코드가 어긋나면 문서로는 드러나지 않는다.
 `[출처: docs/modules/API_GATEWAY.md §14]`
