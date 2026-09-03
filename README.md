@@ -5,7 +5,8 @@
 - 언어/프레임워크: **Java 17 · Spring Boot 3.4.0 · Spring Cloud 2024.0.2**
 - 아키텍처: **헥사고날(포트/어댑터) 멀티모듈**, 실행 서비스 **13개**
 - 인프라: Eureka(디스커버리) · Spring Cloud Config(+Vault) · gRPC · Kafka(Cloud Stream/Streams) · MySQL · MongoDB · Redis Cluster
-- 프론트엔드: [`../crypto-project-frontend`](../crypto-project-frontend) (React 19 · Vite)
+- 프론트엔드: [crypto-project-frontend](https://github.com/noah0504789/crypto-project-frontend) (React 19 · Vite)
+- 인프라: [crypto-project-infra](https://github.com/noah0504789/crypto-project-infra)
 
 ---
 
