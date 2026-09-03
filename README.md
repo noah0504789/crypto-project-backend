@@ -30,10 +30,7 @@
 
 ## 2. 외부 API
 
-### 업비트(Upbit) API
-- **웹소켓 연결**을 통해 등록된 market에 대해 **실시간 시세(ticker)를 수집**한다.
-- 수집 흐름: `market-detection` 서비스가 Upbit WebSocket으로 시세를 받아 Kafka(`upbit-ticker-event`)로 흘리고, **Kafka Streams**로 단기 이동평균 대비 변화율을 계산해 임계값을 넘으면 가격 알림 탐지 이벤트를 발행한다 → `notification` 서비스가 소비해 사용자 알림으로 만든다.
-- 근거: `market-detection/.../upbit/*`, 상세 흐름 [`docs/SERVICE_FLOWS.md`](docs/SERVICE_FLOWS.md) §12~15, 모듈 [`docs/modules/MARKET_DETECTION.md`](docs/modules/MARKET_DETECTION.md).
+외부 시스템 연동과 Upbit 시세 수집 흐름은 [`docs/EXTERNAL_APIS.md`](docs/EXTERNAL_APIS.md)에서 확인할 수 있습니다.
 
 ---
 
@@ -42,11 +39,21 @@
 > 실제 서비스 환경에서 주요 기능의 정상 처리 및 예외 처리 과정을 시연합니다.  
 > 전체 테스트 절차와 기대 결과는 [`docs/SCENARIO_TEST.md`](docs/SCENARIO_TEST.md)에서 확인할 수 있습니다.
 
-### 3.1 OAuth2 소셜 로그인
+| 기능 | 시연 내용 |
+| --- | --- |
+| OAuth2 소셜 로그인 | Google·Kakao OAuth2 인증, JWT 발급, 로그인 완료 후 서비스 이동 |
+| 프로필 수정 | 닉네임 변경 성공 및 중복 닉네임 검증·실패 처리 |
+| 채팅방 관리 | 채팅방 목록·상세 조회, 생성·수정·삭제 |
+| 채팅 메시지 | STOMP 실시간 송수신, 최신 메시지·읽지 않은 메시지 갱신, 커서 기반 과거 메시지 조회 |
+| 가격 알림 및 실시간 알림 | 가격 알림 설정, Upbit 시세 탐지, 사용자별 알림 저장 및 STOMP 전달 |
+
+### 시연 영상
+
+#### OAuth2 소셜 로그인
 
 Google 및 Kakao OAuth2 인증을 통한 로그인 과정을 시연합니다.
 
-#### Google 로그인
+##### Google 로그인
 
 - Google 계정을 통한 OAuth2 인증
 - JWT 발급 및 로그인 처리
@@ -61,7 +68,7 @@ https://github.com/user-attachments/assets/8d53af31-2331-4a93-9a62-aafbd23cc6d9
 
 </details>
 
-#### Kakao 로그인
+##### Kakao 로그인
 
 - Kakao 계정을 통한 OAuth2 인증
 - JWT 발급 및 로그인 처리
@@ -78,11 +85,11 @@ https://github.com/user-attachments/assets/5fad85c7-f7a3-4d3d-8de4-d9ab03a32702
 
 ---
 
-### 3.2 프로필 수정
+#### 프로필 수정
 
 사용자 프로필의 닉네임 변경과 중복 검증 과정을 시연합니다.
 
-#### 프로필 수정 성공
+##### 프로필 수정 성공
 
 - 사용 가능한 닉네임으로 프로필 수정
 - 변경된 사용자 정보 반영 확인
@@ -96,7 +103,7 @@ https://github.com/user-attachments/assets/a5b7c911-9e04-443b-a097-49dfc8b1438e
 
 </details>
 
-#### 프로필 수정 실패 — 닉네임 중복
+##### 프로필 수정 실패 — 닉네임 중복
 
 - 이미 사용 중인 닉네임으로 변경 요청
 - 닉네임 중복 오류 메시지 표시
@@ -113,7 +120,7 @@ https://github.com/user-attachments/assets/c65041d4-5a7c-4688-ab9b-bcd6b5617dd2
 
 ---
 
-### 3.3 채팅방 관리
+#### 채팅방 관리
 
 오픈채팅방의 조회·생성·수정·삭제 과정을 시연합니다.
 
@@ -133,7 +140,7 @@ https://github.com/user-attachments/assets/e37228e6-87f7-41bc-8db9-d7c36c7c389e
 
 ---
 
-### 3.4 채팅 메시지
+#### 채팅 메시지
 
 실시간 메시지 송수신, 채팅방별 최신 메시지 및 읽지 않은 메시지 정보 갱신, 커서 기반 과거 메시지 조회 과정을 시연합니다.
 
@@ -154,7 +161,7 @@ https://github.com/user-attachments/assets/3d19a575-a2f5-4500-87e9-ac5ddec08ad4
 
 ---
 
-### 3.5 가격 알림 및 실시간 알림
+#### 가격 알림 및 실시간 알림
 
 코인별 가격 알림 조건을 설정하고, 가격 변동 탐지 후 사용자에게 알림이 전달되는 전체 과정을 시연합니다.
 
