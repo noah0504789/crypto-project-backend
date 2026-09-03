@@ -144,10 +144,13 @@ graph TB
 
 ## 9. 테스트 현황
 
-- adapter-in: `JwksControllerTest`(GET JWKS / POST sign / SignRequest 매핑).
-- adapter-out: `VaultTransitKeyReaderTest`(경로·null·타입 방어), `VaultTransitSignerTest`(sign 경로·요청 필드·응답 파싱).
-- application: `JwtSigningServiceTest`(digest→서명→변환 순서·kid 조합), `VaultSignatureParserTest`, `RsaPublicKeyParserTest`(PEM 파싱·예외).
-- 모두 단위 테스트(`VaultTemplate` 등 외부는 mock). Testcontainers/실 Vault 미사용.
+| 계층 | 테스트 | 검증 범위 |
+|---|---|---|
+| adapter-in | `JwksControllerTest` | GET JWKS·POST sign·SignRequest 매핑 |
+| adapter-out | `VaultTransitKeyReaderTest`, `VaultTransitSignerTest` | key reader의 경로·null·타입 방어, signer의 sign 경로·요청 필드·응답 파싱 |
+| application | `JwtSigningServiceTest`, `VaultSignatureParserTest`, `RsaPublicKeyParserTest` | digest→서명→변환 순서·kid 조합, Vault signature/PEM 파싱·예외 |
+
+모두 단위 테스트이며 `VaultTemplate` 등 외부 의존성은 mock으로 대체한다. Testcontainers와 실제 Vault는 사용하지 않는다.
 
 ## 10. 컴파일 · 테스트 · CI 명령
 

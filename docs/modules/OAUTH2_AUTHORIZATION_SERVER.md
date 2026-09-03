@@ -166,11 +166,14 @@ proto: `protobuf/src/main/proto/auth/v1/auth-service.proto`. 서버: adapter-in�
 
 ## 11. 테스트 현황
 
-- adapter-in: `OAuth2TokenEndpointIntegrationTest`(토큰 엔드포인트 통합)
-- application: `CustomOAuth2AuthorizationServiceTest`, `CustomAuthenticationSuccessHandlerTest`, `RotatingRefreshTokenPolicyTest`
-- adapter-out: `Rs256JwtEncoderTest`, `RedisAuthorizedClientAdapter{,Integration}Test`, `RedisRefreshTokenAdapter{,Integration}Test`
-- 공통 테스트 설정: `TestRedisConfig`, `TestPropertiesConfig`, `TestObjectMapperConfig`
-- (세부는 파일 직접 확인. Redis 통합은 `common-test` Testcontainers 계열.)
+| 구분 | 테스트·설정 | 검증 범위·환경 |
+|---|---|---|
+| adapter-in | `OAuth2TokenEndpointIntegrationTest` | 토큰 엔드포인트 통합 |
+| application | `CustomOAuth2AuthorizationServiceTest`, `CustomAuthenticationSuccessHandlerTest`, `RotatingRefreshTokenPolicyTest` | authorization service·로그인 성공 처리·refresh token 회전 정책 |
+| adapter-out | `Rs256JwtEncoderTest`, `RedisAuthorizedClientAdapter{,Integration}Test`, `RedisRefreshTokenAdapter{,Integration}Test` | JWT encoder 및 Redis authorized client/refresh token 저장소 |
+| 공통 설정 | `TestRedisConfig`, `TestPropertiesConfig`, `TestObjectMapperConfig` | 테스트용 Redis·properties·ObjectMapper 설정 |
+
+Redis 통합 테스트는 `common-test` Testcontainers 계열을 사용한다. 세부 내용은 테스트 파일을 직접 확인한다.
 
 ## 12. 컴파일 · 테스트 · CI 명령
 

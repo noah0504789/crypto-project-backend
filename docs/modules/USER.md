@@ -149,10 +149,13 @@ proto: `protobuf/src/main/proto/user/v1/user-service.proto`. 서버 구현 `Grpc
 ## 13. 테스트 현황
 
 테스트 파일(계층별로 존재):
-- domain: `UserTest`
-- application: `UserCommandServiceTest`, `UniqueUserNicknameValidatorTest`
-- adapter-in: `UserControllerTest`, `UserControllerWebMvcTest`
-- adapter-out: `JpaUserAdapterTest`
+
+| 계층 | 테스트 |
+|---|---|
+| domain | `UserTest` |
+| application | `UserCommandServiceTest`, `UniqueUserNicknameValidatorTest` |
+| adapter-in | `UserControllerTest`, `UserControllerWebMvcTest` |
+| adapter-out | `JpaUserAdapterTest` |
 
 (개별 테스트 세부 내용은 이 문서 검증 범위 밖. 필요 시 파일을 직접 확인한다.)
 
