@@ -18,11 +18,6 @@ oauth2:
     secret: ${my.client-secret}
     registration-id: ${my.client-registration-id}
 
-mysql:
-  username: ${mysql.user.username} # user
-  password: ${mysql.user.password} # userpass
-  db: ${mysql.user.db} # user
-
 #logging:
 #  level:
 #    org.springframework.security.oauth2.server.authorization: DEBUG
