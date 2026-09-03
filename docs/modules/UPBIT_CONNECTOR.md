@@ -43,10 +43,9 @@ Upbit 외부 API와의 통신을 전담하는 **리액티브(WebFlux/Reactor) �
 | 서버 포트 | `8600`(`git-config-repo/dynamic/upbit-connector.yml`) |
 | Docker 이미지 | `crypto-upbit-connector` |
 | CI task | `./gradlew upbitConnectorCi` |
-
-의존 방향: `-adapter-out` → `-application` → `-contract`. `-bootstrap`은 셋 다 조립만 한다.
-
-주요 라이브러리: `spring-boot-starter-webflux`(Reactor Netty), `spring-boot-starter-validation`, `spring-cloud-config-client`, `spring-cloud-eureka-client`. 테스트는 `reactor-test`(`StepVerifier` 가상 시계).
+| 의존 방향 | `-adapter-out` → `-application` → `-contract`; `-bootstrap`은 각 모듈을 조립 |
+| 프레임워크·클라이언트 | `spring-boot-starter-webflux`(Reactor Netty), `spring-boot-starter-validation`, `spring-cloud-config-client`, `spring-cloud-eureka-client` |
+| 테스트 | `reactor-test`(`StepVerifier` 가상 시계) |
 
 의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
 

@@ -30,13 +30,14 @@
 
 ## 3. 실행 구조와 주요 의존성
 
-- Gradle 경로: `:oauth2-authorization-server:*`(헥사고날 멀티모듈). 실행 모듈 `:oauth2-authorization-server-bootstrap`.
-- 실행 클래스: `org.example.oauth2.authorizationserver.Main`.
-- app name: `oauth2-authorization-server`. 포트: HTTP `9000`(토큰 엔드포인트), gRPC `19000`.
-- 저장소: Redis Cluster. **DB(JPA) 미사용** — 사용자 정보는 gRPC로 user-service에서 조회.
-- 서명 대행: Config Server(`sign-uri`, `jwks-uri`)를 통한 Vault Transit.
-- Config Server 연동: `application.yml`의 `spring.cloud.config.name: oauth2-authorization-server,eureka-client,jwt,redis,monitoring`.
-- 핵심 라이브러리: `spring-security-oauth2-authorization-server`, `spring-boot-starter-web`, `common-redis`, `caffeine`, `user:user-contract`(application), `user:user-client`(adapter-out).
+| 구분 | 내용 |
+|---|---|
+| Gradle·실행 | `:oauth2-authorization-server:*` 헥사고날 멀티모듈, `oauth2-authorization-server-bootstrap` |
+| 진입점·네트워크 | `org.example.oauth2.authorizationserver.Main`, HTTP `9000`, gRPC `19000` |
+| 저장소·서명 | Redis Cluster; DB(JPA) 없음. 사용자 정보는 user-service gRPC, 서명은 Config Server의 Vault Transit |
+| 프레임워크 | `spring-security-oauth2-authorization-server`, `spring-boot-starter-web`, `caffeine` |
+| 공통·서비스 모듈 | `common-redis`, `user:user-contract`(application), `user:user-client`(adapter-out) |
+| 원격 설정 | `oauth2-authorization-server,eureka-client,jwt,redis,monitoring` |
 
 의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
 

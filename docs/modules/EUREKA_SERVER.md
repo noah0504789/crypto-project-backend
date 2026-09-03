@@ -24,11 +24,13 @@
 
 ## 3. 실행 구조와 주요 의존성
 
-- Gradle 경로: `:spring-cloud-eureka-server`(**단일 모듈**, 헥사고날 아님). docker 이미지 `crypto-spring-cloud-eureka-server`.
-- 실행 클래스: `org.example.eurekaserver.Main`(`@EnableEurekaServer` + `@SpringBootApplication` + `@ConfigurationPropertiesScan`). 포트 `8761`.
-- 커스텀 소스는 `Main.java` 1개뿐. 나머지 동작은 프레임워크 + 원격 설정으로 구성된다.
-- 자기 설정은 **Config Server에서 로드**한다: 로컬 `application.yml`은 `spring.config.import: configserver:http://crypto-spring-cloud-config:8888`, `spring.cloud.config.name: eureka-server,monitoring`, `label: main`.
-- 핵심 라이브러리: `spring-cloud-starter-netflix-eureka-server`, `spring-cloud-starter-config`(config client), `common-actuator-webmvc`.
+| 구분 | 내용 |
+|---|---|
+| Gradle·배포 | `:spring-cloud-eureka-server` 단일 모듈, Docker 이미지 `crypto-spring-cloud-eureka-server` |
+| 진입점·네트워크 | `org.example.eurekaserver.Main`, 포트 `8761`, 커스텀 소스 `Main.java` 1개 |
+| 프레임워크 | `spring-cloud-starter-netflix-eureka-server`, `spring-cloud-starter-config` |
+| 공통 모듈 | `common-actuator-webmvc` |
+| 원격 설정 | Config Server에서 `eureka-server,monitoring`을 `label: main`으로 로드 |
 
 의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
 

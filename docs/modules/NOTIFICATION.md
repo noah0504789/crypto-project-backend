@@ -28,13 +28,14 @@
 
 ## 3. 실행 구조와 주요 의존성
 
-- Gradle 경로: `:notification:*` (헥사고날 멀티모듈). 실행 모듈은 `:notification:notification-bootstrap`(`ext.dockerImageName = "crypto-notification-service"`).
-- 실행 클래스: `org.example.notification.Main`(`@SpringBootApplication(scanBasePackages="org.example")`, `@ConfigurationPropertiesScan`).
-- app name: `notification-service`. 포트: REST `8300`(gRPC 서버 없음). 컨텍스트 경로 `/api/v1`.
-- 저장소: **MongoDB**(`notification` DB, authSource `notification` — `notification`·`notification_recipient` 컬렉션) + **MySQL event DB**(Inbox·Outbox 저장, `common-inbox`·`common-outbox` 경유, `DatasourceConfig`의 `spring.datasource.write`). 원격 설정은 `mysql.event.*`를 사용하며 write pool은 max-size/min-idle 15, connection-timeout 3500ms다.
-- Config Server 연동: `spring.cloud.config.name: notification-service,eureka-client,mysql,mongo,kafka,monitoring`. 공유 `api-contract.*`는 Config Repository 루트 `application.yml`에서 자동 병합된다.
-- Kafka binder 트랜잭션은 비활성 상태다. notification은 Kafka를 직접 발행하지 않고 생산 이벤트를 MySQL Outbox에 저장하며, 실제 Kafka 발행은 outbox-poller가 담당한다.
-- 부트스트랩 의존성: `common-actuator-webmvc`, Config Client, Eureka Client, `spring-cloud-starter-bus-kafka`, Micrometer/Prometheus.
+| 구분 | 내용 |
+|---|---|
+| Gradle·실행 | `:notification:*` 헥사고날 멀티모듈, `:notification:notification-bootstrap`(`crypto-notification-service`) |
+| 진입점·네트워크 | `org.example.notification.Main`, REST `8300`, gRPC 서버 없음, 컨텍스트 `/api/v1` |
+| 저장소 | MongoDB(`notification` DB, `notification`·`notification_recipient`), MySQL event DB(Inbox·Outbox) |
+| 메시징 | Kafka 직접 발행 없음; MySQL Outbox 저장 후 `outbox-poller`가 발행, binder 트랜잭션 비활성 |
+| 공통·플랫폼 | `common-actuator-webmvc`, Config Client, Eureka Client, `spring-cloud-starter-bus-kafka`, Micrometer/Prometheus |
+| 원격 설정 | `notification-service,eureka-client,mysql,mongo,kafka,monitoring`; 공유 `api-contract.*`는 Config Repository 루트에서 병합 |
 
 의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
 

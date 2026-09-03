@@ -21,12 +21,13 @@
 
 ## 3. 실행 구조와 주요 의존성
 
-- Gradle 경로: `:user:*` (헥사고날 멀티모듈). 실행 모듈은 `:user:user-bootstrap`.
-- 실행 클래스: `org.example.user.Main`(`@SpringBootApplication(scanBasePackages="org.example")`, `@ConfigurationPropertiesScan`).
-- app name: `user-service`. 포트: REST `8090`, gRPC `18090`(`git-config-repo/dynamic/user-service.yml`). 컨텍스트 경로 `/api/v1`(`server.servlet.context-path: /api/${server.version}`).
-- 저장소: MySQL(`user` DB). 스키마는 `spring.sql.init`(`schema-locations: classpath:sql/schema.sql`, `mode: always`)로 초기화.
-- Config Server 연동: `application.yml`의 `spring.config.import: configserver:...`, `spring.cloud.config.name: user-service,eureka-client,idgen,mysql,kafka,monitoring`. 공유 `api-contract.*`는 Config Repository 루트 `application.yml`에서 자동 병합된다.
-- 부트스트랩 의존성: Config Client, Eureka Client, `spring-cloud-starter-bus-kafka`, Micrometer/Prometheus, `common-actuator-webmvc`.
+| 구분 | 내용 |
+|---|---|
+| Gradle·실행 | `:user:*` 헥사고날 멀티모듈, `:user:user-bootstrap` |
+| 진입점·네트워크 | `org.example.user.Main`, REST `8090`, gRPC `18090`, 컨텍스트 `/api/v1` |
+| 저장소 | MySQL(`user` DB), `schema.sql` 초기화 |
+| 공통·플랫폼 | Config Client, Eureka Client, `spring-cloud-starter-bus-kafka`, Micrometer/Prometheus, `common-actuator-webmvc` |
+| 원격 설정 | `user-service,eureka-client,idgen,mysql,kafka,monitoring`; 공유 `api-contract.*`는 Config Repository 루트에서 병합 |
 
 의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
 

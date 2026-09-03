@@ -28,11 +28,14 @@
 
 ## 3. 실행 구조와 주요 의존성
 
-- Gradle 경로: `:oauth2-client:*`(헥사고날 멀티모듈). 실행 모듈 `:oauth2-client-bootstrap`.
-- 실행 클래스: `org.example.oauth2.client.Main`. app name: `oauth2-client`. 포트 `8900`.
-- **gRPC 서버 없음**(`grpc.server.enabled: false`). gRPC 클라이언트로만 동작: `user-service`(`user.v1`), `oauth2-authorization-server`(`auth.v1`).
-- 저장소 없음(상태는 AS Redis에 위임). Config Server 연동: `spring.cloud.config.name: oauth2-client,eureka-client,jwt,frontend,kafka,monitoring`. 공유 `api-contract.*`는 Config Repository 루트 `application.yml`에서 자동 병합된다.
-- 핵심 라이브러리: `spring-boot-starter-oauth2-client`, `spring-boot-starter-web`, `common-core`, `user-contract`.
+| 구분 | 내용 |
+|---|---|
+| Gradle·실행 | `:oauth2-client:*` 헥사고날 멀티모듈, `oauth2-client-bootstrap` |
+| 진입점·네트워크 | `org.example.oauth2.client.Main`, 포트 `8900`, gRPC 서버 없음 |
+| 서비스 의존 | gRPC client로 `user-service`(`user.v1`)와 `oauth2-authorization-server`(`auth.v1`) 호출 |
+| 저장소 | 자체 저장소 없음; 상태는 AS Redis에 위임 |
+| 프레임워크·공통 | `spring-boot-starter-oauth2-client`, `spring-boot-starter-web`, `common-core`, `user-contract` |
+| 원격 설정 | `oauth2-client,eureka-client,jwt,frontend,kafka,monitoring`; 공유 `api-contract.*`는 Config Repository 루트에서 병합 |
 
 의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
 

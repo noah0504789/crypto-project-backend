@@ -32,7 +32,10 @@ Reactive Spring Cloud Gateway 기반 OAuth2 Resource Server. 외부 HTTP·WebSoc
 | 원격 설정 파일 | `git-config-repo/dynamic/{api-gateway,jwt}.yml`, `git-config-repo/infrastructure/{eureka-client,frontend,kafka,monitoring,redis}.yml`. 서버 포트·라우팅 패턴 등 실질 동작값은 로컬이 아니라 여기에 있다 |
 | 공유 경로 계약 | 외부 REST/WebSocket 경로 문자열의 정본은 Config Repository 루트 `application.yml`의 `api-contract.*`(모든 Config Client 응답에 병합). `api-gateway.yml`이 이를 기존 `api-path.*` 구조로 매핑해 security matcher와 route에서 소비한다 |
 | Eureka Client | `git-config-repo/infrastructure/eureka-client.yml` — `defaultZone`은 루트 `application.yml`의 `uri.internal.eureka-server`를 참조, lease renewal 10s / expiration 30s. Route의 `lb://`·`lb:ws://` 뒤 이름은 대상 서비스가 Eureka에 등록하는 `spring.application.name`과 일치해야 라우팅이 성립한다 |
-| 주요 의존성 | `spring-cloud-gateway`, `spring-cloud-loadbalancer`, `spring-boot-starter-webflux`, `spring-boot-starter-data-redis-reactive`, `spring-boot-starter-security` + `spring-security-oauth2-resource-server`/`-jose`, `spring-cloud-config-client`, `spring-cloud-eureka-client`, `spring-cloud-starter-bus-kafka`, `grpc-netty` + `grpc-client-spring-boot-starter`, `common:common-core`, `common:common-validation`, `common:common-actuator-webflux`, `oauth2-authorization-server:oauth2-authorization-server-client` |
+| 프레임워크·클라이언트 | `spring-cloud-gateway`, `spring-cloud-loadbalancer`, `spring-boot-starter-webflux`, `spring-boot-starter-security`, `spring-security-oauth2-resource-server`/`-jose`, `spring-cloud-config-client`, `spring-cloud-eureka-client`, `spring-cloud-starter-bus-kafka` |
+| 데이터·RPC | `spring-boot-starter-data-redis-reactive`, `grpc-netty`, `grpc-client-spring-boot-starter` |
+| 공통 모듈 | `common:common-core`, `common:common-validation`, `common:common-actuator-webflux` |
+| 서비스 모듈 | `oauth2-authorization-server:oauth2-authorization-server-client` |
 
 Config Server 자체(백엔드 구성·Vault Transit 서명 대행·JWKS 제공)는 [`SPRING_CLOUD_CONFIG.md`](SPRING_CLOUD_CONFIG.md)를 본다.
 

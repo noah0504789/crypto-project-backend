@@ -31,12 +31,13 @@
 
 ## 3. 실행 구조와 주요 의존성
 
-- Gradle 경로: `:spring-cloud-config:*`(헥사고날 멀티모듈). 실행 모듈 `:spring-cloud-config-bootstrap`, docker 이미지 `crypto-spring-cloud-config`.
-- 실행 클래스: `org.example.configserver.Main`(`@EnableConfigServer` + `@ConfigurationPropertiesScan`). 포트 `8888`.
-- **자기 설정은 로컬 `application.yml`**에서 로드한다(자신이 Config Server이므로 config repo에서 받지 않는다).
-- Config 백엔드: **Vault**(`order: 1`, AppRole, KV v2, `applicationName: mysql,mongo,oauth2-client,monitoring`) + **git**(`order: 2`, `search-paths`: 루트·`/dynamic`·`/infrastructure`, `default-label: main`).
-- Spring Cloud Bus(Kafka, `spring-cloud-starter-bus-kafka`) → `busrefresh` 브로드캐스트.
-- 핵심 라이브러리: `spring-cloud-config-server`, `spring-vault-core`, `spring-security-oauth2-jose`(Nimbus JOSE, JWKSet 생성), `spring-boot-starter-web`, `common-core`, `common-actuator-webmvc`.
+| 구분 | 내용 |
+|---|---|
+| Gradle·실행 | `:spring-cloud-config:*` 헥사고날 멀티모듈, `spring-cloud-config-bootstrap`(`crypto-spring-cloud-config`) |
+| 진입점·네트워크 | `org.example.configserver.Main`, 포트 `8888`; 자기 설정은 로컬 `application.yml` |
+| 설정 백엔드 | Vault(AppRole, KV v2, order 1) + Git(order 2, 루트·`/dynamic`·`/infrastructure`, `default-label: main`) |
+| 메시징 | Spring Cloud Bus Kafka(`spring-cloud-starter-bus-kafka`) → `busrefresh` |
+| 프레임워크·공통 | `spring-cloud-config-server`, `spring-vault-core`, `spring-security-oauth2-jose`, `spring-boot-starter-web`, `common-core`, `common-actuator-webmvc` |
 
 의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
 
