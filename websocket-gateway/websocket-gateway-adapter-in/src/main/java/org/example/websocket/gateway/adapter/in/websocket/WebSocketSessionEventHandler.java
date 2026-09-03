@@ -79,7 +79,7 @@ public class WebSocketSessionEventHandler {
             activeSessions.incrementAndGet();
         }
 
-        log.info("[ws] connected instance-index={}, userId={}, sessionId={}, newSession={}, activeSessions={}", instanceId, userId, sessionId, isNewSession, activeSessions.get());
+        log.debug("[ws] connected instance-index={}, userId={}, sessionId={}, newSession={}, activeSessions={}", instanceId, userId, sessionId, isNewSession, activeSessions.get());
     }
 
     @EventListener
@@ -147,6 +147,6 @@ public class WebSocketSessionEventHandler {
             activeSessions.updateAndGet(v -> Math.max(0, v - 1));
         }
 
-        log.info("[ws] disconnected instance-index={}, userId={}, sessionId={}, activeSessions={}", instanceId, userId != null ? userId : "unknown", sessionId, activeSessions.get());
+        log.debug("[ws] disconnected instance-index={}, userId={}, sessionId={}, activeSessions={}", instanceId, userId != null ? userId : "unknown", sessionId, activeSessions.get());
     }
 }

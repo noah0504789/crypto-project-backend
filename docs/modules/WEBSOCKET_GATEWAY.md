@@ -146,7 +146,7 @@ graph TB
 |---|---|---|---|
 | `chatMessageBroadcastEventConsumer` | `chatmessage-broadcast-event` | `ChatMessageBroadcastEvent{payload, clientMessageId}` | `/topic/chat/{roomId}`(방 공유 토픽), 그 방을 구독한 로컬 세션이 있으면 전송 |
 | `myChatRoomBadgeBroadcastEventConsumer` | `chatroom-broadcast-event` | `MyChatRoomBadgeBroadcastEvent` | 멤버별 `/user/queue/chat/badge` 직접 전송 |
-| `webNotificationBroadcastEventConsumer` | `web-notification-broadcast-event` | `WebNotificationBroadcastEvent` | 수신자 `/user/topic/notification/` |
+| `webNotificationBroadcastEventConsumer` | `web-notification-broadcast-event` | `WebNotificationBroadcastEvent` | 수신자 `/user/queue/notification` |
 
 - **로컬 세션 필터링**: 뱃지·알림 push 어댑터가 `LocalSessionCache.hasUser(...)`로 이 인스턴스에 연결된 사용자에게만 전송한다. 없으면 skip(로그). 사용자가 붙어 있는 인스턴스가 실제 전달을 담당한다. **방 브로드캐스트만 판정 기준이 다르다**(아래).
 - **로컬 전달 판정은 구독 레지스트리로 한다**: SUBSCRIBE/UNSUBSCRIBE 시점에 `LocalSessionCache` 가 방별 세션을 들고 있어 `hasLocalSubscriber(roomId)` 하나로 정해진다. 이벤트가 멤버 목록을 싣던 방식은 outbox 행 크기가 방 크기에 비례해 버려서 걷어냈다. `/topic/chat/{roomId}`로 나가는 wire 는 봉투 `StompChatMessageBatchPayload{ roomId, messages[] }`다(§8). 변환은 `ChatMessageBroadcastEventMapper` → `StompChatMessagePayload.from` → 배칭 버퍼.
@@ -167,7 +167,7 @@ graph TB
 
 ## 8. STOMP 계약 (프론트·부하테스트 의존)
 
-- **엔드포인트**(`websocket.yml`): SockJS `/ws`, native `/ws-native`. `setAllowedOriginPatterns("*")`.
+- **엔드포인트**(`websocket.yml`): SockJS `/ws-sockjs`, native `/ws-native`. `setAllowedOriginPatterns("*")`.
 - **prefix**: application `/msg`(@MessageMapping), user `/user`(`convertAndSendToUser`), broker simple `/topic`,`/queue`.
 - **destination**(`common-core/StompDestination`):
 
@@ -177,7 +177,7 @@ graph TB
 | outbound | `/topic/chat/{roomId}` | `convertAndSend`(방 공유) | **봉투** `StompChatMessageBatchPayload{roomId, messages[]}`. 각 원소는 `StompChatMessagePayload{messageId, roomId, writerId, content, timestamp(long), clientMessageId}` |
 | outbound | `/user/queue/chat/ack` | **`clientOutboundChannel` 직접**(brokerChannel 우회) | `StompChatMessageAckPayload`(성공/실패, errorCode) |
 | outbound | `/user/queue/chat/badge` | **`clientOutboundChannel` 직접** | `StompMyChatRoomBadgePayload` |
-| outbound | `/user/topic/notification/` | `convertAndSendToUser` | `StompWebNotificationPayload` |
+| outbound | `/user/queue/notification` | `convertAndSendToUser` | `StompWebNotificationPayload` |
 
 - 이들은 프론트와 `websocket-gateway/k6` 부하 테스트가 의존하는 **외부 계약**이다. 변경 전 의존성 확인(→ `../../.claude/rules/external-contracts.md`). 특히 `/topic/chat/{roomId}` wire는 내부 Kafka `ChatMessageBroadcastEvent`와 구조가 다르다.
 - **ACK 는 brokerChannel 을 지나지 않는다.** `LocalSessionCache` 에서 세션과 구독 ID 를 찾아 `clientOutboundChannel` 로 직접 보낸다(`DirectStompChatMessageAckAdapter`). 세션이나 구독을 못 찾거나 전송에 실패하면 보내지 않고 `chat.message.ack.direct.failed` 로 센다. 구독 ID 는 `SessionSubscribeEvent` 에서 잡아 `LocalSessionCache` 에 함께 둔다 — 없으면 클라이언트가 MESSAGE 프레임을 매칭하지 못한다.

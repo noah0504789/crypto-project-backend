@@ -188,7 +188,7 @@ graph LR
   F["WebsocketHandshakeAuthWebFilter<br/>order -1000 · api-gateway"]
   V["?access_token JWT 검증<br/>id claim 필수"]
   H["X-User-Id 주입"]
-  WS["websocket-gateway<br/>/ws · SockJS 또는 /ws-native 핸드셰이크"]
+  WS["websocket-gateway<br/>/ws-sockjs · SockJS 또는 /ws-native 핸드셰이크"]
   PR["StompConfig.determineUser<br/>X-User-Id → STOMP Principal"]
 
   C --> F --> V --> H --> WS --> PR
@@ -576,7 +576,7 @@ graph TB
   KSAVE[["Kafka<br/>notification-event"]]
   KWEB[["Kafka<br/>web-notification-broadcast-event"]]
   WGC["websocket-gateway<br/>KafkaWebsocketGatewayBinder<br/>webNotificationBroadcastEventConsumer"]
-  PUSH["STOMP push<br/>/topic/notification/…"]
+  PUSH["STOMP push<br/>/user/queue/notification"]
 
   KIN --> CONS --> CMD
   CMD -->|"수신자 조회"| PORT --> RADP --> MKT --> MARKET

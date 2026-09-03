@@ -86,7 +86,7 @@ class ReactiveRouteContractIntegrationTest {
         assertFilterContract("market-route", HttpMethod.GET, "/markets", "/api/v1/markets", true);
         assertFilterContract("notification-route", HttpMethod.GET, "/notifications/me", "/api/v1/notifications/me", true);
         assertFilterContract("chat-route", HttpMethod.GET, "/chat/rooms/me", "/api/v1/chat/rooms/me", true);
-        assertFilterContract("ws-http", HttpMethod.GET, "/ws/info", "/ws/info", false);
+        assertFilterContract("ws-http", HttpMethod.GET, "/ws-sockjs/info", "/ws-sockjs/info", false);
         assertFilterContract("sockjs-route", HttpMethod.POST, "/msg/chat.send", "/msg/chat.send", false);
     }
 

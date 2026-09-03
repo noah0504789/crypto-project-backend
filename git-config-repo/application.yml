@@ -69,7 +69,7 @@ api-contract:
     login-callback-pattern: ${api-contract.oauth2.login-callback-base}/**
     login-callback-base-uri: ${api-contract.oauth2.login-callback-base}/*
   websocket:
-    sock-js-endpoint: /ws
+    sock-js-endpoint: /ws-sockjs
     pattern: ${api-contract.websocket.sock-js-endpoint}/**
     info-pattern: ${api-contract.websocket.sock-js-endpoint}/info/**
     native-endpoint: /ws-native

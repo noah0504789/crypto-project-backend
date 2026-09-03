@@ -12,7 +12,7 @@
 | **Kafka** | topic·binding·destination·header·event payload | producer/consumer 타입 일치와 DLQ 영향. 헤더 계약은 `transaction_id`·`dlq_id`·`__TypeId__`·`KafkaHeaders.KEY`(`common-core/KafkaHeaderKey`). 직접 발행보다 Outbox 흐름(domain event → Outbox → poller → Kafka)을 보존한다. `__TypeId__` 는 조건부다(아래) |
 | **Redis** | key pattern, cluster hash tag | key 는 `common-core/RedisKey` enum 으로만 만든다. hash tag `{chat}`·`{auth}`·`{session}`·`{noti}` 유지, 인자 수 검증 테스트 유지. hash tag 변경은 클러스터 슬롯 이동이다 |
 | **REST / Gateway / CORS** | 외부 경로·응답 형식, Gateway route, rewrite, CORS | 경로는 route(`ReactiveRouteConfig`, `git-config-repo/dynamic/api-gateway.yml`)와 rewrite(`/api/v1/...`)를 함께 본다. CORS(`CorsConfig`)는 `allowCredentials=true`, expose `Authorization`/`Set-Cookie` — origin 변경은 프론트에 바로 닿는다 |
-| **STOMP / WebSocket** | destination과 wire payload | destination(`/msg/chat.send`, `/topic/chat/{roomId}`, `/queue/chat/ack`, `/queue/chat/badge`, `/topic/notification/`)은 프론트와 `websocket-gateway/k6` 가 의존한다. 아웃바운드 payload 구조는 `docs/ARCHITECTURE.md §7.4`, 봉투 주의는 아래 |
+| **STOMP / WebSocket** | destination과 wire payload | destination(`/msg/chat.send`, `/topic/chat/{roomId}`, `/queue/chat/ack`, `/queue/chat/badge`, `/queue/notification`)은 프론트와 `websocket-gateway/k6` 가 의존한다. 아웃바운드 payload 구조는 `docs/ARCHITECTURE.md §7.4`, 봉투 주의는 아래 |
 | **JWT / Cookie** | issuer, claim, 토큰 동작, refresh 쿠키 속성 | claim(현재 `roles`·`id`) 변경은 gateway·websocket-gateway·하위 서비스에 영향. 발급(`Rs256JwtEncoder`, Vault Transit) ↔ 검증(gateway `ReactiveJwtDecoderConfig`) 양쪽을 함께 본다. 쿠키 속성은 `.claude/rules/security.md` |
 | **DB Schema** | 테이블·컬럼·index·unique constraint, `@Enumerated(STRING)` enum 이름 | `schema.sql`·JPA 매핑·기존 데이터 마이그레이션을 함께 본다. unique/index 예: user `public_id`, market `uk_markets_market_code`, price_alert_setting 복합 unique |
 

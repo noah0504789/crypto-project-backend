@@ -81,7 +81,7 @@
 | --- | --- | --- | --- |
 | TC-CHAT-17 미로그인/무효 roomId | — | 1. 로그아웃 상태 진입<br>2. roomId 무효 진입 | ☐ 로그아웃 진입 → 로그인 안내 카드<br>&emsp;☐ roomId 무효 → 무효 안내 + `/chat` 링크 |
 | TC-CHAT-18 초기 메시지 로드 + 제목 | 로그인, 유효 roomId | 방 진입 | ☐ `GET /chat/room/{roomId}/messages?limit=10` 2xx(newest-first)<br>&emsp;☐ 프론트 `reverse()` 후 오래된→최신 렌더 → 하단 스크롤<br>&emsp;☐ `GET /chat/room/{roomId}`로 방 제목·`msgCnt` 표시(하드코딩 아님) |
-| TC-CHAT-19 STOMP 연결 | — | 방 진입 후 WS 프레임 관찰 | ☐ `GATEWAY_URL/ws?access_token=...` 핸드셰이크 성공<br>&emsp;☐ `/topic/chat/{roomId}`(메시지)·`/user/queue/chat/ack`(ACK) 구독<br>&emsp;☐ 연결 점 "연결" |
+| TC-CHAT-19 STOMP 연결 | — | 방 진입 후 WS 프레임 관찰 | ☐ `GATEWAY_URL/ws-sockjs?access_token=...` 핸드셰이크 성공<br>&emsp;☐ `/topic/chat/{roomId}`(메시지)·`/user/queue/chat/ack`(ACK) 구독<br>&emsp;☐ 연결 점 "연결" |
 | TC-CHAT-20 낙관적 전송 성공 | — | 1. 메시지 입력<br>2. 전송 | ☐ 즉시 `pending` 말풍선<br>&emsp;☐ `/msg/chat.send`로 `ChatMessageRequest {clientMessageId, roomId, writerId, content}` 발행<br>&emsp;☐ `/topic/chat/{roomId}` flat 브로드캐스트 `{messageId, roomId, writerId, content, timestamp(epoch ms), clientMessageId}` 수신<br>&emsp;☐ `clientMessageId` 매칭으로 `sent` 치환(중복 아님) |
 | TC-CHAT-21 교차 수신(상대 프로필) | A·B 같은 방 | 1. B 전송<br>2. A 화면 관찰 | ☐ A가 브로드캐스트 수신, 하단 근처면 자동 스크롤<br>&emsp;☐ 작성자(내가 아님) 닉네임/아바타는 `GET /user/{userId}/profile`로 채움(캐시+dedup)<br>&emsp;☐ 실패 시 `사용자 {id}` 폴백 |
 | TC-CHAT-22 발행/ACK 실패 → 재전송 | — | 1. 전송<br>2. 실패 케이스 관찰: (a)발행 실패 (b)`/user/queue/chat/ack` `success:false` (c)3초 내 ACK/브로드캐스트 없음(타임아웃) | ☐ 해당 말풍선 `failed` + 재전송(↻) 버튼<br>&emsp;☐ ↻ 클릭 시 재발행<br>&emsp;☐ `success:false`면 `errors.errors=[{code,field,message}]` 확인 |
@@ -111,8 +111,8 @@
 
 | TC | 사전조건 | 스텝 | 기대결과 |
 | --- | --- | --- | --- |
-| TC-NOTI-01 구독 성립 | 로그인, 앱 접속 유지 | 로그인 직후 WS 프레임 관찰 | ☐ `App`이 STOMP `/user/topic/notification/` 구독(`subscribeWebNotifications`)<br>※ user-destination은 `/user` prefix 유의 |
-| TC-NOTI-02 실시간 수신 표시 | TC-PA-07로 알림 on, 해당 코인 변화율 초과(실장 트리거 또는 백엔드 테스트 발행) | 조건 충족 대기 | ☐ `/user/topic/notification/`로 알림 payload `{notificationId,type,title,body,createdAtMs,link,data?}` 수신<br>&emsp;☐ `notifications` **맨 앞** 추가<br>&emsp;☐ Header 벨에 빨간 점(안읽음)<br>&emsp;☐ `title`/`body`는 서버 완성값 그대로 |
+| TC-NOTI-01 구독 성립 | 로그인, 앱 접속 유지 | 로그인 직후 WS 프레임 관찰 | ☐ `App`이 STOMP `/user/queue/notification` 구독(`subscribeWebNotifications`)<br>※ user-destination은 `/user` prefix 유의 |
+| TC-NOTI-02 실시간 수신 표시 | TC-PA-07로 알림 on, 해당 코인 변화율 초과(실장 트리거 또는 백엔드 테스트 발행) | 조건 충족 대기 | ☐ `/user/queue/notification`으로 알림 payload `{notificationId,type,title,body,createdAtMs,link,data?}` 수신<br>&emsp;☐ `notifications` **맨 앞** 추가<br>&emsp;☐ Header 벨에 빨간 점(안읽음)<br>&emsp;☐ `title`/`body`는 서버 완성값 그대로 |
 | TC-NOTI-03 드롭다운 읽음/이동 | — | 1. 벨 클릭<br>2. 항목 클릭 | ☐ `handleReadNotification(id)`로 `read:true`, 안읽음 점 사라짐<br>&emsp;☐ `link` 있으면 드롭다운 닫고 `navigate(link)`<br>&emsp;☐ 바깥 클릭 시 닫힘 |
 | TC-NOTI-04 세션/로그아웃 초기화 | — | 로그아웃 또는 세션 만료 | ☐ STOMP `deactivate`<br>&emsp;☐ `setNotifications([])` |
 | TC-NOTI-05 비영속 한계(설계 확인) | — | 알림 받은 뒤 새로고침 | ☐ 알림 **사라짐**(메모리 전용, 서버 read 저장 없음)<br>※ 버그 아님 — 개선 여지(TODO 항목으로 기록) |

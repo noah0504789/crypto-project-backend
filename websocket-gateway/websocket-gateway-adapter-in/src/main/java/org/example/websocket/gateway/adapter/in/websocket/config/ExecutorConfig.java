@@ -106,7 +106,7 @@ public class ExecutorConfig {
             return "badge";
         }
 
-        if (value.startsWith(StompDestination.NOTIFICATION_PREFIX.destination())) {
+        if (value.startsWith(StompDestination.NOTIFICATION_QUEUE.destination())) {
             return "notification";
         }
 

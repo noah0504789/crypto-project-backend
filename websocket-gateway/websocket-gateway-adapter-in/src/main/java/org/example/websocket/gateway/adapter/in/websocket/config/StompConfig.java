@@ -1,7 +1,6 @@
 package org.example.websocket.gateway.adapter.in.websocket.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.slf4j.Slf4j;
 import org.example.common.enums.HttpHeaderKey;
 import org.example.common.properties.ApiPathProperties;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -27,7 +26,6 @@ import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 
-@Slf4j
 @Configuration
 @EnableWebSocketMessageBroker
 public class StompConfig implements WebSocketMessageBrokerConfigurer {
@@ -105,11 +103,8 @@ public class StompConfig implements WebSocketMessageBrokerConfigurer {
     }
 
     @Bean
-    public ApplicationRunner websocketStatsRunner(WebSocketMessageBrokerStats stats) {
-        return args -> {
-            stats.setLoggingPeriod(10_000);
-            log.info("[stomp] WebSocket STOMP stats now: {}", stats);
-        };
+    public ApplicationRunner disableWebsocketStatsLogging(WebSocketMessageBrokerStats stats) {
+        return args -> stats.setLoggingPeriod(0);
     }
 
     private DefaultHandshakeHandler handshakeHandler() {

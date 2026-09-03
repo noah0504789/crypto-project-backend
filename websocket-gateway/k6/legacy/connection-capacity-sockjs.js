@@ -24,7 +24,7 @@ const DEBUG_VUS = new Set([1, 2, 3, 4]);
 const DEBUG_LIMIT = 300;
 
 // SockJS endpoint path
-const WS_BASE_PATH = '/ws';
+const WS_BASE_PATH = '/ws-sockjs';
 
 // ramping-vus에서는 VU가 반복 실행될 수 있으므로 VU당 1회만 연결하도록 막는다.
 const connectedVus = new Set();
