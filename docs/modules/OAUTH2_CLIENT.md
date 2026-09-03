@@ -37,7 +37,7 @@
 | 프레임워크·공통 | `spring-boot-starter-oauth2-client`, `spring-boot-starter-web`, `common-core`, `user-contract` |
 | 원격 설정 | `oauth2-client,eureka-client,jwt,frontend,kafka,monitoring`; 공유 `api-contract.*`는 Config Repository 루트에서 병합 |
 
-의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
+의존성 전체 그래프는 [`docs/dependencies.md`](../dependencies.md)에서 확인할 수 있다.
 
 ## 4. 모듈 구조 (헥사고날)
 

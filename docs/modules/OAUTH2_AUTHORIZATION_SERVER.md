@@ -39,7 +39,7 @@
 | 공통·서비스 모듈 | `common-redis`, `user:user-contract`(application), `user:user-client`(adapter-out) |
 | 원격 설정 | `oauth2-authorization-server,eureka-client,jwt,redis,monitoring` |
 
-의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
+의존성 전체 그래프는 [`docs/dependencies.md`](../dependencies.md)에서 확인할 수 있다.
 
 ## 4. 모듈 구조 (헥사고날)
 
