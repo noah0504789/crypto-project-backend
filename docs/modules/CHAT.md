@@ -56,17 +56,18 @@
 
 의존 방향: adapter-in/out → application → domain. `chat-client`/`chat-contract`는 **소비자용 산출물**로, chat 자신이 아니라 `websocket-gateway`가 의존한다(gRPC 호출 및 broadcast 이벤트 역직렬화).
 
-## 5. 아키텍처 핵심 — 쓰기는 캐시-우선 + Outbox, 영속은 비동기
+## 5. 아키텍처 핵심 — 캐시 우선 쓰기·비동기 영속·조회 projection
 
 chat의 쓰기 경로는 **Outbox를 먼저 기록하고 Redis 캐시에 반영하며, 영속(MongoDB)은 Kafka를 통해 비동기로 수행**하는 구조다. 이 원칙을 먼저 이해해야 나머지 절이 읽힌다.
 
-1. **명령(Command)**: `ChatRoomCommandService`/`ChatMessageCommandService`가 Outbox 이벤트를 발행한다(`OutboxEventListPublishPort.publish` → MySQL Outbox 테이블 기록). 방 명령은 이어서 Redis 캐시를 동기 반영하고, 메시지 `save`는 MySQL 트랜잭션 커밋 뒤 `AfterCommitExecutor`로 캐시를 반영한다.
-2. **폴링/발행**: `outbox-poller`가 Outbox 레코드를 폴링해 Kafka 토픽으로 발행한다(chat 밖 공용 서비스).
-3. **비동기 영속**: chat의 Kafka consumer(`chatRoomEventConsumer`/`chatMessageEventConsumer`)가 이벤트를 받아 `ChatRoomEventService`/`ChatMessageEventService`가 **MongoDB에 실제 write**를 수행한다(`@Transactional("chatMongoTransactionManager")`).
-4. **보상**: 각 EventService는 `@Retryable`(3회, backoff 100ms×2) 후 `@Recover`로 DLQ 이벤트를 발행한다. DLQ는 `chatRoomDlqEventConsumer`/`chatMessageDlqEventConsumer`가 소비해 `*DlqService`로 처리하고 `DlqService.complete/fail`로 상태를 남긴다. 메시지 DLQ는 정상 메시지 영속 처리기를 재사용해 메시지 insert와 방 `msgCnt`·멤버십 스코어 갱신을 함께 재수행한다.
-5. **캐시 폴백**: 방 명령의 캐시 동기 반영이 실패하면(§7 `cache*Safely`) 로그 후 별도 캐시-복구 Outbox 이벤트(`ChatRoomCacheSaveEvent`/`...InvalidateEvent` 등)를 발행해 비동기로 캐시를 재구성/무효화한다. 메시지 `save`의 커밋 후 캐시 반영 실패는 로그만 남기며 조회 repair가 복구한다.
+| 원칙 | 정상 경로 | 실패·복구 |
+|---|---|---|
+| Outbox 우선 명령 | `ChatRoomCommandService`/`ChatMessageCommandService`가 MySQL Outbox를 먼저 기록한다. 방 명령은 Redis를 동기 반영하고, 메시지 `save`는 커밋 뒤 `AfterCommitExecutor`로 Redis를 반영한다 | 방 캐시 반영 실패는 캐시-복구 Outbox 이벤트로 재구성·무효화한다. 메시지 캐시 반영 실패는 조회 repair가 복구한다 |
+| Kafka 비동기 영속 | `outbox-poller`가 이벤트를 Kafka로 발행하고, `ChatRoomEventService`/`ChatMessageEventService`가 MongoDB에 실제 write한다 | EventService가 재시도한 뒤 `@Recover`에서 DLQ 이벤트를 발행한다 |
+| DLQ 재처리 | `chatRoomDlqEventConsumer`/`chatMessageDlqEventConsumer`가 원래 영속 처리를 다시 수행한다 | 메시지 DLQ는 정상 처리기를 재사용해 메시지 insert와 방 `msgCnt`·`latestMsgSeq` watermark 갱신을 함께 재수행하고, `DlqService.complete/fail`로 결과를 남긴다 |
+| 재생성 가능한 조회 projection | Mongo의 방 watermark와 membership 읽음 위치를 사실 기준으로 두고 Redis active-room을 조회용 결과로 사용한다 | 방 캐시 miss·stalled claim·active-room 인덱스 miss가 발생하면 Mongo 기준으로 다시 만든다 |
 
-### 내 방 정렬 projection — 방 단위 conflation
+### 내 방 정렬 projection — 문제와 설계 원칙
 
 내 방 목록은 방의 최신 활동과 사용자의 읽음 위치를 함께 반영해 정렬한다. 이 값들은 서로 다른
 Mongo 컬렉션에 있다.
@@ -116,6 +117,13 @@ Redis active-room에 멤버별 score를 쓰는 한 번의 flush 비용은 여전
 한 건뿐인 한산한 방은 이득이 작고 dirty 표시 비용이 추가될 수 있다. 이 구조가 모든 방의 비용을
 줄이는 것이 아니라, 메시지가 집중되는 hot room의 반복 fan-out을 줄이는 구조라는 점이 중요하다.
 
+| 설계 원칙 | 해결하는 문제 | 핵심 동작 | 보장 범위 |
+|---|---|---|---|
+| Dirty Set + Conflation | 메시지마다 멤버 전원의 score를 갱신하는 fan-out | 방을 dirty로 표시하고 같은 방의 연속 활동을 `roomId` 하나로 합친다 | 메시지 수가 아니라 실제 flush 횟수에 비례해 projection 실행 |
+| Competing Consumers + Lease | 여러 chat 인스턴스가 같은 방을 중복 처리 | `recent → inflight` 원자 이동으로 한 인스턴스만 방을 claim한다 | lease가 유효한 동안 단일 처리자 |
+| Idempotent Projection | 재처리 때 score가 중복 누적되거나 과거 상태로 회귀 | 현재 상태로 최종 score를 계산해 절대값으로 덮어쓴다 | 중복 실행을 허용하면서 결과 정합성 유지 |
+| Visibility Timeout + Repair | 처리 인스턴스 종료로 방이 `inflight`에 고립 | timeout 뒤 lease를 회수하고 Mongo 사실 기준으로 projection을 재생성한다 | 장애 시 eventual repair |
+
 #### Dirty Set + Conflation
 
 `storeChatMessage.lua`가 메시지 캐시와 작성자의 읽음 위치를 갱신하는 같은 Redis 원자 연산에서
@@ -161,8 +169,8 @@ project  멤버별 score 계산 → active-room
 
 #### Idempotent Projection
 
-`projectChatRoomActivity.lua`는 이전 score에 변화량을 누적하지 않는다. 처리 시점의 방 정보,
-최신 메시지, 멤버별 `lastMsgReadSeq`를 다시 읽어 각 멤버의 최종 score를 계산하고
+`projectChatRoomActivity.lua`는 이전 score에 변화량을 누적하지 않는다. 처리 시점의 Redis 방 정보,
+최신 메시지, 멤버별 `last_read`를 다시 읽어 각 멤버의 최종 score를 계산하고
 `{chat}:active-room:{memberId}`에 절대값으로 덮어쓴다.
 
 따라서 정상 처리, lease 만료 후 재처리, 장애 복구처럼 같은 방이 여러 번 처리돼도 score가
