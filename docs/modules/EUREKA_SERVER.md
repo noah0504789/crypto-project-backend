@@ -30,6 +30,8 @@
 - 자기 설정은 **Config Server에서 로드**한다: 로컬 `application.yml`은 `spring.config.import: configserver:http://crypto-spring-cloud-config:8888`, `spring.cloud.config.name: eureka-server,monitoring`, `label: main`.
 - 핵심 라이브러리: `spring-cloud-starter-netflix-eureka-server`, `spring-cloud-starter-config`(config client), `common-actuator-webmvc`.
 
+의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
+
 ## 4. 설정
 
 런타임 설정 실체는 `git-config-repo/infrastructure/`에 있다(로컬 아님).

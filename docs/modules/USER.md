@@ -28,6 +28,8 @@
 - Config Server 연동: `application.yml`의 `spring.config.import: configserver:...`, `spring.cloud.config.name: user-service,eureka-client,idgen,mysql,kafka,monitoring`. 공유 `api-contract.*`는 Config Repository 루트 `application.yml`에서 자동 병합된다.
 - 부트스트랩 의존성: Config Client, Eureka Client, `spring-cloud-starter-bus-kafka`, Micrometer/Prometheus, `common-actuator-webmvc`.
 
+의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
+
 ## 4. 모듈 구조 (헥사고날)
 
 두 서브도메인 `account`(핵심)와 `role`로 나뉜다.

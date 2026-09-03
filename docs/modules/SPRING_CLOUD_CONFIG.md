@@ -38,6 +38,8 @@
 - Spring Cloud Bus(Kafka, `spring-cloud-starter-bus-kafka`) → `busrefresh` 브로드캐스트.
 - 핵심 라이브러리: `spring-cloud-config-server`, `spring-vault-core`, `spring-security-oauth2-jose`(Nimbus JOSE, JWKSet 생성), `spring-boot-starter-web`, `common-core`, `common-actuator-webmvc`.
 
+의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
+
 ## 4. 모듈 구조 (헥사고날)
 
 설정 제공(Config Server)은 프레임워크가 담당하고, 헥사고날 구조는 **JWKS/서명 도메인**에만 적용된다. `-domain`/`-client`/`-contract` 모듈 없음.

@@ -34,6 +34,8 @@
 - 저장소 없음(상태는 AS Redis에 위임). Config Server 연동: `spring.cloud.config.name: oauth2-client,eureka-client,jwt,frontend,kafka,monitoring`. 공유 `api-contract.*`는 Config Repository 루트 `application.yml`에서 자동 병합된다.
 - 핵심 라이브러리: `spring-boot-starter-oauth2-client`, `spring-boot-starter-web`, `common-core`, `user-contract`.
 
+의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
+
 ## 4. 모듈 구조 (헥사고날)
 
 `-domain`/`-client`/`-contract` 모듈 없음(순수 인증 클라이언트). 서브도메인: `oidc`, `authorizedclient`, `token`, `user`, `handler`.

@@ -37,6 +37,8 @@
 - Config Server 연동: `application.yml`의 `spring.config.import: configserver:...`, `spring.cloud.config.name: chat-service,eureka-client,mysql,mongo,redis,kafka,monitoring`. 공유 `api-contract.*`는 Config Repository 루트 `application.yml`에서 자동 병합된다.
 - 부트스트랩 의존성: `common-actuator-webmvc`, Config Client, Eureka Client, `spring-cloud-starter-bus-kafka`, Micrometer/Prometheus.
 
+의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
+
 ## 4. 모듈 구조 (헥사고날)
 
 두 서브도메인 `chatroom`·`chatmessage`가 계층별로 나뉜다.

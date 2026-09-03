@@ -38,6 +38,8 @@
 - Config Server 연동: `application.yml`의 `spring.cloud.config.name: oauth2-authorization-server,eureka-client,jwt,redis,monitoring`.
 - 핵심 라이브러리: `spring-security-oauth2-authorization-server`, `spring-boot-starter-web`, `common-redis`, `caffeine`, `user:user-contract`(application), `user:user-client`(adapter-out).
 
+의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
+
 ## 4. 모듈 구조 (헥사고날)
 
 **도메인 모듈(`-domain`)이 없다.** 토큰이 Spring Security의 값 타입이라 별도 도메인 엔티티를 두지 않고, application이 Spring Authorization Server 타입 위에서 오케스트레이션한다. 서브도메인은 `authorization`, `token`, `user`.

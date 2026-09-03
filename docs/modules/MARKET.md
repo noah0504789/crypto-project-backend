@@ -34,6 +34,8 @@
 - Config Server 연동: `spring.cloud.config.name: market-service,eureka-client,mysql,kafka,monitoring`. 공유 `api-contract.*`는 Config Repository 루트 `application.yml`에서 자동 병합된다.
 - 부트스트랩 의존성: `common-actuator-webmvc`, Config Client, Eureka Client, `spring-cloud-starter-bus-kafka`, Micrometer/Prometheus.
 
+의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
+
 ## 4. 모듈 구조 (헥사고날)
 
 | Gradle 모듈 | 계층 | 핵심 내용 | 주요 의존 |

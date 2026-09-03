@@ -48,6 +48,8 @@ Upbit 외부 API와의 통신을 전담하는 **리액티브(WebFlux/Reactor) �
 
 주요 라이브러리: `spring-boot-starter-webflux`(Reactor Netty), `spring-boot-starter-validation`, `spring-cloud-config-client`, `spring-cloud-eureka-client`. 테스트는 `reactor-test`(`StepVerifier` 가상 시계).
 
+의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
+
 ## 4. 데이터 흐름 (1단계 구현됨)
 
 ```mermaid

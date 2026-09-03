@@ -36,6 +36,8 @@
 - Kafka binder 트랜잭션은 비활성 상태다. notification은 Kafka를 직접 발행하지 않고 생산 이벤트를 MySQL Outbox에 저장하며, 실제 Kafka 발행은 outbox-poller가 담당한다.
 - 부트스트랩 의존성: `common-actuator-webmvc`, Config Client, Eureka Client, `spring-cloud-starter-bus-kafka`, Micrometer/Prometheus.
 
+의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
+
 ## 4. 모듈 구조 (헥사고날)
 
 | Gradle 모듈 | 계층 | 핵심 내용 | 주요 의존 |

@@ -30,6 +30,8 @@ Transactional Outbox 패턴의 **공용 릴레이**. 모든 서비스가 자기 
 - Config Server 연동: `spring.cloud.config.name: outbox-poller,mysql,kafka,monitoring`. 스키마는 `spring.sql.init`(`classpath:sql/schema.sql`, `mode: always`)로 `outbox`/`dlq` 생성.
 - Kafka: `default-binder: kafka`. **Kafka 트랜잭션은 비활성**(설정에 `transaction-id-prefix`가 주석 처리) — 브로커 공통 idempotence/acks=all(`infrastructure/kafka.yml`)에 의존하는 at-least-once 릴레이(§6).
 
+의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
+
 ## 4. 폴링 동작
 
 `@EnableScheduling` + `@Scheduled(fixedDelayString=...)`. 정책은 `outbox-poller.yml`의 `poller.*`.
