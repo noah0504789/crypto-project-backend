@@ -16,7 +16,7 @@ STOMP destination·Kafka 소비·gRPC 계약에 걸친 변경은 `../.claude/rul
 
 ## 주요 변경 규칙
 
-- **STOMP 계약 보존**: destination(`common-core/StompDestination`: `/topic/chat/{roomId}`, `/queue/chat/ack`, `/queue/chat/badge`, `/queue/notification`), 인바운드 `/msg/chat.send`, endpoint(`/ws-sockjs`, `/ws-native`), prefix(`/msg`, `/user`)는 프론트·k6 부하 테스트가 의존하는 외부 계약이다. 변경 전 의존성 확인(→ `../.claude/rules/external-contracts.md`).
+- **STOMP 계약 보존**: 기본 endpoint는 native `/ws-native`이고 SockJS `/ws-sockjs`는 선택 옵션이다. destination(`common-core/StompDestination`: `/topic/chat/{roomId}`, `/queue/chat/ack`, `/queue/chat/badge`, `/queue/notification`), 인바운드 `/msg/chat.send`, prefix(`/msg`, `/user`)는 프론트·k6 부하 테스트가 의존하는 외부 계약이다. 변경 전 의존성 확인(→ `../.claude/rules/external-contracts.md`).
 - **wire payload 계약**: `/topic/chat/{roomId}`로 나가는 wire 는 봉투 `StompChatMessageBatchPayload{ roomId, messages[] }`이고, 각 원소가 flat `StompChatMessagePayload`다. 내부 Kafka `ChatMessageBroadcastEvent`(nested `payload`)와 **다르다** — 변환(`ChatMessageBroadcastEventMapper`)과 배칭은 게이트웨이 책임이다. **배칭을 꺼도 1건짜리 봉투로 나간다**(설정으로 wire 형식이 갈리지 않는 것이 계약의 일부다).
 - **로컬 전달 판정 유지**: 방 브로드캐스트는 `LocalSessionCache.hasLocalSubscriber(roomId)`(SUBSCRIBE/UNSUBSCRIBE 로 유지되는 방별 세션 레지스트리), 뱃지·알림은 `hasUser(userId)`로 이 인스턴스 연결자에게만 보낸다. 이벤트에 멤버 목록을 실어 판정하던 방식은 outbox 행 크기가 방 크기에 비례해 걷어냈다(PR #271) — 되돌리지 않는다. Kafka 소비 group은 **인스턴스별 고유**(`...-${app.instance-id}`)여야 전 인스턴스가 이벤트를 받아 각자 자기 세션 보유자에게 전달한다. 이 group 규칙을 공유 group으로 바꾸면 push가 유실된다(→ external-contracts).
 - **송신 보상 로직 유지**: `ChatMessageSendService`는 gRPC 저장 실패 중 `DEADLINE_EXCEEDED`면 `hardDelete`로 보상한다(저장됐을 수 있는 메시지 제거). messageId는 gRPC 호출 전에 게이트웨이가 생성한다(클라이언트 상관용). 이 순서·보상을 깨지 않는다.

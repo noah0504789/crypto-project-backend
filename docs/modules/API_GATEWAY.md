@@ -90,7 +90,7 @@ graph TB
 ```mermaid
 graph TB
   C(("클라이언트"))
-  P["/ws-sockjs · /ws-native 경로 요청<br/>쿼리 ?access_token=JWT"]
+  P["/ws-native 기본 · /ws-sockjs 선택 경로 요청<br/>쿼리 ?access_token=JWT"]
   F["WebsocketHandshakeAuthWebFilter<br/>@Order(-1000) — 다른 필터보다 먼저 실행"]
   SKIP{"경로가 /ws-sockjs·/ws-native가 아니거나 OPTIONS"}
   PASS["통과 — 이 필터가 처리하지 않음"]

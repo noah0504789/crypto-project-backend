@@ -235,7 +235,7 @@ proto 4개(`protobuf/src/main/proto/**`)와 서버/클라이언트 매핑:
 ### 7.4 WebSocket / STOMP
 
 `StompConfig`:
-- 엔드포인트 `/ws-sockjs`(SockJS), `/ws-native`. 브로커 `/topic`·`/queue`, appPrefix `/msg`, userPrefix `/user`.
+- 기본 엔드포인트는 native WebSocket `/ws-native`다. 프론트와 현행 부하테스트가 이 경로를 사용하며, SockJS `/ws-sockjs`는 선택 옵션으로 등록만 유지한다. 브로커 `/topic`·`/queue`, appPrefix `/msg`, userPrefix `/user`.
 - 핸드셰이크에서 `X-User-Id`(게이트웨이 주입)로 STOMP Principal 결정.
 - Destination 계약(`common-core/StompDestination`): `/topic/chat/`(prefix), `/queue/chat/badge`, `/queue/chat/ack`, `/queue/notification`. 인바운드 `@MessageMapping("/chat.send")`.
 - 아웃바운드 wire payload(클라이언트가 실제 수신하는 형태, 계약):

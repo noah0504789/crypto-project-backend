@@ -188,7 +188,7 @@ graph LR
   F["WebsocketHandshakeAuthWebFilter<br/>order -1000 · api-gateway"]
   V["?access_token JWT 검증<br/>id claim 필수"]
   H["X-User-Id 주입"]
-  WS["websocket-gateway<br/>/ws-sockjs · SockJS 또는 /ws-native 핸드셰이크"]
+  WS["websocket-gateway<br/>/ws-native 기본 핸드셰이크<br/>/ws-sockjs 선택 옵션"]
   PR["StompConfig.determineUser<br/>X-User-Id → STOMP Principal"]
 
   C --> F --> V --> H --> WS --> PR

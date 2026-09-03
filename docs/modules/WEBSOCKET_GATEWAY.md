@@ -167,7 +167,7 @@ graph TB
 
 ## 8. STOMP 계약 (프론트·부하테스트 의존)
 
-- **엔드포인트**(`websocket.yml`): SockJS `/ws-sockjs`, native `/ws-native`. `setAllowedOriginPatterns("*")`.
+- **엔드포인트**(`websocket.yml`): 기본 transport는 native `/ws-native`이며 프론트와 현행 k6 시나리오가 사용한다. SockJS `/ws-sockjs`는 fallback이 필요한 클라이언트를 위한 선택 옵션으로 등록만 유지한다. 둘 다 `setAllowedOriginPatterns("*")`를 적용한다.
 - **prefix**: application `/msg`(@MessageMapping), user `/user`(`convertAndSendToUser`), broker simple `/topic`,`/queue`.
 - **destination**(`common-core/StompDestination`):
 
