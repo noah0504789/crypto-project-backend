@@ -23,15 +23,15 @@ public class ReactiveJwtDecoderConfig {
     @Bean
     public ReactiveJwtDecoder reactiveJwtDecoder(JwtProperties jwtProperties) {
         NimbusReactiveJwtDecoder jwtDecoder = NimbusReactiveJwtDecoder.withJwkSetUri(jwtProperties.jwksUri()).build();
+        jwtDecoder.setJwtValidator(jwtValidator(jwtProperties));
 
+        return new BlacklistAwareReactiveJwtDecoder(jwtDecoder, blacklistTokenValidator);
+    }
+
+    private OAuth2TokenValidator<Jwt> jwtValidator(JwtProperties jwtProperties) {
         OAuth2TokenValidator<Jwt> defaultValidator = JwtValidators.createDefaultWithIssuer(jwtProperties.issuerUri());
         OAuth2TokenValidator<Jwt> requiredUserIdValidator = new RequiredUserIdClaimValidator();
 
-        jwtDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
-                defaultValidator,
-                requiredUserIdValidator
-        ));
-
-        return new BlacklistAwareReactiveJwtDecoder(jwtDecoder, blacklistTokenValidator);
+        return new DelegatingOAuth2TokenValidator<>(defaultValidator, requiredUserIdValidator);
     }
 }

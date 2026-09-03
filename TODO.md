@@ -550,10 +550,6 @@ if (willExceedLatencyBudget()) {
 
 ### spring-cloud-api-gateway
 
-#### 6.1 issuer 검증 실패 케이스 단위 테스트 없음
-`JwtValidators.createDefaultWithIssuer(...)`가 만드는 issuer 검증 자체의 실패 경로를 직접 겨냥한 단위 테스트가 없다. 현재 테스트는 blacklist·`id` claim·필터 동작을 덮지만 잘못된 issuer 토큰이 거부되는지는 확인하지 않는다.
-`[출처: docs/modules/API_GATEWAY.md §14]`
-
 #### 6.2 `/internal/deployment/**` gateway 레벨 통합 테스트 없음
 `DeploymentControlAuthWebFilter`는 gateway에서 JWT `permitAll`인 경로를 `X-Deploy-Token`으로 별도 보호한다. 필터 자체 테스트는 `common-actuator-webflux` 쪽에만 있고, gateway 라우팅·security 체인과 결합된 상태의 통합 테스트가 없다.
 `[출처: docs/modules/API_GATEWAY.md §14]`

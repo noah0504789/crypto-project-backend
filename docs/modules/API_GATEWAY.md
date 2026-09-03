@@ -315,9 +315,10 @@ Gateway가 생성·추가하는 헤더는 다음과 같다. Route·인증·Rate 
 | `ratelimit/RateLimitConfigUnitTest` | Rate Limit 대상 Route ID와 Bucket 설정 등록 |
 | `ratelimit/RedisRateLimiterIntegrationTest` | 실제 Redis에서 회원가입 순간 2건 허용·3번째 거부 |
 | `config/CorsConfigUnitTest` | 브라우저에 `X-RateLimit-*` 4종 노출 |
+| `config/ReactiveJwtDecoderConfigUnitTest` | 설정된 issuer와 다른 JWT를 `invalid_token`으로 거부 |
 | `config/ProductionApiPathConfigBindingUnitTest` | 운영 API path 및 `gateway.rate-limit.*` 설정 바인딩 |
 
-**테스트 공백** — 항목은 [`../../TODO.md`](../../TODO.md) 6.1~6.4에서 관리한다(issuer 검증 실패 케이스, `/internal/deployment/**` gateway 레벨 통합, gRPC `DEADLINE_EXCEEDED` 실경과 검증, §9 Route 계약 표 전체를 덮는 계약 테스트).
+**테스트 공백** — 항목은 [`../../TODO.md`](../../TODO.md) 6.2~6.4에서 관리한다(`/internal/deployment/**` gateway 레벨 통합, gRPC `DEADLINE_EXCEEDED` 실경과 검증, §9 Route 계약 표 전체를 덮는 계약 테스트).
 
 ## 15. 컴파일·테스트·CI 명령
 
