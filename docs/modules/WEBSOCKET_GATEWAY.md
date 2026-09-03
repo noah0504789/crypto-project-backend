@@ -192,12 +192,72 @@ Kafka 이벤트
 
 ## 7. 세션 위치 관리
 
-연결된 사용자의 위치를 **로컬(Caffeine) + 전역(Redis)** 이중으로 관리한다(`WebSocketSessionEventHandler`, `@EventListener`).
+세션 위치는 **이 인스턴스의 실제 연결 상태**와 **클러스터 전체에서의 위치 정보**를 나눠 관리한다. 두 저장소 모두 `WebSocketSessionEventHandler`가 STOMP 세션 이벤트에 맞춰 갱신한다.
 
-- **`LocalSessionCache`**: `sessionId→userId`·`userId→Set<sessionId>`·`sessionId→구독(ACK·뱃지 구독 ID + 방 구독)`·`roomId→Set<sessionId>` 네 가지를 **전부 `ConcurrentHashMap`**으로 들고 있다. 항목의 수명은 STOMP 이벤트(connect·subscribe·unsubscribe·disconnect)가 정하므로 상한 축출은 그 수명과 무관하게 불변식을 깬다 — 방에서 지워지면 구독자가 있는데 없다고 답하고, 세션 구독이 지워지면 방을 되찾지 못해 죽은 세션이 방에 남는다(둘 다 로그를 남기지 않는다). 마지막 구독자가 빠질 때 방 키를 지우고 마지막 세션이 빠질 때 사용자 키를 지운다. 크기는 `ws_local_sessions`·`ws_local_subscribed_rooms` 게이지로 노출하며 `ws_active_sessions` 와 벌어지면 세션 정리가 안 되고 있다는 신호다. **이 인스턴스에 연결된 세션만** 들고 있으며 push 대상 판정(`hasUser`/`hasLocalSubscriber`)과 ACK·뱃지 직접 전송(구독 ID)의 근거다.
-- **`RedisSessionLocationAdapter`**(`SessionLocationPort`, Redis hash `{session}:user:{userId}` field=sessionId value=serverId): 어느 사용자가 어느 인스턴스(serverId)에 붙었는지. TTL 3분.
-- 이벤트: **connect** → 로컬 register + Redis save(+TTL); **subscribe** → Redis `refreshTtl`; **disconnect** → `deleteIfServerMatches`(serverId 일치할 때만 삭제, 재접속 레이스 방지) + 로컬 remove. `ws_active_sessions` gauge 갱신.
-- **핸드셰이크 인증**: `StompConfig`의 `determineUser`가 `X-User-Id` 헤더로 `Principal`을 만든다(없으면 연결 거부). 이 헤더는 업스트림(게이트웨이/oauth2-client 핸드셰이크 필터)이 주입한다(웹소켓 토큰 전달 방식은 TODO 1.5와 연결).
+| 범위 | 저장소 | 관리 기준 | 용도 |
+|---|---|---|---|
+| 로컬 | `LocalSessionCache` (`ConcurrentHashMap`) | 이 인스턴스에 연결된 세션·구독 | 로컬 push 대상 판정, 방 구독자 조회, ACK·뱃지 직접 전송 |
+| 전역 | `RedisSessionLocationAdapter` (`SessionLocationPort`) | `userId`·`sessionId`와 `serverId`의 매핑 | 사용자가 연결된 인스턴스 위치 기록 및 만료 관리 |
+
+### 7.1 로컬 세션·구독 레지스트리
+
+`LocalSessionCache`는 캐시 축출을 전제로 한 Caffeine 캐시가 아니라, STOMP 세션 생명주기를 그대로 반영하는 네 개의 `ConcurrentHashMap`으로 구성된 인메모리 레지스트리다.
+
+- `sessionId → userId`: 세션의 사용자 식별
+- `userId → Set<sessionId>`: 한 사용자의 다중 세션 추적
+- `sessionId → 구독 정보`: 방 구독과 ACK·뱃지 구독 ID 보관
+- `roomId → Set<sessionId>`: 방별 로컬 구독 세션 조회
+
+수명은 connect·subscribe·unsubscribe·disconnect 이벤트가 결정한다. 따라서 임의의 상한 축출을 적용하면 실제 연결은 살아 있는데 로컬 레지스트리만 사라지는 불변식 위반이 발생한다. 예를 들어 방 구독 정보가 축출되면 구독자가 있는데도 없다고 판단하고, 세션의 구독 정보가 축출되면 방 인덱스와의 대응이 깨져 종료된 세션이 방에 남을 수 있다. 마지막 구독자가 빠지면 방 키를, 마지막 세션이 빠지면 사용자 키를 정리한다.
+
+이 레지스트리는 **현재 인스턴스에 연결된 세션만** 가진다.
+
+- `hasUser`: 해당 사용자의 로컬 세션 존재 여부를 확인해 뱃지·알림 push 대상을 판단한다.
+- `hasLocalSubscriber`: 해당 방에 로컬 구독 세션이 있는지 확인해 브로드캐스트 대상을 판단한다.
+- 구독 ID 조회: ACK·뱃지를 `clientOutboundChannel`로 직접 전송할 때 세션별 목적지 구독 ID를 헤더에 넣는 근거가 된다.
+
+`ws_local_sessions`·`ws_local_subscribed_rooms` 게이지로 레지스트리 크기를 노출한다. `ws_active_sessions`와 차이가 커지면 세션 정리 누락을 의심할 수 있다.
+
+### 7.2 전역 세션 위치
+
+`RedisSessionLocationAdapter`는 Redis hash에 세션 위치를 기록한다.
+
+- 키: `{session}:user:{userId}`
+- 필드: `sessionId`
+- 값: `serverId`
+- 기본 TTL: 3분
+
+이 정보는 세션이 어느 gateway 인스턴스에 연결됐는지 나타내는 전역 위치 정보다. 실제 STOMP push 대상과 구독 ID 조회는 각 인스턴스의 `LocalSessionCache`를 기준으로 수행한다.
+
+- **save**: connect 시 `sessionId → serverId`를 기록하고 hash TTL을 갱신한다.
+- **refreshTtl**: subscribe 시 해당 사용자 세션 위치의 TTL을 갱신한다. 모든 메시지마다 갱신하지는 않는다.
+- **deleteIfServerMatches**: disconnect 시 현재 값이 자신의 `serverId`일 때만 삭제한다. 같은 세션 ID가 재접속으로 갱신된 뒤 이전 연결의 disconnect 이벤트가 새 연결 정보를 지우는 레이스를 막는다. hash가 비면 키도 삭제한다.
+
+### 7.3 세션 이벤트 흐름
+
+```text
+CONNECT
+  → 세션·사용자 식별 검증
+  → LocalSessionCache.register
+  → RedisSessionLocationAdapter.save(+TTL)
+
+SUBSCRIBE
+  → 로컬 구독·구독 ID 등록
+  → RedisSessionLocationAdapter.refreshTtl
+
+UNSUBSCRIBE
+  → subscriptionId 기준 로컬 구독 제거
+  → 방의 마지막 세션이면 방 인덱스 정리
+
+DISCONNECT
+  → RedisSessionLocationAdapter.deleteIfServerMatches
+  → LocalSessionCache.remove(구독 정보 포함)
+  → ws_active_sessions 갱신
+```
+
+### 7.4 핸드셰이크 인증과 관측
+
+`StompConfig`의 `determineUser`는 `X-User-Id` 헤더로 `Principal`을 만든다. 헤더가 없으면 연결을 거부한다. 이 헤더는 업스트림의 게이트웨이·oauth2-client 핸드셰이크 필터가 주입하며, 웹소켓 토큰 전달 방식은 TODO 1.5와 연결된다.
 
 ## 8. STOMP 계약 (프론트·부하테스트 의존)
 
