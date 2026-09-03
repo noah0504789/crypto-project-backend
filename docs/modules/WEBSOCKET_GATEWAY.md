@@ -261,22 +261,74 @@ DISCONNECT
 
 ## 8. STOMP 계약 (프론트·부하테스트 의존)
 
-- **엔드포인트**(`websocket.yml`): 기본 transport는 native `/ws-native`이며 프론트와 현행 k6 시나리오가 사용한다. SockJS `/ws-sockjs`는 fallback이 필요한 클라이언트를 위한 선택 옵션으로 등록만 유지한다. 둘 다 `setAllowedOriginPatterns("*")`를 적용한다.
-- **prefix**: application `/msg`(@MessageMapping), user `/user`(`convertAndSendToUser`), broker simple `/topic`,`/queue`.
-- **destination**(`common-core/StompDestination`):
+이 절의 endpoint·prefix·destination·payload는 프론트와 `websocket-gateway/k6`가 함께 사용하는 외부 계약이다. destination이나 payload를 바꾸면 서버만 수정할 수 없으므로, 변경 전에 [`external-contracts.md`](../../.claude/rules/external-contracts.md)와 모든 소비처를 확인한다.
 
-| 방향 | destination | 전송 방식 | payload |
+### 8.1 연결 엔드포인트
+
+| 구분 | 경로 | 용도 | 현재 사용처 |
 |---|---|---|---|
-| inbound | `/msg/chat.send` | `@MessageMapping("/chat.send")` | `StompChatMessageSendRequest{clientMessageId, roomId, writerId, content}` |
-| outbound | `/topic/chat/{roomId}` | `convertAndSend`(방 공유) | **봉투** `StompChatMessageBatchPayload{roomId, messages[]}`. 각 원소는 `StompChatMessagePayload{messageId, roomId, writerId, content, timestamp(long), clientMessageId}` |
-| outbound | `/user/queue/chat/ack` | **`clientOutboundChannel` 직접**(brokerChannel 우회) | `StompChatMessageAckPayload`(성공/실패, errorCode) |
-| outbound | `/user/queue/chat/badge` | **`clientOutboundChannel` 직접** | `StompMyChatRoomBadgePayload` |
-| outbound | `/user/queue/notification` | `convertAndSendToUser` | `StompWebNotificationPayload` |
+| 기본 | `/ws-native` | native WebSocket transport | 프론트, 현행 k6 시나리오 |
+| 선택 | `/ws-sockjs` | SockJS fallback | fallback 클라이언트, `k6/legacy` 시나리오 |
 
-- 이들은 프론트와 `websocket-gateway/k6` 부하 테스트가 의존하는 **외부 계약**이다. 변경 전 의존성 확인(→ `../../.claude/rules/external-contracts.md`). 특히 `/topic/chat/{roomId}` wire는 내부 Kafka `ChatMessageBroadcastEvent`와 구조가 다르다.
-- **ACK 는 brokerChannel 을 지나지 않는다.** `LocalSessionCache` 에서 세션과 구독 ID 를 찾아 `clientOutboundChannel` 로 직접 보낸다(`DirectStompChatMessageAckAdapter`). 세션이나 구독을 못 찾거나 전송에 실패하면 보내지 않고 `chat.message.ack.direct.failed` 로 센다. 구독 ID 는 `SessionSubscribeEvent` 에서 잡아 `LocalSessionCache` 에 함께 둔다 — 없으면 클라이언트가 MESSAGE 프레임을 매칭하지 못한다.
-- **뱃지도 brokerChannel 을 지나지 않는다.** `DirectStompMyChatRoomBadgeAdapter` 가 같은 방식으로 세션·뱃지 구독 ID 를 헤더에 넣어 직접 보낸다. 로컬 세션이 없으면 `chat.badge.direct.skipped`, 로컬 세션은 있지만 구독 ID를 찾지 못하거나 전송에 실패하면 `chat.badge.direct.failed` 로 센다.
-- 메시지 변환: `MappingJackson2MessageConverter`(JSON), 커스텀 executor(broker/inbound/outbound `ThreadPoolTaskExecutor`), broker cacheLimit 8192.
+두 endpoint 모두 `websocket.yml`에 등록되어 있고 `setAllowedOriginPatterns("*")`를 적용한다. native endpoint를 기본으로 사용하며, SockJS endpoint는 호환성이 필요한 클라이언트를 위해 유지한다.
+
+### 8.2 STOMP prefix
+
+| prefix | 역할 | 서버 설정·사용 방식 |
+|---|---|---|
+| `/msg` | 클라이언트 → 서버 application destination | `@MessageMapping` 진입점 |
+| `/user` | 사용자별 destination | `convertAndSendToUser` 또는 사용자 destination 직접 구성 |
+| `/topic` | 방 등 다수 구독자 대상 | simple broker destination |
+| `/queue` | 사용자별 단일 논리 목적지 | simple broker destination 또는 직접 전송 destination |
+
+실제 클라이언트 구독 경로는 사용자 prefix를 포함한다. 예를 들어 ACK 구독은 `/user/queue/chat/ack`이고, 서버 내부의 공통 destination 상수는 `/queue/chat/ack`만 표현한다.
+
+### 8.3 메시지 destination과 payload
+
+destination 상수는 `common-core/StompDestination`에서 관리한다.
+
+| 방향 | destination | payload 및 필드 |
+|---|---|---|
+| inbound | `/msg/chat.send` | `StompChatMessageSendRequest`: `clientMessageId`, `roomId`, `writerId`, `content` |
+| outbound | `/topic/chat/{roomId}` | `StompChatMessageBatchPayload`: `roomId`, `messages[]`<br>각 메시지: `messageId`, `roomId`, `writerId`, `content`, `timestamp`, `clientMessageId` |
+| outbound | `/user/queue/chat/ack` | `StompChatMessageAckPayload`: `id`, `clientMessageId`, `success`, `ts`, `errors`, `errorCode` |
+| outbound | `/user/queue/chat/badge` | `StompMyChatRoomBadgePayload`: `roomId`, `lastMsgContent`, `lastMsgCreatedAt` |
+| outbound | `/user/queue/notification` | `StompWebNotificationPayload`: `notificationId`, `type`, `title`, `body`, `createdAtMs`, `link`, `messageParts`, `data` |
+
+채팅 브로드캐스트는 단건 payload가 아니라 `messages[]`를 가진 봉투로 전송한다. 배열 순서는 서버가 받은 순서이며, 이 STOMP wire payload는 내부 Kafka `ChatMessageBroadcastEvent`와 다른 외부 표현이다.
+
+### 8.4 destination별 전달 경로
+
+```text
+채팅 송신
+  client → /msg/chat.send
+         → @MessageMapping
+         → chat gRPC 저장
+         → /topic/chat/{roomId} 브로드캐스트
+
+ACK·뱃지
+  서버 → LocalSessionCache에서 로컬 세션·목적지 구독 ID 조회
+       → clientOutboundChannel 직접 제출
+       → WebSocket 전송
+
+웹 알림
+  Kafka 이벤트 → convertAndSendToUser
+               → /user/queue/notification
+               → WebSocket 전송
+```
+
+ACK와 뱃지는 `brokerChannel`을 거치지 않는다. `DirectStompChatMessageAckAdapter`와 `DirectStompMyChatRoomBadgeAdapter`가 `LocalSessionCache`에서 세션별 구독 ID를 찾아 헤더에 넣고 `clientOutboundChannel`에 직접 제출한다. 이는 TCP 소켓에 직접 쓰는 것이 아니라 Spring의 outbound 전송 계층을 호출하는 방식이다.
+
+- ACK: 세션 또는 ACK 구독을 찾지 못하거나 전송에 실패하면 `chat.message.ack.direct.failed`로 센다. ACK는 발신자에게 처리 결과를 알려야 하므로 폴백 없이 실패를 관측한다.
+- 뱃지: 로컬 세션이 없으면 정상적인 대상 부재로 `chat.badge.direct.skipped`에 기록한다. 로컬 세션은 있지만 뱃지 구독 ID가 없거나 전송에 실패하면 `chat.badge.direct.failed`로 센다.
+- 알림: `convertAndSendToUser` 경로를 사용하므로 ACK·뱃지의 직접 전송 경로와 다르다.
+
+### 8.5 공통 전송 설정
+
+- payload 변환은 `MappingJackson2MessageConverter`를 사용한다.
+- broker·inbound·outbound는 각각 커스텀 `ThreadPoolTaskExecutor`를 사용한다.
+- simple broker의 `broker cacheLimit`은 8192다.
+- 세션별 직접 전송에 필요한 구독 ID는 `SessionSubscribeEvent`에서 등록하고 `UNSUBSCRIBE`·`DISCONNECT`에서 함께 제거한다. 구독 ID가 누락되면 클라이언트가 MESSAGE 프레임을 매칭하지 못해 조용히 전달되지 않는다.
 
 ## 9. 확인 필요 항목
 
