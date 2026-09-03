@@ -58,7 +58,15 @@ class ReactiveSecurityE2ETest {
         webTestClient.get()
                 .uri("/user/me/profile")
                 .exchange()
-                .expectStatus().isUnauthorized();
+                .expectStatus().isUnauthorized()
+                .expectHeader().valueEquals("WWW-Authenticate", "Bearer")
+                .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(401)
+                .jsonPath("$.error").isEqualTo("UNAUTHORIZED")
+                .jsonPath("$.message").isEqualTo("Authentication is required")
+                .jsonPath("$.path").isEqualTo("/user/me/profile")
+                .jsonPath("$.timestamp").exists();
     }
 
     @Test
@@ -73,7 +81,7 @@ class ReactiveSecurityE2ETest {
                 .expectBody()
                 .jsonPath("$.status").isEqualTo(403)
                 .jsonPath("$.error").isEqualTo("FORBIDDEN")
-                .jsonPath("$.message").isEqualTo("Authorization required.")
+                .jsonPath("$.message").isEqualTo("Access is denied")
                 .jsonPath("$.path").isEqualTo("/user/me/profile")
                 .jsonPath("$.timestamp").exists();
     }
@@ -103,6 +111,7 @@ class ReactiveSecurityE2ETest {
                 .expectBody()
                 .jsonPath("$.status").isEqualTo(403)
                 .jsonPath("$.error").isEqualTo("FORBIDDEN")
+                .jsonPath("$.message").isEqualTo("Access is denied")
                 .jsonPath("$.path").isEqualTo("/user/me/profile");
     }
 

@@ -72,8 +72,8 @@ graph TB
   FILT["Route 필터<br/>X-From: gateway 추가 · (user/chat만) rewritePath · X-Gateway: reactive 응답 추가"]
   LB["전달 — Spring Cloud LoadBalancer<br/>lb://서비스명 을 Eureka 인스턴스로 해석해 프록시"]
   OK["정상 응답 그대로 반환"]
-  E401["401 인증 실패<br/>기본 처리"]
-  E403["403 인가 실패<br/>writeError 커스텀"]
+  E401["401 인증 실패<br/>JSON + Bearer"]
+  E403["403 인가 실패<br/>JSON 커스텀"]
   E429["429 Too Many Requests"]
 
   REQ --> ROUTE --> AUTHZ --> JWT --> ID --> RL --> FILT --> LB --> OK
@@ -287,14 +287,14 @@ Gateway가 생성·추가하는 헤더는 다음과 같다. Route·인증·Rate 
 
 | 상황 | 처리 | 근거 |
 |---|---|---|
-| 일반 HTTP 인증 실패(401) | Spring Security `oauth2ResourceServer` 기본 처리(커스텀 `AuthenticationEntryPoint` 미설정) | `ReactiveSecurityConfig.java` 전체(커스텀 코드 없음) |
+| 일반 HTTP 인증 실패(401) | 커스텀 `authenticationEntryPoint` — `WWW-Authenticate: Bearer` + JSON body(`timestamp`,`status`,`error:"UNAUTHORIZED"`,`message`,`path`) | `ReactiveSecurityConfig.java` |
 | blacklist gRPC 조회 실패(500) | 원격 오류를 그대로 전파해 요청을 차단하고 downstream을 호출하지 않음(fail-closed) | `GrpcBlacklistDeadlineE2ETest` |
-| 일반 HTTP 인가 실패(403) | 커스텀 `accessDeniedHandler` — CORS 헤더 재설정 + JSON body(`timestamp`,`status`,`error:"FORBIDDEN"`,`message`,`path`) | `ReactiveSecurityConfig.java:91-92,108-148` |
+| 일반 HTTP 인가 실패(403) | 커스텀 `accessDeniedHandler` — JSON body(`timestamp`,`status`,`error:"FORBIDDEN"`,`message`,`path`) | `ReactiveSecurityConfig.java` |
 | WebSocket 핸드셰이크 인증 실패(401) | `WebsocketHandshakeAuthWebFilter.unauthorized` — 상태코드만 설정, JSON body 없음 | `WebsocketHandshakeAuthWebFilter.java:97-100` |
 | Rate Limit 초과(429) | `RequestRateLimiterGatewayFilterFactory` — 상태코드와 Rate Limit 헤더 설정, body 없음 | `ReactiveRouteConfig`, `RateLimitConfig` |
 | 배포 제어 인증 실패(401) | `DeploymentControlAuthWebFilter` — `{"message":"Unauthorized deployment control request"}` | `DeploymentControlAuthWebFilter` |
 
-세 인증 실패 처리(일반 401 / WebSocket 401 / 배포 제어 401)는 서로 다른 필터·바디 형식을 사용하며 통일되어 있지 않다.
+일반 HTTP 401·403은 공통 JSON 오류 형식을 사용하지만, WebSocket 핸드셰이크와 배포 제어 401은 각각 별도 필터·바디 형식을 사용한다.
 
 ## 14. 테스트 현황
 
