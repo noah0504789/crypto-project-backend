@@ -278,10 +278,6 @@ deadline이 무한 대기는 이미 막고 있고, gRPC 호출 깊이가 1단계
 
 ### oauth2-authorization-server
 
-#### 4.2 미사용 mysql 설정 (해결)
-`oauth2-authorization-server`가 MySQL을 사용하지 않는 것을 확인하고 `git-config-repo/dynamic/oauth2-authorization-server.yml`의 미사용 `mysql` 블록을 제거했다. 사용자 정보는 gRPC로 `user-service`에서 조회한다.
-`[출처: docs/modules/OAUTH2_AUTHORIZATION_SERVER.md §14]`
-
 ### spring-cloud-eureka-server
 
 #### 4.3 단일 노드 · self-preservation 비활성
@@ -289,10 +285,6 @@ deadline이 무한 대기는 이미 막고 있고, gRPC 호출 깊이가 1단계
 `[출처: docs/modules/EUREKA_SERVER.md §9 / spring-cloud-eureka-server 분석]`
 
 ### notification
-
-#### 4.4 Gradle 계층별 convention plugin 불일치 (해결)
-`notification-application`은 `crypto-application`, `notification-adapter-in`·`notification-adapter-out`은 `crypto-adapter`를 사용하도록 계층별 convention plugin을 정정했다. 현재 각 plugin의 공통 기반 동작은 같지만, 모듈 계층과 plugin 규약을 일치시켰다.
-`[출처: docs/modules/NOTIFICATION.md §4]`
 
 ### outbox-poller
 
