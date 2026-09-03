@@ -32,7 +32,7 @@ Upbit 외부 API와의 통신을 전담하는 **리액티브(WebFlux/Reactor) �
 
 **계층 모듈 구성** — `-contract` / `-application` / `-adapter-out` / `-bootstrap`.
 
-`market-detection`처럼 `-bootstrap`에 로직을 담는 형태는 ArchUnit이 막는다(그쪽은 문서화된 legacy 예외). `-bootstrap`에는 `Main`만 둔다.
+ArchUnit은 모든 `-bootstrap` 모듈에 `Main`만 두도록 강제한다.
 
 | 항목 | 값 |
 |---|---|
