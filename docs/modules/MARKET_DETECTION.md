@@ -151,10 +151,12 @@ market-detection은 stateful Kafka 처리 결과가 곧 Kafka 출력이고 외�
 
 ## 7. 테스트 현황
 
-- `-application`: `PriceChangeUnitTest`(평균·변동률·임계 매칭), `PriceAlertDetectionServiceUnitTest`(stale 판정·임계별 이벤트 생성), `PriceAlertDetectionPropertiesUnitTest`(시간·retention 설정 검증)
-- `-adapter-in`: `PriceAlertDetectionProcessorTopologyIntegrationTest`(`TopologyTestDriver`, state store·event time·임계별 출력·`event_id` header)
-- `BootSmokeTest`(Kafka Testcontainer). 수집 이관 후 외부 접속이 없어 mock 차단이 필요 없다.
-- 수집 관련 테스트(WebSocket·coalescing buffer·publisher worker)는 `upbit-connector`로 이동했다.
+| 대상 | 테스트 | 검증 범위·환경 |
+|---|---|---|
+| application | `PriceChangeUnitTest`, `PriceAlertDetectionServiceUnitTest`, `PriceAlertDetectionPropertiesUnitTest` | 평균·변동률·임계 매칭, stale 판정·임계별 이벤트 생성, 시간·retention 설정 |
+| adapter-in | `PriceAlertDetectionProcessorTopologyIntegrationTest` | `TopologyTestDriver`로 state store·event time·임계별 출력·`event_id` header 검증 |
+| bootstrap | `BootSmokeTest` | Kafka Testcontainer. 수집 이관 후 외부 접속이 없어 mock 차단 불필요 |
+| 이전 수집 영역 | 없음 | WebSocket·coalescing buffer·publisher worker 테스트는 `upbit-connector`로 이동 |
 
 ## 8. 컴파일 · 테스트 · CI 명령
 

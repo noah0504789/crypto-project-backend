@@ -340,11 +340,13 @@ ACK와 뱃지는 `brokerChannel`을 거치지 않는다. `DirectStompChatMessage
 
 ## 10. 테스트 현황
 
-- application: `ChatMessageSendServiceUnitTest`, `LocalSessionCacheUnitTest`(세션·ACK·뱃지 구독 ID, unsubscribe·세션 제거 시 동반 삭제)
-- adapter-in: `StompControllerUnitTest`, `StompChatMessageExceptionHandlerUnitTest`(실패 ACK 의 `clientMessageId`), `ExecutorConfigUnitTest`, `ExecutorConfigRejectionKindUnitTest`(거절 태스크 목적지 분류), `RedisChatMessageRateLimiter*Test`
-- adapter-out: `BatchingChatMessageBroadcastAdapterUnitTest`(순서 보존·상한 초과 즉시 전송), `CoalescingMyChatRoomBadgeAdapterUnitTest`(마지막 1건·타임스탬프 역전·flush Timer), `DirectStompMyChatRoomBadgeAdapterUnitTest`·`DirectStompChatMessageAckAdapterUnitTest`(헤더 3종·세션·구독 부재·다중 세션), `GrpcChatMessageCommandAdapterUnitTest`, `RedisSessionLocationAdapterUnitTest`
-- bootstrap: `BootSmokeTest` — 실제 `git-config-repo` 설정을 import 하므로 **설정 키 누락이 부팅 실패로 잡힌다**
-- 부하: [`chat/load-test-results/.../README.md`](../../chat/load-test-results/chatmessage/websocket-gateway/README.md) — 결과는 §2. **거기 지연 수치는 목표치도 확정 용량도 아니다.** 16GB 단일 호스트에 컨테이너 23개를 올린 상태라 같은 조건 3회에서 p90 이 3배까지 흔들린다. 피크·SLO 는 운영계에서 다시 잰다. 확정된 것은 **유실 0·ACK 실패 0**과 **병목이 어디였는가**다
+| 영역 | 테스트 | 검증 범위·비고 |
+|---|---|---|
+| application | `ChatMessageSendServiceUnitTest`, `LocalSessionCacheUnitTest` | 메시지 송신, 세션·ACK·뱃지 구독 ID, unsubscribe·세션 제거 시 동반 삭제 |
+| adapter-in | `StompControllerUnitTest`, `StompChatMessageExceptionHandlerUnitTest`, `ExecutorConfigUnitTest`, `ExecutorConfigRejectionKindUnitTest`, `RedisChatMessageRateLimiter*Test` | STOMP 입력·실패 ACK의 `clientMessageId`, executor 설정·거절 태스크 목적지 분류, rate limit |
+| adapter-out | `BatchingChatMessageBroadcastAdapterUnitTest`, `CoalescingMyChatRoomBadgeAdapterUnitTest`, `DirectStompMyChatRoomBadgeAdapterUnitTest`, `DirectStompChatMessageAckAdapterUnitTest`, `GrpcChatMessageCommandAdapterUnitTest`, `RedisSessionLocationAdapterUnitTest` | 브로드캐스트 순서·상한, 뱃지 conflation·flush, 직접 전송 헤더·세션·구독 부재·다중 세션, gRPC·Redis 세션 위치 |
+| bootstrap | `BootSmokeTest` | 실제 `git-config-repo` 설정을 import. 설정 키 누락은 부팅 실패로 검출 |
+| 부하 | [`chat/load-test-results/.../README.md`](../../chat/load-test-results/chatmessage/websocket-gateway/README.md) | 동일 조건 3회 부하에서 유실 0·ACK 실패 0 및 병목 검증. 16GB 공유 호스트의 p90은 목표치·확정 용량으로 해석하지 않음 |
 
 ## 11. 컴파일 · 테스트 · CI 명령
 

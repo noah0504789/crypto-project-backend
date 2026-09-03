@@ -205,9 +205,13 @@ graph TB
 
 ## 7. 테스트 · CI
 
-- `common-jpa`·`common-redis`·`common-redisson` 등은 `common-test`(Testcontainers)로 통합 테스트.
-- `common-arch-test`는 산출물 없이 **테스트만** 있는 게이트 모듈. 아키텍처 변경 시 `./gradlew :common:common-arch-test:test`를 반드시 실행한다.
-- 개별 컴파일/테스트: `./gradlew :common:common-core:compileJava`, `./gradlew :common:common-jpa:test` 등. `commonCi`/`protobufCi` 같은 집계 task는 **없다**(→ `testing.md`).
+| 대상 | 검증 방식 | 비고 |
+|---|---|---|
+| `common-jpa`·`common-redis`·`common-redisson` 등 | `common-test` 기반 통합 테스트 | Testcontainers 사용 |
+| `common-arch-test` | ArchUnit 테스트 | 산출물 없이 테스트만 수행하는 게이트 모듈. 아키텍처 변경 시 `./gradlew :common:common-arch-test:test` 필수 |
+| 개별 common 모듈 | 모듈별 test task | 예: `./gradlew :common:common-jpa:test` |
+
+`commonCi`·`protobufCi` 같은 common 집계 task는 없다(→ `testing.md`).
 
 ## 8. 확인 필요 항목
 

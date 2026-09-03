@@ -144,9 +144,11 @@ graph TB
 
 ## 9. 테스트 현황
 
-- adapter-in: `AuthControllerTest`, E2E `AuthLogoutE2ETest`, `AuthRefreshE2ETest`, `OAuth2AuthorizationRedirectE2ETest`
-- application: `CustomLogoutSuccessHandlerTest`, `CustomOAuth2LoginSuccessHandlerTest`, `CustomOidcUserServiceTest`, `CustomOAuth2AuthorizedClientTokenServiceTest`, `RefreshTokenServiceTest`, `Google/KakaoOidcProviderProfileExtractorTest`
-- 다수의 `Test*DependencyConfig`로 외부 의존(gRPC/security) 대체.
+| 계층 | 테스트 | 검증 범위 |
+|---|---|---|
+| adapter-in | `AuthControllerTest`, E2E `AuthLogoutE2ETest`, `AuthRefreshE2ETest`, `OAuth2AuthorizationRedirectE2ETest` | 인증 controller·로그아웃·토큰 갱신·OAuth2 authorization redirect |
+| application | `CustomLogoutSuccessHandlerTest`, `CustomOAuth2LoginSuccessHandlerTest`, `CustomOidcUserServiceTest`, `CustomOAuth2AuthorizedClientTokenServiceTest`, `RefreshTokenServiceTest`, `Google/KakaoOidcProviderProfileExtractorTest` | 로그아웃·로그인 성공 처리·OIDC 사용자/authorized client·refresh token·provider profile |
+| 테스트 의존성 대체 | 다수의 `Test*DependencyConfig` | 외부 gRPC/security 의존성 대체 |
 
 ## 10. 컴파일 · 테스트 · CI 명령
 

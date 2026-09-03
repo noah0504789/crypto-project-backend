@@ -118,8 +118,10 @@ DB `event`(`mysql.event.*`), persistence unit `event`, 단일 write 데이터소
 
 ## 8. 테스트 현황
 
-- `OutboxEventSchedulerTest`(폴링·발행·상태 전이)
-- `KafkaEventPublisherTest`(메시지/헤더/목적지, 발행 실패 예외)
+| 테스트 | 검증 범위 |
+|---|---|
+| `OutboxEventSchedulerTest` | 폴링·발행·상태 전이 |
+| `KafkaEventPublisherTest` | 메시지·헤더·목적지·발행 실패 예외 |
 
 ## 9. 컴파일 · 테스트 · CI 명령
 

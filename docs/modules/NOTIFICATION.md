@@ -222,11 +222,13 @@ market-detection은 최초 이벤트 생성 시 무작위 UUID를 만들어 Kafk
 
 ## 12. 테스트 현황
 
-- domain: `NotificationTest`
-- application: `NotificationQueryServiceUnitTest`(캐시 우선·미스 재조회·recipient 인덱스 선택), `PriceAlertNotificationCommandServiceTest`
-- adapter-in: `NotificationControllerMvcTest`
-- adapter-out: `MongoNotificationAdapterTest`, `MongoNotificationRecipientRepositoryImplTest`, **`RedisNotificationAdapterIntegrationTest`**(Testcontainers `redis:7.2.0` — warmUp/findByIds 라운드트립, 긴 TTL, invalidate)
-- common: `SingleFlightUnitTest`(in-process 중복 제거 — 동시 로드 공유·완료 후 재실행·예외 전파)
+| 계층 | 테스트 | 검증 범위·환경 |
+|---|---|---|
+| domain | `NotificationTest` | 알림 도메인 규칙 |
+| application | `NotificationQueryServiceUnitTest`, `PriceAlertNotificationCommandServiceTest` | 캐시 우선·미스 재조회·recipient 인덱스 선택 및 가격 알림 명령 |
+| adapter-in | `NotificationControllerMvcTest` | 알림 조회 입력 경로 |
+| adapter-out | `MongoNotificationAdapterTest`, `MongoNotificationRecipientRepositoryImplTest`, **`RedisNotificationAdapterIntegrationTest`** | Mongo adapter/repository, Redis warmUp·findByIds 라운드트립·긴 TTL·invalidate. Redis 통합은 Testcontainers `redis:7.2.0` |
+| common | `SingleFlightUnitTest` | in-process 중복 제거의 동시 로드 공유·완료 후 재실행·예외 전파 |
 
 ## 13. 컴파일 · 테스트 · CI 명령
 

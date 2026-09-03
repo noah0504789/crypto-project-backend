@@ -59,7 +59,10 @@
 
 ## 6. 테스트 현황
 
-- 단위/통합 테스트 없음(커스텀 로직 없는 `@EnableEurekaServer` 실행 모듈). `eurekaServerCi`는 `:spring-cloud-eureka-server:build`와 `:common:common-arch-test:test`(ArchUnit)만 수행한다.
+| 대상 | 현황 | CI 검증 |
+|---|---|---|
+| `spring-cloud-eureka-server` | 단위/통합 테스트 없음. 커스텀 로직 없는 `@EnableEurekaServer` 실행 모듈 | `:spring-cloud-eureka-server:build` |
+| 공통 아키텍처 | 서비스별 테스트 없음 | `:common:common-arch-test:test`(ArchUnit) |
 
 ## 7. 컴파일 · 빌드 · CI 명령
 

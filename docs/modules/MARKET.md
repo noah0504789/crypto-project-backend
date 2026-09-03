@@ -148,9 +148,11 @@ proto: `protobuf/src/main/proto/market/v1/market-service.proto`. 서버 구현�
 
 ## 13. 테스트 현황
 
-- application: `MarketCommandServiceTest`, `PriceAlertSettingCommandServiceTest`, `PriceAlertSettingQueryServiceTest`
-- adapter-in: `PriceAlertSettingControllerWebMvcTest`
-- adapter-out: `JpaMarketAdapterTest`, `JpaPriceAlertSettingAdapterTest`
+| 계층 | 테스트 |
+|---|---|
+| application | `MarketCommandServiceTest`, `PriceAlertSettingCommandServiceTest`, `PriceAlertSettingQueryServiceTest` |
+| adapter-in | `PriceAlertSettingControllerWebMvcTest` |
+| adapter-out | `JpaMarketAdapterTest`, `JpaPriceAlertSettingAdapterTest` |
 
 (세부 내용은 이 문서 검증 범위 밖. 필요 시 파일을 직접 확인한다.)
 

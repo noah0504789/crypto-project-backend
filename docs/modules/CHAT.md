@@ -597,10 +597,13 @@ application 의 `ChatRoomActivityProjectionMetricsPort` 가 계측 의도를 정
 ## 17. 테스트 현황
 
 계층별 테스트가 존재한다(세부 내용은 이 문서 검증 범위 밖, 필요 시 파일 직접 확인).
-- domain: `ChatRoomTest`
-- application: `ChatRoomCommandServiceTest`, `ChatRoomQueryServiceTest`, `ChatRoomQueryRepairServiceTest`, `ChatRoomEventServiceTest`, `ChatRoomDlqServiceTest`, `ChatMessageCommandServiceTest`, `ChatMessageQueryServiceTest`, `ChatMessageQueryRepairServiceTest`, `ChatMessageEventServiceTest`, `UniqueChatRoomTitleValidatorTest`
-- adapter-in: `ChatRoomControllerMvcTest`, `ChatMessageControllerMvcTest`, `GrpcChatMessageServiceTest`, `GrpcChatMessageExceptionAdviceTest`, `KafkaChatMessageBinderTest`, `KafkaChatRoomBinderTest`, `GlobalExceptionHandlerTest`
-- adapter-out: `Mongo*RepositoryImplTest`/`Mongo*AdapterTest`(room·message·membership), `RedisChatRoomAdapterTest`, `RedisChatMessageAdapterTest`, `ChatMessageSchedulerTest`, `MongoChatPersistenceExceptionTranslatorTest`
+
+| 계층 | 테스트 | 검증 범위 |
+|---|---|---|
+| domain | `ChatRoomTest` | 방 도메인 규칙 |
+| application | `ChatRoomCommandServiceTest`, `ChatRoomQueryServiceTest`, `ChatRoomQueryRepairServiceTest`, `ChatRoomEventServiceTest`, `ChatRoomDlqServiceTest`, `ChatMessageCommandServiceTest`, `ChatMessageQueryServiceTest`, `ChatMessageQueryRepairServiceTest`, `ChatMessageEventServiceTest`, `UniqueChatRoomTitleValidatorTest` | 방·메시지 명령/조회/복구/이벤트/DLQ 및 제목 중복 검증 |
+| adapter-in | `ChatRoomControllerMvcTest`, `ChatMessageControllerMvcTest`, `GrpcChatMessageServiceTest`, `GrpcChatMessageExceptionAdviceTest`, `KafkaChatMessageBinderTest`, `KafkaChatRoomBinderTest`, `GlobalExceptionHandlerTest` | REST·gRPC·Kafka 입력 경로와 예외 응답 |
+| adapter-out | `Mongo*RepositoryImplTest`/`Mongo*AdapterTest`, `RedisChatRoomAdapterTest`, `RedisChatMessageAdapterTest`, `ChatMessageSchedulerTest`, `MongoChatPersistenceExceptionTranslatorTest` | Mongo·Redis 영속성, 스케줄러, persistence 예외 변환 |
 
 ## 18. 컴파일 · 테스트 · CI 명령
 
