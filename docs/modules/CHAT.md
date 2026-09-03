@@ -68,139 +68,199 @@ chat의 쓰기 경로는 **Outbox를 먼저 기록하고 Redis 캐시에 반영�
 
 ### 내 방 정렬 projection — 방 단위 conflation
 
-내 방 목록 정렬(`{chat}:active-room:{memberId}` ZSET)을 방 단위로 합쳐 반영하는 projector를
-도입했다(PR #287). 활동이 있었던 방을 dirty로 표시하고, 같은 방의 연속 메시지를 한 flush에서
-한 번만 계산하는 경로다.
+내 방 목록은 방의 최신 활동과 사용자의 읽음 위치를 함께 반영해 정렬한다. 이 값들은 서로 다른
+Mongo 컬렉션에 있다.
 
-**이번 PR은 dual-write 검증 단계다.** 기존 Redis·Mongo membership fan-out을 그대로 두고
-projector를 함께 실행해 결과를 비교한다. 따라서 이 단계에서는 쓰기량이 줄지 않고 projector
-비용이 추가된다. 조회 전환과 기존 fan-out 제거는 다음 PR에서 수행한다.
+- 방의 사실: `chat_room.latestMsgSeq`, 최신 메시지 시각
+- 사용자의 사실: `chat_room_membership.lastMsgReadSeq`
+- 정렬 결과: `unread` 여부와 최신 메시지 시각을 반영한 사용자별 score
 
-fan-out 제거 뒤에도 flush 한 번의 Redis 비용은 `O(members)`다. 줄어드는 것은 fan-out 한 번의
-비용이 아니라 **실행 횟수**다. 같은 방의 메시지 수를 `M`, 멤버 수를 `N`, 실제로 처리된 flush
-횟수를 `F`라 하면 active-room score 쓰기는 `M×N → F×N`으로 바뀐다.
+두 컬렉션의 값을 결합한 score를 Mongo 인덱스 하나만으로 직접 정렬하기는 어렵다. 기존 구조는
+메시지가 저장될 때마다 방의 모든 멤버 점수를 미리 계산해 Mongo membership에 기록했다. 따라서
+메시지 한 건의 처리 비용이 멤버 수에 비례하는 fan-out 비용이 됐다.
 
+#### 문제와 초기 최적화의 한계
+
+멤버별 갱신을 각각 수행하면 멤버 302명인 방에서 메시지 6,000건을 처리할 때 논리적으로
+`302 × 6,000 = 1,812,000`건의 membership 갱신이 필요하다. 초기에는 이 갱신을 메시지별로
+개별 요청해 Mongo 네트워크 왕복도 메시지당 302회, 전체 1,812,000회 발생했다.
+
+이를 `bulkWrite` 한 번으로 묶어 네트워크 왕복을 메시지당 302회에서 1회, 전체 1,812,000회에서
+6,000회로 줄였다. 하지만 bulkWrite 안의 update model 302건은 Mongo 서버에서 각각의 update
+연산으로 집계된다. 즉, 네트워크 왕복은 줄었지만 논리적 갱신 대상과 Mongo 서버의 update 부하는
+거의 줄지 않았다.
+
+또 다른 문제는 `msgCnt`가 두 의미를 동시에 맡고 있었다는 점이다. `msgCnt`는 현재 보관 중인
+메시지 수이면서 읽음 여부를 판단하는 기준이기도 했다. 메시지를 hard delete하면 `msgCnt`는
+감소하지만, 이미 저장된 멤버별 `lastMsgReadSeq`는 그대로 남는다. 그 결과 삭제 전에는 모두
+읽었던 방이 삭제 후에는 읽지 않은 방처럼 판단될 수 있었다.
+
+#### 한 일: 방 단위 dirty projection
+
+멤버별 점수를 메시지 저장 시점마다 갱신하지 않고, 활동이 발생한 방을 dirty로 표시한 뒤
+projector가 방 단위로 정렬 결과를 계산하도록 바꿨다. 같은 방의 여러 메시지를 한 번의 flush로
+합치므로, 멤버 수에 비례하는 갱신의 실행 횟수를 메시지 수에서 flush 수로 옮긴다.
+
+Redis active-room에 멤버별 score를 쓰는 한 번의 flush 비용은 여전히 `O(members)`다. 줄어드는
+것은 한 번의 flush가 멤버별로 수행하는 작업 수가 아니라, 같은 방에 대해 그 작업을 반복하는
+횟수다.
+
+```text
+기존          메시지 M건 × 멤버 N명       → M × N회 갱신
+변경          방별 flush F회 × 멤버 N명    → F × N회 갱신
+예시          메시지 100건 · 멤버 302명 · flush 1회
+              30,200회 갱신              → 302회 갱신
 ```
-PR1 전환기       기존 M×N + projector F×N
-fan-out 제거 뒤  projector F×N
-같은 창에 100건 · 멤버 302명 · flush 1회라면  30,200 → 302 ZADD
+
+따라서 이득은 한 flush 창에 같은 방의 메시지가 얼마나 몰리는지에 비례한다. 창마다 메시지가
+한 건뿐인 한산한 방은 이득이 작고 dirty 표시 비용이 추가될 수 있다. 이 구조가 모든 방의 비용을
+줄이는 것이 아니라, 메시지가 집중되는 hot room의 반복 fan-out을 줄이는 구조라는 점이 중요하다.
+
+#### Dirty Set + Conflation
+
+`storeChatMessage.lua`가 메시지 캐시와 작성자의 읽음 위치를 갱신하는 같은 Redis 원자 연산에서
+방을 dirty 목록에도 등록한다. projector가 처리할 방 목록은
+`{chat}:room:activity:recent` ZSET이다.
+
+이 ZSET은 메시지 큐가 아니라 방 단위로 합쳐지는 작업 목록이다. 원소의 key가 `roomId`이므로
+같은 방의 메시지가 여러 번 들어와도 원소는 하나이고, score인 활동 시각만 최신 값으로 갱신된다.
+
+```text
+일반 큐       메시지 100건 → 항목 100개 → 100번 처리
+recent ZSET   메시지 100건 → 방 항목 1개 → flush 1번 처리
 ```
 
-따라서 이득은 **한 flush 창에 같은 방 메시지가 몇 건 몰리느냐**에 비례한다. 창당 1건뿐인 한산한 방은 이득이 없고 dirty 표시 몫만큼 오히려 조금 늘어난다. 병목은 뜨거운 방에서 나므로 방향은 맞지만, 이 구조가 모든 방에 이득을 준다고 읽지 않는다.
+메시지 저장 시 모든 멤버를 갱신하지 않는다. 작성자의 `last_read`만 방 watermark까지 올리고,
+나머지 멤버의 active-room score는 projector가 flush 시점의 현재 상태를 읽어 한 번에 반영한다.
 
-계층을 셋으로 나눠 읽는다.
+#### Competing Consumers + Lease
 
-| 계층 | 무엇 | 유실되면 |
-|---|---|---|
-| durable source of truth | Mongo `chat_room.latestMsgSeq` + `chat_room_membership.lastMsgReadSeq` | 복구 불가 — 사실 기준 |
-| 실시간 projector 입력 | Redis `{chat}:room:{roomId}:last_read` hash | Mongo membership 에서 재생성 |
-| 조회용 결과 | Redis `{chat}:active-room:{memberId}` ZSET | 위 둘로 재생성 |
+여러 chat 인스턴스가 공유하는 dirty 목록에서 같은 방을 여러 인스턴스가 중복 처리하지 않도록
+claim 경쟁을 둔다.
 
-**`last_read` hash 는 사실 원본이 아니다.** projector 가 멤버별 unread 를 빠르게 판정하려고 읽는 입력일 뿐이고, 비면 Mongo membership 의 `lastMsgReadSeq` 로 다시 만든다.
+`claimDirtyChatRooms.lua`는 `recent`에서 방을 원자적으로 제거하고
+`{chat}:room:activity:inflight`에 claim 시각과 함께 넣는다. claim에 성공한 인스턴스만 그 방을
+처리하며, `inflight`의 score가 임시 소유권의 시작 시각이 된다.
 
-패턴별 흐름:
+방 하나의 상태 전이는 다음과 같다.
 
-1. **Dirty Set + Conflation**: `storeChatMessage.lua`가 메시지 상태를 갱신하는 **같은 원자 단위**에서 `{chat}:room:activity:recent` ZSET에 `roomId`를 올린다. 같은 방이 여러 번 들어와도 원소는 하나이고 score만 최신 활동 시각으로 올라간다.
-2. **Competing Consumers + Lease**: `claimDirtyChatRooms.lua`가 방을 recent에서 **빼내고** `{chat}:room:activity:inflight`에 **claim 시각과 함께 넣는** 것을 한 원자 단위로 한다. 여러 chat 인스턴스 중 먼저 claim한 하나만 처리하며, claim 시각은 임시 소유권인 lease가 된다.
-3. **Idempotent Projection**: `projectChatRoomActivity.lua`는 변화량을 누적하지 않고 반영 시점의 방 hash·`last_read` hash·최신 메시지 캐시를 다시 읽어 멤버별 score를 절대값으로 덮어쓴다. claim 뒤 새 메시지가 들어와도 현재 상태를 반영하며, 메시지 캐시가 예외적으로 비었을 때만 dirty 표시에 기록했던 시각을 쓴다. `lastReadSeq`는 MAX 조건으로만 갱신해 과거로 돌아가지 않으며, active-room score의 일시적인 경합 차이는 후속 flush가 다시 계산한다.
-4. **Visibility Timeout + Repair**: 방 캐시가 비어 계산 근거가 없으면(`cacheMiss`) Mongo 기준으로 재생성한다. claim한 인스턴스가 죽어 `claim-timeout-ms`를 넘긴 방은 `reclaimStalled`가 lease를 원자적으로 갱신해 회수하고, Mongo room watermark와 membership 읽음 위치로 projection을 재생성한다.
-
-#### 방 하나가 지나는 상태
-
-두 ZSET 이 **대기**와 **처리중**을 나눠 든다. 어느 쪽에도 없으면 반영이 끝난 것이다.
-
-```
+```text
 저장     ZADD recent <활동시각> room        recent=[room]   inflight=[]
-claim    recent 에서 빼고 inflight 로       recent=[]       inflight=[room@claim시각]
-project  멤버별 score 계산 → active ZSET
-성공     ZREM inflight room                 recent=[]       inflight=[]        ← 완료
+claim    recent → inflight 원자 이동       recent=[]       inflight=[room@claim시각]
+project  멤버별 score 계산 → active-room
+성공     ZREM inflight room                 recent=[]       inflight=[]
 ```
 
-`recent` 는 claim 시점에 이미 비워진다 — 완료 시 지우는 것은 `inflight` 하나다(`projectChatRoomActivity.lua` 마지막 줄).
+`recent`는 claim 시점에 이미 비워진다. 정상 완료 시 제거하는 것은 `inflight`의 방 항목 하나다.
+두 ZSET의 score 의미는 다르다.
 
-score 의 의미도 둘이 다르다.
-
-| ZSET | score | 쓰임 |
+| ZSET | score | 의미 |
 |---|---|---|
-| `{chat}:room:activity:recent` | 활동 시각 | 오래된 활동부터 처리(`ZRANGE` 오름차순) |
-| `{chat}:room:activity:inflight` | claim 시각 | lease — 타임아웃 판정 |
+| `{chat}:room:activity:recent` | 활동 시각 | 오래된 dirty 방부터 처리하는 순서 |
+| `{chat}:room:activity:inflight` | claim 시각 | lease 만료 여부를 판단하는 기준 |
 
-**lease는 시한부 소유권이다.** 여기서는 `inflight`의 score가 claim 시각이고 기한은
-`claim-timeout-ms`(기본 30초)다. 기한이 지나도 Redis 항목이 자동으로 사라지지는 않으며,
-다른 인스턴스의 `reclaimStalled`가 회수할 수 있는 상태가 된다. 회수한 인스턴스는 score를 현재
-시각으로 갱신해 새 lease를 잡고, 다른 인스턴스가 같은 방을 겹쳐 회수하지 못하게 한다.
+#### Idempotent Projection
 
-기한이 짧으면 아직 일하는 중인데 남이 뺏어가고(중복 처리), 길면 죽었는데 회수가 늦다. **이쪽은 짧은 편이 덜 위험하다** — projector 는 현재 Redis 상태로 매번 새로 계산하는 멱등 연산이라 중복 실행돼도 결과가 같고 쓰기만 낭비된다. 같은 개념의 대가를 반대편에서 무는 사례가 §8 의 `CACHE_WARM_UP`(`leaseTimeMs` 3초)이다 — 거기서는 lease 가 먼저 풀리면 전역 1회 보장이 깨진다.
+`projectChatRoomActivity.lua`는 이전 score에 변화량을 누적하지 않는다. 처리 시점의 방 정보,
+최신 메시지, 멤버별 `lastMsgReadSeq`를 다시 읽어 각 멤버의 최종 score를 계산하고
+`{chat}:active-room:{memberId}`에 절대값으로 덮어쓴다.
 
-**`recent` 는 큐가 아니라 합쳐지는 집합이다.** 원소 key 가 `roomId` 라 같은 방이 몇 번 들어와도 원소는 하나고 score 만 최신으로 덮인다.
+따라서 정상 처리, lease 만료 후 재처리, 장애 복구처럼 같은 방이 여러 번 처리돼도 score가
+중복 증가하지 않는다. 같은 현재 상태를 입력으로 사용하면 항상 같은 결과가 나오므로, 중복 실행은
+쓰기 낭비를 만들 수는 있어도 projection의 정합성을 깨뜨리지는 않는다.
 
-```
-진짜 큐        메시지 100건 → 항목 100개 → 100번 처리
-recent(ZSET)   메시지 100건 → 원소 1개   → flush 1번 처리
-```
+projector가 claim한 뒤 새 메시지가 들어와도 처리 시점의 최신 Redis 상태를 기준으로 계산한다.
+메시지 캐시가 예외적으로 비어 계산 근거가 없을 때만 dirty 표시 시각을 보조값으로 사용한다.
+`lastReadSeq`는 MAX 조건으로만 갱신해 읽음 위치가 과거로 되돌아가지 않도록 한다.
 
-멤버 302명 방에 메시지 100건이 몰려도 멤버 갱신이 100번이 아니라 한 번인 이유가 이것이다.
+#### Visibility Timeout + Repair
 
-실패는 둘로 갈린다.
+`inflight`에 들어간 방은 일반 dirty 목록에서 빠져 있으므로 다른 인스턴스가 즉시 다시 claim하지
+않는다. 처리 인스턴스가 비정상 종료되면 방은 `inflight`에 남는다.
 
-| 상황 | 처리 |
-|---|---|
-| projection 중 예외 | `requeueDirty` 가 `recent` 로 되돌리고 `inflight` 에서 뺀다(원래 활동 시각 유지) → 다음 주기 재시도 |
-| 인스턴스 종료 | 아무도 지우지 않아 `inflight` 에 남는다 → `claim-timeout-ms` 초과 시 `reclaimStalled` 가 회수 |
+lease timeout(기본 30초)을 넘긴 방은 reclaim 스케줄러가 stalled 작업으로 판단한다.
+`reclaimStalledChatRooms.lua`가 해당 방의 lease를 원자적으로 회수하고, MongoDB의 방 정보·멤버십·
+읽음 위치를 기준으로 projection을 재생성한다. Redis의 불완전한 중간 상태를 그대로 이어서 쓰지
+않기 때문에 장애 뒤에도 `{chat}:active-room:{memberId}`를 다시 구성할 수 있다.
 
-**`inflight` 에 남아 있다는 것 자체가 실패 신호다.** 별도 상태 필드 없이 시각만으로 판별한다.
+projection 중 예외가 발생하면 `requeueDirty`가 방을 원래 활동 시각과 함께 `recent`로 되돌리고
+`inflight`에서 제거한다. 인스턴스가 종료된 경우에는 `inflight`에 남겨 두었다가 timeout 이후
+`reclaimStalled`가 회수한다.
 
-**두 ZSET 은 내구성 큐가 아니라 "처리할 방을 모아 두는 coalescing 작업 목록"이다.** 유실될 수 있고, 그래서 Mongo 기준 재생성 경로가 항상 함께 있다.
+두 ZSET은 내구성 큐가 아니라 방을 모아 두는 coalescing 작업 목록이다. 목록이 유실되거나
+처리 인스턴스가 죽을 수 있으므로, Mongo 기준의 projection 재생성 경로가 함께 있어야 한다.
 
-**멤버별 fan-out 은 남아 있지 않다.** 메시지 저장이 건드리는 멤버 상태는 **작성자 하나**뿐이다(자기 메시지는 읽은 것으로 보고 `last_read` 를 방 watermark 까지 올린다). 나머지 멤버는 flush 때 한 번에 반영된다. Mongo membership 은 `lastMsgReadSeq` 같은 사용자 고유 상태만 갖고 정렬 점수를 저장하지 않는다.
+#### `msgCnt`와 `latestMsgSeq`의 분리
 
-메시지 hard delete 도 멤버별 점수를 되돌리지 않는다. 방을 dirty 로 올려 두면 projector 가 남은 최신 메시지를 기준으로 다시 계산한다. watermark 는 hard delete 로 줄지 않는다.
+보관 메시지 개수와 읽음 판정 기준을 하나의 필드로 처리하지 않도록 역할을 분리했다.
 
-| 경로 | 이전 | 지금 |
+| 필드 | 의미 | hard delete 시 |
 |---|---|---|
-| 메시지 저장(Redis) | 멤버 N 명 ZADD | 작성자 1건 + dirty 표시 |
-| 메시지 영속(Mongo) | 방별 membership bulkWrite(N 문서) | 메시지 insert + 방 watermark |
-| hard delete | 멤버 N 명 점수 재계산 | dirty 표시 |
-| 내 방 목록 정렬 | Mongo membership `score` 인덱스 | Redis projection, 미스 시 Mongo 재생성 |
+| `msgCnt` | 현재 보관 중인 메시지 수 | 감소 가능 |
+| `latestMsgSeq` | 방에서 발급된 메시지 순번의 watermark | 감소하지 않음 |
 
-**표의 「지금」은 메시지 저장 경로만 본 것이다.** 두 저장소의 성질이 다르다.
+읽음 여부는 `msgCnt`가 아니라 `latestMsgSeq`와 멤버십의 `lastMsgReadSeq`를 비교해 판단한다.
+메시지가 hard delete되어 `msgCnt`가 감소해도 watermark는 과거로 돌아가지 않으므로, 이미 읽은
+사용자의 읽음 상태가 다시 unread로 바뀌지 않는다. 삭제된 메시지의 순번도 재사용하지 않기 때문에
+`latestMsgSeq - lastMsgReadSeq`는 현재 보관 중인 메시지 수와 항상 같지는 않지만, 읽음 위치를
+판단하는 기준으로는 일관성을 유지한다.
 
-| | 쓰기 연산 수 | 성질 |
-|---|---|---|
-| Mongo membership | 302 → **0** | 정렬 점수를 저장하지 않기로 했으므로 **제거**다. 배치가 아니다 |
-| Redis active ZSET | 메시지당 302 → **flush당 302** | 연산 수는 그대로고 **빈도만** 옮겼다. flush 안에서 멤버마다 `ZADD` 를 그대로 돈다 |
+hard delete는 멤버별 점수를 되돌리지 않는다. 메시지 캐시를 제거하고 방을 dirty로 표시하면
+projector가 남아 있는 최신 메시지와 watermark를 기준으로 active-room projection을 다시 계산한다.
 
-**"멤버 수 비례 쓰기를 없앴다"는 Mongo 에만 참이다.** Redis 는 여전히 `O(members)` 이며, 이득은 한 flush 창에 같은 방 메시지가 몇 건 몰리느냐에 비례한다(§5 앞부분).
+#### 메시지 영속 이벤트의 batch 처리
 
-읽기 경로는 **캐시-우선, 미스 시 Mongo 로드 + 워밍업**이다(§8). 정상 흐름에서 REST 조회는 Redis만 조회하며, 캐시가 비었거나 인덱스가 없으면 `*QueryRepairService`가 Mongo에서 로드해 캐시를 채운 뒤 반환한다. **미스 폭주 방어 도구는 서브도메인 특성에 따라 다르다: 방 = `SingleFlight`, 메시지 = 분산락.**
+메시지 영속 이벤트는 Kafka batch consumer로 전환했다. 여러 이벤트를 하나의 `handleBatch` 호출과
+Mongo transaction 안에서 처리한다.
 
-내 방 정렬 인덱스가 통째로 비면 membership 전체를 읽고, 해당 방과 최신 메시지는 primary Mongo에서
-각각 batch 조회한다. application이 `(unread, lastMsgCreatedAt, roomId)` 점수를 계산·정렬한 뒤 상위
-`chat.my-room.rebuild-limit`개(기본 300)를 Redis에 다시 넣는다. **상한은 membership 조회 전이 아니라
-점수 정렬 뒤에 적용한다.** 먼저 자르면 예전에 가입했지만 방금 활동한 방을 복구 대상에서 빠뜨릴 수
-있다. 상한 밖의 낮은 점수 방은 cold miss 복구 인덱스에 포함하지 않는 대신, Mongo 조회·Redis 인덱스
-크기를 제한한다.
+- 배치 내부에서 메시지 ID를 일괄 확인해 신규 메시지만 구분한다.
+- 신규 메시지를 목록 단위로 insert한다.
+- 방별 `msgCnt`, `latestMsgSeq`, `lastMsgCreatedAt` 갱신을 묶어서 처리한다.
+- 중복 메시지는 insert와 방 상태 갱신에서 제외한다.
 
-### 미스 폭주 방어 — 방은 `SingleFlight`, 메시지는 분산락
+이로써 메시지마다 transaction을 열고 Mongo 저장을 호출하던 비용을 줄였다. 단, Kafka batch는
+고정된 메시지 수를 보장하는 것이 아니라 소비 시점의 이벤트 묶음을 처리하는 방식이다. 실제
+배치 크기는 부하와 consumer drain 속도에 따라 달라진다.
 
-| | 방 (`SingleFlight`) | 메시지 (분산락) |
-|---|---|---|
-| 구현 | `common-redisson/SingleFlight`(in-process `ConcurrentHashMap`) | `common-redisson/DistributedLockExecutor`(Redisson `RLock`, `CACHE_WARM_UP`) |
-| 보장 범위 | 인스턴스 내 1회 (서버 N대면 최악 N회 로드) | 클러스터 전역 1회 |
-| miss reload 비용 | 싸다(방 상세 단건 `findByIdWithLatestMessage`) | 무겁다(range 쿼리) |
-| 동시 miss 빈도 | 드묾 | 더 드묾(최신 페이지는 write-through 로 상주) |
-| 코디네이션 비용 | 없음(맵 연산) | Redis 왕복 + 대기 |
-| 대기자의 회수 방식 | `CompletableFuture` 결과 공유 → **전원 동시 반환** | 락을 하나씩 재획득 → **직렬 통과**(§8) |
-| 획득 실패 | 없음 | 예산 소진 시 예외, 캐시 폴백 없음(§8) |
+#### 읽기와 projection 복구
 
-**갈린 기준은 「miss reload 가 얼마나 비싼가」 하나다.** chat 은 방·메시지 둘 다 cache-first(쓰기가 캐시 먼저, Mongo 는 async consumer)라 캐시에 값이 있으면 그게 최신이고, miss(evict/TTL/cold)에서만 Mongo 로드가 필요하다. 그 드문 miss 에 요청이 몰릴 때 중복 로드를 막는 것이 두 도구의 공통 목적이고, 둘 다 **동기 대기**다(SWR 처럼 즉답이 아니다 — 아래).
+내 방 목록은 `{chat}:active-room:{memberId}` Redis ZSET을 먼저 조회한다. 인덱스가 없거나
+캐시가 비어 있으면 `ChatRoomQueryRepairService`가 Mongo membership 전체를 읽고, 해당 방과
+최신 메시지를 primary에서 batch 조회해 score를 다시 계산한다.
 
-- **방 → `SingleFlight`**(구 분산락에서 전환): reload 가 싸고 miss 도 드물어 전역 1회 보장의 이득이 작다. 락 획득·대기·타임아웃·복구 왕복을 치를 값어치가 없어, 같은 key 동시 로드만 1회로 합치는 **경량 동기 dedup** 으로 충분하다. 대기는 짧은 로드 시간뿐이고 획득 실패라는 개념 자체가 없다.
-- **메시지 → 분산락 유지**: 메시지 캐시는 TTL 없이 **접근시간 + 시간지역성 스케줄러**로 축출하고 **최신순 접근**이라 최신 페이지는 상주하고 과거 페이지는 소수 서버만 본다 → 동시 miss 자체가 드물다. 그 드문 miss 의 reload 가 **range 쿼리**라 전역 1회 보장이 중복 range 를 막아 이득이고, 대기·획득 실패 비용은 드물게만 발생해 실질 부담이 없다.
+점수는 `(unread, lastMsgCreatedAt, roomId)` 기준으로 계산·정렬하고, 정렬이 끝난 뒤 상위
+`chat.my-room.rebuild-limit`개(기본 300개)만 Redis에 재생성한다. 조회 전에 상한을 적용하면
+오래된 방이 많을 때 최근 활동방이 복구 대상에서 빠질 수 있기 때문이다.
 
-표의 마지막 두 행이 대가다. 분산락은 캐시로 회수되는 요청까지 **직렬로** 통과시키고, 예산을 넘기면 **실패**시킨다. 그 대가를 치를 만큼 reload 가 비쌀 때만 쓴다.
+방 상세 miss는 `SingleFlight`로 같은 인스턴스 안의 중복 로드를 합치고, 메시지 목록 miss는
+range query 비용이 커 `CACHE_WARM_UP` 분산락으로 클러스터 전역의 중복 복구를 줄인다. 두 경로
+모두 cache-first이며, Mongo는 miss 복구 시에만 사용한다.
 
-**SWR(만료값 즉시 반환 + 비동기 갱신)은 쓰지 않는다.** chat 은 cache-first 라 캐시가 Mongo 보다 **앞서** 있어(DB = 진실 아님), SWR 로 Mongo 를 재조회해 덮으면 아직 반영 안 된 최신 캐시를 뒤처진 값으로 되돌릴 위험이 있다. 그래서 miss 는 로드 완료까지 동기 대기한다. 데이터 특성별 캐시 전략 대비는 [`NOTIFICATION.md §7.1`](NOTIFICATION.md).
+#### 측정 결과
+
+테스트 방 1개, 멤버 302명, 초당 100건, 총 6,000건을 같은 조건에서 before/after 비교했다.
+Mongo `serverStatus.opcounters`의 `insert + update`를 메시지 영속 경로의 write operation으로
+집계했다.
+
+| 지표 | Before | After | 변화 |
+|---|---:|---:|---:|
+| Mongo write operation | 1,824,039회 | 6,000회 | 99.67% 감소 |
+| 메시지당 write operation | 304.007회 | 1.000회 | 99.67% 감소 |
+| Mongo transaction commit | 6,000건 | 4,652건 | 22.5% 감소 |
+| Kafka drain 완료 시간 | 389초 | 68초 | 82.5% 단축 |
+| host swap-in | 46,946MB | 4,589MB | 90.2% 감소 |
+
+After의 평균 persistence batch 크기는 `1.29건`이었다. write operation 감소는 단순히
+bulkWrite로 네트워크 왕복만 줄인 결과가 아니라, 멤버별 Mongo score 저장을 제거하고 메시지
+insert와 방 watermark 갱신을 batch 영속 경계로 재구성한 결과다.
+
+`host swap-in`은 개발 호스트의 공유 자원 영향을 받는 보조 지표로만 사용했다. 응답 시간은
+호스트 swap에 흔들려 이 비교의 주요 근거로 삼지 않았다. 최종 판정은 Mongo write operation,
+transaction commit, Kafka drain 시간과 메시지 저장 정합성을 함께 기준으로 했다.
+
+이 전환 뒤에도 Redis active-room projection을 한 번 flush할 때의 비용은 멤버 수에 비례한다.
+변경의 효과는 이 비용을 없앤 것이 아니라, 같은 방의 여러 메시지를 한 번의 flush로 합쳐 반복
+실행 횟수를 줄인 데 있다.
 
 ## 6. 주요 클래스와 책임
 
