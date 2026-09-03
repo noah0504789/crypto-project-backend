@@ -174,7 +174,7 @@ proto: `protobuf/src/main/proto/user/v1/user-service.proto`. 서버 구현 `Grpc
 
 ## 16. 확인 필요 항목
 
-미해결 확인/결정 항목은 [`../../TODO.md`](../../TODO.md)에서 통합 관리한다. 현재 user 관련 항목은 없다.
+미해결 확인/결정 항목은 [`../../TODO.md`](../../TODO.md)에서 통합 관리한다.
 
 ## 17. 관련 문서와 rules
 
