@@ -48,7 +48,7 @@
 | `notification-contract` | 계약 | 생산 이벤트(`WebNotificationBroadcastEvent`, `WebNotificationPayload`) | `common-core`, `common-outbox` |
 
 - 의존 방향: adapter-in/out → application → domain. adapter-in은 `market-detection-contract`(소비 이벤트 타입), adapter-out은 `market-client`(gRPC 소비)에 의존.
-- **관찰**: `notification-application`·`-adapter-in`·`-adapter-out`이 모두 Gradle 플러그인 `crypto-domain`을 쓴다(타 서비스는 각각 `crypto-application`/`crypto-adapter` 사용). 동작에는 문제없어 보이나 컨벤션 상 이질적 → §11, TODO.
+- 계층별 convention plugin은 `notification-application`에 `crypto-application`, `notification-adapter-in`·`notification-adapter-out`에 `crypto-adapter`를 사용한다.
 
 ## 5. 핵심 흐름 — 탐지 이벤트 → fan-out 알림
 
@@ -215,7 +215,7 @@ market-detection은 최초 이벤트 생성 시 무작위 UUID를 만들어 Kafk
 미해결 확인/결정 항목은 [`../../TODO.md`](../../TODO.md)에서 통합 관리한다. notification 관련 항목:
 
 - **TODO 3.3** — `notification-event`에 `.dlq` 토픽이 정의돼 있으나 **DLQ consumer 바인딩이 없고**, `NotificationEventService.handle`에 `@Retryable`/`@Recover`가 없다(단순 `@Transactional`). chat이 갖춘 재시도→DLQ 복구 경로가 없어, Mongo 영속 실패 시 처리 방식(바인더 기본 재시도/유실 여부)이 불명확 → 확인 필요.
-- **TODO 4.4** — `notification-application`·`-adapter-in`·`-adapter-out`이 Gradle 플러그인 `crypto-domain`을 사용(타 서비스는 `crypto-application`/`crypto-adapter`). ArchUnit/플러그인 규약상 의도인지 확인 필요.
+- **TODO 4.4 (해결)** — `notification-application`은 `crypto-application`, `notification-adapter-in`·`notification-adapter-out`은 `crypto-adapter`를 사용하도록 계층별 convention plugin을 정정했다.
 - **게이트웨이 라우트·인가(해결됨)** — 과거 `GET /notifications/me`·`PATCH /notifications/{id}/read`가 게이트웨이 라우트·인가 부재로 `denyAll`이었다. 이제 `ReactiveRouteConfig.notificationRoutes`(`lb://notification-service`, rewrite `/api/v1/${seg}`) + `ReactiveSecurityConfig`(`/notifications/**` `hasRole(USER)`)로 노출·보호된다. (프론트는 실시간 알림을 STOMP로 받고, 이 인박스 REST는 새로고침 후 조회 등에 사용 가능.)
 
 ## 12. 테스트 현황

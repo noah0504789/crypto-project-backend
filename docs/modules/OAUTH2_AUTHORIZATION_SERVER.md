@@ -194,7 +194,7 @@ proto: `protobuf/src/main/proto/auth/v1/auth-service.proto`. 서버: adapter-in�
 
 - **TODO 1.1** — `aud` claim 발급/검증 여부 (`TokenConfig`)
 - **TODO 1.4** — 토큰 엔드포인트 TLS 미적용 (`server.port: 9000` `# TODO: tsl`)
-- **TODO 4.2** — 미사용 mysql 설정 (`oauth2-authorization-server.yml`)
+- **TODO 4.2 (해결)** — MySQL을 사용하지 않는 것을 확인하고 `oauth2-authorization-server.yml`의 미사용 `mysql` 블록을 제거했다.
 
 ## 15. 관련 문서와 rules
 

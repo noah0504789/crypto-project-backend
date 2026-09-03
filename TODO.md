@@ -40,10 +40,6 @@
 
 ### user
 
-#### 1.9 BCrypt strength 5
-`PasswordEncoderConfig`가 `BCryptPasswordEncoder(5)` 사용(기본 10보다 낮음). 성능 의도인지 확인 필요.
-`[출처: docs/modules/USER.md §16]`
-
 ### spring-cloud-config
 
 #### 1.10 `/sign`·JWKS·`/actuator/busrefresh` 엔드포인트 인증 부재
@@ -282,8 +278,8 @@ deadline이 무한 대기는 이미 막고 있고, gRPC 호출 깊이가 1단계
 
 ### oauth2-authorization-server
 
-#### 4.2 미사용 mysql 설정
-`git-config-repo/dynamic/oauth2-authorization-server.yml`에 `mysql.{username,password,db}` 블록이 있으나, `config.name`에 mysql 미포함이고 이 서비스는 DB(JPA)를 쓰지 않음(사용자 정보는 gRPC로 user-service 조회). 설정 잔재 여부 확인 필요.
+#### 4.2 미사용 mysql 설정 (해결)
+`oauth2-authorization-server`가 MySQL을 사용하지 않는 것을 확인하고 `git-config-repo/dynamic/oauth2-authorization-server.yml`의 미사용 `mysql` 블록을 제거했다. 사용자 정보는 gRPC로 `user-service`에서 조회한다.
 `[출처: docs/modules/OAUTH2_AUTHORIZATION_SERVER.md §14]`
 
 ### spring-cloud-eureka-server
@@ -294,8 +290,8 @@ deadline이 무한 대기는 이미 막고 있고, gRPC 호출 깊이가 1단계
 
 ### notification
 
-#### 4.4 Gradle 플러그인 `crypto-domain` 사용(application/adapter)
-`notification-application`·`notification-adapter-in`·`notification-adapter-out`이 모두 `id 'crypto-domain'` 플러그인을 적용한다(타 서비스는 각각 `crypto-application`/`crypto-adapter`). 동작에는 문제없어 보이나 계층별 convention plugin 규약과 이질적 — ArchUnit/플러그인 설정상 의도인지 확인 필요.
+#### 4.4 Gradle 계층별 convention plugin 불일치 (해결)
+`notification-application`은 `crypto-application`, `notification-adapter-in`·`notification-adapter-out`은 `crypto-adapter`를 사용하도록 계층별 convention plugin을 정정했다. 현재 각 plugin의 공통 기반 동작은 같지만, 모듈 계층과 plugin 규약을 일치시켰다.
 `[출처: docs/modules/NOTIFICATION.md §4]`
 
 ### outbox-poller
