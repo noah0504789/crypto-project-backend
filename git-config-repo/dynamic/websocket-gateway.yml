@@ -1,6 +1,11 @@
 server:
   port: 8100
 
+logging:
+  level:
+    # 세션·채널 상태는 Micrometer 게이지로 관측한다. Spring 기본 30분 주기 로그도 남기지 않는다.
+    org.springframework.web.socket.config.WebSocketMessageBrokerStats: OFF
+
 grpc:
   client:
     chat-client:

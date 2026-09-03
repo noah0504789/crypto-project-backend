@@ -4,8 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.common.enums.HttpHeaderKey;
 import org.example.common.properties.ApiPathProperties;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.ApplicationRunner;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.messaging.converter.DefaultContentTypeResolver;
@@ -16,7 +14,6 @@ import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.socket.WebSocketHandler;
-import org.springframework.web.socket.config.WebSocketMessageBrokerStats;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
@@ -100,11 +97,6 @@ public class StompConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureClientOutboundChannel(ChannelRegistration registration) {
         registration.taskExecutor(stompOutboundExecutor);
-    }
-
-    @Bean
-    public ApplicationRunner disableWebsocketStatsLogging(WebSocketMessageBrokerStats stats) {
-        return args -> stats.setLoggingPeriod(0);
     }
 
     private DefaultHandshakeHandler handshakeHandler() {
