@@ -302,6 +302,7 @@ Gateway가 생성·추가하는 헤더는 다음과 같다. Route·인증·Rate 
 |---|---|
 | `endpoint/ReactiveSecurityE2ETest` | 토큰 없음 401, role 없음 403(JSON body), `/auth/logout` permitAll 라우팅, `/price-alerts/me`·`/notifications/me` 401/403 |
 | `endpoint/ReactiveRouteE2ETest` | `/user/me` rewrite+라우팅, `/chat/rooms/me` rewrite+라우팅, `/auth/logout` 라우팅 |
+| `config/ReactiveRouteContractIntegrationTest` | 운영 Route ID·Service URI 전체와 서비스별 fallback rewrite·gateway 헤더 계약 |
 | `endpoint/ProductionRateLimitE2ETest` | production Route + 실제 Redis에서 허용 응답의 Rate Limit 헤더와 burst 초과 429 |
 | `endpoint/RateLimitFailOpenE2ETest` | Redis 연결 예외 시 fail-open 응답 헤더와 user-service downstream 전달 |
 | `endpoint/IdentityPropagationE2ETest` | id claim 있음/없음 전파, permitAll 경로 클라이언트 `X-User-Id` strip, 인증 요청 위조 `X-User-Id` override |
@@ -320,7 +321,7 @@ Gateway가 생성·추가하는 헤더는 다음과 같다. Route·인증·Rate 
 | `config/ReactiveJwtDecoderConfigUnitTest` | 설정된 issuer와 다른 JWT를 `invalid_token`으로 거부 |
 | `config/ProductionApiPathConfigBindingUnitTest` | 운영 API path 및 `gateway.rate-limit.*` 설정 바인딩 |
 
-**테스트 공백** — 항목은 [`../../TODO.md`](../../TODO.md) 6.2와 6.4에서 관리한다(`/internal/deployment/**` gateway 레벨 통합, §9 Route 계약 표 전체를 덮는 계약 테스트).
+**테스트 공백** — [`../../TODO.md`](../../TODO.md) 6.2의 `/internal/deployment/**` gateway 레벨 통합 테스트가 남아 있다.
 
 ## 15. 컴파일·테스트·CI 명령
 
