@@ -75,16 +75,15 @@
 
 ## 4. Harness 정리 문서
 
-Harness의 책임 경계와 현재 상태는 아래 문서에서 관리한다. 작업 규칙·절차의 정본은 계속 `CLAUDE.md`, `.claude/rules/`, `.claude/skills/`, `.claude/agents/`다.
+Harness의 책임 경계와 검증 기준은 아래 문서에서 관리한다. 작업 규칙·절차의 정본은 계속 `CLAUDE.md`, `.claude/rules/`, `.claude/skills/`, `.claude/agents/`다.
 
 | 문서 | 내용 |
 |---|---|
 | [harness/INSTRUCTIONS_MAP.md](harness/INSTRUCTIONS_MAP.md) | 지시 문서·rules·skills·agents·docs의 책임과 탐색 기준 |
-| [harness/ARCHITECTURE_CONSTRAINTS.md](harness/ARCHITECTURE_CONSTRAINTS.md) | 자동 아키텍처 제약의 적용 범위, 보류 규칙, 실행 명령 |
+| [harness/ARCHITECTURE_CONSTRAINTS.md](harness/ARCHITECTURE_CONSTRAINTS.md) | 자동 품질·아키텍처 제약의 적용 범위와 한계, 실행 명령 |
 | [harness/FEEDBACK_LOOP.md](harness/FEEDBACK_LOOP.md) | 변경 유형별 최소 검증 매트릭스와 narrow → broad 순서 |
-| [harness/KNOWLEDGE_BASE.md](harness/KNOWLEDGE_BASE.md) | 지식 분류, ADR 후보, 새 지식 기록 위치 |
+| [harness/KNOWLEDGE_BASE.md](harness/KNOWLEDGE_BASE.md) | 새 지식의 기록 위치와 새 문서 생성 기준 |
 | [harness/HARNESS_MAINTENANCE.md](harness/HARNESS_MAINTENANCE.md) | 문서·모듈·명령 Drift의 검사와 수동 리뷰 기준 |
-| [harness/HARNESS_STATUS.md](harness/HARNESS_STATUS.md) | Harness 구성 요소, 작업·검증 흐름, 유지보수 원칙 |
 
 ## 5. 커버리지
 

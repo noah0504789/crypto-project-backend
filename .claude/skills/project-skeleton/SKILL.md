@@ -13,7 +13,7 @@ description: crypto-project-backend에 새 서비스 모듈의 프로젝트 스�
 
 - `git status --short`
 - 모듈 형태 결정: **계층 모듈**(`-application`/`-adapter-in`/`-adapter-out`/`-bootstrap`, 필요 시 `-domain`/`-contract`/`-client`) vs **단일 모듈**(하위 모듈 없이 디렉터리 하나. 선례: `outbox-poller`, `spring-cloud-api-gateway`).
-  - **`-bootstrap` 모듈에는 `Main`만 둔다.** ArchUnit `PackageArchitectureTest.bootstrap_modules_should_only_contain_application_entrypoints`가 강제한다. `market-detection`이 `-bootstrap`에 로직을 담고 있는 것은 **문서화된 legacy 예외**이며 새 모듈의 본보기가 아니다.
+  - **`-bootstrap` 모듈에는 `Main`만 둔다.** ArchUnit `PackageArchitectureTest.bootstrap_modules_should_only_contain_application_entrypoints`가 모든 `-bootstrap` 모듈에 강제한다.
   - 계층 모듈을 고르면 의존 방향도 검사된다: application은 adapter/bootstrap에 의존 불가, adapter는 다른 adapter/bootstrap에 의존 불가(`ModuleArchitectureTest`).
 - 이름은 **역할 서술형**으로 짓는다. 예약된 접미사를 피한다: `-client`(gRPC 클라이언트 라이브러리), `-contract`(공유 이벤트/DTO), `-adapter*`(헥사고날 계층), `-gateway`(클라이언트 접점).
 - 포트 확보: `grep -rn "port:" git-config-repo/dynamic/` 로 사용 중인 값을 확인하고 겹치지 않게 고른다.
@@ -64,6 +64,7 @@ description: crypto-project-backend에 새 서비스 모듈의 프로젝트 스�
 | `docs/CI_CD.md` | Dockerfile 개수, Kafka Bus 연결 서비스 문구 |
 | `.claude/rules/testing.md` | `*Ci` task 나열, 실행 서비스 개수 |
 | `.claude/agents/module-explorer.md` | 프로젝트/서비스 개수 |
+| `common/common-arch-test` | 새 계층은 자동 탐색되는지, 서비스별 package 경계 등록이 필요한지 확인 |
 
 개수는 추측하지 말고 실측한다.
 
