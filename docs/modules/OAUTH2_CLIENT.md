@@ -170,7 +170,6 @@ graph TB
 
 - **TODO 1.5** — access token URL 노출 (로그인 성공 `?accessToken=` 전달)
 - **TODO 1.6** — 로그아웃 시 JWT 미검증 파싱 (`CustomLogoutSuccessHandler.resolveSubject`)
-- **TODO 1.7** — redirect-uri localhost 하드코딩 (`oauth2-client.yml`)
 
 ## 13. 관련 문서와 rules
 
