@@ -29,7 +29,7 @@ __pycache__/
 
 # claude
 .claude/settings.local.json
-.claude/pr-draft.md
+.claude/pr-draft*.md
 
 # k6 부하테스트 자격증명 (토큰·방 ID). k6.env.example 만 저장소에 둔다.
 k6.env
