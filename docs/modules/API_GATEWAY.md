@@ -39,7 +39,7 @@ Reactive Spring Cloud Gateway 기반 OAuth2 Resource Server. 외부 HTTP·WebSoc
 
 Config Server 자체(백엔드 구성·Vault Transit 서명 대행·JWKS 제공)는 [`SPRING_CLOUD_CONFIG.md`](SPRING_CLOUD_CONFIG.md)를 본다.
 
-의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
+의존성 전체 그래프는 [`docs/dependencies.md`](../dependencies.md)에서 확인할 수 있다.
 
 ## 4. 주요 클래스와 책임
 

@@ -50,7 +50,7 @@
 | `common-actuator-webmvc` | 배포 제어(MVC) | `DeploymentControlAuthFilter`, `DeploymentReadinessController` | actuator-core, web |
 | `common-actuator-webflux` | 배포 제어(WebFlux, gateway용) | `DeploymentControlAuthWebFilter`, `DeploymentReadinessWebFluxController` | actuator-core, webflux |
 
-의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
+의존성 전체 그래프는 [`docs/dependencies.md`](../dependencies.md)에서 확인할 수 있다.
 
 ## 4. 계약 허브: common-core
 

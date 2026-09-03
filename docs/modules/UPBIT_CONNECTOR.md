@@ -47,7 +47,7 @@ Upbit 외부 API와의 통신을 전담하는 **리액티브(WebFlux/Reactor) �
 | 프레임워크·클라이언트 | `spring-boot-starter-webflux`(Reactor Netty), `spring-boot-starter-validation`, `spring-cloud-config-client`, `spring-cloud-eureka-client` |
 | 테스트 | `reactor-test`(`StepVerifier` 가상 시계) |
 
-의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
+의존성 전체 그래프는 [`docs/dependencies.md`](../dependencies.md)에서 확인할 수 있다.
 
 ## 4. 데이터 흐름 (1단계 구현됨)
 

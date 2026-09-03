@@ -15,7 +15,8 @@
 | [ARCHITECTURE.md](ARCHITECTURE.md) | 전체 시스템 구조·모듈 관계·서비스 카탈로그·계약 목록 |
 | [SERVICE_FLOWS.md](SERVICE_FLOWS.md) | 주요 요청/이벤트 흐름(로그인·채팅·알림·Outbox 등) + 채팅 실패 경로 표(§9) |
 | [EXTERNAL_APIS.md](EXTERNAL_APIS.md) | 외부 시스템 연동과 Upbit 시세 수집 흐름 |
-| [dependencies.html](dependencies.html) | `build.gradle` direct project dependency 인터랙티브 그래프 |
+| [dependencies.md](dependencies.md) | GitHub에서 렌더링되는 서비스 단위 Gradle 의존성 그래프와 요약 표 |
+| [dependencies.html](dependencies.html) | 브라우저·정적 호스팅용 노드 단위 인터랙티브 그래프(저장소 화면에서는 소스로 표시될 수 있음) |
 | [CODE_STYLE.md](CODE_STYLE.md) | 코드 작성/리팩토링 기준(네이밍·DTO·도메인·예외·상수화 등) — 단일 정본 |
 | [GRPC_CLIENTS.md](GRPC_CLIENTS.md) | 공용 gRPC client의 Future 계약과 adapter/WebFlux 경계 명세 |
 | [CI_CD.md](CI_CD.md) | CI(affected 빌드)·CD(배포)·Config 재배포 파이프라인 |

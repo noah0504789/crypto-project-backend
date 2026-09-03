@@ -31,7 +31,7 @@ Transactional Outbox 패턴의 **공용 릴레이**. 모든 서비스가 자기 
 | Kafka | `stream-kafka`, `default-binder: kafka`, 트랜잭션 비활성, at-least-once 릴레이 |
 | 원격 설정 | `outbox-poller,mysql,kafka,monitoring`; 브로커 공통 설정은 `infrastructure/kafka.yml` |
 
-의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
+의존성 전체 그래프는 [`docs/dependencies.md`](../dependencies.md)에서 확인할 수 있다.
 
 ## 4. 폴링 동작
 

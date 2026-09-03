@@ -37,7 +37,7 @@
 
 DB가 없지만 이벤트 계약의 전이 의존성으로 JPA가 classpath에 들어온다. 따라서 `websocket-gateway.yml`에서 `DataSourceAutoConfiguration`·`HibernateJpaAutoConfiguration`을 제외하고, `Main`의 component scan에서 `org.example.common.(outbox|dlq).*`를 제외한다. 이 설정을 제거하면 datasource·JPA 빈 구성으로 부팅이 깨진다.
 
-의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
+의존성 전체 그래프는 [`docs/dependencies.md`](../dependencies.md)에서 확인할 수 있다.
 
 ## 4. 모듈 구조 (헥사고날)
 

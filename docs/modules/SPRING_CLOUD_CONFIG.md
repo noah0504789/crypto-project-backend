@@ -39,7 +39,7 @@
 | 메시징 | Spring Cloud Bus Kafka(`spring-cloud-starter-bus-kafka`) → `busrefresh` |
 | 프레임워크·공통 | `spring-cloud-config-server`, `spring-vault-core`, `spring-security-oauth2-jose`, `spring-boot-starter-web`, `common-core`, `common-actuator-webmvc` |
 
-의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
+의존성 전체 그래프는 [`docs/dependencies.md`](../dependencies.md)에서 확인할 수 있다.
 
 ## 4. 모듈 구조 (헥사고날)
 

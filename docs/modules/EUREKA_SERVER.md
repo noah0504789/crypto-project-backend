@@ -32,7 +32,7 @@
 | 공통 모듈 | `common-actuator-webmvc` |
 | 원격 설정 | Config Server에서 `eureka-server,monitoring`을 `label: main`으로 로드 |
 
-의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
+의존성 전체 그래프는 [`docs/dependencies.md`](../dependencies.md)에서 확인할 수 있다.
 
 ## 4. 설정
 

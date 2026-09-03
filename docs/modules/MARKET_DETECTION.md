@@ -33,7 +33,7 @@ Upbit 실시간 시세(`upbit-ticker-event`)를 소비해 **단기 이동평균 
 | 공통·설정 | Config `market-detection,eureka-client,kafka,monitoring`; `common-inbox` 전이 JPA는 auto-config 및 component scan에서 제외 |
 | 외부 접속 | 직접 접속 없음. 브로커 공통 설정은 `infrastructure/kafka.yml`에서 로드 |
 
-의존성 전체 그래프는 [`docs/dependencies.html`](../dependencies.html)에서 확인할 수 있다.
+의존성 전체 그래프는 [`docs/dependencies.md`](../dependencies.md)에서 확인할 수 있다.
 
 ## 4. 데이터 흐름
 
