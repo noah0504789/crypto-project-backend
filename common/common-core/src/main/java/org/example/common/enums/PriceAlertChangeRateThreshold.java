@@ -12,7 +12,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public enum PriceAlertChangeRateThreshold {
 
-    PERCENT_0(0.0),
     PERCENT_3(0.03),
     PERCENT_5(0.05),
     PERCENT_7(0.07);

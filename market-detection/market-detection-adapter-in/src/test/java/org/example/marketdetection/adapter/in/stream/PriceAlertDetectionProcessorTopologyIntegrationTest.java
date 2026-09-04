@@ -116,6 +116,7 @@ class PriceAlertDetectionProcessorTopologyIntegrationTest {
     void process_usesKafkaRecordTimestampForStore() {
         // given & when
         inputTopic.pipeInput(CODE, tickerEvent(100.0, 1_000L), Instant.ofEpochMilli(5_000L));
+        inputTopic.pipeInput(CODE, tickerEvent(110.0, 6_000L), Instant.ofEpochMilli(9_000L));
 
         // then
         WindowStore<String, PricePoint> store = testDriver.getWindowStore(STORE_NAME);
@@ -125,20 +126,20 @@ class PriceAlertDetectionProcessorTopologyIntegrationTest {
             assertThat(iterator.next().value.timestamp()).isEqualTo(5_000L);
         }
 
-        assertThat(outputTopic.readValue().getTimestamp()).isEqualTo(5_000L);
+        assertThat(outputTopic.readValuesToList())
+                .isNotEmpty()
+                .allSatisfy(event -> assertThat(event.getTimestamp()).isEqualTo(9_000L));
     }
 
     @Test
-    @DisplayName("평균 대비 변동률이 3% 미만이면 0% 이벤트만 발행한다")
-    void process_belowThreshold_publishesZeroPercentOnly() {
+    @DisplayName("평균 대비 변동률이 3% 미만이면 이벤트를 발행하지 않는다")
+    void process_belowThreshold_publishesNoEvent() {
         // given & when
         inputTopic.pipeInput(CODE, tickerEvent(100.0, 1_000L), Instant.ofEpochMilli(1_000L));
         inputTopic.pipeInput(CODE, tickerEvent(102.0, 2_000L), Instant.ofEpochMilli(2_000L));
 
         // then
-        assertThat(outputTopic.readValuesToList())
-                .extracting(PriceAlertDetectedEvent::getThreshold)
-                .containsOnly("PERCENT_0");
+        assertThat(outputTopic.readValuesToList()).isEmpty();
     }
 
     @Test
@@ -156,7 +157,7 @@ class PriceAlertDetectionProcessorTopologyIntegrationTest {
 
         assertThat(events)
                 .extracting(PriceAlertDetectedEvent::getThreshold)
-                .containsExactlyInAnyOrder("PERCENT_0", "PERCENT_3", "PERCENT_5", "PERCENT_7");
+                .containsExactlyInAnyOrder("PERCENT_3", "PERCENT_5", "PERCENT_7");
         assertThat(events).extracting(PriceAlertDetectedEvent::getPartitionKey).containsOnly(CODE);
     }
 
@@ -165,6 +166,7 @@ class PriceAlertDetectionProcessorTopologyIntegrationTest {
     void process_addsEventIdHeader() {
         // given & when
         inputTopic.pipeInput(CODE, tickerEvent(100.0, 1_000L), Instant.ofEpochMilli(1_000L));
+        inputTopic.pipeInput(CODE, tickerEvent(110.0, 2_000L), Instant.ofEpochMilli(2_000L));
 
         // then
         var outputRecord = outputTopic.readRecord();

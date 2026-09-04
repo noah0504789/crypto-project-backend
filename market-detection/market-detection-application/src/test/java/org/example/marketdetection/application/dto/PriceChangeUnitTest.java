@@ -61,7 +61,6 @@ class PriceChangeUnitTest {
         // then
         assertThat(priceChange.matchedThresholds())
                 .contains(
-                        PriceAlertChangeRateThreshold.PERCENT_0,
                         PriceAlertChangeRateThreshold.PERCENT_3,
                         PriceAlertChangeRateThreshold.PERCENT_5)
                 .doesNotContain(PriceAlertChangeRateThreshold.PERCENT_7);
