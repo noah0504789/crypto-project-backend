@@ -89,7 +89,7 @@ graph TB
 | worker pool 2개, code 무관 병렬 | `groupBy` + `flatMap`, code별 병렬(같은 code 순서 보장 강화) |
 | Micrometer metric 6종(queue 크기·offer 실패·병합·처리 수·worker 오류·처리 시간) | Reactor 기준으로 재정의(§5.1) |
 
-**스로틀 표본이 바뀌었다.** 구간의 첫 값 대신 마지막 값이 흐르므로 이동평균에 들어가는 표본이 달라진다. 탐지 임계 판정에 영향을 줄 수 있다(실측은 TODO 4.18).
+**스로틀 표본이 바뀌었다.** 구간의 첫 값 대신 마지막 값이 흐르므로 이동평균에 들어가는 표본이 달라진다. 탐지 임계 판정에 영향을 줄 수 있다(실측은 TODO 4.17).
 
 ### 5.1 관측 지표
 
@@ -177,7 +177,8 @@ outbox 계열 발행(`outbox-poller`)은 payload가 JSON 문자열이고 `value.
 
 - 배포 첫 실행 전 `.deploy/upbit-connector.current-image` 초기화(TODO 4.9)
 - REST 조회 API 미구현(TODO 4.11)
-- **스로틀 표본 차이**(§5)가 탐지 결과에 주는 영향은 실측하지 않았다
+- 스케일아웃 시 인스턴스 간 종목 중복 구독·중복 발행 가능성(TODO 4.16)
+- 스로틀 표본 차이(§5)가 탐지 결과에 주는 영향 미실측(TODO 4.17)
 
 ## 11. 관련 문서와 rules
 

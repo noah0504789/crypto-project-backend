@@ -290,6 +290,15 @@ deadline이 무한 대기는 이미 막고 있고, gRPC 호출 깊이가 1단계
 
 ---
 
+#### 4.17 스로틀 표본 변경(구간 첫 값 → 마지막 값)이 탐지 결과에 주는 영향 미실측
+
+기존 `market-detection` 내장 스로틀은 발행 구간의 **첫 값**을 통과시켰다. `upbit-connector`의 `sample(7s)`(PR #246)은 구간의 **마지막 값**을 발행한다(`docs/modules/UPBIT_CONNECTOR.md` §4.1·§5). 이동평균·변동률 계산에 들어가는 표본 자체가 바뀐 것인데, 이 차이가 실제 임계값 매칭 결과(과탐지/누락)에 어떤 영향을 주는지는 실측하지 않았다.
+
+착수 시: 동일 구간의 첫 값/마지막 값을 함께 로깅하거나 오프라인으로 재생해 두 표본 선택 방식의 탐지 결과 차이를 비교한다. 차이가 무시할 수준인지, 임계값·window 재조정이 필요한 수준인지에 따라 후속 조치가 갈린다.
+`[출처: docs/modules/UPBIT_CONNECTOR.md §4.1·§5·§10]`
+
+---
+
 ### oauth2-authorization-server
 
 ### spring-cloud-eureka-server
