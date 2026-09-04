@@ -211,7 +211,7 @@ class MongoChatRoomAdapterIntegrationTest {
         }
 
         @Test
-        @DisplayName("updateMessageState는 msgCnt와 latestMsgSeq를 함께 증가시킨다")
+        @DisplayName("updateMessageState는 msgCnt와 lastMsgSeq를 함께 증가시킨다")
         void updateMessageState() {
             // given
             sut.save(chatRoom(roomId1, TITLE_1));
@@ -222,7 +222,7 @@ class MongoChatRoomAdapterIntegrationTest {
             // then
             ChatRoom found = sut.findById(roomId1.toHexString()).orElseThrow();
             assertThat(found.getMsgCnt()).isEqualTo(2L);
-            assertThat(found.getLatestMsgSeq()).isEqualTo(2L);
+            assertThat(found.getLastMsgSeq()).isEqualTo(2L);
         }
 
         @Test

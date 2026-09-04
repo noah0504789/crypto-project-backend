@@ -39,7 +39,7 @@ public class MongoChatRoom {
     private ChatRoomCategory category;
     private Set<String> memberIds;
     private Long msgCnt;
-    private Long latestMsgSeq;
+    private Long lastMsgSeq;
     private Instant lastMsgCreatedAt;
 
     // 인기방 정렬 스코어(denormalized). ChatRoomPopularityCalculator 산식의 반올림 값으로,
@@ -64,7 +64,7 @@ public class MongoChatRoom {
         this.category = category;
         this.memberIds = new HashSet<>(Set.of(hostId));
         this.msgCnt = 0L;
-        this.latestMsgSeq = 0L;
+        this.lastMsgSeq = 0L;
         this.popularity = 0L;
         this.createdAt = createdAt;
     }
@@ -78,7 +78,7 @@ public class MongoChatRoom {
                 .category(domain.getCategory())
                 .memberIds(domain.getMemberIds())
                 .msgCnt(domain.getMsgCnt())
-                .latestMsgSeq(domain.getLatestMsgSeq())
+                .lastMsgSeq(domain.getLastMsgSeq())
                 .popularity(popularityOf(domain))
                 .createdAt(domain.getCreatedAt())
                 .build();
@@ -97,7 +97,7 @@ public class MongoChatRoom {
                 category,
                 memberIds,
                 msgCnt,
-                latestMsgSeq,
+                lastMsgSeq,
                 createdAt
         );
     }
@@ -115,7 +115,7 @@ public class MongoChatRoom {
                 category,
                 memberIds,
                 msgCnt,
-                latestMsgSeq,
+                lastMsgSeq,
                 latestMessageId == null ? "" : latestMessageId,
                 latestMessage == null ? "" : latestMessage,
                 latestMessageCreatedAt,

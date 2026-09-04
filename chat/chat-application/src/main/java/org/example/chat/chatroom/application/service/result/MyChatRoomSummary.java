@@ -20,9 +20,9 @@ public record MyChatRoomSummary(
 ) {
     public static MyChatRoomSummary fromRoom(ChatRoom chatRoom, Long lastMsgSeq) {
         long safeLastMsgSeq = lastMsgSeq == null ? 0L : lastMsgSeq;
-        long latestSeq = chatRoom.getLatestMsgSeq() == null
+        long latestSeq = chatRoom.getLastMsgSeq() == null
                 ? (chatRoom.getMsgCnt() == null ? 0L : chatRoom.getMsgCnt())
-                : chatRoom.getLatestMsgSeq();
+                : chatRoom.getLastMsgSeq();
 
         return MyChatRoomSummary.builder()
                 .id(chatRoom.getId())

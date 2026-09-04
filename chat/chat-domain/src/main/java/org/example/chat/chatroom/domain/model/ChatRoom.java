@@ -27,7 +27,7 @@ public class ChatRoom {
     private ChatRoomCategory category;
     private Set<String> memberIds;
     private Long msgCnt;
-    private Long latestMsgSeq;
+    private Long lastMsgSeq;
     private String lastMsgId;
     private String lastMsgContent;
     private Instant lastMsgCreatedAt;
@@ -48,7 +48,7 @@ public class ChatRoom {
                 .description(description)
                 .category(category)
                 .msgCnt(0L)
-                .latestMsgSeq(0L)
+                .lastMsgSeq(0L)
                 .memberIds(new HashSet<>(Set.of(hostId)))
                 .createdAt(createdAt)
                 .build();
@@ -58,7 +58,7 @@ public class ChatRoom {
         return ChatRoom.builder()
                 .id(id)
                 .msgCnt(0L)
-                .latestMsgSeq(0L)
+                .lastMsgSeq(0L)
                 .category(category)
                 .createdAt(createdAt)
                 .build();
@@ -85,7 +85,7 @@ public class ChatRoom {
             ChatRoomCategory category,
             Set<String> memberIds,
             Long msgCnt,
-            Long latestMsgSeq,
+            Long lastMsgSeq,
             LocalDateTime createdAt
     ) {
         return ChatRoom.builder()
@@ -96,7 +96,7 @@ public class ChatRoom {
                 .category(category)
                 .memberIds(memberIds == null ? new HashSet<>() : new HashSet<>(memberIds))
                 .msgCnt(msgCnt)
-                .latestMsgSeq(latestMsgSeq == null ? defaultSequence(msgCnt) : latestMsgSeq)
+                .lastMsgSeq(lastMsgSeq == null ? defaultSequence(msgCnt) : lastMsgSeq)
                 .createdAt(createdAt)
                 .build();
     }
@@ -128,7 +128,7 @@ public class ChatRoom {
             ChatRoomCategory category,
             Set<String> memberIds,
             Long msgCnt,
-            Long latestMsgSeq,
+            Long lastMsgSeq,
             String lastMsgId,
             String lastMsgContent,
             Instant lastMsgCreatedAt,
@@ -142,7 +142,7 @@ public class ChatRoom {
                 .category(category)
                 .memberIds(memberIds == null ? new HashSet<>() : new HashSet<>(memberIds))
                 .msgCnt(msgCnt)
-                .latestMsgSeq(latestMsgSeq == null ? defaultSequence(msgCnt) : latestMsgSeq)
+                .lastMsgSeq(lastMsgSeq == null ? defaultSequence(msgCnt) : lastMsgSeq)
                 .lastMsgId(lastMsgId == null ? "" : lastMsgId)
                 .lastMsgContent(lastMsgContent == null ? "" : lastMsgContent)
                 .lastMsgCreatedAt(lastMsgCreatedAt)
@@ -174,7 +174,7 @@ public class ChatRoom {
             ChatRoomCategory category,
             Set<String> memberIds,
             Long msgCnt,
-            Long latestMsgSeq,
+            Long lastMsgSeq,
             ChatMessage latest,
             LocalDateTime createdAt
     ) {
@@ -186,7 +186,7 @@ public class ChatRoom {
                 category,
                 memberIds,
                 msgCnt,
-                latestMsgSeq,
+                lastMsgSeq,
                 latest == null ? "" : latest.getId(),
                 latest == null ? "" : latest.getContent(),
                 latest == null ? null : latest.createdAtInstant(),
@@ -250,9 +250,9 @@ public class ChatRoom {
 
     public boolean hasUnread(Long lastReadSeq) {
         if (lastReadSeq == null) lastReadSeq = 0L;
-        long latestSeq = latestMsgSeq == null ? (msgCnt == null ? 0L : msgCnt) : latestMsgSeq;
+        long lastSeq = lastMsgSeq == null ? (msgCnt == null ? 0L : msgCnt) : lastMsgSeq;
 
-        return lastReadSeq < latestSeq;
+        return lastReadSeq < lastSeq;
     }
 
     private static long defaultSequence(Long msgCnt) {

@@ -114,11 +114,11 @@ class RedisChatMessageAdapterIntegrationTest {
             String roomInfoKey = CHAT_ROOM_INFO.keyFor(ROOM_ID);
             Object msgCnt = masterHashRedisTemplate.opsForHash()
                     .get(roomInfoKey, "msg_cnt");
-            Object latestMsgSeq = masterHashRedisTemplate.opsForHash()
-                    .get(roomInfoKey, "latest_msg_seq");
+            Object lastMsgSeq = masterHashRedisTemplate.opsForHash()
+                    .get(roomInfoKey, "last_msg_seq");
 
             assertThat(msgCnt).isEqualTo("1");
-            assertThat(latestMsgSeq).isEqualTo("1");
+            assertThat(lastMsgSeq).isEqualTo("1");
 
             // then: 작성자는 자기 메시지를 읽은 것으로 본다
             String writerRecentKey = CHAT_ROOM_ACTIVE_BY_MEMBER_INDEX.keyFor(WRITER_ID);
@@ -158,16 +158,16 @@ class RedisChatMessageAdapterIntegrationTest {
             String roomInfoKey = CHAT_ROOM_INFO.keyFor(ROOM_ID);
             Object msgCnt = masterHashRedisTemplate.opsForHash()
                     .get(roomInfoKey, "msg_cnt");
-            Object latestMsgSeq = masterHashRedisTemplate.opsForHash()
-                    .get(roomInfoKey, "latest_msg_seq");
+            Object lastMsgSeq = masterHashRedisTemplate.opsForHash()
+                    .get(roomInfoKey, "last_msg_seq");
 
             assertThat(msgCnt).isEqualTo("1");
-            assertThat(latestMsgSeq).isEqualTo("1");
+            assertThat(lastMsgSeq).isEqualTo("1");
         }
 
         @Test
         @DisplayName("기존 room hash에 watermark가 없으면 msgCnt 다음 값부터 시작한다")
-        void saveShouldSeedLatestMsgSeqFromLegacyMessageCount() {
+        void saveShouldSeedLastMsgSeqFromLegacyMessageCount() {
             // given
             String roomInfoKey = CHAT_ROOM_INFO.keyFor(ROOM_ID);
             masterHashRedisTemplate.opsForHash().put(roomInfoKey, "msg_cnt", "5");
@@ -179,7 +179,7 @@ class RedisChatMessageAdapterIntegrationTest {
             // then
             assertThat(masterHashRedisTemplate.opsForHash().get(roomInfoKey, "msg_cnt"))
                     .isEqualTo("6");
-            assertThat(masterHashRedisTemplate.opsForHash().get(roomInfoKey, "latest_msg_seq"))
+            assertThat(masterHashRedisTemplate.opsForHash().get(roomInfoKey, "last_msg_seq"))
                     .isEqualTo("6");
         }
 
@@ -312,7 +312,7 @@ class RedisChatMessageAdapterIntegrationTest {
 
             String roomInfoKey = CHAT_ROOM_INFO.keyFor(ROOM_ID);
             masterHashRedisTemplate.opsForHash().put(roomInfoKey, "msg_cnt", "2");
-            masterHashRedisTemplate.opsForHash().put(roomInfoKey, "latest_msg_seq", "2");
+            masterHashRedisTemplate.opsForHash().put(roomInfoKey, "last_msg_seq", "2");
 
             long fallbackMsgCreatedAtMs = message1.createdAtEpochMillis();
 
@@ -328,12 +328,12 @@ class RedisChatMessageAdapterIntegrationTest {
 
             Object msgCnt = masterHashRedisTemplate.opsForHash()
                     .get(roomInfoKey, "msg_cnt");
-            Object latestMsgSeq = masterHashRedisTemplate.opsForHash()
-                    .get(roomInfoKey, "latest_msg_seq");
+            Object lastMsgSeq = masterHashRedisTemplate.opsForHash()
+                    .get(roomInfoKey, "last_msg_seq");
 
             // watermark 는 hard delete 로 줄지 않는다
             assertThat(msgCnt).isEqualTo("1");
-            assertThat(latestMsgSeq).isEqualTo("2");
+            assertThat(lastMsgSeq).isEqualTo("2");
 
             // 정렬 점수 보정은 projector 몫이라 방만 dirty 로 남는다
             assertThat(masterHashRedisTemplate.opsForZSet()

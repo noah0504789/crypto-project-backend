@@ -55,8 +55,8 @@ print("  chat_room_membership 삭제 " + db.chat_room_membership.deleteMany({roo
 db.chat_room.updateOne(
   {_id: roomId},
   {
-    $set: {msg_cnt: NumberLong("0"), latest_msg_seq: NumberLong("0"), popularity: NumberLong("0")},
-    $unset: {last_msg_created_at: "", memberIds: "", msgCnt: "", latestMsgSeq: ""}
+    $set: {msg_cnt: NumberLong("0"), last_msg_seq: NumberLong("0"), popularity: NumberLong("0")},
+    $unset: {last_msg_created_at: "", memberIds: "", msgCnt: "", lastMsgSeq: ""}
   }
 );
 print("  chat_room 카운터·watermark 초기화");

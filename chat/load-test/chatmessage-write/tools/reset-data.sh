@@ -47,11 +47,11 @@ const messages = db.chat_message.deleteMany({room_id: roomId}).deletedCount;
 const memberships = db.chat_room_membership.deleteMany({room_id: roomId}).deletedCount;
 db.chat_room.updateOne(
   {_id: roomId},
-  {$set: {msg_cnt: NumberLong("0"), latest_msg_seq: NumberLong("0")}, $unset: {last_msg_created_at: ""}}
+  {$set: {msg_cnt: NumberLong("0"), last_msg_seq: NumberLong("0")}, $unset: {last_msg_created_at: ""}}
 );
 print("테스트 방 메시지 삭제: " + messages);
 print("room membership 삭제: " + memberships);
-print("방 msgCnt/latestMsgSeq 초기화 완료");
+print("방 msgCnt/lastMsgSeq 초기화 완료");
 '
 
 redis_del() {

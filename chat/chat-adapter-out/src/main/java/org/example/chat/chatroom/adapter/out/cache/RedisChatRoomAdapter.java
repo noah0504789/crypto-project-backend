@@ -202,7 +202,7 @@ public class RedisChatRoomAdapter implements ChatRoomCachePort {
                             redisRoom.getCategory(),
                             redisRoom.getMemberIds(),
                             redisRoom.getMsgCnt(),
-                            redisRoom.getLatestMsgSeq(),
+                            redisRoom.getLastMsgSeq(),
                             latest,
                             redisRoom.createdAtLocalDateTime()
                     );

@@ -64,7 +64,7 @@ chat의 쓰기 경로는 **Outbox를 먼저 기록하고 Redis 캐시에 반영�
 |---|---|---|
 | Outbox 우선 명령 | `ChatRoomCommandService`/`ChatMessageCommandService`가 MySQL Outbox를 먼저 기록한다. 방 명령은 Redis를 동기 반영하고, 메시지 `save`는 커밋 뒤 `AfterCommitExecutor`로 Redis를 반영한다 | 방 캐시 반영 실패는 캐시-복구 Outbox 이벤트로 재구성·무효화한다. 메시지 캐시 반영 실패는 조회 repair가 복구한다 |
 | Kafka 비동기 영속 | `outbox-poller`가 이벤트를 Kafka로 발행하고, `ChatRoomEventService`/`ChatMessageEventService`가 MongoDB에 실제 write한다 | EventService가 재시도한 뒤 `@Recover`에서 DLQ 이벤트를 발행한다 |
-| DLQ 재처리 | `chatRoomDlqEventConsumer`/`chatMessageDlqEventConsumer`가 원래 영속 처리를 다시 수행한다 | 메시지 DLQ는 정상 처리기를 재사용해 메시지 insert와 방 `msgCnt`·`latestMsgSeq` watermark 갱신을 함께 재수행하고, `DlqService.complete/fail`로 결과를 남긴다 |
+| DLQ 재처리 | `chatRoomDlqEventConsumer`/`chatMessageDlqEventConsumer`가 원래 영속 처리를 다시 수행한다 | 메시지 DLQ는 정상 처리기를 재사용해 메시지 insert와 방 `msgCnt`·`lastMsgSeq` watermark 갱신을 함께 재수행하고, `DlqService.complete/fail`로 결과를 남긴다 |
 | 재생성 가능한 조회 projection | Mongo의 방 watermark와 membership 읽음 위치를 사실 기준으로 두고 Redis active-room을 조회용 결과로 사용한다 | 방 캐시 miss·stalled claim·active-room 인덱스 miss가 발생하면 Mongo 기준으로 다시 만든다 |
 
 ### 내 방 정렬 projection — 문제와 설계 원칙
@@ -72,7 +72,7 @@ chat의 쓰기 경로는 **Outbox를 먼저 기록하고 Redis 캐시에 반영�
 내 방 목록은 방의 최신 활동과 사용자의 읽음 위치를 함께 반영해 정렬한다. 이 값들은 서로 다른
 Mongo 컬렉션에 있다.
 
-- 방의 사실: `chat_room.latestMsgSeq`, 최신 메시지 시각
+- 방의 사실: `chat_room.lastMsgSeq`, 최신 메시지 시각
 - 사용자의 사실: `chat_room_membership.lastMsgReadSeq`
 - 정렬 결과: `unread` 여부와 최신 메시지 시각을 반영한 사용자별 score
 
@@ -198,19 +198,19 @@ projection 중 예외가 발생하면 `requeueDirty`가 방을 원래 활동 시
 두 ZSET은 내구성 큐가 아니라 방을 모아 두는 coalescing 작업 목록이다. 목록이 유실되거나
 처리 인스턴스가 죽을 수 있으므로, Mongo 기준의 projection 재생성 경로가 함께 있어야 한다.
 
-#### `msgCnt`와 `latestMsgSeq`의 분리
+#### `msgCnt`와 `lastMsgSeq`의 분리
 
 보관 메시지 개수와 읽음 판정 기준을 하나의 필드로 처리하지 않도록 역할을 분리했다.
 
 | 필드 | 의미 | hard delete 시 |
 |---|---|---|
 | `msgCnt` | 현재 보관 중인 메시지 수 | 감소 가능 |
-| `latestMsgSeq` | 방에서 발급된 메시지 순번의 watermark | 감소하지 않음 |
+| `lastMsgSeq` | 방에서 발급된 메시지 순번의 watermark | 감소하지 않음 |
 
-읽음 여부는 `msgCnt`가 아니라 `latestMsgSeq`와 멤버십의 `lastMsgReadSeq`를 비교해 판단한다.
+읽음 여부는 `msgCnt`가 아니라 `lastMsgSeq`와 멤버십의 `lastMsgReadSeq`를 비교해 판단한다.
 메시지가 hard delete되어 `msgCnt`가 감소해도 watermark는 과거로 돌아가지 않으므로, 이미 읽은
 사용자의 읽음 상태가 다시 unread로 바뀌지 않는다. 삭제된 메시지의 순번도 재사용하지 않기 때문에
-`latestMsgSeq - lastMsgReadSeq`는 현재 보관 중인 메시지 수와 항상 같지는 않지만, 읽음 위치를
+`lastMsgSeq - lastMsgReadSeq`는 현재 보관 중인 메시지 수와 항상 같지는 않지만, 읽음 위치를
 판단하는 기준으로는 일관성을 유지한다.
 
 hard delete는 멤버별 점수를 되돌리지 않는다. 메시지 캐시를 제거하고 방을 dirty로 표시하면
@@ -223,7 +223,7 @@ Mongo transaction 안에서 처리한다.
 
 - 배치 내부에서 메시지 ID를 일괄 확인해 신규 메시지만 구분한다.
 - 신규 메시지를 목록 단위로 insert한다.
-- 방별 `msgCnt`, `latestMsgSeq`, `lastMsgCreatedAt` 갱신을 묶어서 처리한다.
+- 방별 `msgCnt`, `lastMsgSeq`, `lastMsgCreatedAt` 갱신을 묶어서 처리한다.
 - 중복 메시지는 insert와 방 상태 갱신에서 제외한다.
 
 이로써 메시지마다 transaction을 열고 Mongo 저장을 호출하던 비용을 줄였다. 단, Kafka batch는
@@ -289,7 +289,7 @@ transaction commit, Kafka drain 시간과 메시지 저장 정합성을 함께 �
 | `ChatMessageCommandService` | 메시지 save/hardDelete(§10), Outbox 3종 발행 + 캐시 |
 | `ChatMessageQueryService` | 메시지 목록 조회(캐시-우선, 미스 시 repair) |
 | `ChatMessageQueryRepairService` | 메시지 캐시 미스 복구(분산락 하에 range 로드 + 워밍업) |
-| `ChatMessageEventService` | 메시지 이벤트 비동기 영속(멱등) + 방 카운터/스코어 갱신(멤버 전원 스코어는 `upsertUnreadActivity` 의 UNORDERED bulkWrite 한 번, PR #270 — 멤버당 왕복으로 되돌리지 않는다), →DLQ |
+| `ChatMessageEventService` | 메시지 이벤트 비동기 영속(멱등) + 방 `msgCnt`·`lastMsgSeq`·최신 메시지 시각 갱신. 멤버별 active-room score는 메시지 영속에서 갱신하지 않고 projector가 방 단위로 반영, →DLQ |
 | `MyChatRoomScoreCalculator` | 내 방 정렬 스코어(안읽음 가중치) |
 | `MongoChatMessageAdapter` / `MongoChatRoomAdapter` | `*PersistencePort` 구현(MongoDB) |
 | `RedisChatMessageAdapter` / `RedisChatRoomAdapter` | `*CachePort` 구현(Redis Cluster) |
@@ -429,7 +429,7 @@ proto: `protobuf/src/main/proto/chatmessage/v1/chatmessage-service.proto`. 서�
   3. `ChatMessage.create(messageId, roomId, writerId, content)`(messageId는 클라이언트/게이트웨이가 부여한 ObjectId).
   4. Outbox 3종 발행: `ChatMessagePersistEvent`(→`chatmessage-event`, 영속용), `ChatMessageBroadcastEvent`(→`chatmessage-broadcast-event`, websocket-gateway push용), `MyChatRoomBadgeBroadcastEvent`(→`chatroom-broadcast-event`, 뱃지용).
   5. MySQL Outbox 트랜잭션 커밋 후 `AfterCommitExecutor`가 Redis 캐시를 저장한다(`chatMessageCachePort.save`). 실패는 로그만 남기고 조회 repair에 맡긴다.
-  - **메시지 자체의 Mongo 저장은 여기서 하지 않는다.** `chatmessage-event`를 받은 `ChatMessageEventService.handleBatch`가 신규 메시지를 묶어 저장하고 방별 `msgCnt`·`latestMsgSeq`·`lastMsgCreatedAt`을 갱신한다. 중복 `messageId`는 신규 집계에서 제외한다.
+  - **메시지 자체의 Mongo 저장은 여기서 하지 않는다.** `chatmessage-event`를 받은 `ChatMessageEventService.handleBatch`가 신규 메시지를 묶어 저장하고 방별 `msgCnt`·`lastMsgSeq`·`lastMsgCreatedAt`을 갱신한다. 중복 `messageId`는 신규 집계에서 제외한다.
 - **`HardDelete`**(`hardDelete`, `@Transactional("chatMongoTransactionManager")` + `@Retryable(TemporaryChatPersistenceException, 3회)`): Mongo `hardDeleteById` → 없으면 skip. 삭제되면 `decrementMessageCount`, `findLatestMessageExcluding`로 fallback 시각을 구한다. 커밋 뒤 캐시 메시지를 제거하고 방을 dirty로 표시해 projector가 내 방 정렬을 다시 반영한다(`hardDeleteCacheSafely`, 실패는 로그만).
 - 취소/데드라인: `save`/`hardDelete` 진입·완료 시 `Context.current().isCancelled()`를 검사해 `ChatMessageGrpcCancelledException`을 던진다. gRPC 예외 변환은 `GrpcChatMessageExceptionAdvice`.
 - **계약 주의**: 이 proto는 외부 계약이다(→ `websocket-gateway`). field number 재사용 금지, 변경 시 server(chat)·client(websocket-gateway) 재빌드. 상세 절차는 `../../.claude/rules/external-contracts.md`.
@@ -450,11 +450,11 @@ proto: `protobuf/src/main/proto/chatmessage/v1/chatmessage-service.proto`. 서�
 | `ChatRoomActiveEvent` | 멤버의 `lastMsgReadSeq` 갱신 | 동일 멤버십 키에 최신 읽음 위치를 반영 |
 | `ChatRoomCacheSave/UpdateEvent` | 방 캐시 저장·복구 | 동일 Redis key 덮어쓰기 |
 | `ChatRoomCacheDelete/InvalidateEvent` | 방 캐시 삭제·무효화 | 반복 삭제 허용 |
-| `ChatMessagePersistEvent` | 신규 메시지 batch 저장 후 방별 `msgCnt`·`latestMsgSeq`·`lastMsgCreatedAt` 갱신 | batch 안을 `messageId`로 중복 제거하고 이미 저장된 ID를 제외한 신규 메시지만 방 상태에 반영 |
+| `ChatMessagePersistEvent` | 신규 메시지 batch 저장 후 방별 `msgCnt`·`lastMsgSeq`·`lastMsgCreatedAt` 갱신 | batch 안을 `messageId`로 중복 제거하고 이미 저장된 ID를 제외한 신규 메시지만 방 상태에 반영 |
 | ChatRoom DLQ 이벤트 | 원본 방 영속/캐시 처리를 재수행한 뒤 DLQ 완료 상태 반영 | 원본 도메인 자연 키 + 안정적인 `dlq_id`/`event_id` |
 | `ChatMessagePersistDlqEvent` | `ChatMessageDlqService`가 정상 메시지 영속 흐름을 재수행 | 메시지 insert·신규 메시지 기준 방 watermark 증가를 동일하게 재수행 |
 
-Kafka `event_id`는 추적 계약으로 함께 전달하지만, chat은 서로 다른 이벤트 ID로 같은 도메인 대상이 들어오는 경우까지 막을 수 있도록 자연 키를 멱등 기준으로 삼는다. 특히 `ChatMessagePersistEvent`는 `MongoRepository.save`가 기존 `_id`를 replace할 수 있으므로 신규 삽입 전용 `insert`를 사용한다. 같은 `messageId`의 동시 소비에서는 Mongo unique `_id`가 하나만 성공시키고, 같은 Mongo 트랜잭션의 `msgCnt`·`latestMsgSeq` 증가도 중복 소비에서 실행되지 않는다.
+Kafka `event_id`는 추적 계약으로 함께 전달하지만, chat은 서로 다른 이벤트 ID로 같은 도메인 대상이 들어오는 경우까지 막을 수 있도록 자연 키를 멱등 기준으로 삼는다. 특히 `ChatMessagePersistEvent`는 `MongoRepository.save`가 기존 `_id`를 replace할 수 있으므로 신규 삽입 전용 `insert`를 사용한다. 같은 `messageId`의 동시 소비에서는 Mongo unique `_id`가 하나만 성공시키고, 같은 Mongo 트랜잭션의 `msgCnt`·`lastMsgSeq` 증가도 중복 소비에서 실행되지 않는다.
 
 | 토픽 | 방향 | 이벤트 | 처리 |
 |---|---|---|---|
@@ -471,9 +471,9 @@ Kafka `event_id`는 추적 계약으로 함께 전달하지만, chat은 서로 �
 ## 12. 도메인 모델
 
 ### `ChatRoom` (`ChatRoom`)
-- 필드: `id`(ObjectId hex), `hostId`, `title`, `description`, `category`, `memberIds:Set<String>`, `msgCnt`(현재 보관 메시지 수), `latestMsgSeq`(방별 단조 증가 watermark), `lastMsgId`/`lastMsgContent`/`lastMsgCreatedAt`(최신 메시지 조인 결과), `createdAt`.
+- 필드: `id`(ObjectId hex), `hostId`, `title`, `description`, `category`, `memberIds:Set<String>`, `msgCnt`(현재 보관 메시지 수), `lastMsgSeq`(방별 단조 증가 watermark), `lastMsgId`/`lastMsgContent`/`lastMsgCreatedAt`(최신 메시지 조인 결과), `createdAt`.
 - 팩토리: `create(...)`(호스트를 멤버로 시딩, `msgCnt=0`), `rehydrate(...)`(영속 복원), `rehydrateWithLatest(...)`(최신 메시지 포함 복원).
-- 행위: `validateWritable(writerId)`(멤버 아니면 `ChatRoomMembershipNotFoundException`), `addMember`/`removeMember`(멱등 boolean), `isLastMember`(마지막 멤버 → 퇴장 시 삭제 전환), `hasUnread(lastReadSeq)`(`lastReadSeq < latestMsgSeq`), `popularity()`.
+- 행위: `validateWritable(writerId)`(멤버 아니면 `ChatRoomMembershipNotFoundException`), `addMember`/`removeMember`(멱등 boolean), `isLastMember`(마지막 멤버 → 퇴장 시 삭제 전환), `hasUnread(lastReadSeq)`(`lastReadSeq < lastMsgSeq`), `popularity()`.
 - **인기도 산식은 `ChatRoomPopularityCalculator.calculate(ChatRoom)`(chatroom domain service) 한 곳에만 있다** — 현재 `msgCnt` 단일 항(가중치 1.0). 인기방 zset은 실시간 증분이 아니라 **주기 재계산**으로 유지한다:
   - `ChatRoomPopularityScheduler`(3시간마다, `@Scheduled`) → `PopularChatRoomRefreshService.refresh()`가 category별 Mongo 상위 후보(top-100)를 로드해 `ChatRoomCachePort.rebuildPopularIndex`(`rebuildPopularRoomIndex.lua`: DEL 후 `calculate()` 스코어로 zset 재구축).
   - 메시지 저장(`storeChatMessage.lua`)은 popular zset을 건드리지 않는다(`msgCnt` HINCRBY만). `ChatMessageCachePort.save`는 `category` 파라미터를 받지 않는다.
@@ -491,7 +491,7 @@ Kafka `event_id`는 추적 계약으로 함께 전달하지만, chat은 서로 �
 
 ### `MyChatRoomScoreCalculator` (내 방 정렬 스코어)
 - `unread(ms) = ms + 100_000_000_000_000L`(안읽음 가중치), `read(ms) = ms`. → 안읽은 방이 항상 상단 정렬.
-- **설계 의도**: 이 스코어 산정은 엄밀히는 `ChatRoom`(및 멤버십)의 도메인 로직이라 `ChatRoom`에 두는 것이 원칙에 맞다. 다만 unread 가중치 상수·재산정 규칙을 한곳에 모아 **가독성을 높이려고 상태 없는(`private` 생성자 + `static` 메서드) 도메인 서비스로 의도적으로 분리**했다. 여전히 `chat-domain` 소속 도메인 로직이며 `ChatRoom.hasUnread`와 짝을 이룬다 — 스코어 규칙을 바꾸면 두 곳(도메인 서비스 + Redis/Mongo 스코어 기록 경로)을 함께 본다.
+- **설계 의도**: 이 스코어 산정은 엄밀히는 `ChatRoom`(및 멤버십)의 도메인 로직이라 `ChatRoom`에 두는 것이 원칙에 맞다. 다만 unread 가중치 상수·재산정 규칙을 한곳에 모아 **가독성을 높이려고 상태 없는(`private` 생성자 + `static` 메서드) 도메인 서비스로 의도적으로 분리**했다. 여전히 `chat-domain` 소속 도메인 로직이며 `ChatRoom.hasUnread`와 짝을 이룬다 — 스코어 규칙을 바꾸면 도메인 계산기와 Redis active-room projection 반영 경로를 함께 본다.
 
 ## 13. 영속성 · 스키마 (MongoDB)
 
@@ -499,14 +499,14 @@ DB `chat`(authSource `chat`). `MongoConfig`가 커넥션 풀(min 20/max 200), `W
 
 | 컬렉션 | 인덱스 | 비고 |
 |---|---|---|
-| `chat_room` | `idx_category_popularity` `{category:1, popularity:-1, _id:-1}` partial `{deleted:false}`; `title` unique partial `{deleted:false}` | soft-delete(`deleted`/`deletedAt`). 인기방 정렬/커서(저장된 `popularity` 필드)·후보 풀스캔 지원. `latestMsgSeq`는 메시지 저장 때 원자 증가 |
+| `chat_room` | `idx_category_popularity` `{category:1, popularity:-1, _id:-1}` partial `{deleted:false}`; `title` unique partial `{deleted:false}` | soft-delete(`deleted`/`deletedAt`). 인기방 정렬/커서(저장된 `popularity` 필드)·후보 풀스캔 지원. `lastMsgSeq`는 메시지 저장 때 원자 증가 |
 | `chat_message` | `idx_room_created_id` `{room_id:1, created_at:-1, _id:-1}` partial `{deleted:false}` | 방별 최신/이전 커서 조회 |
 | `chat_room_membership` | unique `{room_id, member_id}`; `my_rooms` `{member_id, _id:-1}` | `id = "roomId\|memberId"`, `lastMsgReadSeq`(방 watermark 기준 읽음 위치). **정렬 점수는 저장하지 않는다** — 정렬은 Redis projection 이 담당하고 이 컬렉션은 재생성 source 다 |
 
 - 도메인 ↔ Mongo 매핑은 각 `Mongo*.fromDomain`/`toDomain`(+`toDomainWithLatest`)에서 수행.
-- `latestMsgSeq`가 없는 기존 방 문서는 최초 갱신 시 현재 `msgCnt`를 시작점으로 사용한다.
-- REST `ChatRoomResponse`는 보관 메시지 수인 `msgCnt`와 읽음 위치 watermark인 `latestMsgSeq`를 별도 필드로 반환한다. 클라이언트는 activity의 `lastMsgReadSeq`에 `latestMsgSeq`를 전달한다.
-- `unreadMsgCnt`는 `latestMsgSeq - lastMsgReadSeq`인 watermark 거리다. hard delete된 메시지의 순번도 재사용하지 않으므로, 삭제가 섞인 구간에서는 현재 화면에 남은 미열람 메시지 개수와 다를 수 있다.
+- `lastMsgSeq`가 없는 기존 방 문서는 최초 갱신 시 현재 `msgCnt`를 시작점으로 사용한다.
+- REST `ChatRoomResponse`는 보관 메시지 수인 `msgCnt`와 읽음 위치 watermark인 `lastMsgSeq`를 별도 필드로 반환한다. 클라이언트는 activity의 `lastMsgReadSeq`에 `lastMsgSeq`를 전달한다.
+- `unreadMsgCnt`는 `lastMsgSeq - lastMsgReadSeq`인 watermark 거리다. hard delete된 메시지의 순번도 재사용하지 않으므로, 삭제가 섞인 구간에서는 현재 화면에 남은 미열람 메시지 개수와 다를 수 있다.
 - 메시지 조회: `listLatestMessages`(정렬 desc + limit), `listMessagesBefore`(커스텀 repo `listMessagesBefore`), `findLatestMessageExcluding`(하드삭제 후 방 최신 시각 보정).
 - `hardDeleteById`는 커스텀 repo가 처리하고 boolean(삭제 여부)을 반환한다. 잘못된 ObjectId 문자열은 `InvalidResourceRequestException`, 그 외 Mongo 예외는 `MongoChatPersistenceExceptionTranslator`가 chat 예외(`Temporary*`/`Duplicate*` 등)로 변환한다.
 - 방 id는 애플리케이션이 생성한 `ObjectId`(`ObjectIdChatRoomIdGeneratorAdapter` → `common-id/ObjectIdGenerator`).
@@ -517,7 +517,7 @@ DB `chat`(authSource `chat`). `MongoConfig`가 커넥션 풀(min 20/max 200), `W
 
 | RedisKey | 패턴 | 자료구조 | 용도 |
 |---|---|---|---|
-| `CHAT_ROOM_INFO` | `{chat}:room:%s` | hash | 방 정보 캐시. `msg_cnt`와 단조 증가 `latest_msg_seq`를 함께 보관 |
+| `CHAT_ROOM_INFO` | `{chat}:room:%s` | hash | 방 정보 캐시. `msg_cnt`와 단조 증가 `last_msg_seq`를 함께 보관 |
 | `CHAT_ROOM_LAST_READ_SEQ` | `{chat}:room:%s:last_read` | hash/value | 멤버별 마지막 읽음 seq |
 | `CHAT_ROOM_TITLE_UNIQUE_INDEX` | `{chat}:room:title:idx` | set | 제목 유니크 인덱스(`existsByTitle`) |
 | `CHAT_ROOM_POPULAR_BY_CATEGORY_INDEX` | `{chat}:popular-room:%s` | zset | 카테고리별 인기방(score=popularity) |
@@ -579,7 +579,7 @@ application 의 `ChatRoomActivityProjectionMetricsPort` 가 계측 의도를 정
 | flush 사이클 | `chat.room.activity.projection.flush` | `Timer` | claim 부터 방별 반영까지 한 주기 전체 |
 | 방 처리 결과 | `chat.room.activity.projection.rooms` | `Counter` | `result=claimed\|projected\|rebuilt\|reclaimed\|discarded\|failed` |
 | 방당 멤버 수 | `chat.room.activity.projection.members` | `DistributionSummary` | `source=projection\|rebuild`; 한 방을 반영할 때 갱신한 멤버 수 |
-| 기존 fan-out 과의 차이 | `chat.room.activity.projection.score.mismatches` | `Counter` | projector 계산이 기존 fan-out 이 써 둔 score 와 다른 멤버 수 |
+| 기존 projection 과의 차이 | `chat.room.activity.projection.score.mismatches` | `Counter` | projector 계산이 반영 전 active-room score와 다른 멤버 수. score가 실제로 변한 정상 갱신도 포함하므로 변화량의 추이를 본다 |
 | dirty 적체 | `chat.room.activity.projection.dirty.backlog` | `Gauge` | flush 시점에 남아 있는 dirty 방 수 |
 
 `score.mismatches` 는 projector 가 계산한 값이 ZSET 에 이미 있던 값과 다른 멤버 수다. 정상 갱신에서도

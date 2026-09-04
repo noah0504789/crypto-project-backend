@@ -109,7 +109,7 @@ if (!room) { throw new Error("테스트 방이 없다"); }
 print(JSON.stringify({
   members: (room.member_ids || []).length,
   msgCnt: Number(room.msg_cnt || 0),
-  latestMsgSeq: Number(room.latest_msg_seq || 0),
+  lastMsgSeq: Number(room.last_msg_seq || 0),
   memberships: db.chat_room_membership.countDocuments({room_id: roomId}),
   messages: db.chat_message.countDocuments({room_id: roomId})
 }));
@@ -132,14 +132,14 @@ MEMBER_COUNT=$(jq -r '.members' <<<"$STATE_BEFORE")
 MEMBERSHIP_COUNT=$(jq -r '.memberships' <<<"$STATE_BEFORE")
 EXISTING_MESSAGE_COUNT=$(jq -r '.messages' <<<"$STATE_BEFORE")
 ROOM_MESSAGE_COUNT=$(jq -r '.msgCnt' <<<"$STATE_BEFORE")
-ROOM_LATEST_SEQUENCE=$(jq -r '.latestMsgSeq' <<<"$STATE_BEFORE")
+ROOM_LATEST_SEQUENCE=$(jq -r '.lastMsgSeq' <<<"$STATE_BEFORE")
 INITIAL_LAG=$(kafka_lag)
 
 [ "$MEMBER_COUNT" -ge "$WRITER_COUNT" ] || { echo "방 멤버가 writer 수보다 적다: $MEMBER_COUNT < $WRITER_COUNT"; exit 1; }
 [ "$MEMBERSHIP_COUNT" -eq 0 ] || { echo "room membership이 남아 있다: $MEMBERSHIP_COUNT (tools/reset-data.sh 필요)"; exit 1; }
 [ "$EXISTING_MESSAGE_COUNT" -eq 0 ] || { echo "테스트 방 메시지가 남아 있다: $EXISTING_MESSAGE_COUNT (tools/reset-data.sh 필요)"; exit 1; }
 [ "$ROOM_MESSAGE_COUNT" -eq 0 ] || { echo "room msgCnt가 0이 아니다: $ROOM_MESSAGE_COUNT (tools/reset-data.sh 필요)"; exit 1; }
-[ "$ROOM_LATEST_SEQUENCE" -eq 0 ] || { echo "room latestMsgSeq가 0이 아니다: $ROOM_LATEST_SEQUENCE (tools/reset-data.sh 필요)"; exit 1; }
+[ "$ROOM_LATEST_SEQUENCE" -eq 0 ] || { echo "room lastMsgSeq가 0이 아니다: $ROOM_LATEST_SEQUENCE (tools/reset-data.sh 필요)"; exit 1; }
 [ "$INITIAL_LAG" -eq 0 ] || { echo "시작 전 Kafka lag이 0이 아니다: $INITIAL_LAG"; exit 1; }
 
 mongo_eval chat '
@@ -208,7 +208,7 @@ SWAP_AFTER=$(swapins)
 STATE_AFTER=$(room_state)
 FINAL_ROOM_MESSAGES=$(jq -r '.messages' <<<"$STATE_AFTER")
 FINAL_ROOM_MESSAGE_COUNT=$(jq -r '.msgCnt' <<<"$STATE_AFTER")
-FINAL_ROOM_LATEST_SEQUENCE=$(jq -r '.latestMsgSeq' <<<"$STATE_AFTER")
+FINAL_ROOM_LATEST_SEQUENCE=$(jq -r '.lastMsgSeq' <<<"$STATE_AFTER")
 mongo_server_snapshot > "$OUT.mongo-after.json"
 curl -sf --max-time 5 "$CHAT_METRICS_URL" > "$OUT.metrics-after-chat.prom"
 
@@ -260,6 +260,6 @@ fi
 if [ "$FINAL_ROOM_MESSAGES" -ne "$MESSAGE_COUNT" ] \
     || [ "$FINAL_ROOM_MESSAGE_COUNT" -ne "$MESSAGE_COUNT" ] \
     || [ "$FINAL_ROOM_LATEST_SEQUENCE" -ne "$MESSAGE_COUNT" ]; then
-  echo "room state mismatch: messages=$FINAL_ROOM_MESSAGES msgCnt=$FINAL_ROOM_MESSAGE_COUNT latestMsgSeq=$FINAL_ROOM_LATEST_SEQUENCE expected=$MESSAGE_COUNT" >&2
+  echo "room state mismatch: messages=$FINAL_ROOM_MESSAGES msgCnt=$FINAL_ROOM_MESSAGE_COUNT lastMsgSeq=$FINAL_ROOM_LATEST_SEQUENCE expected=$MESSAGE_COUNT" >&2
   exit 1
 fi
