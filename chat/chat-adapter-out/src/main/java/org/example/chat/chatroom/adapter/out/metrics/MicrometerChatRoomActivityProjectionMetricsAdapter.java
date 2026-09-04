@@ -15,9 +15,9 @@ import java.util.concurrent.atomic.AtomicLong;
  * 방 activity projector 계측. 태그는 고정된 저카디널리티 값만 쓰고 {@code roomId}·{@code memberId} 는
  * 태그로 넣지 않는다.
  *
- * <p>{@code score.mismatches} 는 기존 fan-out 결과와 projector 계산이 다른 멤버 수다.
- * 두 경로를 함께 돌리는 이번 단계에서 결과를 대조하는 지표이며, 읽은 멤버를 read score 로
- * 되돌리는 정상 차이도 포함하므로 0 이 목표값은 아니다.
+ * <p>{@code score.mismatches} 는 projection 반영 전의 active-room score와 projector 계산이
+ * 다른 멤버 수다. score가 실제로 변한 정상 갱신도 포함하므로 0이 목표값은 아니며, 변화량의
+ * 추이를 보는 지표다.
  */
 @Component
 public class MicrometerChatRoomActivityProjectionMetricsAdapter implements ChatRoomActivityProjectionMetricsPort {
@@ -50,7 +50,7 @@ public class MicrometerChatRoomActivityProjectionMetricsAdapter implements ChatR
         this.rebuiltMemberSummary = memberSummary(registry, "rebuild");
 
         this.scoreMismatchCounter = Counter.builder(ChatRoomActivityProjectionMetricNames.SCORE_MISMATCHES)
-                .description("Members whose projected sort score differs from the existing fan-out value")
+                .description("Members whose projected sort score differs from the previous active-room value")
                 .register(registry);
 
         Gauge.builder(ChatRoomActivityProjectionMetricNames.DIRTY_BACKLOG, dirtyBacklog, AtomicLong::get)

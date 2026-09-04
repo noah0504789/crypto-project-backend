@@ -22,14 +22,15 @@ import java.util.Optional;
 /**
  * 메시지마다 방 멤버 전원의 정렬 점수를 갱신하지 않고, dirty 로 표시된 방을 주기적으로 한 번씩만
  * 반영한다. 같은 방에 메시지 100건이 몰려도 멤버 갱신은 flush 한 번으로 끝나므로 쓰기량이
- * 메시지 수가 아니라 flush 한 방 수에 비례한다(→ {@code TODO.md} 5.3-c).
+ * 메시지 수가 아니라 flush 한 방 수에 비례한다.
  *
  * <p>사실 기준은 Mongo 다 — 방 watermark {@code latestMsgSeq} 와 membership 의 {@code lastMsgReadSeq}.
  * Redis {@code last_read} hash 는 그 값을 실시간으로 읽기 위한 projector 입력이고, active-room ZSET 은
  * 조회를 빠르게 하려고 두는 재생성 가능한 결과다. Redis 가 비면 Mongo 에서 다시 만든다.
  *
- * <p>이번 단계에서는 기존 멤버별 fan-out({@code storeChatMessage.lua})을 그대로 두고 projector 를
- * 함께 돌린다. 두 경로의 결과 차이를 {@code score.mismatches} 로 보며, fan-out 제거는 다음 단계다.
+ * <p>멤버별 정렬 score는 이 projector가 방 단위로 계산해 active-room ZSET에 반영한다. 메시지 저장은
+ * 작성자의 읽음 위치와 방 dirty 표시만 남기며, projector가 계산한 score와 기존 active-room 값의
+ * 차이는 {@code score.mismatches}로 관측한다.
  */
 @Slf4j
 @Service
