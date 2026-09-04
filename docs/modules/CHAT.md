@@ -289,7 +289,7 @@ transaction commit, Kafka drain 시간과 메시지 저장 정합성을 함께 �
 | `ChatMessageCommandService` | 메시지 save/hardDelete(§10), Outbox 3종 발행 + 캐시 |
 | `ChatMessageQueryService` | 메시지 목록 조회(캐시-우선, 미스 시 repair) |
 | `ChatMessageQueryRepairService` | 메시지 캐시 미스 복구(분산락 하에 range 로드 + 워밍업) |
-| `ChatMessageEventService` | 메시지 이벤트 비동기 영속(멱등) + 방 카운터/스코어 갱신(멤버 전원 스코어는 `upsertUnreadActivity` 의 UNORDERED bulkWrite 한 번, PR #270 — 멤버당 왕복으로 되돌리지 않는다), →DLQ |
+| `ChatMessageEventService` | 메시지 이벤트 비동기 영속(멱등) + 방 `msgCnt`·`latestMsgSeq`·최신 메시지 시각 갱신. 멤버별 active-room score는 메시지 영속에서 갱신하지 않고 projector가 방 단위로 반영, →DLQ |
 | `MyChatRoomScoreCalculator` | 내 방 정렬 스코어(안읽음 가중치) |
 | `MongoChatMessageAdapter` / `MongoChatRoomAdapter` | `*PersistencePort` 구현(MongoDB) |
 | `RedisChatMessageAdapter` / `RedisChatRoomAdapter` | `*CachePort` 구현(Redis Cluster) |
@@ -491,7 +491,7 @@ Kafka `event_id`는 추적 계약으로 함께 전달하지만, chat은 서로 �
 
 ### `MyChatRoomScoreCalculator` (내 방 정렬 스코어)
 - `unread(ms) = ms + 100_000_000_000_000L`(안읽음 가중치), `read(ms) = ms`. → 안읽은 방이 항상 상단 정렬.
-- **설계 의도**: 이 스코어 산정은 엄밀히는 `ChatRoom`(및 멤버십)의 도메인 로직이라 `ChatRoom`에 두는 것이 원칙에 맞다. 다만 unread 가중치 상수·재산정 규칙을 한곳에 모아 **가독성을 높이려고 상태 없는(`private` 생성자 + `static` 메서드) 도메인 서비스로 의도적으로 분리**했다. 여전히 `chat-domain` 소속 도메인 로직이며 `ChatRoom.hasUnread`와 짝을 이룬다 — 스코어 규칙을 바꾸면 두 곳(도메인 서비스 + Redis/Mongo 스코어 기록 경로)을 함께 본다.
+- **설계 의도**: 이 스코어 산정은 엄밀히는 `ChatRoom`(및 멤버십)의 도메인 로직이라 `ChatRoom`에 두는 것이 원칙에 맞다. 다만 unread 가중치 상수·재산정 규칙을 한곳에 모아 **가독성을 높이려고 상태 없는(`private` 생성자 + `static` 메서드) 도메인 서비스로 의도적으로 분리**했다. 여전히 `chat-domain` 소속 도메인 로직이며 `ChatRoom.hasUnread`와 짝을 이룬다 — 스코어 규칙을 바꾸면 도메인 계산기와 Redis active-room projection 반영 경로를 함께 본다.
 
 ## 13. 영속성 · 스키마 (MongoDB)
 
@@ -579,7 +579,7 @@ application 의 `ChatRoomActivityProjectionMetricsPort` 가 계측 의도를 정
 | flush 사이클 | `chat.room.activity.projection.flush` | `Timer` | claim 부터 방별 반영까지 한 주기 전체 |
 | 방 처리 결과 | `chat.room.activity.projection.rooms` | `Counter` | `result=claimed\|projected\|rebuilt\|reclaimed\|discarded\|failed` |
 | 방당 멤버 수 | `chat.room.activity.projection.members` | `DistributionSummary` | `source=projection\|rebuild`; 한 방을 반영할 때 갱신한 멤버 수 |
-| 기존 fan-out 과의 차이 | `chat.room.activity.projection.score.mismatches` | `Counter` | projector 계산이 기존 fan-out 이 써 둔 score 와 다른 멤버 수 |
+| 기존 projection 과의 차이 | `chat.room.activity.projection.score.mismatches` | `Counter` | projector 계산이 반영 전 active-room score와 다른 멤버 수. score가 실제로 변한 정상 갱신도 포함하므로 변화량의 추이를 본다 |
 | dirty 적체 | `chat.room.activity.projection.dirty.backlog` | `Gauge` | flush 시점에 남아 있는 dirty 방 수 |
 
 `score.mismatches` 는 projector 가 계산한 값이 ZSET 에 이미 있던 값과 다른 멤버 수다. 정상 갱신에서도
