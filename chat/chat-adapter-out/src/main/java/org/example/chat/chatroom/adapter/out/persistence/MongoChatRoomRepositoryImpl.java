@@ -27,7 +27,7 @@ import java.time.Instant;
 public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCustom {
 
     private static final String MSG_COUNT_FIELD = "msg_cnt";
-    private static final String LATEST_MESSAGE_SEQUENCE_FIELD = "latest_msg_seq";
+    private static final String LAST_MESSAGE_SEQUENCE_FIELD = "last_msg_seq";
     private static final String LAST_MESSAGE_CREATED_AT_FIELD = "last_msg_created_at";
 
     private final MongoTemplate primaryMongoTemplate;
@@ -157,7 +157,7 @@ public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCusto
     ) {
         Query query = new Query(Criteria.where("_id").is(roomId));
         AggregationExpression currentMessageSequence = ConditionalOperators
-                .ifNull(LATEST_MESSAGE_SEQUENCE_FIELD)
+                .ifNull(LAST_MESSAGE_SEQUENCE_FIELD)
                 .thenValueOf(ConditionalOperators.ifNull(MSG_COUNT_FIELD).then(0));
         AggregationExpression nextMessageSequence = ArithmeticOperators
                 .valueOf(currentMessageSequence)
@@ -167,7 +167,7 @@ public class MongoChatRoomRepositoryImpl implements MongoChatRoomRepositoryCusto
                 .add(count);
 
         AggregationUpdate update = AggregationUpdate.update()
-                .set(LATEST_MESSAGE_SEQUENCE_FIELD)
+                .set(LAST_MESSAGE_SEQUENCE_FIELD)
                 .toValue(nextMessageSequence)
                 .set(MSG_COUNT_FIELD)
                 .toValue(nextMessageCount)

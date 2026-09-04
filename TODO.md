@@ -332,11 +332,11 @@ notification master 캐시가 **긴 TTL(7일) + 다수 키(알림당 1키)** 전
 
 #### 5.3-b 방별 순번 — 별도 설계 필요
 
-**현재 상태(2026-09-02): 방 단위 읽음 watermark 기반은 PR #286에서 완료됐다.** `ChatRoom.latestMsgSeq`가 메시지 저장 시 신규 메시지 수만큼 단조 증가하고, hard delete에서는 감소하지 않는다. 이 값은 “방에 새 활동이 있었는가”를 판단하는 기준이지, 각 메시지에 붙는 개별 순번은 아니다.
+**현재 상태(2026-09-02): 방 단위 읽음 watermark 기반은 PR #286에서 완료됐다.** `ChatRoom.lastMsgSeq`가 메시지 저장 시 신규 메시지 수만큼 단조 증가하고, hard delete에서는 감소하지 않는다. 이 값은 “방에 새 활동이 있었는가”를 판단하는 기준이지, 각 메시지에 붙는 개별 순번은 아니다.
 
 - 읽음 여부·watermark 거리만 필요하면 이 TODO는 해결된 것으로 본다.
-- 브로드캐스트 유실을 클라이언트가 감지하려면 별도 메시지 순번이 필요하다. `latestMsgSeq`만으로는 어떤 메시지가 빠졌는지 알 수 없으므로, ingress/outbox 단계에서 메시지별 순번을 발급하고 broadcast payload 계약을 바꾸는 별도 작업으로 분리한다(→ 5.5).
-- `latestMsgSeq`를 브로드캐스트 gap detection용 per-message sequence로 재사용하지 않는다.
+- 브로드캐스트 유실을 클라이언트가 감지하려면 별도 메시지 순번이 필요하다. `lastMsgSeq`만으로는 어떤 메시지가 빠졌는지 알 수 없으므로, ingress/outbox 단계에서 메시지별 순번을 발급하고 broadcast payload 계약을 바꾸는 별도 작업으로 분리한다(→ 5.5).
+- `lastMsgSeq`를 브로드캐스트 gap detection용 per-message sequence로 재사용하지 않는다.
 
 팬아웃 처리량 개선(구 5.3)은 배칭으로 해소했다(PR #265, 프레임당 24~34건). 방 단위 읽음 기준도
 PR #286에서 추가했지만, **메시지별 broadcast 순번은 아직 없다.**
@@ -346,7 +346,7 @@ PR #286에서 추가했지만, **메시지별 broadcast 순번은 아직 없다.
 chatRoomPersistencePort.updateMessageState(roomId, newMessageCount, latestCreatedAtMs);
 ```
 
-현재 `updateMessageState`는 방 단위 `latestMsgSeq`를 원자적으로 갱신하지만 메시지별 순번을 반환하거나
+현재 `updateMessageState`는 방 단위 `lastMsgSeq`를 원자적으로 갱신하지만 메시지별 순번을 반환하거나
 메시지에 저장하지 않는다. 따라서 이 값을 broadcast gap detection용 순번으로 사용하지 않는다.
 
 게이트웨이가 매기는 것도 안 된다 — 2대면 각자 다른 수열을 내서 클라이언트가 뒤섞인 두 수열을 본다.

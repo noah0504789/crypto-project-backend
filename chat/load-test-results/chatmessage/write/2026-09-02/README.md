@@ -8,7 +8,7 @@
 | before-01 | `01dbc8f` (#283) | 6,000/6,000 | 이 도구 도입 전 | 389초 | 304.007 |
 | after-02 | `latest` (#291) | 6,000/6,000 | 6,000/6,000/6,000 | 68초 | 1.000 |
 
-after의 방 상태 표기는 `messages / msgCnt / latestMsgSeq` 순서다. 상세 요약과 Prometheus·Mongo
+after의 방 상태 표기는 `messages / msgCnt / lastMsgSeq` 순서다. 상세 요약과 Prometheus·Mongo
 원본은 `raw/`를 확인한다.
 
 after-01은 #291 이전 이미지의 watermark 네이밍 버그로 방 상태가 누적되지 않아 폐기했다. after-02는

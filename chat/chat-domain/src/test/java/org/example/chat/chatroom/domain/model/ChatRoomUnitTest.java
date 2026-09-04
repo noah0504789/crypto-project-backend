@@ -929,8 +929,8 @@ class ChatRoomUnitTest {
         }
 
         @Test
-        @DisplayName("보관 메시지 수와 무관하게 latestMsgSeq를 기준으로 읽지 않음을 판단한다")
-        void hasUnread_shouldUseLatestMsgSeq() {
+        @DisplayName("보관 메시지 수와 무관하게 lastMsgSeq를 기준으로 읽지 않음을 판단한다")
+        void hasUnread_shouldUseLastMsgSeq() {
             // given
             ChatRoom chatRoom = ChatRoom.rehydrate(
                     ROOM_ID,
@@ -952,8 +952,8 @@ class ChatRoomUnitTest {
         }
 
         @Test
-        @DisplayName("기존 문서에 latestMsgSeq가 없으면 msgCnt를 초기 watermark로 사용한다")
-        void hasUnread_shouldFallbackToMsgCnt_whenLatestMsgSeqIsMissing() {
+        @DisplayName("기존 문서에 lastMsgSeq가 없으면 msgCnt를 초기 watermark로 사용한다")
+        void hasUnread_shouldFallbackToMsgCnt_whenLastMsgSeqIsMissing() {
             // given
             ChatRoom chatRoom = ChatRoom.rehydrate(
                     ROOM_ID,
@@ -968,7 +968,7 @@ class ChatRoomUnitTest {
             );
 
             // when & then
-            assertThat(chatRoom.getLatestMsgSeq()).isEqualTo(10L);
+            assertThat(chatRoom.getLastMsgSeq()).isEqualTo(10L);
             assertThat(chatRoom.hasUnread(9L)).isTrue();
         }
 

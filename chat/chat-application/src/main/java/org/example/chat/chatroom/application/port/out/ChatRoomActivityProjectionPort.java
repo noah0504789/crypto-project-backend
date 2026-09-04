@@ -11,7 +11,7 @@ import java.util.List;
  *
  * <p>계층은 셋으로 나뉜다.
  * <ul>
- *   <li>durable source of truth: Mongo {@code chat_room.latestMsgSeq} + {@code chat_room_membership.lastMsgReadSeq}</li>
+ *   <li>durable source of truth: Mongo {@code chat_room.lastMsgSeq} + {@code chat_room_membership.lastMsgReadSeq}</li>
  *   <li>실시간 projector 입력: Redis {@code last_read} hash</li>
  *   <li>조회용 결과: Redis active-room ZSET — 언제든 위 둘로 재생성 가능한 projection 이다</li>
  * </ul>

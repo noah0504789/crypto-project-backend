@@ -14,7 +14,7 @@ class ChatRoomResponseUnitTest {
 
     @Test
     @DisplayName("보관 메시지 수와 읽음 위치 watermark를 별도 필드로 반환한다")
-    void fromDomain_shouldExposeMessageCountAndLatestMsgSeqSeparately() {
+    void fromDomain_shouldExposeMessageCountAndLastMsgSeqSeparately() {
         // given
         ChatRoom room = ChatRoom.builder()
                 .id("room-id")
@@ -24,7 +24,7 @@ class ChatRoomResponseUnitTest {
                 .category(ChatRoomCategory.FREE)
                 .memberIds(Set.of("host-id"))
                 .msgCnt(5L)
-                .latestMsgSeq(8L)
+                .lastMsgSeq(8L)
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -33,6 +33,6 @@ class ChatRoomResponseUnitTest {
 
         // then
         assertThat(response.msgCnt()).isEqualTo(5L);
-        assertThat(response.latestMsgSeq()).isEqualTo(8L);
+        assertThat(response.lastMsgSeq()).isEqualTo(8L);
     }
 }

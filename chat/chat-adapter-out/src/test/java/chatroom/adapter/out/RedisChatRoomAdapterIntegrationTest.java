@@ -80,7 +80,7 @@ class RedisChatRoomAdapterIntegrationTest {
             assertThat(actual.getDescription()).isEqualTo(description);
             assertThat(actual.getCategory()).isEqualTo(category);
             assertThat(actual.getMsgCnt()).isEqualTo(0L);
-            assertThat(actual.getLatestMsgSeq()).isEqualTo(0L);
+            assertThat(actual.getLastMsgSeq()).isEqualTo(0L);
             assertThat(actual.getMemberIds()).containsExactlyInAnyOrder(HOST_ID);
         }
 
@@ -168,7 +168,7 @@ class RedisChatRoomAdapterIntegrationTest {
                     .category(category)
                     .memberIds(Set.of(HOST_ID, MEMBER_ID))
                     .msgCnt(12L)
-                    .latestMsgSeq(17L)
+                    .lastMsgSeq(17L)
                     .createdAt(java.time.LocalDateTime.now())
                     .build();
 
@@ -183,7 +183,7 @@ class RedisChatRoomAdapterIntegrationTest {
             assertThat(found.getDescription()).isEqualTo("워밍업 설명");
             assertThat(found.getMemberIds()).containsExactlyInAnyOrder(HOST_ID, MEMBER_ID);
             assertThat(found.getMsgCnt()).isEqualTo(12L);
-            assertThat(found.getLatestMsgSeq()).isEqualTo(17L);
+            assertThat(found.getLastMsgSeq()).isEqualTo(17L);
 
             assertThat(sut.existsByTitle("워밍업방")).contains(true);
 
@@ -226,10 +226,10 @@ class RedisChatRoomAdapterIntegrationTest {
 
             // then
             assertThat(sut.findById("room-1")).get()
-                    .extracting(ChatRoom::getLatestMsgSeq)
+                    .extracting(ChatRoom::getLastMsgSeq)
                     .isEqualTo(10L);
             assertThat(sut.findById("room-2")).get()
-                    .extracting(ChatRoom::getLatestMsgSeq)
+                    .extracting(ChatRoom::getLastMsgSeq)
                     .isEqualTo(20L);
 
             assertThat(sut.existsByTitle("방1")).contains(true);

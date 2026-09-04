@@ -22,18 +22,18 @@ redis.call("ZADD", messageKey, createdAtMs, messageJson)
 redis.call("ZADD", messageAccessKey, createdAtMs, messageId)
 
 local currentMsgCnt = tonumber(redis.call("HGET", roomInfoKey, "msg_cnt") or "0")
-if not redis.call("HGET", roomInfoKey, "latest_msg_seq") then
-    redis.call("HSET", roomInfoKey, "latest_msg_seq", currentMsgCnt)
+if not redis.call("HGET", roomInfoKey, "last_msg_seq") then
+    redis.call("HSET", roomInfoKey, "last_msg_seq", currentMsgCnt)
 end
 
 redis.call("HINCRBY", roomInfoKey, "msg_cnt", 1)
-local latestMsgSeq = tonumber(redis.call("HINCRBY", roomInfoKey, "latest_msg_seq", 1))
+local lastMsgSeq = tonumber(redis.call("HINCRBY", roomInfoKey, "last_msg_seq", 1))
 
 -- 보낸 사람은 자기 메시지를 읽은 것으로 본다. 읽음 위치를 방 watermark 까지 올려 두면
 -- projector 가 계산해도 같은 결론이 나오고, 목록에서 자기 방이 즉시 최신으로 올라온다.
 local writerLastRead = tonumber(redis.call("HGET", lastReadKey, writerId))
-if writerLastRead == nil or latestMsgSeq > writerLastRead then
-    redis.call("HSET", lastReadKey, writerId, latestMsgSeq)
+if writerLastRead == nil or lastMsgSeq > writerLastRead then
+    redis.call("HSET", lastReadKey, writerId, lastMsgSeq)
 end
 
 redis.call("ZADD", writerRecentKey, createdAtMs, roomId)

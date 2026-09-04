@@ -23,8 +23,8 @@ if not decoded or type(members) ~= "table" then
     return {-1, 0}
 end
 
-local latestMsgSeq = tonumber(
-        redis.call("HGET", roomInfoKey, "latest_msg_seq")
+local lastMsgSeq = tonumber(
+        redis.call("HGET", roomInfoKey, "last_msg_seq")
                 or redis.call("HGET", roomInfoKey, "msg_cnt")
                 or "0"
 )
@@ -53,7 +53,7 @@ for i = 1, #members do
 
     local score = lastMsgCreatedAtMs
 
-    if lastReadSeq < latestMsgSeq then
+    if lastReadSeq < lastMsgSeq then
         score = score + unreadBoost
     end
 

@@ -19,13 +19,13 @@ db.chat_room.find({}, {
   host_id: 1,
   member_ids: 1,
   msg_cnt: 1,
-  latest_msg_seq: 1,
+  last_msg_seq: 1,
   last_msg_created_at: 1
 }).forEach(r => {
   print(r._id + "  " + r.title + "  host " + (r.host_id ? "있음" : "없음")
       + "  멤버 " + ((r.member_ids || []).length)
       + "  msg_cnt " + (r.msg_cnt || 0)
-      + "  latest_msg_seq " + (r.latest_msg_seq || 0)
+      + "  last_msg_seq " + (r.last_msg_seq || 0)
       + "  last_msg_created_at " + (r.last_msg_created_at || "없음"));
 });
 EOF

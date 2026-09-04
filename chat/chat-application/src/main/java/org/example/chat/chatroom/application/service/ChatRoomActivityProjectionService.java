@@ -24,7 +24,7 @@ import java.util.Optional;
  * 반영한다. 같은 방에 메시지 100건이 몰려도 멤버 갱신은 flush 한 번으로 끝나므로 쓰기량이
  * 메시지 수가 아니라 flush 한 방 수에 비례한다.
  *
- * <p>사실 기준은 Mongo 다 — 방 watermark {@code latestMsgSeq} 와 membership 의 {@code lastMsgReadSeq}.
+ * <p>사실 기준은 Mongo 다 — 방 watermark {@code lastMsgSeq} 와 membership 의 {@code lastMsgReadSeq}.
  * Redis {@code last_read} hash 는 그 값을 실시간으로 읽기 위한 projector 입력이고, active-room ZSET 은
  * 조회를 빠르게 하려고 두는 재생성 가능한 결과다. Redis 가 비면 Mongo 에서 다시 만든다.
  *

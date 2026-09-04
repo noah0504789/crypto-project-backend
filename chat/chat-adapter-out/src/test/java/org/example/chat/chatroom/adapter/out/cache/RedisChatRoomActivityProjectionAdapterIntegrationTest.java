@@ -130,7 +130,7 @@ class RedisChatRoomActivityProjectionAdapterIntegrationTest {
             chatMessageAdapter.save(message("100000000000000000000001", MESSAGE_TIME_1));
             long createdAtMs = (long) createdAtMs(MESSAGE_TIME_1);
 
-            // 방 latest_msg_seq 는 메시지 저장으로 1 이 됐다. 읽음 위치가 그 값에 도달한 멤버만 read 다.
+            // 방 last_msg_seq 는 메시지 저장으로 1 이 됐다. 읽음 위치가 그 값에 도달한 멤버만 read 다.
             chatRoomAdapter.updateLastReadSeq(ROOM_ID, MEMBER_ID, 1L);
 
             ChatRoomActivityProjectionResult result = sut.project(ROOM_ID, createdAtMs);

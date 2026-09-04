@@ -239,7 +239,7 @@ class MongoChatRoomRepositoryImplIntegrationTest {
         }
 
         @Test
-        @DisplayName("updateMessageState는 msgCnt와 latestMsgSeq를 함께 증가시키고 최신 시각을 유지한다")
+        @DisplayName("updateMessageState는 msgCnt와 lastMsgSeq를 함께 증가시키고 최신 시각을 유지한다")
         void updateMessageState() {
             // given
             saveRoom(roomId1, "워터마크방", 5);
@@ -256,15 +256,15 @@ class MongoChatRoomRepositoryImplIntegrationTest {
 
             // then
             assertThat(updated.getMsgCnt()).isEqualTo(9L);
-            assertThat(updated.getLatestMsgSeq()).isEqualTo(10L);
+            assertThat(updated.getLastMsgSeq()).isEqualTo(10L);
             assertThat(updated.getLastMsgCreatedAt()).isEqualTo(latest);
 
             Document persisted = mongoTemplate.getCollection("chat_room")
                     .find(new Document("_id", roomId1))
                     .first();
             assertThat(persisted)
-                    .containsKeys("msg_cnt", "latest_msg_seq", "last_msg_created_at")
-                    .doesNotContainKeys("msgCnt", "latestMsgSeq", "lastMsgCreatedAt");
+                    .containsKeys("msg_cnt", "last_msg_seq", "last_msg_created_at")
+                    .doesNotContainKeys("msgCnt", "lastMsgSeq", "lastMsgCreatedAt");
         }
 
         @Test
