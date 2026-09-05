@@ -17,7 +17,7 @@ public final class PriceAlertDetectedEvent extends AbstractInboxEvent implements
 
     private final String code;
     private final Double price;
-    private final Long timestamp;
+    private final Long occurredAtMs;
     private final Integer avgInterval;
     private final Double avgPrice;
     private final Double changeRate;
@@ -28,7 +28,7 @@ public final class PriceAlertDetectedEvent extends AbstractInboxEvent implements
     public PriceAlertDetectedEvent(
             @JsonProperty("code") String code,
             @JsonProperty("price") Double price,
-            @JsonProperty("timestamp") Long timestamp,
+            @JsonProperty("occurredAtMs") Long occurredAtMs,
             @JsonProperty("avgInterval") Integer avgInterval,
             @JsonProperty("avgPrice") Double avgPrice,
             @JsonProperty("changeRate") Double changeRate,
@@ -36,7 +36,7 @@ public final class PriceAlertDetectedEvent extends AbstractInboxEvent implements
     ) {
         this.code = code;
         this.price = price;
-        this.timestamp = timestamp;
+        this.occurredAtMs = occurredAtMs;
         this.avgInterval = avgInterval;
         this.avgPrice = avgPrice;
         this.changeRate = changeRate;
@@ -61,7 +61,7 @@ public final class PriceAlertDetectedEvent extends AbstractInboxEvent implements
         return TypedPayload.builder()
                 .put(PriceAlertDetectedPayloadKeys.CODE, code)
                 .put(PriceAlertDetectedPayloadKeys.PRICE, price)
-                .put(PriceAlertDetectedPayloadKeys.OCCURRED_AT_MS, timestamp)
+                .put(PriceAlertDetectedPayloadKeys.OCCURRED_AT_MS, occurredAtMs)
                 .put(PriceAlertDetectedPayloadKeys.AVG_INTERVAL, avgInterval)
                 .put(PriceAlertDetectedPayloadKeys.AVG_PRICE, avgPrice)
                 .put(PriceAlertDetectedPayloadKeys.CHANGE_RATE, changeRate)

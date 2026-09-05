@@ -69,7 +69,7 @@ class PriceAlertDetectionServiceUnitTest {
                             assertThat(event.getCode()).isEqualTo(CODE);
                             assertThat(event.getPrice()).isEqualTo(110.0);
                             assertThat(event.getAvgPrice()).isEqualTo(100.0);
-                            assertThat(event.getTimestamp()).isEqualTo(3_000L);
+                            assertThat(event.getOccurredAtMs()).isEqualTo(3_000L);
                             assertThat(event.getAvgInterval()).isEqualTo(3);
                         });
     }

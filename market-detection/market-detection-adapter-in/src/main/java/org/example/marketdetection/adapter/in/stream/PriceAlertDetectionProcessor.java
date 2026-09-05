@@ -143,8 +143,8 @@ public class PriceAlertDetectionProcessor implements Processor<String, UpbitTick
 
         if (occurrences == 1 || occurrences % FALLBACK_LOG_INTERVAL == 0) {
             log.warn(
-                    "[price-alert] tradeTimestamp missing, stale check falls back to record timestamp "
-                            + "(broker arrival time instead of trade time). code={}, occurrences={}",
+                    "[price-alert] tradeTimestamp missing, stale check falls back to record CreateTime "
+                            + "(producer publish time instead of trade time). code={}, occurrences={}",
                     code,
                     occurrences);
         }
