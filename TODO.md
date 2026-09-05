@@ -272,6 +272,33 @@ deadline이 무한 대기는 이미 막고 있고, gRPC 호출 깊이가 1단계
 
 ---
 
+#### 4.16 upbit-connector 스케일아웃 시 종목 중복 구독·중복 발행
+
+`UpbitWebsocketTickerStreamAdapter`는 기동 시 market gRPC `GetEnabledMarkets`로 조회한 활성 마켓 전체를 구독 대상으로 삼는다(`docs/modules/UPBIT_CONNECTOR.md` §3·§4). 인스턴스 간 구독 대상을 나누는 코드는 확인되지 않는다. 따라서 `upbit-connector`를 2대 이상으로 스케일아웃하면 **모든 인스턴스가 동일한 전체 종목을 각자 Upbit WebSocket에 중복 구독**하고, 각자 `upbit-ticker-event`에 같은 종목의 ticker를 독립적으로 발행할 것으로 보인다(다중 인스턴스 실측은 아직 하지 않음 — 확정 결함으로 단정하지 않는다).
+
+이 경우 하류 `market-detection`은 같은 시점 근방의 동일 종목 ticker를 인스턴스 수만큼 중복 소비한다. `PriceAlertDetectedEvent`의 `event_id`는 market-detection이 탐지 시점에 새로 발급하므로(`docs/modules/MARKET_DETECTION.md` §4.3 컨슈머 멱등 전략), 중복 ticker가 각각 새 탐지 이벤트를 만들면 notification 쪽 Inbox 멱등 처리로도 걸러지지 않고 **같은 가격 변동에 대해 여러 건의 알림이 발행될 수 있다**.
+
+대응 후보:
+
+| 방식 | 성격 |
+|---|---|
+| 종목 샤딩 | 인스턴스 수 기준 consistent hashing 등으로 종목을 나눠 구독(각 인스턴스가 담당 종목만 WebSocket 구독) |
+| 리더 선출 | 인스턴스 중 하나만 실제 수집·발행을 담당하고 나머지는 대기(장애 시 재선출) |
+
+이 서비스는 현재 상태가 없고(§2) Kafka Bus에도 연결하지 않는 설계(§7.1)라, 어느 방식이든 인스턴스 목록 파악(Eureka)과 재분배 트리거를 새로 설계해야 한다. 스케일아웃 계획·필요성 자체가 확정되지 않았다면 우선순위부터 판단 필요.
+`[출처: 2026-09-05 upbit-connector 스케일아웃 시나리오 검토 / docs/modules/UPBIT_CONNECTOR.md, MARKET_DETECTION.md]`
+
+---
+
+#### 4.17 스로틀 표본 변경(구간 첫 값 → 마지막 값)이 탐지 결과에 주는 영향 미실측
+
+기존 `market-detection` 내장 스로틀은 발행 구간의 **첫 값**을 통과시켰다. `upbit-connector`의 `sample(7s)`(PR #246)은 구간의 **마지막 값**을 발행한다(`docs/modules/UPBIT_CONNECTOR.md` §4.1·§5). 이동평균·변동률 계산에 들어가는 표본 자체가 바뀐 것인데, 이 차이가 실제 임계값 매칭 결과(과탐지/누락)에 어떤 영향을 주는지는 실측하지 않았다.
+
+착수 시: 동일 구간의 첫 값/마지막 값을 함께 로깅하거나 오프라인으로 재생해 두 표본 선택 방식의 탐지 결과 차이를 비교한다. 차이가 무시할 수준인지, 임계값·window 재조정이 필요한 수준인지에 따라 후속 조치가 갈린다.
+`[출처: docs/modules/UPBIT_CONNECTOR.md §4.1·§5·§10]`
+
+---
+
 ### oauth2-authorization-server
 
 ### spring-cloud-eureka-server
