@@ -16,6 +16,12 @@ public record PriceAlertDetectionProperties(
         @NotNull Duration maxEventAge,
         @Valid @NotNull Store store) {
 
+    /**
+     * retention 이 탐지 window 를 넘어야 하는 최소 여유. 둘이 같으면 조회 범위의 가장 오래된 표본이
+     * 조회 시점에 이미 만료 경계라 여유가 0 이다.
+     */
+    public static final Duration RETENTION_MIN_MARGIN = Duration.ofMinutes(1);
+
     public Duration windowDuration() {
         return Duration.ofMinutes(windowMinutes);
     }
@@ -25,7 +31,7 @@ public record PriceAlertDetectionProperties(
         return maxEventAge == null || isPositive(maxEventAge);
     }
 
-    @AssertTrue(message = "store durations must be positive and retention must cover every window")
+    @AssertTrue(message = "store durations must be positive and retention must exceed the detection window by at least the minimum margin")
     public boolean isStoreDurationValid() {
         if (windowMinutes == null || store == null || store.retention() == null || store.windowSize() == null) {
             return true;
@@ -36,7 +42,7 @@ public record PriceAlertDetectionProperties(
         return isPositive(store.retention())
                 && isPositive(store.windowSize())
                 && store.retention().compareTo(store.windowSize()) >= 0
-                && store.retention().compareTo(detectionWindow) >= 0;
+                && store.retention().compareTo(detectionWindow.plus(RETENTION_MIN_MARGIN)) >= 0;
     }
 
     private boolean isPositive(Duration duration) {
