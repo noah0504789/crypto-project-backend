@@ -61,7 +61,7 @@ class PriceAlertDetectionServiceUnitTest {
         // then
         assertThat(events)
                 .extracting(PriceAlertDetectedEvent::getThreshold)
-                .containsExactlyInAnyOrder("PERCENT_0", "PERCENT_3", "PERCENT_5", "PERCENT_7");
+                .containsExactlyInAnyOrder("PERCENT_3", "PERCENT_5", "PERCENT_7");
 
         assertThat(events)
                 .allSatisfy(

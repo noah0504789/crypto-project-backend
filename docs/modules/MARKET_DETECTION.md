@@ -17,7 +17,7 @@
 
 ## 2. 모듈 역할
 
-Upbit 실시간 시세(`upbit-ticker-event`)를 소비해 **단기 이동평균 대비 변동률**을 계산하고, 임계값(0%/3%/5%/7%)을 넘으면 가격 알림 탐지 이벤트(`PriceAlertDetectedEvent`)를 발행하는 스트림 처리 서비스. 발행 이벤트는 `notification`이 소비해 사용자 알림으로 만든다(→ [`NOTIFICATION.md`](NOTIFICATION.md)).
+Upbit 실시간 시세(`upbit-ticker-event`)를 소비해 **단기 이동평균 대비 변동률**을 계산하고, 임계값(3%/5%/7%)을 넘으면 가격 알림 탐지 이벤트(`PriceAlertDetectedEvent`)를 발행하는 스트림 처리 서비스. 발행 이벤트는 `notification`이 소비해 사용자 알림으로 만든다(→ [`NOTIFICATION.md`](NOTIFICATION.md)).
 
 - 저장소(DB) 없음. 상태는 Kafka Streams **WindowStore**(로컬 state store)로만 유지한다.
 - REST/gRPC 서버를 노출하지 않고 외부 시스템에도 직접 접속하지 않는다. 구독 대상 마켓 조회와 Upbit 통신은 `upbit-connector` 소관이다.
@@ -58,7 +58,7 @@ graph TB
   AVG["2 · 이동평균<br/>record timestamp 기준 윈도우 [t-3m, t] 의 저장 시세<br/>없으면 현재가 fallback"]
   RATE["3 · changeRate = (current - avg) / avg"]
   PUT["4 · 현재 시세를 store 에 put"]
-  MATCH{"5 · PriceAlertChangeRateThreshold.matchedBy<br/>초과한 임계값 전부 — 절대값 0% · 3% · 5% · 7%"}
+  MATCH{"5 · PriceAlertChangeRateThreshold.matchedBy<br/>초과한 임계값 전부 — 절대값 3% · 5% · 7%"}
   FWD["6 · 매칭된 임계값마다 PriceAlertDetectedEvent 를<br/>processor context 로 forward"]
   OUTB["7 · 바인딩 priceAlertDetectionProcessor-out-0"]
   KOUT[["Kafka<br/>price-alert-detected-event"]]
@@ -79,7 +79,7 @@ graph TB
 
 - `PriceAlertDetectedEvent` 필드: code·price·timestamp·avgInterval(= windowMinutes 3)·avgPrice·changeRate·threshold enum명.
 - Upbit 체결 시각(`tradeTimestamp`)은 **stale 판정에만** 쓴다. 상태·출력 시각은 Kafka record timestamp를 사용해 기존 처리 의미를 유지한다.
-- 0% 임계값은 `abs(changeRate) >= 0.0`이므로 처리 가능한 모든 ticker에서 감지 이벤트를 만든다. 실제 사용자 알림은 notification이 market에 `종목 + 0%`를 설정한 수신자를 조회한 뒤 해당 사용자에게만 생성한다.
+- **`tradeTimestamp`가 없으면 record timestamp로 폴백한다.** 이 폴백이 타면 stale 판정의 의미가 "이 가격이 현실에서 얼마나 오래됐나"에서 "브로커에 도착한 지 얼마나 됐나"로 바뀐다 — 후자는 지연이 없는 한 거의 항상 통과하므로 `max-event-age: 10s` 보호막이 사실상 무력해진다. 발생 시 `price.alert.detection.timestamp.fallback` 카운터가 오르고, 첫 발생과 이후 100건 단위로 `[price-alert]` warn 로그를 남긴다(§4.5).
 - 소비자: `notification`(`price-alert-detected-event`).
 
 ### 4.4 Kafka Streams EOS 적용 배경과 트랜잭션 경계
@@ -95,7 +95,7 @@ graph TB
 현재 구성과 유지 조건은 다음과 같다.
 
 - binder 빈은 `Function<KStream<String, UpbitTickerEvent>, KStream<String, PriceAlertDetectedEvent>>`이며 출력도 Streams 토폴로지에 포함한다.
-- `PriceAlertDetectionProcessor`는 `ProcessorContext.forward`로 탐지 이벤트를 반환한다. 한 ticker가 0%·3%·5%·7%를 모두 충족해 여러 이벤트를 만들더라도 같은 입력 처리 트랜잭션에 포함된다.
+- `PriceAlertDetectionProcessor`는 `ProcessorContext.forward`로 탐지 이벤트를 반환한다. 한 ticker가 3%·5%·7%를 모두 충족해 여러 이벤트를 만들더라도 같은 입력 처리 트랜잭션에 포함된다.
 - `spring.cloud.stream.kafka.streams.binder.configuration.processing.guarantee=exactly_once_v2`를 유지한다.
 - `application-id: market-detection`을 명시해 함수 이름 변경과 무관하게 기존 application ID·state store·changelog를 유지한다.
 - 일반 binder의 `spring.cloud.stream.kafka.binder.transaction.transaction-id-prefix`는 사용하지 않는다. Kafka Streams가 application/task 기준의 transactional producer와 transaction ID를 내부적으로 관리한다.
@@ -120,6 +120,20 @@ graph TB
 
 따라서 이 모듈에서 말하는 exactly-once는 **Kafka Streams 처리 구간의 EOS**다. 하류 notification이 수행하는 MySQL Outbox 저장이나 MongoDB 반영까지 포함하는 분산 트랜잭션은 아니며, 하류 consumer의 멱등성·재시도·DLQ는 별도로 필요하다.
 
+### 4.5 관측 지표
+
+`PriceAlertDetectionProcessor`(adapter-in)는 조용히 넘어가던 분기 셋을 Micrometer 카운터로 노출한다. 탐지 판단(`isStale`/`detect`)은 여전히 application 계층 책임이고, 이 카운터들은 Kafka record 형태·시각 처리라는 adapter-in의 기존 책임 범위 안에 있다.
+
+| 지표 | 종류 | 태그 | 의미 |
+|---|---|---|---|
+| `price.alert.detection.timestamp.fallback` | Counter | — | `tradeTimestamp` 없어 record timestamp로 stale 판정을 대체한 횟수. 늘어나면 stale 보호막이 사실상 무력화된 비율이 늘고 있다는 뜻 |
+| `price.alert.detection.ticker.rejected` | Counter | `reason=key\|value\|tradePrice` | `isProcessable` 탈락 횟수. 어떤 필드가 비어 왔는지 사유별로 분리해 원인 추적 |
+| `price.alert.detection.ticker.stale` | Counter | — | stale 판정으로 폐기한 ticker 수(정상 동작이라 로그는 없다) |
+
+- 폴백은 매 건 로그를 남기지 않는다. 6종목 × 7초 간격이면 상시화 시 로그가 쏟아지므로, 첫 발생과 이후 100건 단위로만 `[price-alert]` warn을 남기고 추세는 카운터로 본다.
+- 폴백·탈락 모두 예외를 던지지 않는다. Kafka Streams에서 `process()` 예외는 태스크를 죽이는데, 이 값들은 저장·계산에 쓰이지 않는 방어적 스킵이라 가용성을 깰 이유가 없다.
+- 로그 태그 `[price-alert]`는 `docs/CODE_STYLE.md` §21.2 레지스트리에 등록되어 있다.
+
 ### 컨슈머 멱등 전략
 
 | 컨슈머 이벤트 | 하는 일 | 사용한 전략 |
@@ -141,7 +155,7 @@ market-detection은 stateful Kafka 처리 결과가 곧 Kafka 출력이고 외�
 ## 5. 계약
 
 - **생산(외부 계약)**: `market-detection-contract`의 `PriceAlertDetectedEvent`(`AbstractInboxEvent` 상속, `implements KafkaEvent, ProducibleEvent`). 내부 `eventId`는 JSON에서 제외하고 Kafka header로 전달하며, payload는 `{ code, price, timestamp, avgInterval, avgPrice, changeRate, threshold }`로 구성한다. 토픽은 `PRICE_ALERT_DETECTED`(binding `priceAlertDetectionProcessor-out-0` → `price-alert-detected-event`), 파티션 키는 `code`다. `toPayload()`는 `PriceAlertDetectedPayloadKeys`(TypedKey)로 키-값 페이로드를 만든다(notification이 web push payload로 전달). 소비자 `notification`과 함께 변경한다(→ `../../.claude/rules/external-contracts.md`).
-- **공유 임계값 계약**: `common-core/PriceAlertChangeRateThreshold`(`PERCENT_0/3/5/7`)는 market-detection(탐지)·notification(수신자 조회 rate 변환)·market(정확 일치 조회)이 공유한다.
+- **공유 임계값 계약**: `common-core/PriceAlertChangeRateThreshold`(`PERCENT_3/5/7`)는 market-detection(탐지)·notification(수신자 조회 rate 변환)·market(정확 일치 조회)이 공유한다.
 - **소비 토픽**: `upbit-ticker-event`(`upbit-connector` 발행 → 이 서비스의 Kafka Streams 입력). 값 타입은 `upbit-connector-contract`의 `UpbitTickerEvent`이며 `__TypeId__` 헤더가 아니라 **선언된 타입**으로 역직렬화된다(→ [`UPBIT_CONNECTOR.md`](UPBIT_CONNECTOR.md) §6.1). auto-create(`auto-create-topics: true`).
 
 ## 6. 확인 필요 항목

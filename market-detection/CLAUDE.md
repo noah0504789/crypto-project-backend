@@ -6,7 +6,7 @@ Kafka Streams·토픽 바인딩 변경은 `../.claude/rules/git-safety.md`의 Pl
 
 ## 모듈 역할과 적용 범위
 
-Upbit 시세(`upbit-ticker-event`)를 소비해 이동평균 대비 변동률을 계산하고, 임계값(0/3/5/7%) 초과 시 `PriceAlertDetectedEvent`를 발행하는 **스트림 처리 전용** 서비스.
+Upbit 시세(`upbit-ticker-event`)를 소비해 이동평균 대비 변동률을 계산하고, 임계값(3/5/7%) 초과 시 `PriceAlertDetectedEvent`를 발행하는 **스트림 처리 전용** 서비스.
 
 | 모듈 | 역할 |
 |---|---|
@@ -28,7 +28,7 @@ Upbit 시세(`upbit-ticker-event`)를 소비해 이동평균 대비 변동률을
 ## 주요 변경 규칙
 
 - **발행 계약(`PriceAlertDetectedEvent`) 보존**: `market-detection-contract`의 클래스는 `AbstractInboxEvent`를 상속하며 notification이 소비하는 외부 계약이다. `eventId`는 최초 이벤트 생성 시 무작위 UUID로 생성되어 Kafka `event_id` 헤더에만 전달되고 payload에서는 제외된다. notification은 header를 Inbox 식별자의 단일 기준으로 사용한다. 필드/토픽(`price-alert-detected-event`)/`PriceAlertDetectedPayloadKeys` 변경은 notification과 함께(external-contracts 절차).
-- **공유 임계값 계약**: `common-core/PriceAlertChangeRateThreshold`(`PERCENT_0/3/5/7`)는 탐지(여기)·수신자 조회(notification)·정확 일치 조회(market)가 공유한다. rate 값/enum명을 바꾸면 세 서비스를 함께 본다.
+- **공유 임계값 계약**: `common-core/PriceAlertChangeRateThreshold`(`PERCENT_3/5/7`)는 탐지(여기)·수신자 조회(notification)·정확 일치 조회(market)가 공유한다. rate 값/enum명을 바꾸면 세 서비스를 함께 본다.
 - **계층 경계 유지**: 변동률·임계 판정과 이벤트 생성은 `-application`, WindowStore 접근·forward·헤더는 `-adapter-in`이다. 상태·불변식을 가진 도메인 모델이 없어 `-domain` 모듈은 두지 않는다(`PricePoint`·`PriceChange`는 계산용 값 객체라 `application/dto`에 있다). Kafka Streams 타입(`Processor`, `WindowStore`)을 application·domain으로 들이지 않는다.
 - **Streams 토폴로지 주의**: window/retention(`price-alert-detection.store`, `price-alert-detection.window-minutes`)을 바꾸면 산식·상태 크기에 직접 영향. **state store 이름(`upbit-ticker-store`)은 changelog 토픽과 묶여 있어 바꾸지 않는다.**
 - **시간 설정 검증 유지**: `max-event-age`와 store duration은 양수여야 하고, retention은 store window와 탐지 window를 모두 포함해야 한다. 잘못된 값은 시작 시 `PriceAlertDetectionProperties` 검증으로 차단한다.
@@ -38,6 +38,7 @@ Upbit 시세(`upbit-ticker-event`)를 소비해 이동평균 대비 변동률을
 - **소비 타입은 선언된 타입으로 결정된다**: `upbit-ticker-event`의 값은 `upbit-connector-contract`의 `UpbitTickerEvent`이며, Kafka `__TypeId__` 헤더는 이 바인딩에서 전달되지 않는다(관찰 근거: `../docs/modules/UPBIT_CONNECTOR.md` §6.1). 함수 시그니처 타입을 바꾸면 곧 계약 변경이다.
 - **KafkaEvent 발행 규약**: Streams 처리 결과는 KStream key(`code`)와 value로 발행한다. 목적지는 바인딩이 결정하므로 토픽 변경은 `market-detection.yml`에서 한다.
 - **시간 조회**: `System.nanoTime()`·`System.currentTimeMillis()`를 직접 호출하지 않고 `common-time`의 `Clock`을 주입받는다.
+- **조용히 넘어가는 분기는 관측 가능해야 한다**: `PriceAlertDetectionProcessor`의 `tradeTimestamp` 폴백·`isProcessable` 탈락·stale 폐기는 Micrometer 카운터(`price.alert.detection.*`, `docs/modules/MARKET_DETECTION.md §4.5`)로 노출한다. 폴백은 `[price-alert]` 태그로 첫 발생·100건 주기 warn 로그도 남기지만, 예외는 던지지 않는다(Streams `process()` 예외는 태스크를 죽인다). 새로운 방어적 스킵 분기를 추가할 때도 로그 폭주 없이 카운터부터 두는 것을 기본으로 한다.
 
 ## 주요 파일 안내
 

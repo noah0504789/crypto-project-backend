@@ -18,6 +18,7 @@ dependencies {
     implementation(libs.spring.cloud.eureka.client)
     implementation(libs.spring.cloud.stream.binder.kafka.streams)
     implementation(libs.spring.cloud.starter.bus.kafka)
+    implementation(libs.micrometer.registry.prometheus)
 
     testImplementation project(':common:common-test')
     testImplementation(libs.kafka.streams.test.utils)

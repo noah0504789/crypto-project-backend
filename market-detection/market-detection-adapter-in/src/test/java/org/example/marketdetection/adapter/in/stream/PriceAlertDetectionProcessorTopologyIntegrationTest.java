@@ -3,6 +3,7 @@ package org.example.marketdetection.adapter.in.stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -10,6 +11,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
@@ -55,13 +58,16 @@ class PriceAlertDetectionProcessorTopologyIntegrationTest {
 
     @Mock private Clock clock;
 
+    private MeterRegistry meterRegistry;
     private TopologyTestDriver testDriver;
     private TestInputTopic<String, UpbitTickerEvent> inputTopic;
     private TestOutputTopic<String, PriceAlertDetectedEvent> outputTopic;
 
     @BeforeEach
     void setUp() {
-        given(clock.nowMs()).willReturn(0L);
+        lenient().when(clock.nowMs()).thenReturn(0L);
+
+        meterRegistry = new SimpleMeterRegistry();
 
         StreamsBuilder builder = new StreamsBuilder();
         builder.addStateStore(pricePointStore());
@@ -69,7 +75,7 @@ class PriceAlertDetectionProcessorTopologyIntegrationTest {
                 .process(
                         () ->
                                 new PriceAlertDetectionProcessor(
-                                        new PriceAlertDetectionService(properties, clock), properties),
+                                        new PriceAlertDetectionService(properties, clock), properties, meterRegistry),
                         Named.as("price-alert-detector"),
                         STORE_NAME)
                 .to(OUTPUT_TOPIC, Produced.with(Serdes.String(), new JsonSerde<>(PriceAlertDetectedEvent.class)));
@@ -116,6 +122,7 @@ class PriceAlertDetectionProcessorTopologyIntegrationTest {
     void process_usesKafkaRecordTimestampForStore() {
         // given & when
         inputTopic.pipeInput(CODE, tickerEvent(100.0, 1_000L), Instant.ofEpochMilli(5_000L));
+        inputTopic.pipeInput(CODE, tickerEvent(110.0, 6_000L), Instant.ofEpochMilli(9_000L));
 
         // then
         WindowStore<String, PricePoint> store = testDriver.getWindowStore(STORE_NAME);
@@ -125,20 +132,20 @@ class PriceAlertDetectionProcessorTopologyIntegrationTest {
             assertThat(iterator.next().value.timestamp()).isEqualTo(5_000L);
         }
 
-        assertThat(outputTopic.readValue().getTimestamp()).isEqualTo(5_000L);
+        assertThat(outputTopic.readValuesToList())
+                .isNotEmpty()
+                .allSatisfy(event -> assertThat(event.getTimestamp()).isEqualTo(9_000L));
     }
 
     @Test
-    @DisplayName("평균 대비 변동률이 3% 미만이면 0% 이벤트만 발행한다")
-    void process_belowThreshold_publishesZeroPercentOnly() {
+    @DisplayName("평균 대비 변동률이 3% 미만이면 이벤트를 발행하지 않는다")
+    void process_belowThreshold_publishesNoEvent() {
         // given & when
         inputTopic.pipeInput(CODE, tickerEvent(100.0, 1_000L), Instant.ofEpochMilli(1_000L));
         inputTopic.pipeInput(CODE, tickerEvent(102.0, 2_000L), Instant.ofEpochMilli(2_000L));
 
         // then
-        assertThat(outputTopic.readValuesToList())
-                .extracting(PriceAlertDetectedEvent::getThreshold)
-                .containsOnly("PERCENT_0");
+        assertThat(outputTopic.readValuesToList()).isEmpty();
     }
 
     @Test
@@ -156,7 +163,7 @@ class PriceAlertDetectionProcessorTopologyIntegrationTest {
 
         assertThat(events)
                 .extracting(PriceAlertDetectedEvent::getThreshold)
-                .containsExactlyInAnyOrder("PERCENT_0", "PERCENT_3", "PERCENT_5", "PERCENT_7");
+                .containsExactlyInAnyOrder("PERCENT_3", "PERCENT_5", "PERCENT_7");
         assertThat(events).extracting(PriceAlertDetectedEvent::getPartitionKey).containsOnly(CODE);
     }
 
@@ -165,6 +172,7 @@ class PriceAlertDetectionProcessorTopologyIntegrationTest {
     void process_addsEventIdHeader() {
         // given & when
         inputTopic.pipeInput(CODE, tickerEvent(100.0, 1_000L), Instant.ofEpochMilli(1_000L));
+        inputTopic.pipeInput(CODE, tickerEvent(110.0, 2_000L), Instant.ofEpochMilli(2_000L));
 
         // then
         var outputRecord = outputTopic.readRecord();
@@ -188,6 +196,66 @@ class PriceAlertDetectionProcessorTopologyIntegrationTest {
 
         // then
         assertThat(outputTopic.readValuesToList()).isEmpty();
+        assertThat(staleCounter()).isEqualTo(1.0);
+    }
+
+    @Test
+    @DisplayName("tradeTimestamp 가 없으면 record timestamp 로 폴백하고 지표를 남긴다")
+    void process_tradeTimestampMissing_fallsBackAndCountsIt() {
+        // given & when
+        inputTopic.pipeInput(CODE, tickerEvent(100.0, null), Instant.ofEpochMilli(1_000L));
+
+        // then
+        assertThat(fallbackCounter()).isEqualTo(1.0);
+
+        WindowStore<String, PricePoint> store = testDriver.getWindowStore(STORE_NAME);
+
+        try (var iterator = store.fetch(CODE, 0L, 1_000L)) {
+            assertThat(iterator.hasNext()).isTrue();
+        }
+    }
+
+    @Test
+    @DisplayName("key 가 비어 있으면 isProcessable 탈락을 key 사유로 센다")
+    void process_blankKey_countsRejectedByKey() {
+        // given & when
+        inputTopic.pipeInput("", tickerEvent(100.0, 1_000L), Instant.ofEpochMilli(1_000L));
+
+        // then
+        assertThat(rejectedCounter("key")).isEqualTo(1.0);
+        assertThat(outputTopic.readValuesToList()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("value 가 없으면 isProcessable 탈락을 value 사유로 센다")
+    void process_nullValue_countsRejectedByValue() {
+        // given & when
+        inputTopic.pipeInput(CODE, null, Instant.ofEpochMilli(1_000L));
+
+        // then
+        assertThat(rejectedCounter("value")).isEqualTo(1.0);
+    }
+
+    @Test
+    @DisplayName("tradePrice 가 없으면 isProcessable 탈락을 tradePrice 사유로 센다")
+    void process_missingTradePrice_countsRejectedByTradePrice() {
+        // given & when
+        inputTopic.pipeInput(CODE, tickerEvent(null, 1_000L), Instant.ofEpochMilli(1_000L));
+
+        // then
+        assertThat(rejectedCounter("tradePrice")).isEqualTo(1.0);
+    }
+
+    private double fallbackCounter() {
+        return meterRegistry.counter(PriceAlertDetectionMetricNames.TIMESTAMP_FALLBACK).count();
+    }
+
+    private double staleCounter() {
+        return meterRegistry.counter(PriceAlertDetectionMetricNames.TICKER_STALE).count();
+    }
+
+    private double rejectedCounter(String reason) {
+        return meterRegistry.counter(PriceAlertDetectionMetricNames.TICKER_REJECTED, "reason", reason).count();
     }
 
     private StoreBuilder<WindowStore<String, PricePoint>> pricePointStore() {
