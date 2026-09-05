@@ -10,6 +10,7 @@ dependencies {
     implementation project(':market-detection:market-detection-application')
     implementation project(':market-detection:market-detection-contract')
     implementation(libs.spring.cloud.stream.binder.kafka.streams)
+    implementation(libs.micrometer.core)
 
     testImplementation project(':common:common-test')
     testImplementation(libs.kafka.streams.test.utils)

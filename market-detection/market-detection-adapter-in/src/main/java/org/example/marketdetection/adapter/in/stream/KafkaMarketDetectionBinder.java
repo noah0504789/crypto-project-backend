@@ -1,6 +1,7 @@
 package org.example.marketdetection.adapter.in.stream;
 
 import java.util.function.Function;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Named;
@@ -18,11 +19,12 @@ public class KafkaMarketDetectionBinder {
     @Bean
     public Function<KStream<String, UpbitTickerEvent>, KStream<String, PriceAlertDetectedEvent>> priceAlertDetectionProcessor(
             PriceAlertDetectUseCase priceAlertDetectUseCase,
-            PriceAlertDetectionProperties properties
+            PriceAlertDetectionProperties properties,
+            MeterRegistry meterRegistry
     ) {
         return input ->
                 input.process(
-                        () -> new PriceAlertDetectionProcessor(priceAlertDetectUseCase, properties),
+                        () -> new PriceAlertDetectionProcessor(priceAlertDetectUseCase, properties, meterRegistry),
                         Named.as("price-alert-detector"),
                         properties.store().name());
     }

@@ -580,6 +580,7 @@ assertThat(result.<String>getAttribute("id")).isEqualTo(userId);
 | `[projection]` | 내 방 정렬 projection 반영·재생성 |
 | `[notification]` | 알림 생성/저장 |
 | `[upbit]` | Upbit 외부 WebSocket |
+| `[price-alert]` | 가격 알림 탐지(stale 판정·폴백·임계 매칭) |
 
 ```java
 log.warn("[cache] chat message save failed after commit (repair will cover). messageId={}, roomId={}", messageId, roomId, e);

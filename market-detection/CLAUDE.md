@@ -38,6 +38,7 @@ Upbit 시세(`upbit-ticker-event`)를 소비해 이동평균 대비 변동률을
 - **소비 타입은 선언된 타입으로 결정된다**: `upbit-ticker-event`의 값은 `upbit-connector-contract`의 `UpbitTickerEvent`이며, Kafka `__TypeId__` 헤더는 이 바인딩에서 전달되지 않는다(관찰 근거: `../docs/modules/UPBIT_CONNECTOR.md` §6.1). 함수 시그니처 타입을 바꾸면 곧 계약 변경이다.
 - **KafkaEvent 발행 규약**: Streams 처리 결과는 KStream key(`code`)와 value로 발행한다. 목적지는 바인딩이 결정하므로 토픽 변경은 `market-detection.yml`에서 한다.
 - **시간 조회**: `System.nanoTime()`·`System.currentTimeMillis()`를 직접 호출하지 않고 `common-time`의 `Clock`을 주입받는다.
+- **조용히 넘어가는 분기는 관측 가능해야 한다**: `PriceAlertDetectionProcessor`의 `tradeTimestamp` 폴백·`isProcessable` 탈락·stale 폐기는 Micrometer 카운터(`price.alert.detection.*`, `docs/modules/MARKET_DETECTION.md §4.5`)로 노출한다. 폴백은 `[price-alert]` 태그로 첫 발생·100건 주기 warn 로그도 남기지만, 예외는 던지지 않는다(Streams `process()` 예외는 태스크를 죽인다). 새로운 방어적 스킵 분기를 추가할 때도 로그 폭주 없이 카운터부터 두는 것을 기본으로 한다.
 
 ## 주요 파일 안내
 

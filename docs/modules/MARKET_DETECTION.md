@@ -79,6 +79,7 @@ graph TB
 
 - `PriceAlertDetectedEvent` 필드: code·price·timestamp·avgInterval(= windowMinutes 3)·avgPrice·changeRate·threshold enum명.
 - Upbit 체결 시각(`tradeTimestamp`)은 **stale 판정에만** 쓴다. 상태·출력 시각은 Kafka record timestamp를 사용해 기존 처리 의미를 유지한다.
+- **`tradeTimestamp`가 없으면 record timestamp로 폴백한다.** 이 폴백이 타면 stale 판정의 의미가 "이 가격이 현실에서 얼마나 오래됐나"에서 "브로커에 도착한 지 얼마나 됐나"로 바뀐다 — 후자는 지연이 없는 한 거의 항상 통과하므로 `max-event-age: 10s` 보호막이 사실상 무력해진다. 발생 시 `price.alert.detection.timestamp.fallback` 카운터가 오르고, 첫 발생과 이후 100건 단위로 `[price-alert]` warn 로그를 남긴다(§4.5).
 - 소비자: `notification`(`price-alert-detected-event`).
 
 ### 4.4 Kafka Streams EOS 적용 배경과 트랜잭션 경계
@@ -118,6 +119,20 @@ graph TB
 | `upbit-connector` → `upbit-ticker-event` | 단일 Kafka produce에 공통 producer idempotence 적용 | WebSocket 수집·발행과 이후 Streams 처리까지 하나로 묶는 트랜잭션 |
 
 따라서 이 모듈에서 말하는 exactly-once는 **Kafka Streams 처리 구간의 EOS**다. 하류 notification이 수행하는 MySQL Outbox 저장이나 MongoDB 반영까지 포함하는 분산 트랜잭션은 아니며, 하류 consumer의 멱등성·재시도·DLQ는 별도로 필요하다.
+
+### 4.5 관측 지표
+
+`PriceAlertDetectionProcessor`(adapter-in)는 조용히 넘어가던 분기 셋을 Micrometer 카운터로 노출한다. 탐지 판단(`isStale`/`detect`)은 여전히 application 계층 책임이고, 이 카운터들은 Kafka record 형태·시각 처리라는 adapter-in의 기존 책임 범위 안에 있다.
+
+| 지표 | 종류 | 태그 | 의미 |
+|---|---|---|---|
+| `price.alert.detection.timestamp.fallback` | Counter | — | `tradeTimestamp` 없어 record timestamp로 stale 판정을 대체한 횟수. 늘어나면 stale 보호막이 사실상 무력화된 비율이 늘고 있다는 뜻 |
+| `price.alert.detection.ticker.rejected` | Counter | `reason=key\|value\|tradePrice` | `isProcessable` 탈락 횟수. 어떤 필드가 비어 왔는지 사유별로 분리해 원인 추적 |
+| `price.alert.detection.ticker.stale` | Counter | — | stale 판정으로 폐기한 ticker 수(정상 동작이라 로그는 없다) |
+
+- 폴백은 매 건 로그를 남기지 않는다. 6종목 × 7초 간격이면 상시화 시 로그가 쏟아지므로, 첫 발생과 이후 100건 단위로만 `[price-alert]` warn을 남기고 추세는 카운터로 본다.
+- 폴백·탈락 모두 예외를 던지지 않는다. Kafka Streams에서 `process()` 예외는 태스크를 죽이는데, 이 값들은 저장·계산에 쓰이지 않는 방어적 스킵이라 가용성을 깰 이유가 없다.
+- 로그 태그 `[price-alert]`는 `docs/CODE_STYLE.md` §21.2 레지스트리에 등록되어 있다.
 
 ### 컨슈머 멱등 전략
 
