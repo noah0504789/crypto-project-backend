@@ -63,7 +63,7 @@ graph TB
   OUTB["7 · 바인딩 priceAlertDetectionProcessor-out-0"]
   KOUT[["Kafka<br/>price-alert-detected-event"]]
   NOTI["notification"]
-  STORE[("WindowStore upbit-ticker-store<br/>persistent · retention·window 3m")]
+  STORE[("WindowStore upbit-ticker-store<br/>persistent · window 3m · retention 5m")]
   TX["WindowStore 갱신 · 출력 레코드 · 입력 offset<br/>Kafka Streams EOS 트랜잭션으로 함께 커밋"]
 
   UC --> KIN --> BIND --> STALE
@@ -151,6 +151,22 @@ graph TB
 - 2번의 `occurredAtMs`는 저장소의 필드 선례(`createdAtMs`)를 따른 표기이고, 소비자인 notification이 이미 같은 이름(`PriceAlertNotificationCreateCommand.occurredAtMs`)을 쓴다.
 - 3번을 `eventTimestamp`로 부르지 않는다. Kafka Streams에서 "event time"은 통상 윈도우 시간축을 가리키는데, 이 모듈의 시간축은 3번이 아니라 2번이다.
 - `PricePoint.timestamp`는 **바꾸지 않는다.** WindowStore 값 타입이라 필드명이 곧 저장 포맷이고, 바꾸면 기존 state store·changelog 레코드가 `null`로 역직렬화된다.
+
+### 4.7 Window와 retention 여유
+
+| 설정 | 값 | 뜻 |
+|---|---|---|
+| `window-minutes` | 3 | 이동평균 조회 범위 `[t-3m, t]` |
+| `store.window-size` | 3m | WindowStore 윈도우 크기 |
+| `store.retention` | **5m** | 만료까지 보관하는 기간 = 탐지 window + **여유 2m** |
+
+**여유가 필요한 이유.** WindowStore 만료는 wall clock이 아니라 **task별 stream time**(관측된 최대 record timestamp) 기준이다. 파티션에 여러 종목이 섞이면 활발한 종목이 stream time을 밀어올려 **조용한 종목의 표본이 먼저 만료**된다. `retention == window`면 조회 범위의 가장 오래된 표본이 조회 시점에 이미 만료 경계라 여유가 0이고, 이 상황에서 바로 잘린다.
+
+**여유 2m의 근거.** 종목별 발행 간격 `7s`의 17배, 수집기 최대 재연결 백오프 `30s`(`upbit-connector.yml`)의 4배다. `max-event-age: 10s` 필터가 처리 시점을 실시간 근방으로 강제하므로 이보다 큰 지연은 애초에 stale로 걸러진다.
+
+**자원 증가는 무시할 수준이다**(6종목 기준). 유입이 `6 × 1/7s ≈ 0.857 entry/s`라 보관 엔트리가 154개(3m) → 257개(5m)로 는다. 엔트리당 값 JSON 약 46 B에 키·RocksDB 오버헤드를 얹어 ~150 B로 잡으면 **디스크 +15 KB 남짓**이고, changelog 보관도 같은 규모로 는다.
+
+**검증으로 고정한다.** `PriceAlertDetectionProperties.RETENTION_MIN_MARGIN`(1m)을 두고 `retention >= 탐지 window + 여유` 를 기동 시 검사한다. 운영 설정(2m 여유)보다 하한을 낮게 둬 조정 여지를 남겼다. 이 검사가 없던 동안 운영 설정만 `3m`으로 어긋나 있었고(테스트 설정은 처음부터 `5m`), 부팅 스모크는 test resource가 shadow해 잡지 못했다.
 
 ### 컨슈머 멱등 전략
 
