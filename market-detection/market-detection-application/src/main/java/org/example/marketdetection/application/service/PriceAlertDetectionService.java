@@ -40,7 +40,7 @@ public class PriceAlertDetectionService implements PriceAlertDetectUseCase {
         return PriceAlertDetectedEvent.builder()
                 .code(code)
                 .price(priceChange.currentPrice())
-                .timestamp(pricePoint.timestamp())
+                .occurredAtMs(pricePoint.timestamp())
                 .avgInterval(properties.windowMinutes())
                 .avgPrice(priceChange.averagePrice())
                 .changeRate(priceChange.changeRate())

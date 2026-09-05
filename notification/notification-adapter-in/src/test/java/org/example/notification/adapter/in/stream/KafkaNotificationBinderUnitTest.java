@@ -35,7 +35,7 @@ class KafkaNotificationBinderUnitTest {
         PriceAlertDetectedEvent event = PriceAlertDetectedEvent.builder()
                 .code("KRW-BTC")
                 .price(110.0)
-                .timestamp(1_000L)
+                .occurredAtMs(1_000L)
                 .avgInterval(3)
                 .avgPrice(100.0)
                 .changeRate(0.1)

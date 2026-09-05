@@ -134,7 +134,7 @@ class PriceAlertDetectionProcessorTopologyIntegrationTest {
 
         assertThat(outputTopic.readValuesToList())
                 .isNotEmpty()
-                .allSatisfy(event -> assertThat(event.getTimestamp()).isEqualTo(9_000L));
+                .allSatisfy(event -> assertThat(event.getOccurredAtMs()).isEqualTo(9_000L));
     }
 
     @Test

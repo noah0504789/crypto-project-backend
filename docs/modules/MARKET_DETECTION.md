@@ -77,9 +77,8 @@ graph TB
   OUTB -.-> TX
 ```
 
-- `PriceAlertDetectedEvent` 필드: code·price·timestamp·avgInterval(= windowMinutes 3)·avgPrice·changeRate·threshold enum명.
-- Upbit 체결 시각(`tradeTimestamp`)은 **stale 판정에만** 쓴다. 상태·출력 시각은 Kafka record timestamp를 사용해 기존 처리 의미를 유지한다.
-- **`tradeTimestamp`가 없으면 record timestamp로 폴백한다.** 이 폴백이 타면 stale 판정의 의미가 "이 가격이 현실에서 얼마나 오래됐나"에서 "브로커에 도착한 지 얼마나 됐나"로 바뀐다 — 후자는 지연이 없는 한 거의 항상 통과하므로 `max-event-age: 10s` 보호막이 사실상 무력해진다. 발생 시 `price.alert.detection.timestamp.fallback` 카운터가 오르고, 첫 발생과 이후 100건 단위로 `[price-alert]` warn 로그를 남긴다(§4.5).
+- `PriceAlertDetectedEvent` 필드: code·price·occurredAtMs·avgInterval(= windowMinutes 3)·avgPrice·changeRate·threshold enum명.
+- 세 가지 시각의 정의와 각각의 쓰임은 **§4.6**에 표로 정리했다. 요약하면 Upbit 체결 시각(`tradeTimestamp`)은 stale 판정에만 쓰고, 상태·출력 시각은 Kafka record CreateTime(`occurredAtMs`)을 쓴다.
 - 소비자: `notification`(`price-alert-detected-event`).
 
 ### 4.4 Kafka Streams EOS 적용 배경과 트랜잭션 경계
@@ -126,13 +125,32 @@ graph TB
 
 | 지표 | 종류 | 태그 | 의미 |
 |---|---|---|---|
-| `price.alert.detection.timestamp.fallback` | Counter | — | `tradeTimestamp` 없어 record timestamp로 stale 판정을 대체한 횟수. 늘어나면 stale 보호막이 사실상 무력화된 비율이 늘고 있다는 뜻 |
+| `price.alert.detection.timestamp.fallback` | Counter | — | `tradeTimestamp` 없어 CreateTime으로 stale 판정을 대체한 횟수. 늘어나면 stale 보호막이 사실상 무력화된 비율이 늘고 있다는 뜻(§4.6) |
 | `price.alert.detection.ticker.rejected` | Counter | `reason=key\|value\|tradePrice` | `isProcessable` 탈락 횟수. 어떤 필드가 비어 왔는지 사유별로 분리해 원인 추적 |
 | `price.alert.detection.ticker.stale` | Counter | — | stale 판정으로 폐기한 ticker 수(정상 동작이라 로그는 없다) |
 
 - 폴백은 매 건 로그를 남기지 않는다. 6종목 × 7초 간격이면 상시화 시 로그가 쏟아지므로, 첫 발생과 이후 100건 단위로만 `[price-alert]` warn을 남기고 추세는 카운터로 본다.
 - 폴백·탈락 모두 예외를 던지지 않는다. Kafka Streams에서 `process()` 예외는 태스크를 죽이는데, 이 값들은 저장·계산에 쓰이지 않는 방어적 스킵이라 가용성을 깰 이유가 없다.
 - 로그 태그 `[price-alert]`는 `docs/CODE_STYLE.md` §21.2 레지스트리에 등록되어 있다.
+
+### 4.6 Time — 이 모듈이 다루는 세 가지 시각
+
+세 값이 모두 epoch millis라 이름을 흐리면 서로 오인된다. 정의와 쓰임은 다음과 같다.
+
+| # | 값 | 출처 | 쓰임 | 하류 노출 |
+|---|---|---|---|---|
+| 1 | **Event Time** — `tradeTimestamp` | Upbit 체결 시각(wire `trade_timestamp`) | stale 판정 입력으로만 | 안 나감 |
+| 2 | **CreateTime** — `occurredAtMs` | Kafka record timestamp | WindowStore 저장·조회 시간축, `PriceAlertDetectedEvent.occurredAtMs` | notification → web push payload |
+| 3 | **stale 판정 입력** — `staleCheckMs` | 1번, 없으면 2번으로 폴백 | `isStale()` 입력(모듈 내부) | 안 나감 |
+
+**2번은 Log Append Time이 아니다.** `message.timestamp.type` 설정이 없어 Kafka 기본값 `CreateTime`이고, 이는 브로커 도착 시각이 아니라 **프로듀서(`upbit-connector`)가 발행한 시각**이다. 문서·로그에서 "브로커 도착"으로 쓰지 않는다.
+
+**폴백(3번 → 2번)이 타면 stale 판정의 의미가 바뀐다.** "이 가격이 현실에서 얼마나 오래됐나"(체결 기준)에서 "수집기가 발행한 지 얼마나 됐나"로 옮겨간다. 후자는 수집기가 정상이면 거의 항상 통과하므로 `max-event-age: 10s` 보호막이 사실상 무력해진다. 그래서 이 전환을 지표·로그로 노출한다(§4.5).
+
+이름 규약:
+- 2번의 `occurredAtMs`는 저장소의 필드 선례(`createdAtMs`)를 따른 표기이고, 소비자인 notification이 이미 같은 이름(`PriceAlertNotificationCreateCommand.occurredAtMs`)을 쓴다.
+- 3번을 `eventTimestamp`로 부르지 않는다. Kafka Streams에서 "event time"은 통상 윈도우 시간축을 가리키는데, 이 모듈의 시간축은 3번이 아니라 2번이다.
+- `PricePoint.timestamp`는 **바꾸지 않는다.** WindowStore 값 타입이라 필드명이 곧 저장 포맷이고, 바꾸면 기존 state store·changelog 레코드가 `null`로 역직렬화된다.
 
 ### 컨슈머 멱등 전략
 
