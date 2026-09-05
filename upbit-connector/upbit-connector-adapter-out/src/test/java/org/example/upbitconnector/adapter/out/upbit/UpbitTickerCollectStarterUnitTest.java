@@ -4,6 +4,8 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Duration;
 import org.example.upbitconnector.application.properties.UpbitProperties;
 import org.example.upbitconnector.application.service.UpbitTickerCollectService;
@@ -20,6 +22,8 @@ class UpbitTickerCollectStarterUnitTest {
 
     @Mock private UpbitTickerCollectService collectService;
 
+    private final MeterRegistry meterRegistry = new SimpleMeterRegistry();
+
     @Test
     @DisplayName("수집 스트림이 오류로 종료되면 backoff 후 새 파이프라인을 구독한다")
     void retriesCollectionAfterTerminalError() {
@@ -27,7 +31,7 @@ class UpbitTickerCollectStarterUnitTest {
                 .willReturn(Mono.error(new IllegalStateException("terminated")))
                 .willReturn(Mono.never());
 
-        UpbitTickerCollectStarter starter = new UpbitTickerCollectStarter(collectService, properties());
+        UpbitTickerCollectStarter starter = new UpbitTickerCollectStarter(collectService, properties(), meterRegistry);
         VirtualTimeScheduler scheduler = VirtualTimeScheduler.getOrSet();
 
         try {
@@ -46,7 +50,7 @@ class UpbitTickerCollectStarterUnitTest {
     void repeatsCollectionAfterCompletion() {
         given(collectService.collect()).willReturn(Mono.empty()).willReturn(Mono.never());
 
-        UpbitTickerCollectStarter starter = new UpbitTickerCollectStarter(collectService, properties());
+        UpbitTickerCollectStarter starter = new UpbitTickerCollectStarter(collectService, properties(), meterRegistry);
         VirtualTimeScheduler scheduler = VirtualTimeScheduler.getOrSet();
 
         try {
