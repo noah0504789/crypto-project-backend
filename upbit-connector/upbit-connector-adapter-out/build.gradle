@@ -9,6 +9,7 @@ dependencies {
 
     implementation(libs.spring.boot.starter.webflux)
     implementation(libs.spring.boot.starter.validation)
+    implementation(libs.micrometer.core)
 
     testImplementation(libs.reactor.test)
 }

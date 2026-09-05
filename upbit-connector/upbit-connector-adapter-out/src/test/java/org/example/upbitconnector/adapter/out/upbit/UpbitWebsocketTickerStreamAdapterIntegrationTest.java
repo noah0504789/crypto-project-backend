@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -131,7 +132,8 @@ class UpbitWebsocketTickerStreamAdapterIntegrationTest {
                 objectMapper,
                 properties(),
                 HttpClient.create(),
-                marketClient);
+                marketClient,
+                new SimpleMeterRegistry());
     }
 
     private Mono<Void> sendResponse(

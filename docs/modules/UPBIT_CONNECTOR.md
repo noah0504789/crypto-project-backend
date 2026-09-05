@@ -87,9 +87,28 @@ graph TB
 | 코드별 시간 스로틀: 구간의 **첫 값** 통과 | `sample`: 구간의 **마지막 값** 통과 |
 | `UpbitTickerCoalescingBuffer`(유계 ready queue, full 시 drop + 카운터) | `onBackpressureLatest`(덮어쓰기, 실패 개념 없음) |
 | worker pool 2개, code 무관 병렬 | `groupBy` + `flatMap`, code별 병렬(같은 code 순서 보장 강화) |
-| Micrometer metric 6종 | 없음(재설계 필요 — §10) |
+| Micrometer metric 6종(queue 크기·offer 실패·병합·처리 수·worker 오류·처리 시간) | Reactor 기준으로 재정의(§5.1) |
 
-**스로틀 표본이 바뀌었다.** 구간의 첫 값 대신 마지막 값이 흐르므로 이동평균에 들어가는 표본이 달라진다. 탐지 임계 판정에 영향을 줄 수 있다.
+**스로틀 표본이 바뀌었다.** 구간의 첫 값 대신 마지막 값이 흐르므로 이동평균에 들어가는 표본이 달라진다. 탐지 임계 판정에 영향을 줄 수 있다(실측은 TODO 4.18).
+
+### 5.1 관측 지표
+
+Reactor 파이프라인에는 명시적 queue·worker 상태가 없어 기존 6종을 그대로 옮길 수 없다. 같은 질문("무엇이 얼마나 들어와서 얼마나 나갔나, 어디서 끊겼나")에 답하는 지표로 다시 정의했다.
+
+| 지표 | 종류 | 태그 | 의미 |
+|---|---|---|---|
+| `upbit.ticker.received` | Counter | `code` | WebSocket 에서 받은 ticker 수(**스로틀 이전**) |
+| `upbit.ticker.published` | Counter | `code` | `upbit-ticker-event` 발행 성공 수 |
+| `upbit.ticker.publish.failed` | Counter | `code` | 발행 실패로 건너뛴 수 |
+| `upbit.ticker.publish` | Timer | — | `StreamBridge` 발행 호출 소요시간 |
+| `upbit.websocket.reconnect` | Counter | `reason=error\|completed` | WebSocket 재연결 횟수 |
+| `upbit.collect.restart` | Counter | `reason=error\|completed` | 수집 파이프라인 전체 재조립 횟수 |
+
+- **스로틀로 접힌 양은 `received - published - publish.failed`** 로 읽는다. `sample()` 은 버리는 값에 콜백이 없어 직접 셀 수 없고, 구간마다 몇 건이 하나로 접혔는지는 이 차이가 답한다.
+- **`code` 태그가 "특정 종목만 끊김"을 잡는 수단**이다. 종목별 수신이 0이 되면 그 종목만 조용해진 것이고, 전 종목이 동시에 0이면 연결 문제다. 현재 활성 마켓은 6종목(market `schema.sql` 시드)이라 카디널리티 부담이 없다. 종목이 크게 늘면 태그 유지 여부를 다시 본다.
+- **발행 지연은 종목으로 가르지 않는다.** Kafka 쪽 성질이라 종목별로 갈라도 같은 값을 본다.
+- 재연결·재조립이 두 층인 이유는 §4의 이중 안전망 때문이다. WebSocket 어댑터가 자체 재연결하고, 그 바깥에서 `UpbitTickerCollectStarter` 가 파이프라인을 다시 조립한다. 후자가 오르면 어댑터 재연결로 복구되지 않은 종료가 있었다는 뜻이다.
+- **계층**: 수집 정책이 세는 세 지표(`received`/`published`/`publish.failed`)는 `UpbitTickerMetricsPort`(application) → `MicrometerUpbitTickerMetricsAdapter`(adapter-out)로 나간다. application 이 Micrometer 를 모르게 하려는 것이다. 재연결·재조립은 adapter-out 자신의 사건이라 포트 없이 `MeterRegistry` 를 직접 쓴다(어댑터가 어댑터를 포트로 참조하지 않는다).
 
 ## 6. 계약
 
@@ -158,7 +177,6 @@ outbox 계열 발행(`outbox-poller`)은 payload가 JSON 문자열이고 `value.
 
 - 배포 첫 실행 전 `.deploy/upbit-connector.current-image` 초기화(TODO 4.9)
 - REST 조회 API 미구현(TODO 4.11)
-- **Micrometer metric 미재설계**: 기존 수집기의 6종 지표(ready queue 크기·offer 실패·병합·처리 수·worker 오류·처리 시간)에 대응하는 관측 수단이 아직 없다. Reactor 파이프라인 기준으로 다시 정의해야 한다
 - **스로틀 표본 차이**(§5)가 탐지 결과에 주는 영향은 실측하지 않았다
 
 ## 11. 관련 문서와 rules

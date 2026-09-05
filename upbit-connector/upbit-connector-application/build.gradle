@@ -5,6 +5,7 @@ plugins {
 dependencies {
     api project(':upbit-connector:upbit-connector-contract')
 
+    implementation project(':common:common-time')
     implementation(libs.spring.boot.starter.webflux)
     implementation(libs.spring.boot.starter.validation)
 

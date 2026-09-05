@@ -2,6 +2,8 @@ package org.example.upbitconnector.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.common.time.Clock;
+import org.example.upbitconnector.application.port.out.UpbitTickerMetricsPort;
 import org.example.upbitconnector.application.port.out.UpbitTickerPublishPort;
 import org.example.upbitconnector.application.port.out.UpbitTickerStreamPort;
 import org.example.upbitconnector.application.properties.UpbitProperties;
@@ -17,7 +19,9 @@ public class UpbitTickerCollectService {
 
     private final UpbitTickerStreamPort tickerStreamPort;
     private final UpbitTickerPublishPort tickerPublishPort;
+    private final UpbitTickerMetricsPort tickerMetricsPort;
     private final UpbitProperties properties;
+    private final Clock clock;
 
     public Mono<Void> collect() {
         return collect(tickerStreamPort.ticker())
@@ -25,7 +29,9 @@ public class UpbitTickerCollectService {
     }
 
     public Flux<UpbitTickerEvent> collect(Flux<UpbitTickerEvent> source) {
-        return source.groupBy(UpbitTickerEvent::code)
+        // 스로틀 이전에 센다. 발행 수와 함께 보면 구간마다 몇 건이 접혔는지 나온다.
+        return source.doOnNext(event -> tickerMetricsPort.tickerReceived(event.code()))
+                .groupBy(UpbitTickerEvent::code)
                 // groupBy로 만든 모든 종목 그룹을 바로 구독해야 원본 스트림이 멈추지 않는다.
                 .flatMap(this::throttle, Integer.MAX_VALUE);
     }
@@ -41,9 +47,20 @@ public class UpbitTickerCollectService {
         log.debug("[upbit] ticker. code={} price={}", event.code(), event.tradePrice());
 
         // 한 종목의 발행 실패가 전체 수집을 끊지 않는다. 시세는 다음 구간 값으로 곧 대체된다.
-        return tickerPublishPort.publish(event)
-                .doOnError(error -> log.error("[upbit] ticker publish failed. code={}", event.code(), error))
+        return Mono.defer(() -> publishWithMetrics(event))
                 .onErrorComplete()
                 .thenReturn(event);
+    }
+
+    private Mono<Void> publishWithMetrics(UpbitTickerEvent event) {
+        long startedAt = clock.monotonicTimeNanos();
+
+        return tickerPublishPort.publish(event)
+                .doOnSuccess(ignored ->
+                        tickerMetricsPort.tickerPublished(event.code(), clock.monotonicTimeNanos() - startedAt))
+                .doOnError(error -> {
+                    tickerMetricsPort.tickerPublishFailed(event.code());
+                    log.error("[upbit] ticker publish failed. code={}", event.code(), error);
+                });
     }
 }

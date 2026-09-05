@@ -1,12 +1,14 @@
 package org.example.upbitconnector.adapter.out.upbit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.grpc.market.GrpcGetEnabledMarketsResponse;
 import org.example.grpc.market.GrpcMarket;
 import org.example.market.client.MarketClient;
+import org.example.upbitconnector.adapter.out.metrics.UpbitMetricNames;
 import org.example.upbitconnector.adapter.out.upbit.dto.UpbitWebsocketRequest;
 import org.example.upbitconnector.application.port.out.UpbitTickerStreamPort;
 import org.example.upbitconnector.application.properties.UpbitProperties;
@@ -31,6 +33,7 @@ public class UpbitWebsocketTickerStreamAdapter implements UpbitTickerStreamPort 
     private final UpbitProperties properties;
     private final HttpClient upbitHttpClient;
     private final MarketClient marketClient;
+    private final MeterRegistry meterRegistry;
 
     @Override
     public Flux<UpbitTickerEvent> ticker() {
@@ -42,7 +45,9 @@ public class UpbitWebsocketTickerStreamAdapter implements UpbitTickerStreamPort 
                 .doOnSubscribe(subscription -> logConnecting(websocket))
                 .mapNotNull(this::toTickerEvent)
                 // 서버가 정상 종료해도 수집은 계속돼야 한다. 즉시 재구독하면 폭주하므로 최소 백오프를 둔다.
-                .repeatWhen(completed -> completed.delayElements(websocket.reconnectMinBackoff()))
+                .repeatWhen(completed -> completed
+                        .doOnNext(ignored -> countReconnect(UpbitMetricNames.REASON_COMPLETED))
+                        .delayElements(websocket.reconnectMinBackoff()))
                 .retryWhen(reconnectBackoff(websocket));
     }
 
@@ -64,7 +69,14 @@ public class UpbitWebsocketTickerStreamAdapter implements UpbitTickerStreamPort 
     }
 
     private void logRetry(Retry.RetrySignal signal) {
+        countReconnect(UpbitMetricNames.REASON_ERROR);
+
         log.warn("[upbit] websocket retry. attempts={}", signal.totalRetries() + 1, signal.failure());
+    }
+
+    // 재연결은 드물어 매번 조회해도 부담이 없다.
+    private void countReconnect(String reason) {
+        meterRegistry.counter(UpbitMetricNames.WEBSOCKET_RECONNECT, UpbitMetricNames.TAG_REASON, reason).increment();
     }
 
     private Mono<String> subscribePayload() {

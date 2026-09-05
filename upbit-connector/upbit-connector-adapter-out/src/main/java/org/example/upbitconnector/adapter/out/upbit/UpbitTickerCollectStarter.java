@@ -1,8 +1,10 @@
 package org.example.upbitconnector.adapter.out.upbit;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.upbitconnector.adapter.out.metrics.UpbitMetricNames;
 import org.example.upbitconnector.application.properties.UpbitProperties;
 import org.example.upbitconnector.application.service.UpbitTickerCollectService;
 import org.springframework.boot.ApplicationArguments;
@@ -21,6 +23,7 @@ public class UpbitTickerCollectStarter implements ApplicationRunner {
 
     private final UpbitTickerCollectService collectService;
     private final UpbitProperties properties;
+    private final MeterRegistry meterRegistry;
 
     private volatile Disposable subscription;
 
@@ -36,7 +39,7 @@ public class UpbitTickerCollectStarter implements ApplicationRunner {
         UpbitProperties.Websocket websocket = properties.websocket();
 
         return Mono.defer(collectService::collect)
-                .doOnSuccess(ignored -> log.warn("[upbit] ticker stream completed. restarting."))
+                .doOnSuccess(ignored -> logStreamCompleted())
                 .repeatWhen(completed -> completed.delayElements(websocket.reconnectMinBackoff()))
                 .retryWhen(Retry.backoff(Long.MAX_VALUE, websocket.reconnectMinBackoff())
                         .maxBackoff(websocket.reconnectMaxBackoff())
@@ -57,8 +60,21 @@ public class UpbitTickerCollectStarter implements ApplicationRunner {
         log.info("[upbit] ticker collect stopped.");
     }
 
+    private void logStreamCompleted() {
+        countRestart(UpbitMetricNames.REASON_COMPLETED);
+
+        log.warn("[upbit] ticker stream completed. restarting.");
+    }
+
     private void logRetry(long attempts, Throwable error) {
+        countRestart(UpbitMetricNames.REASON_ERROR);
+
         log.warn("[upbit] ticker collect retry. attempts={}", attempts, error);
+    }
+
+    // WebSocket 어댑터의 재연결 바깥에서 파이프라인이 통째로 다시 조립되는 횟수다.
+    private void countRestart(String reason) {
+        meterRegistry.counter(UpbitMetricNames.COLLECT_RESTART, UpbitMetricNames.TAG_REASON, reason).increment();
     }
 
     private void logPermanentTermination(Throwable error) {
