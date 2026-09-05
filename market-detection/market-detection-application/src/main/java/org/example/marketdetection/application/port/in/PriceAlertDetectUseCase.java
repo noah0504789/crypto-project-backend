@@ -8,5 +8,5 @@ public interface PriceAlertDetectUseCase {
 
     List<PriceAlertDetectedEvent> detect(String code, PricePoint pricePoint, List<PricePoint> recentPoints);
 
-    boolean isStale(long eventTimestamp);
+    boolean isStale(long staleCheckMs);
 }

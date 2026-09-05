@@ -82,7 +82,7 @@ public class PriceAlertDetectionProcessor implements Processor<String, UpbitTick
         String code = record.key();
         PricePoint pricePoint = toPricePoint(record);
 
-        if (priceAlertDetectUseCase.isStale(eventTimestamp(record))) {
+        if (priceAlertDetectUseCase.isStale(staleCheckMs(record))) {
             staleDiscardedCounter.increment();
             return;
         }
@@ -124,7 +124,8 @@ public class PriceAlertDetectionProcessor implements Processor<String, UpbitTick
         return new PricePoint(record.value().tradePrice(), record.timestamp());
     }
 
-    private long eventTimestamp(Record<String, UpbitTickerEvent> record) {
+    /** stale 판정의 age 를 재는 기준점. Event Time(체결 시각)이 없으면 CreateTime 으로 대체한다. */
+    private long staleCheckMs(Record<String, UpbitTickerEvent> record) {
         Long tradeTimestamp = record.value().tradeTimestamp();
 
         if (tradeTimestamp != null) {
