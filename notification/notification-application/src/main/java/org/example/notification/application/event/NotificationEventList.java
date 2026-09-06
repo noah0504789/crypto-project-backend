@@ -2,11 +2,11 @@ package org.example.notification.application.event;
 
 import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 import org.example.common.outbox.domain.event.AbstractOutboxEventList;
+import org.example.notification.application.event.mapper.WebNotificationPayloadMapper;
 import org.example.notification.application.event.payload.NotificationPayload;
 import org.example.notification.application.event.payload.NotificationRecipientPayload;
 import org.example.notification.contract.event.PriceAlertPayload;
 import org.example.notification.contract.event.WebNotificationBroadcastEvent;
-import org.example.notification.contract.event.WebNotificationMessagePart;
 import org.example.notification.contract.event.WebNotificationPayload;
 import org.example.notification.domain.model.Notification;
 
@@ -29,7 +29,8 @@ public class NotificationEventList extends AbstractOutboxEventList {
             List<NotificationRecipientPayload> recipientPayloads,
             PriceAlertPayload priceAlertPayload
     ) {
-        WebNotificationPayload webNotificationPayload = toWebNotificationPayload(notification, priceAlertPayload);
+        WebNotificationPayload webNotificationPayload =
+                WebNotificationPayloadMapper.from(notification, priceAlertPayload);
 
         List<AbstractOutboxEvent> events = new ArrayList<>();
         events.add(NotificationSaveEvent.from(NotificationPayload.from(notification), recipientPayloads));
@@ -43,21 +44,5 @@ public class NotificationEventList extends AbstractOutboxEventList {
                 .forEach(events::add);
 
         return of(events.toArray(AbstractOutboxEvent[]::new));
-    }
-
-    private static WebNotificationPayload toWebNotificationPayload(
-            Notification notification,
-            PriceAlertPayload priceAlertPayload
-    ) {
-        return WebNotificationPayload.withoutLink(
-                notification.getType().name(),
-                notification.getTitle(),
-                notification.getMessage(),
-                notification.getCreatedAtMs(),
-                notification.getMessageParts().stream()
-                        .map(part -> new WebNotificationMessagePart(part.text(), part.bold(), part.lineBreakAfter()))
-                        .toList(),
-                priceAlertPayload
-        );
     }
 }
