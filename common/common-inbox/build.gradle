@@ -8,4 +8,7 @@ dependencies {
 
     implementation project(':common:common-core')
     implementation project(':common:common-util')
+
+    testImplementation project(':common:common-outbox')
+    testImplementation project(':common:common-test')
 }
