@@ -4,7 +4,9 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import org.example.notification.domain.model.NotificationRecipient;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 public record NotificationRecipientPayload(
         String id,
@@ -31,6 +33,17 @@ public record NotificationRecipientPayload(
                 null,
                 deliveredAt
         );
+    }
+
+    public static List<NotificationRecipientPayload> forReceivers(
+            String notificationId,
+            List<UUID> receiverIds,
+            LocalDateTime deliveredAt,
+            Supplier<String> idGenerator
+    ) {
+        return receiverIds.stream()
+                .map(receiverId -> of(idGenerator.get(), notificationId, receiverId, deliveredAt))
+                .toList();
     }
 
     public NotificationRecipient toDomain() {
