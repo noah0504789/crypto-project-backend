@@ -1,11 +1,12 @@
 package org.example.websocket.gateway.adapter.in.stream.mapper;
 
-import org.example.common.event.TypedPayload;
 import org.example.notification.contract.event.WebNotificationBroadcastEvent;
 import org.example.notification.contract.event.WebNotificationPayload;
 import org.example.websocket.gateway.notification.application.service.command.WebNotificationCommand;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -23,7 +24,7 @@ class WebNotificationBroadcastEventMapperUnitTest {
                 "KRW-BTC 가격이 변동했습니다.",
                 1_000L,
                 "/price-alerts",
-                TypedPayload.empty()
+                Map.of("code", "KRW-BTC")
         );
         WebNotificationBroadcastEvent event = WebNotificationBroadcastEvent.of(payload, "notification-id", "receiver-id");
 

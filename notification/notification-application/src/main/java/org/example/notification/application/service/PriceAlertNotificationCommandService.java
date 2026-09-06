@@ -152,7 +152,7 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
                 notification.getMessageParts().stream()
                         .map(part -> new WebNotificationMessagePart(part.text(), part.bold(), part.lineBreakAfter()))
                         .toList(),
-                typedPayload
+                typedPayload.toMap()
         );
     }
 

@@ -1,8 +1,7 @@
 package org.example.notification.contract.event;
 
-import org.example.common.event.TypedPayload;
-
 import java.util.List;
+import java.util.Map;
 
 public record WebNotificationPayload(
         String type,
@@ -11,7 +10,7 @@ public record WebNotificationPayload(
         long createdAtMs,
         String link,
         List<WebNotificationMessagePart> messageParts,
-        TypedPayload typedPayload
+        Map<String, Object> data
 ) {
 
     public WebNotificationPayload(
@@ -20,14 +19,14 @@ public record WebNotificationPayload(
             String body,
             long createdAtMs,
             String link,
-            TypedPayload typedPayload
+            Map<String, Object> data
     ) {
-        this(type, title, body, createdAtMs, link, List.of(), typedPayload);
+        this(type, title, body, createdAtMs, link, List.of(), data);
     }
 
     public WebNotificationPayload {
         messageParts = messageParts == null ? List.of() : List.copyOf(messageParts);
-        typedPayload = typedPayload == null ? TypedPayload.empty() : typedPayload;
+        data = data == null ? Map.of() : Map.copyOf(data);
     }
 
     public static WebNotificationPayload withoutLink(
@@ -35,9 +34,9 @@ public record WebNotificationPayload(
             String title,
             String body,
             long createdAtMs,
-            TypedPayload typedPayload
+            Map<String, Object> data
     ) {
-        return withoutLink(type, title, body, createdAtMs, List.of(), typedPayload);
+        return withoutLink(type, title, body, createdAtMs, List.of(), data);
     }
 
     public static WebNotificationPayload withoutLink(
@@ -46,7 +45,7 @@ public record WebNotificationPayload(
             String body,
             long createdAtMs,
             List<WebNotificationMessagePart> messageParts,
-            TypedPayload typedPayload
+            Map<String, Object> data
     ) {
         return new WebNotificationPayload(
                 type,
@@ -55,7 +54,7 @@ public record WebNotificationPayload(
                 createdAtMs,
                 null,
                 messageParts,
-                typedPayload
+                data
         );
     }
 }

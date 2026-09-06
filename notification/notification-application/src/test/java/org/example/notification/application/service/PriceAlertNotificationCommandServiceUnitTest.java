@@ -25,10 +25,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
@@ -152,7 +150,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
             // given
             PriceAlertNotificationCreateCommand command = mockCommand();
             givenNotificationCommandFields(command);
-            TypedPayload typedPayload = givenWebNotificationCommandFields(command);
+            Map<String, Object> data = givenWebNotificationCommandFields(command);
 
             Notification notification = mockNotification();
             givenWebNotificationFields(notification);
@@ -271,7 +269,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 assertThat(webPayload.body()).isEqualTo("KRW-BTC이 5.0% 이상 상승했습니다.");
                 assertThat(webPayload.createdAtMs()).isEqualTo(CREATED_AT_MS);
                 assertThat(webPayload.link()).isNull();
-                assertThat(webPayload.typedPayload()).isSameAs(typedPayload);
+                assertThat(webPayload.data()).isEqualTo(data);
 
                 assertThat(webPayloadCaptor.getAllValues()).containsOnly(webPayload);
 
@@ -490,7 +488,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
             // given
             PriceAlertNotificationCreateCommand command = mockCommand();
             givenNotificationCommandFields(command);
-            givenWebNotificationCommandFields(command);
+            givenTypedPayload(command);
 
             Notification notification = mockNotification();
 
@@ -560,12 +558,20 @@ class PriceAlertNotificationCommandServiceUnitTest {
         given(command.toPayload()).willReturn(PAYLOAD);
     }
 
-    private TypedPayload givenWebNotificationCommandFields(PriceAlertNotificationCreateCommand command) {
+    private TypedPayload givenTypedPayload(PriceAlertNotificationCreateCommand command) {
         TypedPayload typedPayload = mock(TypedPayload.class);
 
         given(command.typedPayload()).willReturn(typedPayload);
 
         return typedPayload;
+    }
+
+    private Map<String, Object> givenWebNotificationCommandFields(PriceAlertNotificationCreateCommand command) {
+        Map<String, Object> data = Map.of("code", "KRW-BTC");
+
+        given(givenTypedPayload(command).toMap()).willReturn(data);
+
+        return data;
     }
 
     private void givenCommon() {
