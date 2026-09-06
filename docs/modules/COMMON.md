@@ -137,7 +137,7 @@ graph TB
 ### 5.2 common-event / common-inbox
 - `KafkaEvent`·`ProducibleEvent`·`HandleableEvent`·`RecoverableEvent`가 이벤트 계약 인터페이스. `EventUtils`가 수집·발행 진입점, `EventsInitializer`가 이벤트 목록 초기화. payload 타입 키는 `TypedKey`/`TypedPayload`.
 - `KafkaEventFactory`가 Kafka `Message` 생성 책임을 집중한다. 일반 이벤트는 `createEventMessage`, Outbox는 `createOutboxEventMessage`, DLQ는 `createDlqEventMessage`를 사용하고 공통 헤더 조립은 private 메서드가 담당한다. Outbox/DLQ 발행의 `event_id`는 각각 레코드 ID를 사용해 poll 재시도에도 동일하게 유지한다. `KafkaEvent`는 partition key 계약만 제공하며, 발행 adapter가 Factory를 직접 호출한다.
-- `AbstractInboxEvent`는 Inbox 중복 제거 대상이라는 타입 의미와 header용 `eventId` 생성을 제공한다. `eventId`는 `@JsonIgnore`로 payload에서 제외하고 Kafka `event_id` 헤더를 단일 기준으로 사용한다. consumer adapter는 header를 Command에 전달하며 역직렬화된 payload 객체 내부 ID를 처리 기준으로 사용하지 않는다.
+- `AbstractInboxEvent`는 Inbox 중복 제거 대상이라는 타입 의미와 header용 `eventId` 발급(`issueEventId()`)을 제공한다. `eventId`를 필드로 보관하지 않는 것이 핵심이다 — 보관하면 역직렬화 때 생성자가 다시 돌아 소비 측 객체에 무의미한 값이 남고, 그 값을 처리 기준으로 쓰면 멱등성이 깨진다. 발행 adapter가 발급해 Kafka `event_id` 헤더에만 싣고, consumer adapter는 header를 Command에 전달한다.
 - `AbstractInboxEvent.extractEventId(Message<?>)`는 `event_id`가 `byte[]` 또는 `String`으로 매핑되는 경우를 공통 처리하고 누락·공백이면 예외를 던진다. 이 API는 Inbox 대상 이벤트 하위 타입에서만 사용할 수 있다.
 - Inbox 예외는 모듈 소속만 나타내는 `InboxException` 계층으로 묶고 HTTP·인프라 예외 의미를 부여하지 않는다. Kafka Inbox 중복은 MVC 예외 처리 경로가 아니므로 각 inbound adapter가 `DuplicateInboxException`을 성공적인 중복 제거로 종료한다.
 
