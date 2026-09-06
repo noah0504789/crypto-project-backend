@@ -128,9 +128,9 @@ graph TB
 
 #### Consumer Inbox
 
-호출 consumer 서비스가 `@Transactional("transactionManager")` 경계를 소유하고, 트랜잭션 시작 직후 `InboxService.save(consumerName,eventId)`를 호출한다. 이 메서드는 `inbox`의 `(consumer_name,event_id)`를 `saveAndFlush`로 즉시 INSERT해 비즈니스 처리 전에 unique 중복 검사를 확정한다. 동시 중복은 unique constraint에서 대기 후 하나만 성공하며, 최초 처리 실패 시 Inbox row와 Outbox write가 호출 서비스의 트랜잭션에서 함께 롤백되어 Kafka 재시도가 다시 처리할 수 있다. 서로 다른 consumer가 같은 이벤트를 각각 처리해야 하므로 event ID 단독이 아니라 consumer name과의 복합 unique를 사용한다.
+호출 consumer 서비스가 `@Transactional("transactionManager")` 경계를 소유하고, 트랜잭션 시작 직후 `InboxService.save(consumerName,eventId)`를 호출한다. 이 메서드는 `inbox`의 `(consumer_name,event_id)`를 `InboxRepository.insertAndFlush()`의 `saveAndFlush()`로 즉시 INSERT해 비즈니스 처리 전에 unique 중복 검사를 확정한다. 동시 중복은 unique constraint에서 대기 후 하나만 성공하며, 최초 처리 실패 시 Inbox row와 Outbox write가 호출 서비스의 트랜잭션에서 함께 롤백되어 Kafka 재시도가 다시 처리할 수 있다. 서로 다른 consumer가 같은 이벤트를 각각 처리해야 하므로 event ID 단독이 아니라 consumer name과의 복합 unique를 사용한다.
 
-중복 INSERT는 트랜잭션을 rollback-only로 만들 수 있으므로 `DuplicateInboxException`은 호출 서비스 밖의 Kafka adapter가 중복 성공으로 변환한다. `save()`만 사용하면 INSERT가 commit 직전까지 지연되어 두 consumer가 비즈니스 로직을 먼저 실행할 수 있으므로 선점에는 `saveAndFlush()`를 유지한다.
+중복 INSERT는 트랜잭션을 rollback-only로 만들 수 있으므로 `DuplicateInboxException`은 호출 서비스 밖의 Kafka adapter가 중복 성공으로 변환한다. `Inbox`는 `Persistable<String>`을 구현해 새 객체의 `isNew()`를 true로 반환한다. 할당된 ID가 있어도 `saveAndFlush()`가 persist를 선택하며, 저장·조회 후에는 `@PostPersist`·`@PostLoad`로 신규 상태를 해제한다. 이 신규 판정이 없으면 merge 경로에서 기존 행을 갱신해 중복 선점을 우회할 수 있다. MySQL 중복 키 오류(1062, SQLState 23000)만 중복으로 변환하고, 그 외 무결성·영속성 오류는 실패로 전파한다. 실제 MySQL 통합 테스트로 순차·동시 재전달, 소비자별 독립 처리, Inbox·Outbox 롤백과 재처리를 검증한다.
 
 이 패턴은 자연 키가 없고 반복 실행 시 새로운 알림·fan-out처럼 결과가 누적되는 consumer에 사용한다. 자연 키 INSERT, 값 덮어쓰기, 삭제처럼 연산 자체가 멱등한 consumer에는 처리 이력 저장 비용을 추가하지 않는다. 외부 REST/STOMP 호출은 event DB 트랜잭션으로 원자화되지 않는다.
 
