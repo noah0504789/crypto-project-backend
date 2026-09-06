@@ -3,7 +3,6 @@ package org.example.notification.application.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.common.time.Clock;
-import org.example.common.event.TypedPayload;
 import org.example.common.inbox.application.service.InboxService;
 import org.example.common.inbox.exception.DuplicateInboxException;
 import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
@@ -19,6 +18,7 @@ import org.example.notification.application.port.out.PriceAlertRecipientQueryPor
 import org.example.notification.application.service.command.PriceAlertNotificationCreateCommand;
 import org.example.notification.application.service.properties.PriceAlertNotificationProperties;
 import org.example.notification.application.exception.NotificationPersistException;
+import org.example.notification.contract.event.PriceAlertData;
 import org.example.notification.contract.event.WebNotificationBroadcastEvent;
 import org.example.notification.contract.event.WebNotificationPayload;
 import org.example.notification.contract.event.WebNotificationMessagePart;
@@ -91,7 +91,7 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
         NotificationEventList eventList = createPriceAlertNotificationEvents(
                 notification,
                 recipientPayloads,
-                command.typedPayload()
+                toPriceAlertData(command)
         );
 
         publishNotificationEvents(eventList);
@@ -120,14 +120,14 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
     private NotificationEventList createPriceAlertNotificationEvents(
             Notification notification,
             List<NotificationRecipientPayload> recipientPayloads,
-            TypedPayload typedPayload
+            PriceAlertData data
     ) {
         NotificationSaveEvent saveEvent = NotificationSaveEvent.from(
                 NotificationPayload.from(notification),
                 recipientPayloads
         );
 
-        WebNotificationPayload webNotificationPayload = createWebNotificationPayload(notification, typedPayload);
+        WebNotificationPayload webNotificationPayload = createWebNotificationPayload(notification, data);
 
         List<AbstractOutboxEvent> events = new ArrayList<>();
         events.add(saveEvent);
@@ -143,7 +143,19 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
         return NotificationEventList.of(events.toArray(AbstractOutboxEvent[]::new));
     }
 
-    private WebNotificationPayload createWebNotificationPayload(Notification notification, TypedPayload typedPayload) {
+    private PriceAlertData toPriceAlertData(PriceAlertNotificationCreateCommand command) {
+        return new PriceAlertData(
+                command.code(),
+                command.price(),
+                command.avgPrice(),
+                command.avgInterval(),
+                command.changeRate(),
+                command.threshold(),
+                command.occurredAtMs()
+        );
+    }
+
+    private WebNotificationPayload createWebNotificationPayload(Notification notification, PriceAlertData data) {
         return WebNotificationPayload.withoutLink(
                 notification.getType().name(),
                 notification.getTitle(),
@@ -152,7 +164,7 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
                 notification.getMessageParts().stream()
                         .map(part -> new WebNotificationMessagePart(part.text(), part.bold(), part.lineBreakAfter()))
                         .toList(),
-                typedPayload.toMap()
+                data
         );
     }
 

@@ -1,7 +1,6 @@
 package org.example.notification.application.service;
 
 import org.example.common.time.Clock;
-import org.example.common.event.TypedPayload;
 import org.example.common.inbox.application.service.InboxService;
 import org.example.common.inbox.exception.DuplicateInboxException;
 import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
@@ -15,6 +14,7 @@ import org.example.notification.application.port.out.PriceAlertNotificationIdGen
 import org.example.notification.application.port.out.PriceAlertRecipientQueryPort;
 import org.example.notification.application.service.command.PriceAlertNotificationCreateCommand;
 import org.example.notification.application.service.properties.PriceAlertNotificationProperties;
+import org.example.notification.contract.event.PriceAlertData;
 import org.example.notification.contract.event.WebNotificationBroadcastEvent;
 import org.example.notification.contract.event.WebNotificationPayload;
 import org.example.notification.domain.model.Notification;
@@ -150,7 +150,6 @@ class PriceAlertNotificationCommandServiceUnitTest {
             // given
             PriceAlertNotificationCreateCommand command = mockCommand();
             givenNotificationCommandFields(command);
-            Map<String, Object> data = givenWebNotificationCommandFields(command);
 
             Notification notification = mockNotification();
             givenWebNotificationFields(notification);
@@ -269,7 +268,8 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 assertThat(webPayload.body()).isEqualTo("KRW-BTC이 5.0% 이상 상승했습니다.");
                 assertThat(webPayload.createdAtMs()).isEqualTo(CREATED_AT_MS);
                 assertThat(webPayload.link()).isNull();
-                assertThat(webPayload.data()).isEqualTo(data);
+                assertThat(webPayload.data()).isEqualTo(new PriceAlertData(
+                        CODE, PRICE, AVG_PRICE, AVG_INTERVAL, CHANGE_RATE, THRESHOLD, CREATED_AT_MS));
 
                 assertThat(webPayloadCaptor.getAllValues()).containsOnly(webPayload);
 
@@ -346,7 +346,6 @@ class PriceAlertNotificationCommandServiceUnitTest {
             // given
             PriceAlertNotificationCreateCommand command = mockCommand();
             givenNotificationCommandFields(command);
-            givenWebNotificationCommandFields(command);
 
             Notification notification = mockNotification();
             givenWebNotificationFields(notification);
@@ -418,7 +417,6 @@ class PriceAlertNotificationCommandServiceUnitTest {
             // given
             PriceAlertNotificationCreateCommand command = mockCommand();
             givenNotificationCommandFields(command);
-            givenWebNotificationCommandFields(command);
 
             Notification notification = mockNotification();
             givenWebNotificationFields(notification);
@@ -488,7 +486,6 @@ class PriceAlertNotificationCommandServiceUnitTest {
             // given
             PriceAlertNotificationCreateCommand command = mockCommand();
             givenNotificationCommandFields(command);
-            givenTypedPayload(command);
 
             Notification notification = mockNotification();
 
@@ -555,23 +552,8 @@ class PriceAlertNotificationCommandServiceUnitTest {
         given(command.avgPrice()).willReturn(AVG_PRICE);
         given(command.avgInterval()).willReturn(AVG_INTERVAL);
         given(command.changeRate()).willReturn(CHANGE_RATE);
+        given(command.occurredAtMs()).willReturn(CREATED_AT_MS);
         given(command.toPayload()).willReturn(PAYLOAD);
-    }
-
-    private TypedPayload givenTypedPayload(PriceAlertNotificationCreateCommand command) {
-        TypedPayload typedPayload = mock(TypedPayload.class);
-
-        given(command.typedPayload()).willReturn(typedPayload);
-
-        return typedPayload;
-    }
-
-    private Map<String, Object> givenWebNotificationCommandFields(PriceAlertNotificationCreateCommand command) {
-        Map<String, Object> data = Map.of("code", "KRW-BTC");
-
-        given(givenTypedPayload(command).toMap()).willReturn(data);
-
-        return data;
     }
 
     private void givenCommon() {

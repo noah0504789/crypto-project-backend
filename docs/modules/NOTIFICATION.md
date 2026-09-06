@@ -211,8 +211,9 @@ market-detection은 탐지 이벤트를 발행할 때 무작위 UUID를 발급�
 | `web-notification-broadcast-event` | 생산(Outbox) | `WebNotificationBroadcastEvent{payload, notificationId}` | **websocket-gateway** 소비 → STOMP push |
 
 - consumer 함수: `priceAlertDetectedEventConsumer`, `notificationEventConsumer`(둘 다 `ack-mode: record`, `start-offset: latest`).
-- `WebNotificationPayload`: `{ type, title, body, createdAtMs, link, messageParts, data }`. `data`는 탐지 원본(가격·평균·변동률 등)을 키-값으로 실어 프론트에 전달한다(STOMP `StompWebNotificationPayload.data`까지 그대로 이어진다).
-- `TypedPayload`는 **생산 측 조립 전용 타입**이다. `TypedKey<T>`로 key·value 타입을 묶어 조립하고, 이벤트에 실을 때 `toMap()`으로 변환해 나간다. wire에는 `Map<String, Object>` JSON만 나간다(→ PR #32 계약). `TypedPayload` 객체 자체를 계약 필드로 두면 Jackson이 프로퍼티를 찾지 못해 `{}`로 나간다.
+- `WebNotificationPayload`: `{ type, title, body, createdAtMs, link, messageParts, data }`. `data`는 `PriceAlertData` (`code`·`price`·`avgPrice`·`avgInterval`·`changeRate`·`threshold`·`occurredAtMs`)이며 STOMP `StompWebNotificationPayload.data`까지 같은 타입으로 이어진다. 소비 서비스와 프론트가 필드를 타입으로 읽는다.
+- 알림 종류가 늘면 `data` 계약을 명시적으로 확장해야 한다. 현재 생성 경로는 `PRICE_ALERT` 하나다.
+- `Notification.payload`(Mongo 저장용 `Map`)는 별개다. 이쪽은 `PriceAlertNotificationCreateCommand.toPayload()`가 `TypedPayload.toMap()`으로 만든다.
 
 ## 11. 확인 필요 항목
 

@@ -1,7 +1,6 @@
 package org.example.notification.contract.event;
 
 import java.util.List;
-import java.util.Map;
 
 public record WebNotificationPayload(
         String type,
@@ -10,7 +9,7 @@ public record WebNotificationPayload(
         long createdAtMs,
         String link,
         List<WebNotificationMessagePart> messageParts,
-        Map<String, Object> data
+        PriceAlertData data
 ) {
 
     public WebNotificationPayload(
@@ -19,14 +18,13 @@ public record WebNotificationPayload(
             String body,
             long createdAtMs,
             String link,
-            Map<String, Object> data
+            PriceAlertData data
     ) {
         this(type, title, body, createdAtMs, link, List.of(), data);
     }
 
     public WebNotificationPayload {
         messageParts = messageParts == null ? List.of() : List.copyOf(messageParts);
-        data = data == null ? Map.of() : Map.copyOf(data);
     }
 
     public static WebNotificationPayload withoutLink(
@@ -34,7 +32,7 @@ public record WebNotificationPayload(
             String title,
             String body,
             long createdAtMs,
-            Map<String, Object> data
+            PriceAlertData data
     ) {
         return withoutLink(type, title, body, createdAtMs, List.of(), data);
     }
@@ -45,7 +43,7 @@ public record WebNotificationPayload(
             String body,
             long createdAtMs,
             List<WebNotificationMessagePart> messageParts,
-            Map<String, Object> data
+            PriceAlertData data
     ) {
         return new WebNotificationPayload(
                 type,

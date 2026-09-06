@@ -1,11 +1,11 @@
 package org.example.websocket.gateway.notification.adapter.out.stomp.payload;
 
+import org.example.notification.contract.event.PriceAlertData;
 import org.example.websocket.gateway.notification.application.service.command.WebNotificationCommand;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -24,7 +24,7 @@ class StompWebNotificationPayloadUnitTest {
                 1_000L,
                 "/price-alerts",
                 List.of(),
-                Map.of()
+                new PriceAlertData("KRW-BTC", 105D, 100D, 5, 0.05, "PERCENT_5", 1_757_000_000_000L)
         );
 
         // when
