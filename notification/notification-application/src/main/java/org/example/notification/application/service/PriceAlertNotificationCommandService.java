@@ -91,7 +91,7 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
         NotificationEventList eventList = createPriceAlertNotificationEvents(
                 notification,
                 recipientPayloads,
-                toPriceAlertPayload(command)
+                command.toPriceAlertPayload()
         );
 
         publishNotificationEvents(eventList);
@@ -141,18 +141,6 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
                 .forEach(events::add);
 
         return NotificationEventList.of(events.toArray(AbstractOutboxEvent[]::new));
-    }
-
-    private PriceAlertPayload toPriceAlertPayload(PriceAlertNotificationCreateCommand command) {
-        return new PriceAlertPayload(
-                command.code(),
-                command.price(),
-                command.avgPrice(),
-                command.avgInterval(),
-                command.changeRate(),
-                command.threshold(),
-                command.occurredAtMs()
-        );
     }
 
     private WebNotificationPayload createWebNotificationPayload(Notification notification, PriceAlertPayload data) {

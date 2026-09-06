@@ -74,6 +74,8 @@ class PriceAlertNotificationCommandServiceUnitTest {
     private static final String THRESHOLD = "3";
     private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, 1, 1, 10, 0);
     private static final long CREATED_AT_MS = 1767229200000L;
+    private static final PriceAlertPayload PRICE_ALERT_PAYLOAD =
+            new PriceAlertPayload(CODE, PRICE, AVG_PRICE, AVG_INTERVAL, CHANGE_RATE, THRESHOLD, CREATED_AT_MS);
     private static final Duration MAX_EVENT_AGE = Duration.ofSeconds(10);
 
     private static final Map<String, Object> PAYLOAD = Map.of(
@@ -268,8 +270,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 assertThat(webPayload.body()).isEqualTo("KRW-BTC이 5.0% 이상 상승했습니다.");
                 assertThat(webPayload.createdAtMs()).isEqualTo(CREATED_AT_MS);
                 assertThat(webPayload.link()).isNull();
-                assertThat(webPayload.data()).isEqualTo(new PriceAlertPayload(
-                        CODE, PRICE, AVG_PRICE, AVG_INTERVAL, CHANGE_RATE, THRESHOLD, CREATED_AT_MS));
+                assertThat(webPayload.data()).isEqualTo(PRICE_ALERT_PAYLOAD);
 
                 assertThat(webPayloadCaptor.getAllValues()).containsOnly(webPayload);
 
@@ -554,6 +555,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
         given(command.changeRate()).willReturn(CHANGE_RATE);
         given(command.occurredAtMs()).willReturn(CREATED_AT_MS);
         given(command.toPayload()).willReturn(PAYLOAD);
+        given(command.toPriceAlertPayload()).willReturn(PRICE_ALERT_PAYLOAD);
     }
 
     private void givenCommon() {
