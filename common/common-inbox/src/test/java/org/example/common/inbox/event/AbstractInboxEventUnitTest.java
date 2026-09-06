@@ -1,7 +1,5 @@
 package org.example.common.inbox.event;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.common.inbox.domain.event.AbstractInboxEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,22 +14,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class AbstractInboxEventUnitTest {
 
     @Test
-    @DisplayName("기본 생성자는 매번 새로운 UUID eventId를 만든다")
-    void createsRandomUUID() {
-        TestInboxEvent first = new TestInboxEvent();
-        TestInboxEvent second = new TestInboxEvent();
+    @DisplayName("발급할 때마다 새로운 UUID eventId를 만든다")
+    void issuesRandomUUID() {
+        TestInboxEvent event = new TestInboxEvent();
 
-        assertThat(first.getEventId()).hasSize(36);
-        assertThat(second.getEventId()).hasSize(36);
-        assertThat(second.getEventId()).isNotEqualTo(first.getEventId());
-    }
+        String first = event.issueEventId();
+        String second = event.issueEventId();
 
-    @Test
-    @DisplayName("eventId는 Kafka payload JSON에서 제외한다")
-    void ignoresEventIdDuringSerialization() throws JsonProcessingException {
-        String json = new ObjectMapper().writeValueAsString(new TestInboxEvent());
-
-        assertThat(json).doesNotContain("eventId");
+        assertThat(first).hasSize(36);
+        assertThat(second).hasSize(36);
+        assertThat(second).isNotEqualTo(first);
     }
 
     @Test
@@ -54,6 +46,20 @@ class AbstractInboxEventUnitTest {
                 .build();
 
         assertThat(event.extractEventId(message)).isEqualTo("event-1");
+    }
+
+    @Test
+    @DisplayName("발급한 eventId는 객체에 남지 않아 추출 결과와 무관하다")
+    void doesNotRetainIssuedEventId() {
+        TestInboxEvent event = new TestInboxEvent();
+        String issued = event.issueEventId();
+
+        Message<TestInboxEvent> message = MessageBuilder.withPayload(event)
+                .setHeader("event_id", "event-1")
+                .build();
+
+        assertThat(event.extractEventId(message)).isEqualTo("event-1");
+        assertThat(event.extractEventId(message)).isNotEqualTo(issued);
     }
 
     @Test

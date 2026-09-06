@@ -171,7 +171,7 @@ public class PriceAlertDetectionProcessor implements Processor<String, UpbitTick
         RecordHeaders headers = new RecordHeaders(record.headers());
         headers.add(
                 KafkaHeaderKey.EVENT_ID.value(),
-                event.getEventId().getBytes(StandardCharsets.UTF_8)
+                event.issueEventId().getBytes(StandardCharsets.UTF_8)
         );
 
         context.forward(new Record<>(code, event, pricePoint.timestamp(), headers));

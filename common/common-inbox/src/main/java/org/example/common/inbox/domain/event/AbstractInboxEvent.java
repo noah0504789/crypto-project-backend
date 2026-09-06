@@ -1,21 +1,20 @@
 package org.example.common.inbox.domain.event;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import lombok.Getter;
 import org.example.common.enums.KafkaHeaderKey;
 import org.example.common.util.EventIdUtils;
 import org.springframework.messaging.Message;
 
 import java.nio.charset.StandardCharsets;
 
-@Getter
+/**
+ * Inbox 멱등 처리 대상 이벤트. 식별자는 payload 가 아니라 Kafka 헤더로만 오간다.
+ * 필드로 들고 있으면 역직렬화 때 생성자가 다시 돌아 소비 측 객체에 무의미한 값이 남는다.
+ */
 public abstract class AbstractInboxEvent {
 
-    @JsonIgnore
-    private final String eventId;
-
-    protected AbstractInboxEvent() {
-        this.eventId = EventIdUtils.generateUUID();
+    /** 발행 시점에 발급한다. 호출할 때마다 새 값이며, 레코드 하나가 곧 이벤트 하나다. */
+    public final String issueEventId() {
+        return EventIdUtils.generateUUID();
     }
 
     public final String extractEventId(Message<?> message) {

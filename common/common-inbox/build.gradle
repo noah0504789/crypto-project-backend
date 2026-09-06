@@ -8,7 +8,4 @@ dependencies {
 
     implementation project(':common:common-core')
     implementation project(':common:common-util')
-    implementation(libs.jackson.annotations)
-
-    testImplementation(libs.jackson.databind)
 }
