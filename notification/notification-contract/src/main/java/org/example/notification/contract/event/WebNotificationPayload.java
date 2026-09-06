@@ -9,7 +9,7 @@ public record WebNotificationPayload(
         long createdAtMs,
         String link,
         List<WebNotificationMessagePart> messageParts,
-        PriceAlertData data
+        PriceAlertPayload data
 ) {
 
     public WebNotificationPayload(
@@ -18,7 +18,7 @@ public record WebNotificationPayload(
             String body,
             long createdAtMs,
             String link,
-            PriceAlertData data
+            PriceAlertPayload data
     ) {
         this(type, title, body, createdAtMs, link, List.of(), data);
     }
@@ -32,7 +32,7 @@ public record WebNotificationPayload(
             String title,
             String body,
             long createdAtMs,
-            PriceAlertData data
+            PriceAlertPayload data
     ) {
         return withoutLink(type, title, body, createdAtMs, List.of(), data);
     }
@@ -43,7 +43,7 @@ public record WebNotificationPayload(
             String body,
             long createdAtMs,
             List<WebNotificationMessagePart> messageParts,
-            PriceAlertData data
+            PriceAlertPayload data
     ) {
         return new WebNotificationPayload(
                 type,

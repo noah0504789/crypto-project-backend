@@ -15,8 +15,8 @@ class WebNotificationBroadcastEventSerdeUnitTest {
     @Test
     @DisplayName("Outbox payload 로 직렬화한 뒤 같은 값으로 복원된다")
     void roundTrip_shouldRestoreContract() throws Exception {
-        PriceAlertData data =
-                new PriceAlertData("KRW-BTC", 95_000_000.0, 90_000_000.0, 3, 0.05, "PERCENT_5", 1_757_000_000_000L);
+        PriceAlertPayload data =
+                new PriceAlertPayload("KRW-BTC", 95_000_000.0, 90_000_000.0, 3, 0.05, "PERCENT_5", 1_757_000_000_000L);
 
         WebNotificationPayload payload = WebNotificationPayload.withoutLink(
                 "PRICE_ALERT",
@@ -45,7 +45,7 @@ class WebNotificationBroadcastEventSerdeUnitTest {
     @DisplayName("게이트웨이가 전달 대상을 정하는 partitionKey 는 payload 로 오간다")
     void roundTrip_shouldKeepPartitionKey() throws Exception {
         WebNotificationPayload payload = WebNotificationPayload.withoutLink(
-                "PRICE_ALERT", "가격 알림", "본문", 0L, (PriceAlertData) null);
+                "PRICE_ALERT", "가격 알림", "본문", 0L, (PriceAlertPayload) null);
 
         WebNotificationBroadcastEvent event =
                 WebNotificationBroadcastEvent.of(payload, "notification-1", "receiver-1");

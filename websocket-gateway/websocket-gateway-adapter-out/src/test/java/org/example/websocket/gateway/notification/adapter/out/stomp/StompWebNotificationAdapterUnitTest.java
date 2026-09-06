@@ -1,7 +1,7 @@
 package org.example.websocket.gateway.notification.adapter.out.stomp;
 
 import org.example.websocket.gateway.notification.adapter.out.stomp.payload.StompWebNotificationPayload;
-import org.example.notification.contract.event.PriceAlertData;
+import org.example.notification.contract.event.PriceAlertPayload;
 import org.example.websocket.gateway.notification.application.service.command.WebNotificationCommand;
 import org.example.websocket.gateway.session.application.cache.LocalSessionCache;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,7 +51,7 @@ class StompWebNotificationAdapterUnitTest {
                 1_000L,
                 "/markets/KRW-BTC",
                 List.of(),
-                new PriceAlertData("KRW-BTC", 105D, 100D, 5, 0.05, "PERCENT_5", 1_757_000_000_000L)
+                new PriceAlertPayload("KRW-BTC", 105D, 100D, 5, 0.05, "PERCENT_5", 1_757_000_000_000L)
         );
         given(localSessionCache.hasUser(RECEIVER_ID)).willReturn(true);
 

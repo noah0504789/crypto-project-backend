@@ -18,7 +18,7 @@ import org.example.notification.application.port.out.PriceAlertRecipientQueryPor
 import org.example.notification.application.service.command.PriceAlertNotificationCreateCommand;
 import org.example.notification.application.service.properties.PriceAlertNotificationProperties;
 import org.example.notification.application.exception.NotificationPersistException;
-import org.example.notification.contract.event.PriceAlertData;
+import org.example.notification.contract.event.PriceAlertPayload;
 import org.example.notification.contract.event.WebNotificationBroadcastEvent;
 import org.example.notification.contract.event.WebNotificationPayload;
 import org.example.notification.contract.event.WebNotificationMessagePart;
@@ -91,7 +91,7 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
         NotificationEventList eventList = createPriceAlertNotificationEvents(
                 notification,
                 recipientPayloads,
-                toPriceAlertData(command)
+                toPriceAlertPayload(command)
         );
 
         publishNotificationEvents(eventList);
@@ -120,7 +120,7 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
     private NotificationEventList createPriceAlertNotificationEvents(
             Notification notification,
             List<NotificationRecipientPayload> recipientPayloads,
-            PriceAlertData data
+            PriceAlertPayload data
     ) {
         NotificationSaveEvent saveEvent = NotificationSaveEvent.from(
                 NotificationPayload.from(notification),
@@ -143,8 +143,8 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
         return NotificationEventList.of(events.toArray(AbstractOutboxEvent[]::new));
     }
 
-    private PriceAlertData toPriceAlertData(PriceAlertNotificationCreateCommand command) {
-        return new PriceAlertData(
+    private PriceAlertPayload toPriceAlertPayload(PriceAlertNotificationCreateCommand command) {
+        return new PriceAlertPayload(
                 command.code(),
                 command.price(),
                 command.avgPrice(),
@@ -155,7 +155,7 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
         );
     }
 
-    private WebNotificationPayload createWebNotificationPayload(Notification notification, PriceAlertData data) {
+    private WebNotificationPayload createWebNotificationPayload(Notification notification, PriceAlertPayload data) {
         return WebNotificationPayload.withoutLink(
                 notification.getType().name(),
                 notification.getTitle(),

@@ -1,6 +1,6 @@
 package org.example.websocket.gateway.notification.adapter.out.stomp.payload;
 
-import org.example.notification.contract.event.PriceAlertData;
+import org.example.notification.contract.event.PriceAlertPayload;
 import org.example.notification.contract.event.WebNotificationMessagePart;
 import org.example.websocket.gateway.notification.application.service.command.WebNotificationCommand;
 
@@ -14,7 +14,7 @@ public record StompWebNotificationPayload(
         long createdAtMs,
         String link,
         List<WebNotificationMessagePart> messageParts,
-        PriceAlertData data
+        PriceAlertPayload data
 ) {
 
     public static StompWebNotificationPayload from(WebNotificationCommand command) {

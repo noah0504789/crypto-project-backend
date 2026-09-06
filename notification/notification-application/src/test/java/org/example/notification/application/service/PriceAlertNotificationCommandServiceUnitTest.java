@@ -14,7 +14,7 @@ import org.example.notification.application.port.out.PriceAlertNotificationIdGen
 import org.example.notification.application.port.out.PriceAlertRecipientQueryPort;
 import org.example.notification.application.service.command.PriceAlertNotificationCreateCommand;
 import org.example.notification.application.service.properties.PriceAlertNotificationProperties;
-import org.example.notification.contract.event.PriceAlertData;
+import org.example.notification.contract.event.PriceAlertPayload;
 import org.example.notification.contract.event.WebNotificationBroadcastEvent;
 import org.example.notification.contract.event.WebNotificationPayload;
 import org.example.notification.domain.model.Notification;
@@ -268,7 +268,7 @@ class PriceAlertNotificationCommandServiceUnitTest {
                 assertThat(webPayload.body()).isEqualTo("KRW-BTC이 5.0% 이상 상승했습니다.");
                 assertThat(webPayload.createdAtMs()).isEqualTo(CREATED_AT_MS);
                 assertThat(webPayload.link()).isNull();
-                assertThat(webPayload.data()).isEqualTo(new PriceAlertData(
+                assertThat(webPayload.data()).isEqualTo(new PriceAlertPayload(
                         CODE, PRICE, AVG_PRICE, AVG_INTERVAL, CHANGE_RATE, THRESHOLD, CREATED_AT_MS));
 
                 assertThat(webPayloadCaptor.getAllValues()).containsOnly(webPayload);

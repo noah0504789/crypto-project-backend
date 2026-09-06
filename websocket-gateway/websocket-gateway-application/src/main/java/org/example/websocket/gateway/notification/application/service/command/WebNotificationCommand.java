@@ -1,6 +1,6 @@
 package org.example.websocket.gateway.notification.application.service.command;
 
-import org.example.notification.contract.event.PriceAlertData;
+import org.example.notification.contract.event.PriceAlertPayload;
 import org.example.notification.contract.event.WebNotificationMessagePart;
 
 import java.util.List;
@@ -14,6 +14,6 @@ public record WebNotificationCommand(
         long createdAtMs,
         String link,
         List<WebNotificationMessagePart> messageParts,
-        PriceAlertData data
+        PriceAlertPayload data
 ) {
 }
