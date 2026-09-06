@@ -2,6 +2,7 @@ package org.example.notification.application.service.command;
 
 import lombok.Builder;
 import org.example.common.event.TypedPayload;
+import org.example.notification.contract.event.PriceAlertPayload;
 
 import java.util.Map;
 
@@ -27,6 +28,10 @@ public record PriceAlertNotificationCreateCommand(
 
     public Map<String, Object> toPayload() {
         return typedPayload.toMap();
+    }
+
+    public PriceAlertPayload toPriceAlertPayload() {
+        return new PriceAlertPayload(code, price, avgPrice, avgInterval, changeRate, threshold, occurredAtMs);
     }
 
     public String consumerName() {

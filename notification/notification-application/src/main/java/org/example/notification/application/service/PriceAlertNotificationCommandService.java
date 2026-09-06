@@ -3,15 +3,11 @@ package org.example.notification.application.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.common.time.Clock;
-import org.example.common.event.TypedPayload;
 import org.example.common.inbox.application.service.InboxService;
 import org.example.common.inbox.exception.DuplicateInboxException;
 import org.example.common.outbox.application.port.out.OutboxEventListPublishPort;
-import org.example.common.outbox.domain.event.AbstractOutboxEvent;
 import org.example.common.outbox.exception.TemporaryOutboxPersistenceException;
 import org.example.notification.application.event.NotificationEventList;
-import org.example.notification.application.event.NotificationSaveEvent;
-import org.example.notification.application.event.payload.NotificationPayload;
 import org.example.notification.application.event.payload.NotificationRecipientPayload;
 import org.example.notification.application.port.in.PriceAlertNotificationCommandUseCase;
 import org.example.notification.application.port.out.PriceAlertNotificationIdGeneratorPort;
@@ -19,15 +15,11 @@ import org.example.notification.application.port.out.PriceAlertRecipientQueryPor
 import org.example.notification.application.service.command.PriceAlertNotificationCreateCommand;
 import org.example.notification.application.service.properties.PriceAlertNotificationProperties;
 import org.example.notification.application.exception.NotificationPersistException;
-import org.example.notification.contract.event.WebNotificationBroadcastEvent;
-import org.example.notification.contract.event.WebNotificationPayload;
-import org.example.notification.contract.event.WebNotificationMessagePart;
 import org.example.notification.domain.model.Notification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -82,19 +74,18 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
                 createdAt
         );
 
-        List<NotificationRecipientPayload> recipientPayloads = createRecipientPayloads(
+        List<NotificationRecipientPayload> recipientPayloads = NotificationRecipientPayload.forReceivers(
                 notification.getId(),
                 receiverIds,
-                createdAt
+                createdAt,
+                idGeneratorPort::generate
         );
 
-        NotificationEventList eventList = createPriceAlertNotificationEvents(
+        publishNotificationEvents(NotificationEventList.forPriceAlert(
                 notification,
                 recipientPayloads,
-                command.typedPayload()
-        );
-
-        publishNotificationEvents(eventList);
+                command.toPriceAlertPayload()
+        ));
     }
 
     private boolean isStale(Long occurredAtMs) {
@@ -104,56 +95,6 @@ public class PriceAlertNotificationCommandService implements PriceAlertNotificat
 
         long staleBoundaryMs = clock.nowMs() - properties.maxEventAge().toMillis();
         return occurredAtMs < staleBoundaryMs;
-    }
-
-    private List<NotificationRecipientPayload> createRecipientPayloads(
-            String notificationId,
-            List<UUID> receiverIds,
-            LocalDateTime deliveredAt
-    ) {
-        return receiverIds.stream()
-                .map(receiverId -> NotificationRecipientPayload.of(
-                        idGeneratorPort.generate(), notificationId, receiverId, deliveredAt))
-                .toList();
-    }
-
-    private NotificationEventList createPriceAlertNotificationEvents(
-            Notification notification,
-            List<NotificationRecipientPayload> recipientPayloads,
-            TypedPayload typedPayload
-    ) {
-        NotificationSaveEvent saveEvent = NotificationSaveEvent.from(
-                NotificationPayload.from(notification),
-                recipientPayloads
-        );
-
-        WebNotificationPayload webNotificationPayload = createWebNotificationPayload(notification, typedPayload);
-
-        List<AbstractOutboxEvent> events = new ArrayList<>();
-        events.add(saveEvent);
-        recipientPayloads.stream()
-                .map(NotificationRecipientPayload::receiverId)
-                .map(receiverId -> WebNotificationBroadcastEvent.of(
-                        webNotificationPayload,
-                        notification.getId(),
-                        receiverId.toString()
-                ))
-                .forEach(events::add);
-
-        return NotificationEventList.of(events.toArray(AbstractOutboxEvent[]::new));
-    }
-
-    private WebNotificationPayload createWebNotificationPayload(Notification notification, TypedPayload typedPayload) {
-        return WebNotificationPayload.withoutLink(
-                notification.getType().name(),
-                notification.getTitle(),
-                notification.getMessage(),
-                notification.getCreatedAtMs(),
-                notification.getMessageParts().stream()
-                        .map(part -> new WebNotificationMessagePart(part.text(), part.bold(), part.lineBreakAfter()))
-                        .toList(),
-                typedPayload
-        );
     }
 
     private void publishNotificationEvents(NotificationEventList eventList) {

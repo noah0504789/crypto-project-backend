@@ -1,10 +1,10 @@
 package org.example.websocket.gateway.notification.adapter.out.stomp.payload;
 
+import org.example.notification.contract.event.PriceAlertPayload;
 import org.example.notification.contract.event.WebNotificationMessagePart;
 import org.example.websocket.gateway.notification.application.service.command.WebNotificationCommand;
 
 import java.util.List;
-import java.util.Map;
 
 public record StompWebNotificationPayload(
         String notificationId,
@@ -14,7 +14,7 @@ public record StompWebNotificationPayload(
         long createdAtMs,
         String link,
         List<WebNotificationMessagePart> messageParts,
-        Map<String, Object> data
+        PriceAlertPayload data
 ) {
 
     public static StompWebNotificationPayload from(WebNotificationCommand command) {
