@@ -186,6 +186,26 @@ class PriceAlertDetectionProcessorTopologyIntegrationTest {
     }
 
     @Test
+    @DisplayName("한 번에 여러 이벤트를 발행해도 event id는 레코드마다 다르다")
+    void process_publishesDistinctEventIdPerRecord() {
+        // given
+        inputTopic.pipeInput(CODE, tickerEvent(100.0, 1_000L), Instant.ofEpochMilli(1_000L));
+        outputTopic.readRecordsToList();
+
+        // when
+        inputTopic.pipeInput(CODE, tickerEvent(110.0, 2_000L), Instant.ofEpochMilli(2_000L));
+
+        // then
+        List<String> eventIds = outputTopic.readRecordsToList().stream()
+                .map(outputRecord -> outputRecord.headers().lastHeader(KafkaHeaderKey.EVENT_ID.value()))
+                .map(header -> new String(header.value(), StandardCharsets.UTF_8))
+                .toList();
+
+        assertThat(eventIds).hasSize(3);
+        assertThat(eventIds).doesNotHaveDuplicates();
+    }
+
+    @Test
     @DisplayName("허용 시간이 지난 이벤트는 처리하지 않는다")
     void process_staleEvent_isIgnored() {
         // given
