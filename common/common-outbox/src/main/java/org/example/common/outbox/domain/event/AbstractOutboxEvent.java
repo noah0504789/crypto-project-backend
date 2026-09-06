@@ -20,14 +20,17 @@ public abstract class AbstractOutboxEvent {
     @JsonIgnore
     private final String partitionKey;
 
+    @JsonIgnore
     public OutboxDispatchType getDispatchType() {
         return OutboxDispatchType.GENERAL;
     }
 
+    @JsonIgnore
     public String getMessageType() {
         return this.getClass().getName();
     }
 
+    @JsonIgnore
     public abstract OutboxDomainType getDomainType();
 
     public String generateId() {
