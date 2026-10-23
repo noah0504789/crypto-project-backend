@@ -23,6 +23,7 @@ import java.util.concurrent.CompletableFuture;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -184,6 +185,24 @@ class ChatMessageSendServiceUnitTest {
                 "client-body-id",
                 GrpcFailureCode.DEADLINE_EXCEEDED.name()
         );
+    }
+
+    @Test
+    @DisplayName("성공 ACK 전송이 실패해도 저장 실패로 처리하지 않는다")
+    void send_shouldNotTreatAsSaveFailure_whenSuccessAckFailed() {
+        ChatMessageSendCommand command = command();
+
+        when(chatMessageCommandPort.save(command))
+                .thenReturn(CompletableFuture.completedFuture(new ChatMessageSendResult(true, "body-id", 12345L)));
+
+        doThrow(new RuntimeException("ack send failed"))
+                .when(chatMessageAckPort).success(any(), any());
+
+        sut.send(command);
+
+        verify(chatMessageAckPort, never()).failure(any(), any(), any());
+        verify(chatMessageMetricsPort, never()).recordSaveFailure(any());
+        verify(chatMessageCommandPort, never()).hardDelete(any());
     }
 
     private ChatMessageSendCommand command() {

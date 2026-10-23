@@ -27,13 +27,17 @@ public class ChatMessageSendService implements ChatMessageSendUseCase {
     private final Executor chatMessageAckExecutor;
 
     // 콜백 실행 스레드를 명시한다. 생략하면 gRPC 응답 스레드(상한 없는 캐시 풀)에서 돈다.
+    // 성공·실패를 한 분기에서 받는다. thenAccept 뒤에 exceptionally 를 붙이면 성공 ACK 전송 실패가
+    // 저장 실패로 섞여, 저장에 성공한 메시지에 실패 ACK 가 나간다(클라이언트 재전송 유발).
     @Override
     public void send(ChatMessageSendCommand command) {
         chatMessageCommandPort.save(command)
-                .thenAcceptAsync(result -> sendSuccessAck(command, result), chatMessageAckExecutor)
-                .exceptionallyAsync(error -> {
-                    handleSaveError(command, error);
-                    return null;
+                .whenCompleteAsync((result, error) -> {
+                    if (error != null) {
+                        handleSaveError(command, error);
+                    } else {
+                        sendSuccessAck(command, result);
+                    }
                 }, chatMessageAckExecutor);
     }
 
