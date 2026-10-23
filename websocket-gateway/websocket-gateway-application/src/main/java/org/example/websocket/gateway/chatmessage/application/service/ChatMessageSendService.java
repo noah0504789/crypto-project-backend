@@ -39,8 +39,13 @@ public class ChatMessageSendService implements ChatMessageSendUseCase {
                         } else {
                             sendSuccessAck(command, result);
                         }
-                    } catch (Throwable callbackError) {
+                    } catch (Exception callbackError) {
                         logSendFailure(command, callbackError);
+                    } catch (Error fatalError) {
+                        // 이 서비스가 처리할 수 있는 실패가 아니다. 버려지는 future 에 담겨
+                        // 흔적이 사라지므로 남기기만 하고 다시 던진다.
+                        logSendFailure(command, fatalError);
+                        throw fatalError;
                     }
                 }, chatMessageAckExecutor);
     }
