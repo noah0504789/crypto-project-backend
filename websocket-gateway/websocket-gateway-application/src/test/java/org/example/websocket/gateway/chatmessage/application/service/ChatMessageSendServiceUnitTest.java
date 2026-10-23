@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -203,6 +204,22 @@ class ChatMessageSendServiceUnitTest {
         verify(chatMessageAckPort, never()).failure(any(), any(), any());
         verify(chatMessageMetricsPort, never()).recordSaveFailure(any());
         verify(chatMessageCommandPort, never()).hardDelete(any());
+    }
+
+    @Test
+    @DisplayName("실패 ACK 전송까지 실패해도 send 호출자에게 예외를 전파하지 않는다")
+    void send_shouldNotPropagateException_whenFailureAckAlsoFailed() {
+        ChatMessageSendCommand command = command();
+
+        when(chatMessageCommandPort.save(command))
+                .thenReturn(failedFuture(grpcException(GrpcFailureCode.CANCELLED)));
+
+        doThrow(new RuntimeException("ack send failed"))
+                .when(chatMessageAckPort).failure(any(), any(), any());
+
+        assertThatCode(() -> sut.send(command)).doesNotThrowAnyException();
+
+        verify(chatMessageMetricsPort).recordSaveFailure(GrpcFailureCode.CANCELLED);
     }
 
     private ChatMessageSendCommand command() {

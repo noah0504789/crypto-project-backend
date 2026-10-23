@@ -33,12 +33,27 @@ public class ChatMessageSendService implements ChatMessageSendUseCase {
     public void send(ChatMessageSendCommand command) {
         chatMessageCommandPort.save(command)
                 .whenCompleteAsync((result, error) -> {
-                    if (error != null) {
-                        handleSaveError(command, error);
-                    } else {
-                        sendSuccessAck(command, result);
+                    try {
+                        if (error != null) {
+                            handleSaveError(command, error);
+                        } else {
+                            sendSuccessAck(command, result);
+                        }
+                    } catch (Throwable callbackError) {
+                        logSendFailure(command, callbackError);
                     }
                 }, chatMessageAckExecutor);
+    }
+
+    // send 는 fire-and-forget 이라 반환 future 를 아무도 받지 않는다. 콜백이 던진 예외를
+    // CompletableFuture 가 그 future 에 담아 버리고 끝나므로, 직접 잡아 남긴다.
+    private void logSendFailure(ChatMessageSendCommand command, Throwable error) {
+        log.error(
+                "[stomp] chat message send callback failed. messageId={}, roomId={}",
+                command.messageId(),
+                command.roomId(),
+                error
+        );
     }
 
     private void sendSuccessAck(ChatMessageSendCommand command, ChatMessageSendResult result) {
