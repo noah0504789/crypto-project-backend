@@ -27,14 +27,38 @@ public class ChatMessageSendService implements ChatMessageSendUseCase {
     private final Executor chatMessageAckExecutor;
 
     // 콜백 실행 스레드를 명시한다. 생략하면 gRPC 응답 스레드(상한 없는 캐시 풀)에서 돈다.
+    // 성공·실패를 한 분기에서 받는다. thenAccept 뒤에 exceptionally 를 붙이면 성공 ACK 전송 실패가
+    // 저장 실패로 섞여, 저장에 성공한 메시지에 실패 ACK 가 나간다(클라이언트 재전송 유발).
     @Override
     public void send(ChatMessageSendCommand command) {
         chatMessageCommandPort.save(command)
-                .thenAcceptAsync(result -> sendSuccessAck(command, result), chatMessageAckExecutor)
-                .exceptionallyAsync(error -> {
-                    handleSaveError(command, error);
-                    return null;
+                .whenCompleteAsync((result, error) -> {
+                    try {
+                        if (error != null) {
+                            handleSaveError(command, error);
+                        } else {
+                            sendSuccessAck(command, result);
+                        }
+                    } catch (Exception callbackError) {
+                        logSendFailure(command, callbackError);
+                    } catch (Error fatalError) {
+                        // 이 서비스가 처리할 수 있는 실패가 아니다. 버려지는 future 에 담겨
+                        // 흔적이 사라지므로 남기기만 하고 다시 던진다.
+                        logSendFailure(command, fatalError);
+                        throw fatalError;
+                    }
                 }, chatMessageAckExecutor);
+    }
+
+    // send 는 fire-and-forget 이라 반환 future 를 아무도 받지 않는다. 콜백이 던진 예외를
+    // CompletableFuture 가 그 future 에 담아 버리고 끝나므로, 직접 잡아 남긴다.
+    private void logSendFailure(ChatMessageSendCommand command, Throwable error) {
+        log.error(
+                "[stomp] chat message send callback failed. messageId={}, roomId={}",
+                command.messageId(),
+                command.roomId(),
+                error
+        );
     }
 
     private void sendSuccessAck(ChatMessageSendCommand command, ChatMessageSendResult result) {
